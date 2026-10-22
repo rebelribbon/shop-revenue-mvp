@@ -1,0 +1,2 @@
+ALTER TABLE "app"."membership" DROP CONSTRAINT "membership_user_required_check";--> statement-breakpoint
+ALTER TABLE "app"."membership" ADD CONSTRAINT "membership_user_required_check" CHECK ("app"."membership"."status" <> 'active' OR "app"."membership"."user_id" IS NOT NULL);

@@ -118,7 +118,8 @@ export const membership = app.table(
     index("membership_user_id_idx").on(t.userId),
     check("membership_role_check", sql`${t.role} IN ('owner', 'staff')`),
     check("membership_status_check", sql`${t.status} IN ('invited', 'active', 'removed')`),
-    check("membership_user_required_check", sql`${t.status} = 'invited' OR ${t.userId} IS NOT NULL`),
+    // A pending invite has no user yet and can be revoked (invited -> removed) without one.
+    check("membership_user_required_check", sql`${t.status} <> 'active' OR ${t.userId} IS NOT NULL`),
     check(
       "membership_invite_contact_check",
       sql`${t.status} <> 'invited' OR ${t.inviteEmail} IS NOT NULL OR ${t.invitePhoneE164} IS NOT NULL`,
@@ -158,6 +159,9 @@ export const supportSession = app.table(
   {
     id: id(),
     adminUserId: uuid("admin_user_id").notNull(),
+    // Snapshot of the internal user's name: the shop's access log (S29) must say
+    // who accessed the account, and the shop can never read internal_user.
+    adminDisplayName: text("admin_display_name").notNull(),
     businessId: uuid("business_id").notNull(),
     reason: text("reason").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),

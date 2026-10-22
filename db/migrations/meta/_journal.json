@@ -22,6 +22,27 @@
       "when": 1792697348920,
       "tag": "0002_m1_security",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792711674526,
+      "tag": "0003_support_session_admin_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792711798963,
+      "tag": "0004_table_level_insert_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792711836307,
+      "tag": "0005_membership_invite_revocable",
+      "breakpoints": true
     }
   ]
 }
