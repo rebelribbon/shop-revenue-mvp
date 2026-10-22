@@ -48,3 +48,5 @@ supabase/.temp
 /playwright-report
 /backups
 !.env.example
+/.dev-inbox
+.env.dev-hosted

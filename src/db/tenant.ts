@@ -57,6 +57,9 @@ export function dbForRole(role: RuntimeRole | "admin"): Db {
   return connectionFor(role).db;
 }
 
+// Tests only: the shared pool itself, to probe for context leaking across requests.
+export const poolForRole = (role: RuntimeRole | "admin") => connectionFor(role).pool;
+
 export async function closePools() {
   const all = [...pools.values()];
   pools.clear();
@@ -65,7 +68,13 @@ export async function closePools() {
 
 const defaultRole = (): RuntimeRole => (process.env.DB_RUNTIME_ROLE === "worker" ? "worker" : "app");
 
-export type TxOptions = { role?: RuntimeRole | "admin"; retries?: number };
+export type TxOptions = {
+  role?: RuntimeRole | "admin";
+  retries?: number;
+  // View-as writes exactly one kind of row: its own audit events. This lifts the
+  // READ ONLY transaction; restrictive RLS still rejects every other support write.
+  supportAudit?: boolean;
+};
 
 // Opens a transaction, sets the context with set_config(..., is_local => true)
 // (the parameterised form of SET LOCAL), then runs fn. Support view-as runs in a
@@ -77,7 +86,7 @@ export async function runInContext<T>(
   opts: TxOptions = {},
 ): Promise<T> {
   const db = dbForRole(opts.role ?? defaultRole());
-  const readOnly = actor.type === "support";
+  const readOnly = actor.type === "support" && !opts.supportAudit;
   const maxRetries = opts.retries ?? 3;
   for (let attempt = 0; ; attempt++) {
     try {

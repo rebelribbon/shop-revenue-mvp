@@ -6,7 +6,7 @@
 // without context must see nothing. Against Supabase's transaction pooler
 // (port 6543) server connections are additionally shared between clients.
 import { randomUUID } from "node:crypto";
-import { dbForRole, withTenant, type Actor } from "@/db/tenant";
+import { poolForRole, withTenant, type Actor } from "@/db/tenant";
 import { audit } from "@/domain/records";
 import { clientOf } from "./fixtures";
 
@@ -36,7 +36,7 @@ export async function runInterleaved(
     (async () => {
       // Same pool as the tenant requests: a context that leaked onto a pooled
       // connection would show up here as visible rows.
-      const { rows } = await dbForRole("app").$client.query(
+      const { rows } = await poolForRole("app").query(
         "SELECT (SELECT count(*) FROM app.business) + (SELECT count(*) FROM app.membership) + (SELECT count(*) FROM app.audit_event) AS n",
       );
       return Number(rows[0].n);
