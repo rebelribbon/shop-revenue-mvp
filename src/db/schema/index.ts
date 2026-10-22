@@ -1,2 +1,2 @@
-// Drizzle schema. Tables arrive with Milestone 1 migrations.
-export {};
+export * from "./tenancy";
+export * from "./platform";

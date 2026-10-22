@@ -1,4 +1,6 @@
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
   sharp: false
   unrs-resolver: false
+# Supply-chain hygiene: only install versions published at least 14 days ago.
+minimumReleaseAge: 20160
