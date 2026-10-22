@@ -43,6 +43,13 @@
       "when": 1792711836307,
       "tag": "0005_membership_invite_revocable",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792711922483,
+      "tag": "0006_grant_transition_helper",
+      "breakpoints": true
     }
   ]
 }
