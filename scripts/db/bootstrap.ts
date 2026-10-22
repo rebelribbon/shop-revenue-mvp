@@ -23,14 +23,25 @@ export async function bootstrapRoles(opts: {
   try {
     for (const role of ["migration_owner", ...RUNTIME_ROLES]) {
       const { rowCount } = await client.query("SELECT 1 FROM pg_roles WHERE rolname = $1", [role]);
+      // CREATE ROLE defaults are NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE. Hosted
+      // Supabase's postgres role is not a superuser and may not name those attributes,
+      // so they are verified below instead of being restated here.
       if (!rowCount) await client.query(`CREATE ROLE ${id(role)} LOGIN`);
       // NOINHERIT on runtime roles: privileges are never picked up through role membership.
       const inherit = role === "migration_owner" ? "INHERIT" : "NOINHERIT";
       await client.query(
-        `ALTER ROLE ${id(role)} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE ${inherit} PASSWORD ${lit(
-          opts.passwords[role as keyof typeof opts.passwords],
-        )}`,
+        `ALTER ROLE ${id(role)} LOGIN ${inherit} PASSWORD ${lit(opts.passwords[role as keyof typeof opts.passwords])}`,
       );
+    }
+    const { rows: unsafe } = await client.query(
+      `SELECT rolname FROM pg_roles
+        WHERE rolname = ANY($1) AND (rolsuper OR rolbypassrls OR rolcreatedb OR rolcreaterole OR rolreplication)`,
+      [["migration_owner", ...RUNTIME_ROLES]],
+    );
+    if (unsafe.length) {
+      throw new Error(`roles have unsafe attributes (superuser/bypassrls/createdb/createrole/replication): ${unsafe
+        .map((r) => r.rolname)
+        .join(", ")}`);
     }
     // Runtime roles must never be able to act as the owner.
     for (const role of RUNTIME_ROLES) {
@@ -42,8 +53,8 @@ export async function bootstrapRoles(opts: {
     await client.query(`GRANT CONNECT ON DATABASE ${db} TO app_user, worker_user, admin_user`);
     // Nothing of ours lives in public; nobody may create objects there.
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
-    // Functions created by migration_owner are executable only where granted explicitly.
-    await client.query("ALTER DEFAULT PRIVILEGES FOR ROLE migration_owner REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC");
+    // Default privileges (no EXECUTE for PUBLIC) are set by migration 0000, running as
+    // migration_owner itself; hosted Supabase's postgres role may not set them for another role.
     // Section 24 production safety.
     await client.query("ALTER ROLE migration_owner SET lock_timeout = '5s'");
     await client.query("ALTER ROLE migration_owner SET statement_timeout = '60s'");

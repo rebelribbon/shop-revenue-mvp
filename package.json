@@ -2,11 +2,18 @@
   "name": "shop-revenue-mvp",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "stack:up": "./scripts/dev/stack-up.sh",
+    "env:local": "tsx scripts/dev/setup-env.ts",
+    "db:bootstrap": "tsx scripts/db/bootstrap.ts",
+    "db:migrate": "tsx scripts/db/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.6.0",
