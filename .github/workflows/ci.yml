@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, m1-foundation]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        # Same major version as the Supabase projects (17).
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      APP_ENV: test
+      DATABASE_URL_BOOTSTRAP: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate per-run role passwords
+        run: |
+          for v in MIGRATION_OWNER APP_USER WORKER_USER ADMIN_USER; do
+            pw=$(openssl rand -hex 24)
+            echo "::add-mask::$pw"
+            echo "${v}_PASSWORD=$pw" >> "$GITHUB_ENV"
+          done
+
+      - name: Role connection URLs
+        shell: bash
+        run: |
+          {
+            echo "DATABASE_URL_MIGRATION=postgresql://migration_owner:${MIGRATION_OWNER_PASSWORD}@localhost:5432/postgres"
+            echo "DATABASE_URL_APP=postgresql://app_user:${APP_USER_PASSWORD}@localhost:5432/postgres"
+            echo "DATABASE_URL_WORKER=postgresql://worker_user:${WORKER_USER_PASSWORD}@localhost:5432/postgres"
+            echo "DATABASE_URL_ADMIN=postgresql://admin_user:${ADMIN_USER_PASSWORD}@localhost:5432/postgres"
+          } >> "$GITHUB_ENV"
+
+      - name: Bootstrap roles
+        run: pnpm db:bootstrap
+
+      - name: Apply the full migration chain to an empty database
+        run: pnpm db:migrate
+
+      - name: RLS presence check
+        run: pnpm db:check-rls
+
+      - name: RLS check rejects a tenant table added without RLS
+        run: pnpm exec tsx scripts/ci/rls-check-selftest.ts
+
+      - name: Lint (includes the raw database client import rule)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test suites (real Postgres, production roles, RLS and triggers)
+        run: pnpm test
