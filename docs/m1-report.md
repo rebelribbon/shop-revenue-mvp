@@ -21,7 +21,7 @@ Legend: **DONE** verified by the evidence named · **PARTIAL** built and verifie
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Repository, CI | DONE | GitHub Actions: `ci.yml` (Postgres 17 service container), `e2e.yml` (Supabase CLI stack on the runner). |
+| Repository, CI | DONE | GitHub Actions: `ci.yml` (Postgres 17 service container) and `e2e.yml` (Supabase CLI stack on the runner, production build, Playwright at 390x844 + desktop), both green on e9d3760. |
 | Environments: local | DONE | Supabase CLI stack (Postgres, Auth, Storage, Mailpit). |
 | Environments: hosted dev | PARTIAL | Roles bootstrapped, full chain applied, RLS check passes, interleaved test run through the transaction pooler. Running the app against it is BLOCKED on the anon/service-role keys and Auth configuration. |
 | Environments: preview, staging, production, restore-scratch | BLOCKED | Projects do not exist. |
