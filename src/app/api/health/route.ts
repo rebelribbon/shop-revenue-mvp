@@ -26,7 +26,15 @@ export async function GET() {
       version: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev",
     };
     return Response.json(body, { status: workerOk ? 200 : 503, headers: { "Cache-Control": "no-store" } });
-  } catch {
+  } catch (error) {
+    // Keep health responses and logs free of connection strings, credentials,
+    // query text, and customer data while still making hosted failures diagnosable.
+    const safeError = error && typeof error === "object" ? error as { name?: unknown; code?: unknown } : null;
+    console.error(JSON.stringify({
+      event: "health.database_unavailable",
+      errorName: typeof safeError?.name === "string" ? safeError.name : "UnknownError",
+      errorCode: typeof safeError?.code === "string" ? safeError.code : null,
+    }));
     return Response.json({ status: "down", database: { ok: false } }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }
