@@ -4,8 +4,13 @@ name: Deploy
 # migrate production as migration_owner -> deploy app. Production migrations
 # require a PITR restore point. GitHub environments "staging" and "production"
 # hold the secrets; "production" requires reviewer approval.
-# BLOCKED until the hosted staging/production Supabase projects, Vercel and
-# Render exist; each job fails and names what is missing rather than passing.
+# Two-project hosted model (revision 2026-10-23):
+# - staging environment -> shop-revenue-dev
+# - production environment -> shop-revenue-mvp-staging
+# No separate hosted restore-scratch project is required; restore drills use
+# isolated disposable local/ephemeral Postgres.
+# BLOCKED until Vercel, Render and the GitHub environments are configured; each
+# job fails and names what is missing rather than passing.
 on:
   workflow_dispatch:
 
