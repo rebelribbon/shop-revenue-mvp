@@ -1,0 +1,60 @@
+name: E2E (local stack)
+
+# Deployment-blocking E2E #1 and the M1 flows against the Supabase CLI local
+# stack (Postgres, Auth, Storage, Mailpit) on the runner, with a production
+# build of the app. Staging E2E runs from deploy.yml once staging exists.
+on:
+  pull_request:
+  push:
+    branches: [main, m1-foundation]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.121.0 }
+      - name: Local stack secrets (per run)
+        run: |
+          hook=$(openssl rand -base64 32)
+          echo "::add-mask::$hook"
+          printf 'SUPABASE_AUTH_HOOK_SECRET="v1,whsec_%s"\nSUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN="placeholder-not-used-hook-delivers-sms"\n' "$hook" > supabase/.env
+      - name: Start Supabase local stack
+        run: supabase start -x vector,logflare,imgproxy,postgres-meta,studio,realtime,edge-runtime,supavisor,postgrest > /dev/null
+      - name: Environment, roles, migrations, seed
+        run: |
+          pnpm env:local
+          pnpm db:bootstrap
+          pnpm db:migrate
+          pnpm db:check-rls
+          pnpm seed
+      - name: Build and start the app
+        run: |
+          pnpm build
+          nohup pnpm start > web.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Playwright (phone 390x844 and desktop)
+        run: pnpm e2e
+      - if: failure()
+        run: tail -100 web.log
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
