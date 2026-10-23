@@ -32,8 +32,15 @@ const pw = {
 const url = (role: string, password: string, port: number) =>
   `postgresql://${role}.${ref}:${encodeURIComponent(password)}@${host}:${port}/postgres?sslmode=require&uselibpqcompat=true`;
 
+// Supabase's publishable and secret API keys (new key format), when present.
+const keys: Record<string, string> = {};
+if (process.env.SUPABASE_DEV_ANON_KEY) keys.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.SUPABASE_DEV_ANON_KEY;
+if (process.env.SUPABASE_DEV_SERVICE_ROLE_KEY) keys.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_DEV_SERVICE_ROLE_KEY;
+
 const values: Record<string, string> = {
   APP_ENV: "dev",
+  NEXT_PUBLIC_SUPABASE_URL: `https://${ref}.supabase.co`,
+  ...keys,
   ...pw,
   DATABASE_URL_BOOTSTRAP: url("postgres", postgresPassword, 5432),
   DATABASE_URL_MIGRATION: url("migration_owner", pw.MIGRATION_OWNER_PASSWORD, 5432),
@@ -49,4 +56,4 @@ writeFileSync(
     Object.entries(values).map(([k, v]) => `${k}='${v}'`).join("\n") + "\n",
   { mode: 0o600 },
 );
-console.log(`wrote ${FILE} for project ${ref} via ${host}`);
+console.log(`wrote ${FILE} for project ${ref} via ${host} (${Object.keys(values).length} variables; API keys: ${Object.keys(keys).join(", ") || "none"})`);

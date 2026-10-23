@@ -23,12 +23,12 @@ Legend: **DONE** verified by the evidence named · **PARTIAL** built and verifie
 | --- | --- | --- |
 | Repository, CI | DONE | GitHub Actions: `ci.yml` (Postgres 17 service container) and `e2e.yml` (Supabase CLI stack on the runner, production build, Playwright at 390x844 + desktop), both green on e9d3760. |
 | Environments: local | DONE | Supabase CLI stack (Postgres, Auth, Storage, Mailpit). |
-| Environments: hosted dev | PARTIAL | Roles bootstrapped, full chain applied, RLS check passes, interleaved test run through the transaction pooler. Running the app against it is BLOCKED on the anon/service-role keys and Auth configuration. |
+| Environments: hosted dev | PARTIAL | Roles bootstrapped, full chain applied (0000–0007; re-run is a no-op), RLS check passes (re-run 2026-10-23 after the password reset), interleaved test run through the transaction pooler. API keys present (Supabase publishable + secret keys, written to `.env.dev-hosted` by `scripts/dev/hosted-env.ts`): publishable key reads `/auth/v1/settings` (HTTP 200) and is refused by the admin API (401); secret key reaches the admin API (200). Running the app on it remains BLOCKED on Auth configuration (setup A.3–A.6): hosted Auth currently has **sign-ups open** (`disable_signup=false`) and the **phone provider off**, and no Send-SMS hook or SMTP. |
 | Environments: preview, staging, production, restore-scratch | BLOCKED | Projects do not exist. |
 | Schema (12 tables) | DONE | business, location, user, membership, internal_user, support_session, activity, audit_event, request_idempotency, webhook_event, legal_policy, file; migrations 0000–0007. |
 | Roles and RLS | DONE | `migration_owner` owns everything; `app_user`/`worker_user`/`admin_user` own nothing, no BYPASSRLS (verified from `pg_roles` at bootstrap). Every `app` table has RLS enabled + forced. |
 | `withTenant` | DONE | `src/db/tenant.ts`; ESLint forbids raw clients elsewhere in `src/`. |
-| Sign-in | PARTIAL | Email magic link and SMS code (S30), httpOnly/SameSite=Lax cookies, verified server-side per request; sign-up closed. Hosted: BLOCKED (keys, SMTP, SMS provider). **MFA via SMS on a new device (S30/§27) is NOT DONE.** Phone MFA is enabled in the local Auth config only. |
+| Sign-in | PARTIAL | Email magic link and SMS code (S30), httpOnly/SameSite=Lax cookies, verified server-side per request; sign-up closed. Hosted: keys present; BLOCKED on Auth configuration (sign-up still open, phone provider off, no Send-SMS hook, no SMTP). **MFA via SMS on a new device (S30/§27) is NOT DONE.** Phone MFA is enabled in the local Auth config only. |
 | Invite and Staff slot | DONE | Owner + one Staff (partial unique indexes + two-member trigger); invite tokens 32 bytes, SHA-256 stored only, 7-day expiry, rotate on resend, revocable. |
 | Admin sign-in | PARTIAL | Allowlisted `internal_user` + Google provider + domain check outside local; local-only email path (requires a local Auth host). Google Workspace SSO: BLOCKED. |
 | Tenant list (I1), view-as | DONE | Includes create business (F1) with owner invite, owner-invite resend, staff reset on owner request. |
@@ -65,7 +65,7 @@ Bugs found and fixed by the suites: revoking an unaccepted invite violated a che
 
 ## Security notes
 
-- **Credential exposure on 2026-10-23.** A shell command sourced `.env.dev-hosted`; unquoted `&` in URLs made bash echo the hosted dev `postgres` password and four role passwords into tool output. The four role passwords were rotated immediately and verified. **The hosted dev `postgres` password must be reset in the Supabase dashboard** (Project Settings → Database → Reset database password), then update `SUPABASE_DEV_DB_PASSWORD`. Env files are now single-quoted.
+- **Credential exposure on 2026-10-23.** A shell command sourced `.env.dev-hosted`; unquoted `&` in URLs made bash echo the hosted dev `postgres` password and four role passwords into tool output. The four role passwords were rotated immediately and verified. **Resolved:** the hosted dev `postgres` password was reset in the Supabase dashboard and `SUPABASE_DEV_DB_PASSWORD` updated; verified 2026-10-23 that the old password is rejected (`28P01`) and the new one connects (session pooler), and that `migration_owner` and `app_user` connect through the transaction pooler (6543). Env files are now single-quoted and are only read through Node.
 - **Next.js:** 16.4.0 had GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr (critical, unauthenticated RCE) and GHSA-p3m5-59mp-jv5r (high, DoS). Upgraded to 16.4.2; the Next packages are exempted from the 14-day release-age policy, with the reason recorded in `pnpm-workspace.yaml`. `pnpm audit --prod`: no known vulnerabilities.
 - **Dev-only audit findings remaining:** esbuild (moderate, dev-server CORS; reached via drizzle-kit's deprecated loader, and esbuild serve is never run) and braces (high, ReDoS in an ESLint plugin dependency; no patched version).
 - `cacheComponents` is off: nothing tenant-scoped is cached across requests.
@@ -79,10 +79,10 @@ Bugs found and fixed by the suites: revoking an unaccepted invite violated a che
 ## Setup steps for BLOCKED items
 
 **A. Hosted dev, to run the app on it**
-1. Reset the `postgres` password (see Security notes).
-2. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` in the environment (Vercel/Render, or locally in `.env.dev-hosted`).
+1. ~~Reset the `postgres` password~~ (done 2026-10-23; see Security notes).
+2. ~~Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`~~ (done locally in `.env.dev-hosted` from `SUPABASE_DEV_ANON_KEY` / `SUPABASE_DEV_SERVICE_ROLE_KEY`; still to be set in Vercel/Render when they exist).
 3. Auth → URL configuration: Site URL = app URL; redirect allowlist `https://<app>/auth/callback**`.
-4. Auth → Providers: Email on, Phone on; **Allow new users to sign up: off**.
+4. Auth → Providers: Email on, Phone on; **Allow new users to sign up: off**. (Observed 2026-10-23: sign-up is currently **on** and Phone is off.)
 5. Auth → Hooks: Send SMS hook → `https://<app>/api/auth/hooks/send-sms`; generate its secret and set `SUPABASE_AUTH_HOOK_SECRET`.
 6. Auth → SMTP: Postmark (sender domain with SPF/DKIM/DMARC) so magic links leave Supabase's rate-limited default mailer.
 7. Keep the Data API disabled (already done).
