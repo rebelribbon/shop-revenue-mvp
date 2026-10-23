@@ -18,7 +18,9 @@
     "test": "vitest run",
     "worker": "tsx --env-file-if-exists=.env.local src/worker/index.ts",
     "seed": "tsx scripts/dev/seed.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "backup:restore-drill": "tsx scripts/backup/restore-drill.ts",
+    "db:interleave-pooler": "tsx scripts/db/interleave-pooler.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.6.0",
