@@ -78,6 +78,9 @@ test("F1 + Owner invites Staff: admin creates a shop, owner and staff accept inv
   await staff.goto(await inviteLink(staffEmail, since));
   since = Date.now();
   await staff.getByRole("button", { name: "Send my sign-in link" }).click();
+  // Wait for the server action to finish (it sets the PKCE verifier cookie and
+  // returns only after Supabase Auth has stored the token) before using the link.
+  await expect(staff.getByRole("status")).toContainText("We emailed a sign-in link");
   await staff.goto(await signInLink(staffEmail, since));
   await staff.getByLabel("Your name").fill("Sid Staff");
   await staff.getByRole("button", { name: "Accept invite" }).click();
