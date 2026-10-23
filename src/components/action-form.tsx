@@ -13,7 +13,8 @@ export function ActionForm(props: {
   submitLabel: string;
   pendingLabel?: string;
   confirm?: string;
-  successMessage?: (data: unknown) => string;
+  // Shown on success unless the action's result carries its own `message`.
+  successText?: string;
   variant?: "primary" | "danger" | "secondary";
   children?: ReactNode;
 }) {
@@ -28,7 +29,10 @@ export function ActionForm(props: {
     start(async () => {
       const r = await props.action({ ...data, ...props.hidden, clientRequestId: requestId });
       if (r.ok) {
-        setMessage({ kind: "ok", text: props.successMessage?.(r.data) ?? "Saved." });
+        const to = (r.data as { redirectTo?: unknown } | null)?.redirectTo;
+        if (typeof to === "string" && to.startsWith("/")) return router.push(to);
+        const own = (r.data as { message?: unknown } | null)?.message;
+        setMessage({ kind: "ok", text: typeof own === "string" ? own : (props.successText ?? "Saved.") });
         setRequestId(crypto.randomUUID());
         form.reset();
         router.refresh();

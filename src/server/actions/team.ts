@@ -15,7 +15,8 @@ const businessName = (businessId: string, actor: Parameters<typeof withTenant>[1
     return b?.dba || b?.legal || "Your shop";
   });
 
-const delivered = (d: InviteDelivery) => ({ membershipId: d.membershipId, channel: d.email ? "email" : "sms" });
+// Stored for idempotent repeats: never the token. A repeat does not resend.
+const delivered = (d: InviteDelivery) => ({ membershipId: d.membershipId, message: "Invite already sent for this request." });
 
 const inviteInput = z.object({
   name: z.string().min(1).max(100),
@@ -52,6 +53,6 @@ export const removeStaffAction = defineShopAction({
   ownerOnly: true,
   run: async ({ tx, meta }, input) => {
     await removeStaff(tx, meta, input.membershipId);
-    return { removed: input.membershipId };
+    return { removed: input.membershipId, message: "Removed." };
   },
 });

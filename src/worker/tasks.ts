@@ -1,0 +1,38 @@
+// Milestone 1 job handlers (Section 18). Every job that touches tenant data runs
+// inside withTenant with the payload's business_id; these M1 jobs are global.
+import { randomUUID } from "node:crypto";
+import type { TaskList } from "graphile-worker";
+import { sql } from "drizzle-orm";
+import { withGlobalWorker } from "@/db/tenant";
+import { closeExpiredSupportSessions } from "@/domain/support";
+import { processWebhookEvent } from "@/domain/webhooks";
+import { logger } from "@/lib/logger";
+
+const meta = (job: string) => ({ requestId: `job-${job}-${randomUUID()}` });
+
+export const taskList: TaskList = {
+  process_webhook_event: async (payload) => {
+    const id = (payload as { webhook_event_id?: string }).webhook_event_id;
+    if (!id) throw new Error("process_webhook_event: missing webhook_event_id");
+    await processWebhookEvent(id);
+  },
+  // Graphile records each cron execution in _private_known_crontabs; the health
+  // route and queue-lag alert read it through app.worker_status().
+  heartbeat: async () => {
+    logger.debug({ event: "worker.heartbeat" });
+  },
+  close_expired_support_sessions: async () => {
+    const n = await closeExpiredSupportSessions(meta("close_expired_support_sessions"));
+    if (n) logger.info({ event: "support_session.expired", count: n });
+  },
+  purge_request_idempotency: async () => {
+    const r = await withGlobalWorker((tx) => tx.execute<{ n: number }>(sql`SELECT app.purge_request_idempotency() AS n`));
+    logger.info({ event: "purge_request_idempotency", deleted: r.rows[0]?.n ?? 0 });
+  },
+};
+
+export const crontab = [
+  "* * * * * heartbeat",
+  "*/5 * * * * close_expired_support_sessions",
+  "15 8 * * * purge_request_idempotency",
+].join("\n");

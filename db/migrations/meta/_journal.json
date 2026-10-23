@@ -50,6 +50,13 @@
       "when": 1792711922483,
       "tag": "0006_grant_transition_helper",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792712866654,
+      "tag": "0007_worker_maintenance",
+      "breakpoints": true
     }
   ]
 }

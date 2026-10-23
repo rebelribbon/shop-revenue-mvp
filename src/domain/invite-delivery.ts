@@ -8,7 +8,7 @@ import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import type { InviteDelivery } from "./membership";
 
-export type DeliveryOutcome = { membershipId: string; channel: "email" | "sms"; status: "sent" | "failed"; detail?: string };
+export type DeliveryOutcome = { membershipId: string; channel: "email" | "sms"; status: "sent" | "failed"; message: string };
 
 export function inviteLink(token: string) {
   const base = process.env.APP_BASE_URL;
@@ -35,9 +35,9 @@ export async function deliverInvite(d: InviteDelivery, businessName: string, req
       });
     }
     logger.info({ event: "invite.delivered", requestId, membershipId: d.membershipId, channel });
-    return { membershipId: d.membershipId, channel, status: "sent" };
+    return { membershipId: d.membershipId, channel, status: "sent", message: `Invite sent by ${channel === "email" ? "email" : "text"}.` };
   } catch (e) {
     logger.warn({ event: "invite.delivery_failed", requestId, membershipId: d.membershipId, channel, err: (e as Error).message });
-    return { membershipId: d.membershipId, channel, status: "failed", detail: "The invite was saved but could not be sent. Use Resend invite." };
+    return { membershipId: d.membershipId, channel, status: "failed", message: "The invite was saved but could not be sent. Use Resend invite." };
   }
 }

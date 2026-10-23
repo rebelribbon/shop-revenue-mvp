@@ -4,11 +4,6 @@ import { listTeam } from "@/domain/membership";
 import { inviteStaffAction, removeStaffAction, resendInviteAction } from "@/server/actions/team";
 import { requireShopSession } from "@/server/views/shop";
 
-const invited = (d: unknown) => {
-  const r = d as { status?: string; channel?: string; detail?: string };
-  return r.status === "failed" ? (r.detail ?? "Saved, but the invite could not be sent.") : `Invite sent by ${r.channel ?? "message"}.`;
-};
-
 export default async function TeamPage() {
   const s = await requireShopSession("/app/settings/team");
   const team = await withTenant(s.businessId, s.actor, (tx) => listTeam(tx));
@@ -31,11 +26,11 @@ export default async function TeamPage() {
                 {isOwner && (
                   <td>
                     {m.role === "staff" && m.status === "invited" && (
-                      <ActionForm action={resendInviteAction} hidden={{ membershipId: m.id }} submitLabel="Resend invite" variant="secondary" successMessage={invited} />
+                      <ActionForm action={resendInviteAction} hidden={{ membershipId: m.id }} submitLabel="Resend invite" variant="secondary" />
                     )}
                     {m.role === "staff" && (
                       <ActionForm action={removeStaffAction} hidden={{ membershipId: m.id }} submitLabel="Remove" variant="danger"
-                        confirm="Remove this login? They lose access on their next click." successMessage={() => "Removed."} />
+                        confirm="Remove this login? They lose access on their next click." />
                     )}
                   </td>
                 )}
@@ -47,7 +42,7 @@ export default async function TeamPage() {
       {isOwner && !staffSeatUsed && (
         <div className="card">
           <h2>Invite one teammate</h2>
-          <ActionForm action={inviteStaffAction} submitLabel="Send invite" successMessage={invited}>
+          <ActionForm action={inviteStaffAction} submitLabel="Send invite">
             <label htmlFor="name">Name</label>
             <input id="name" name="name" required maxLength={100} />
             <label htmlFor="email">Email</label>

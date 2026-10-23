@@ -221,8 +221,9 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = false
+# The CLI maps this to GOTRUE_EXTERNAL_EMAIL_ENABLED ("email provider on"); with
+# false, email login itself is disabled. Sign-ups stay closed via [auth] enable_signup.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -259,8 +260,10 @@ otp_expiry = 3600
 # content_path = "./supabase/templates/password_changed_notification.html"
 
 [auth.sms]
-# Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+# The CLI maps this to GOTRUE_EXTERNAL_PHONE_ENABLED, i.e. "phone provider on".
+# New users still cannot sign up: [auth] enable_signup = false disables all
+# sign-ups (verified: an OTP request with create_user=true is rejected).
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
@@ -297,10 +300,13 @@ secrets = "env(SUPABASE_AUTH_HOOK_SECRET)"
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
 
 # Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+# Enabled only so the CLI turns the phone provider on. With [auth.hook.send_sms]
+# enabled, Supabase Auth delivers every code through the hook (our app), so these
+# placeholder values are never used to call Twilio.
 [auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
+enabled = true
+account_sid = "ACplaceholder_hook_delivers_sms"
+message_service_sid = "MGplaceholder_hook_delivers_sms"
 # DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
 auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 
