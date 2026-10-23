@@ -105,11 +105,10 @@ describe("action contract", () => {
 
 describe("cross-tenant matrix (identity parts, Section 9)", () => {
   it("Owner of A acting on B's membership IDs gets not-found and nothing changes", async () => {
-    const bInvite = await withTenant(B.businessId, B.owner.actor, async (tx) => {
+    const bMembershipId: string = await withTenant(B.businessId, B.owner.actor, async (tx) => {
       const [m] = await tx.select().from(membership).where(and(eq(membership.businessId, B.businessId), eq(membership.role, "staff")));
-      return m ?? (await inviteStaff(tx, meta(), { name: "Bee", email: `bee-${randomUUID()}@example.test` }));
+      return m ? m.id : (await inviteStaff(tx, meta(), { name: "Bee", email: `bee-${randomUUID()}@example.test` })).membershipId;
     });
-    const bMembershipId = "membershipId" in bInvite ? bInvite.membershipId : bInvite.id;
     current = as(owner(A));
     for (const act of [removeStaffAction, resendInviteAction]) {
       const r = await act({ membershipId: bMembershipId, clientRequestId: randomUUID() });
