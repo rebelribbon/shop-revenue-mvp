@@ -9,7 +9,7 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { withAdmin, type InternalActor } from "@/db/admin";
 import { webhookEvent } from "@/db/schema";
-import { withGlobalWorker, withTenant, type Tx } from "@/db/tenant";
+import { withGlobalWorker, type TenantTx, type Tx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { audit, auditPlatform, type RequestMeta } from "./records";
@@ -102,10 +102,19 @@ async function enqueueProcessing(tx: Tx, eventId: string, runAt: Date | null) {
   );
 }
 
-// I4: replay after the admin fixes the cause. Applied events stay applied (the
-// processor will no-op); failed, dead and ignored events are re-queued.
-export async function replayWebhookEvent(actor: InternalActor, meta: RequestMeta, eventId: string) {
-  const result = await withAdmin(actor, async (tx) => {
+// I4: replay after the admin fixes the cause. One admin transaction holds the
+// state change, the job enqueue and the required audit row (replayWebhook is
+// audited with the internal user ID), so a failure anywhere rolls back all of it.
+// - failed / dead / ignored: reset to received and re-queued.
+// - applied: left applied, nothing enqueued; the admin action is audited as a no-op.
+// - received / processing: CONFLICT (already queued), nothing written.
+// A tenant-resolved event is audited in that shop's log: the transaction-local
+// business context is set before the audit insert, under admin_user's normal
+// tenant RLS (no bypass). A platform-level event gets a platform audit row.
+export type ReplayResult = { status: string; requeued: boolean; message: string };
+
+export async function replayWebhookEvent(actor: InternalActor, meta: RequestMeta, eventId: string): Promise<ReplayResult> {
+  return withAdmin(actor, async (tx) => {
     const [row] = await tx.select().from(webhookEvent).where(eq(webhookEvent.id, eventId)).for("update");
     if (!row) throw notFound("That webhook event");
     if (row.status === "processing" || row.status === "received") {
@@ -117,25 +126,30 @@ export async function replayWebhookEvent(actor: InternalActor, meta: RequestMeta
         .update(webhookEvent)
         .set({ status: "received", attempts: 0, nextAttemptAt: null })
         .where(eq(webhookEvent.id, row.id));
+      // Enqueued with no tenant context, like ingest: the processing job is global.
+      await enqueueProcessing(tx, row.id, null);
     }
-    await enqueueProcessing(tx, row.id, null);
     const entry = {
-      action: "webhook_event.replayed",
+      action: requeued ? "webhook_event.replayed" : "webhook_event.replay_noop",
       targetType: "webhook_event",
       targetId: row.id,
       before: { status: row.status, attempts: row.attempts, lastError: row.lastError },
-      after: { status: requeued ? "received" : row.status },
+      after: { status: requeued ? "received" : row.status, requeued },
     };
-    if (!row.businessId) await auditPlatform(tx, meta, { type: "internal", id: actor.internalUserId }, entry);
-    return { row, requeued, entry };
+    if (row.businessId) {
+      await tx.execute(sql`SELECT set_config('app.business_id', ${row.businessId}, true)`);
+      const tenantTx = Object.assign(Object.create(tx), {
+        businessId: row.businessId,
+        actor: { type: "internal", id: actor.internalUserId },
+      }) as TenantTx;
+      await audit(tenantTx, meta, entry);
+    } else {
+      await auditPlatform(tx, meta, { type: "internal", id: actor.internalUserId }, entry);
+    }
+    return requeued
+      ? { status: "received", requeued: true, message: "Queued for processing. Refresh to see the result." }
+      : { status: row.status, requeued: false, message: "Already applied; nothing was re-queued." };
   });
-  // Events already resolved to a shop are also audited in that shop's log.
-  if (result.row.businessId) {
-    await withTenant(result.row.businessId, { type: "internal", id: actor.internalUserId }, (tx) => audit(tx, meta, result.entry), {
-      role: "admin",
-    });
-  }
-  return { status: result.requeued ? "received" : result.row.status };
 }
 
 export async function listWebhookEvents(filter: { provider?: string; status?: string; limit?: number }) {

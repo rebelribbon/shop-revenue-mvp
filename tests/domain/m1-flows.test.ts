@@ -287,7 +287,7 @@ describe("webhook inbox (F32, Section 18)", () => {
 
     broken = false;
     const admin = await createInternalUser("admin");
-    expect(await replayWebhookEvent({ internalUserId: admin.id }, meta(), e.eventId)).toEqual({ status: "received" });
+    expect(await replayWebhookEvent({ internalUserId: admin.id }, meta(), e.eventId)).toMatchObject({ status: "received", requeued: true });
     expect(await processWebhookEvent(e.eventId)).toBe("applied");
     const replays = await withAdmin(null, (tx) =>
       tx.select().from(auditEvent).where(sql`${auditEvent.targetId} = ${e.eventId} AND ${auditEvent.action} = 'webhook_event.replayed'`),
