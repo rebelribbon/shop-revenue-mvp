@@ -1,40 +1,41 @@
-// Health route (M1; uptime checks in Section 25). No tenant data. 503 when the
-// database is unreachable or the worker heartbeat is older than 3 minutes
-// (Section 20 alert threshold); queue lag over 10 minutes is reported too.
-import { sql } from "drizzle-orm";
-import { runInContext } from "@/db/tenant";
+// Health route for the deployed M1 web runtime.
+//
+// The original M1 design treated an always-on Graphile Worker heartbeat as part
+// of web health. The hosted design-partner environment intentionally defers the
+// paid always-on worker runtime until a milestone requires provider-specific
+// asynchronous processing. For M1, this endpoint therefore reports the health
+// of the deployed web service and its required database dependency only.
+import { pingDatabase } from "@/db/tenant";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const started = Date.now();
   try {
-    const status = await runInContext(null, { type: "system", id: null }, (tx) =>
-      tx.execute<{ last_heartbeat_at: string | null; oldest_due_job_at: string | null; due_jobs: string; failed_jobs: string }>(
-        sql`SELECT * FROM app.worker_status()`,
-      ),
-    { retries: 0 });
-    const row = status.rows[0];
-    const heartbeatAge = row.last_heartbeat_at ? Math.round((Date.now() - new Date(row.last_heartbeat_at).getTime()) / 1000) : null;
-    const queueLag = row.oldest_due_job_at ? Math.max(0, Math.round((Date.now() - new Date(row.oldest_due_job_at).getTime()) / 1000)) : 0;
-    const workerOk = heartbeatAge !== null && heartbeatAge <= 180;
-    const body = {
-      status: workerOk && queueLag <= 600 ? "ok" : "degraded",
-      database: { ok: true, latencyMs: Date.now() - started },
-      worker: { ok: workerOk, lastHeartbeatAt: row.last_heartbeat_at, heartbeatAgeSeconds: heartbeatAge },
-      queue: { dueJobs: Number(row.due_jobs), oldestDueJobAgeSeconds: queueLag, permanentlyFailedJobs: Number(row.failed_jobs) },
-      version: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev",
-    };
-    return Response.json(body, { status: workerOk ? 200 : 503, headers: { "Cache-Control": "no-store" } });
+    await pingDatabase();
+    return Response.json(
+      {
+        status: "ok",
+        database: { ok: true, latencyMs: Date.now() - started },
+        backgroundProcessing: { mode: "deferred", requiredForM1: false },
+        version: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev",
+      },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     // Keep health responses and logs free of connection strings, credentials,
     // query text, and customer data while still making hosted failures diagnosable.
-    const safeError = error && typeof error === "object" ? error as { name?: unknown; code?: unknown } : null;
-    console.error(JSON.stringify({
-      event: "health.database_unavailable",
-      errorName: typeof safeError?.name === "string" ? safeError.name : "UnknownError",
-      errorCode: typeof safeError?.code === "string" ? safeError.code : null,
-    }));
-    return Response.json({ status: "down", database: { ok: false } }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    const safeError = error && typeof error === "object" ? (error as { name?: unknown; code?: unknown }) : null;
+    console.error(
+      JSON.stringify({
+        event: "health.database_unavailable",
+        errorName: typeof safeError?.name === "string" ? safeError.name : "UnknownError",
+        errorCode: typeof safeError?.code === "string" ? safeError.code : null,
+      }),
+    );
+    return Response.json(
+      { status: "down", database: { ok: false } },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
 }
