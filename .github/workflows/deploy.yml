@@ -1,9 +1,11 @@
 name: Deploy
 
-# Section 24 order: CI -> migrate staging -> deploy staging -> E2E -> approve ->
-# migrate production as migration_owner -> deploy app. Production migrations
-# require a PITR restore point. GitHub environments "staging" and "production"
-# hold the secrets; "production" requires reviewer approval.
+# Section 24 order: CI -> migrate staging -> deploy staging -> hosted smoke ->
+# approve -> migrate production as migration_owner -> deploy app. Full M1 E2E
+# stays in the local-stack workflow because those tests intentionally depend on
+# seeded tenants, Mailpit and the local SMS inbox. Production migrations require
+# a PITR restore point. GitHub environments "staging" and "production" hold the
+# secrets; "production" requires reviewer approval.
 # Two-project hosted model (revision 2026-10-23):
 # - staging environment -> shop-revenue-dev
 # - production environment -> shop-revenue-mvp-staging
@@ -51,12 +53,17 @@ jobs:
           npx --yes vercel@63.1.0 pull --yes --environment=preview --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 build --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 deploy --prebuilt --token "$VERCEL_TOKEN" > deploy-url.txt
-      - name: Health
+      - name: Hosted staging smoke
         run: |
-          for i in $(seq 1 30); do curl -fsS "$STAGING_BASE_URL/api/health" && exit 0; sleep 10; done
-          echo "::error::staging health check failed"; exit 1
-      - name: E2E against staging
-        run: pnpm exec playwright install --with-deps chromium && E2E_BASE_URL="$STAGING_BASE_URL" pnpm e2e
+          for i in $(seq 1 30); do
+            if curl -fsS "$STAGING_BASE_URL/api/health" | jq -e '.status == "ok" and .database.ok == true' >/dev/null; then
+              break
+            fi
+            if [ "$i" -eq 30 ]; then echo "::error::staging health check failed"; exit 1; fi
+            sleep 10
+          done
+          curl -fsS -o /dev/null "$STAGING_BASE_URL/sign-in"
+          curl -fsS -o /dev/null "$STAGING_BASE_URL/no-access"
 
   production:
     needs: staging
@@ -93,7 +100,10 @@ jobs:
           npx --yes vercel@63.1.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 build --prod --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
-      - name: Health
+      - name: Production health
         run: |
-          for i in $(seq 1 30); do curl -fsS "$PRODUCTION_BASE_URL/api/health" && exit 0; sleep 10; done
+          for i in $(seq 1 30); do
+            if curl -fsS "$PRODUCTION_BASE_URL/api/health" | jq -e '.status == "ok" and .database.ok == true' >/dev/null; then exit 0; fi
+            sleep 10
+          done
           echo "::error::production health check failed"; exit 1
