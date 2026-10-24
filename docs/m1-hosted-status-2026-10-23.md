@@ -1,5 +1,7 @@
 # M1 Hosted Status — 2026-10-23
 
+> **Superseded for acceptance status by `docs/m1-audit-2026-10-24.md`.** That audit found and fixed a cross-tenant FK gap (migration 0008) and a PITR gate that could never pass. It records the production deploy pipeline as not yet run end to end and off-site backups as never run.
+
 This file supersedes stale hosted-environment statements in `docs/m1-report.md`. It does not replace the detailed implementation evidence in that report.
 
 ## Production web

@@ -1,5 +1,7 @@
 # Milestone 1 report: Foundation and tenant isolation
 
+> **Superseded for acceptance status by `docs/m1-audit-2026-10-24.md`.** That audit found and fixed a cross-tenant FK gap (migration 0008) and a PITR gate that could never pass. It records the production deploy pipeline as not yet run end to end and off-site backups as never run.
+
 Spec: `docs/build-spec-v1.1.pdf` §26 M1. Branch `m1-foundation`. Status as of 2026-10-23.
 
 Legend: **DONE** verified by the evidence named · **PARTIAL** built and verified locally, hosted part blocked · **BLOCKED** needs an account that does not exist yet (setup steps in the last section) · **NOT DONE** not built yet.
