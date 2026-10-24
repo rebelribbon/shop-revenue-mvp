@@ -57,6 +57,13 @@
       "when": 1792712866654,
       "tag": "0007_worker_maintenance",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792839098638,
+      "tag": "0008_audit_support_session_tenant_fk",
+      "breakpoints": true
     }
   ]
 }

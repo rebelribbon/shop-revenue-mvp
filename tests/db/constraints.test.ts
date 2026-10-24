@@ -281,6 +281,41 @@ describe("normalized contact data", () => {
   });
 });
 
+describe("cross-tenant references are rejected by composite foreign keys", () => {
+  it("a business cannot use another business's file as its logo", async () => {
+    const B = await seedTenant("LogoB");
+    const fileId = randomUUID();
+    expect(
+      await sqlAs(
+        B.owner.actor,
+        `INSERT INTO app.file (id, business_id, storage_key, kind, content_type, byte_size) VALUES ($1, $2, $3, 'logo', 'image/png', 1)`,
+        [fileId, B.businessId, `b/${B.businessId}/logo/2026/10/${fileId}.png`],
+        B.businessId,
+      ),
+    ).toBeNull();
+    const err = await sqlAs(A.owner.actor, `UPDATE app.business SET logo_file_id = $1 WHERE id = $2`, [fileId, A.businessId]);
+    expect(err).toMatchObject({ code: "23503", constraint: "business_logo_file_fk" });
+  });
+
+  it("an audit row of tenant A cannot reference tenant B's support session", async () => {
+    const B = await seedTenant("AuditB");
+    const s = await withAdmin({ internalUserId: adminId }, async (tx) => {
+      const r = await clientOf(tx).query(
+        `INSERT INTO app.support_session (admin_user_id, admin_display_name, business_id, reason) VALUES ($1, 'A', $2, 'checking settings page') RETURNING id`,
+        [adminId, B.businessId],
+      );
+      return r.rows[0] as { id: string };
+    });
+    const err = await sqlAs(
+      A.owner.actor,
+      `INSERT INTO app.audit_event (business_id, actor_type, action, target_type, request_id, support_session_id)
+       VALUES ($1, 'user', 'probe.cross_tenant', 'business', 'test', $2)`,
+      [A.businessId, s.id],
+    );
+    expect(err).toMatchObject({ code: "23503", constraint: "audit_event_support_session_tenant_fk" });
+  });
+});
+
 describe("file keys are tenant-prefixed", () => {
   it("rejects a storage key outside b/{business_id}/{kind}/", async () => {
     const id = randomUUID();

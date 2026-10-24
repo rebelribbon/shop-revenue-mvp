@@ -88,6 +88,14 @@ export const auditEvent = app.table(
       foreignColumns: [supportSession.id],
       name: "audit_event_support_session_fk",
     }),
+    // A tenant audit row may only reference a support session of the same
+    // business (composite tenant FK). Platform rows (business_id NULL) are
+    // covered by the single-column FK above (MATCH SIMPLE skips this one).
+    foreignKey({
+      columns: [t.businessId, t.supportSessionId],
+      foreignColumns: [supportSession.businessId, supportSession.id],
+      name: "audit_event_support_session_tenant_fk",
+    }),
   ],
 );
 

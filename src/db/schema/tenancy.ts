@@ -172,6 +172,8 @@ export const supportSession = app.table(
   },
   (t) => [
     index("support_session_business_started_idx").on(t.businessId, t.startedAt),
+    // Target of tenant-composite references (audit_event.support_session_id).
+    unique("support_session_business_id_id_key").on(t.businessId, t.id),
     check("support_session_reason_check", sql`length(btrim(${t.reason})) >= 10`),
     check("support_session_duration_check", sql`${t.expiresAt} = ${t.startedAt} + interval '60 minutes'`),
     check("support_session_end_check", sql`${t.endedAt} IS NULL OR ${t.endedAt} >= ${t.startedAt}`),

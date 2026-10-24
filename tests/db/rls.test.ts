@@ -8,7 +8,7 @@ import { file, location, membership, requestIdempotency, supportSession } from "
 import { ingestWebhookEvent, withTenant, type Actor } from "@/db/tenant";
 import { audit, recordActivity } from "@/domain/records";
 import { eq, sql } from "drizzle-orm";
-import { findRlsViolations } from "../../scripts/db/check-rls";
+import { findRlsViolations, findTenantFkViolations } from "../../scripts/db/check-rls";
 import { clientOf, createInternalUser, meta, rawClient, seedTenant, type SeededTenant } from "../helpers/fixtures";
 
 let A: SeededTenant;
@@ -161,6 +161,32 @@ describe("RLS presence check (CI rule)", () => {
           { table: "app.half_done", problems: ["no permissive policy"] },
         ]),
       );
+    } finally {
+      await c.query("ROLLBACK");
+      await c.end();
+    }
+  });
+});
+
+describe("composite tenant foreign key check (CI rule)", () => {
+  it("passes on the migrated schema", async () => {
+    const c = await rawClient("migration");
+    expect(await findTenantFkViolations(c)).toEqual([]);
+    await c.end();
+  });
+
+  it("fails on a tenant-to-tenant reference that omits business_id", async () => {
+    const c = await rawClient("migration");
+    await c.query("BEGIN");
+    try {
+      await c.query(`CREATE TABLE app.loose_ref (id uuid PRIMARY KEY, business_id uuid NOT NULL,
+        location_id uuid CONSTRAINT loose_ref_location_fk REFERENCES app.location (id))`);
+      expect(await findTenantFkViolations(c)).toEqual([
+        { constraint: "loose_ref_location_fk", table: "app.loose_ref", references: "app.location" },
+      ]);
+      await c.query(`ALTER TABLE app.loose_ref ADD CONSTRAINT loose_ref_location_tenant_fk
+        FOREIGN KEY (business_id, location_id) REFERENCES app.location (business_id, id)`);
+      expect(await findTenantFkViolations(c)).toEqual([]);
     } finally {
       await c.query("ROLLBACK");
       await c.end();
