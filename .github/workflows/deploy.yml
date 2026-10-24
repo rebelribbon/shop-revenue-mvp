@@ -1,0 +1,19 @@
+name: Deploy
+
+# Dispatch bootstrap only. The real M1 deployment workflow lives on the
+# m1-foundation branch. When manually running this workflow, select
+# m1-foundation in the branch dropdown.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Select the m1-foundation branch when running Deploy."
+          exit 1
