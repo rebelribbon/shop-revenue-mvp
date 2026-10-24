@@ -4,8 +4,8 @@ name: Deploy
 # approve -> migrate production as migration_owner -> deploy app. Full M1 E2E
 # stays in the local-stack workflow because those tests intentionally depend on
 # seeded tenants, Mailpit and the local SMS inbox. Production migrations require
-# a PITR restore point. GitHub environments "staging" and "production" hold the
-# secrets; "production" requires reviewer approval.
+# a PITR restore point. GitHub environments "staging" and "production" hold only
+# credentials; "production" requires reviewer approval.
 # Two-project hosted model (revision 2026-10-23):
 # - staging environment -> shop-revenue-dev
 # - production environment -> shop-revenue-mvp-staging
@@ -13,13 +13,17 @@ name: Deploy
 # isolated disposable local/ephemeral Postgres.
 # The paid always-on Render worker is deferred for hosted M1 under
 # docs/spec-revision-2026-10-23-defer-always-on-worker.md.
-# BLOCKED until Vercel and the GitHub environments are configured; each job
-# fails and names what is missing rather than passing.
+# Nonsecret hosted target IDs/URLs are intentionally pinned here so environment
+# setup requires credentials only.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
+  VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
 
 jobs:
   ci:
@@ -32,9 +36,7 @@ jobs:
     env:
       DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      STAGING_BASE_URL: ${{ vars.APP_BASE_URL }}
+      STAGING_BASE_URL: https://shop-revenue-mvp-git-m1-foundation-brads-projects-3548d304.vercel.app
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -44,8 +46,8 @@ jobs:
       - name: Require configuration
         run: |
           missing=""
-          for v in DATABASE_URL_MIGRATION VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID STAGING_BASE_URL; do [ -n "${!v}" ] || missing="$missing $v"; done
-          if [ -n "$missing" ]; then echo "::error::BLOCKED: staging not configured:$missing"; exit 1; fi
+          for v in DATABASE_URL_MIGRATION VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::BLOCKED: staging credentials not configured:$missing"; exit 1; fi
       - name: Migrate staging (migration_owner)
         run: pnpm db:migrate && pnpm db:check-rls
       - name: Deploy web (Vercel)
@@ -72,11 +74,9 @@ jobs:
     env:
       DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      PRODUCTION_BASE_URL: ${{ vars.APP_BASE_URL }}
+      SUPABASE_PROJECT_REF: akwxgjxdhfylebsteyqi
+      PRODUCTION_BASE_URL: https://shop-revenue-mvp.vercel.app
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -86,8 +86,8 @@ jobs:
       - name: Require configuration
         run: |
           missing=""
-          for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID PRODUCTION_BASE_URL; do [ -n "${!v}" ] || missing="$missing $v"; done
-          if [ -n "$missing" ]; then echo "::error::BLOCKED: production not configured:$missing"; exit 1; fi
+          for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::BLOCKED: production credentials not configured:$missing"; exit 1; fi
       - name: Verify a PITR restore point exists
         run: |
           body=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/backups")
