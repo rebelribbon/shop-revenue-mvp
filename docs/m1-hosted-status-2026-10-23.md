@@ -40,6 +40,20 @@ The approved two-project revision remains in force:
 - No third permanent Supabase project is required.
 - Restore acceptance may use local or ephemeral scratch infrastructure.
 
+## Production Auth smoke test
+
+- Site URL configured as `https://shop-revenue-mvp.vercel.app`.
+- Redirect URL configured as `https://shop-revenue-mvp.vercel.app/auth/callback`.
+- Public user signup disabled.
+- Email provider enabled.
+- Phone provider remains disabled for now.
+- Built-in Supabase email delivery successfully delivered a production magic-link sign-in email.
+- Production callback created a valid authenticated session.
+- The authenticated test identity had no shop membership, and the app correctly redirected to `No shop access` rather than granting access.
+- Vercel reported no runtime errors for `/sign-in`, `/auth/callback`, or `/no-access` during the hosted test window.
+
+This verifies hosted email authentication, callback handling, session creation, and membership-denial behavior end to end. Custom SMTP is still required before commercial production use because Supabase's built-in mailer is rate-limited and not intended as the final production sender.
+
 ## Production Vercel environment observed
 
 Present for Production:
@@ -62,19 +76,15 @@ Not present in Production as of this status check:
 - `EMAIL_FROM_ADDRESS`
 - custom SMTP variables
 
-These missing values mean hosted email/SMS authentication delivery is not yet production-ready.
-
 ## Remaining M1 hosted work
 
-1. Complete production Supabase Auth URL configuration and redirect allowlist.
-2. Confirm public sign-up is disabled while required sign-in providers remain enabled.
-3. Configure production email delivery (Postmark/custom SMTP or an approved equivalent).
-4. Configure phone/SMS delivery only when the product milestone requires hosted SMS authentication; wire the Send SMS hook and its signing secret at that time.
-5. Verify the actual hosted sign-in flow end to end after Auth configuration.
-6. Complete GitHub staging/production deployment environment secrets required by `.github/workflows/deploy.yml` where the connector cannot manage repository secrets.
-7. Complete off-site backup infrastructure or document an explicit M1 acceptance deferral.
-8. Resolve or formally defer new-device SMS MFA before commercial release if required by the frozen specification.
+1. Configure production custom SMTP before commercial use.
+2. Configure phone/SMS delivery only when the product milestone requires hosted SMS authentication; wire the Send SMS hook and its signing secret at that time.
+3. Complete GitHub staging/production deployment environment secrets required by `.github/workflows/deploy.yml` where the connector cannot manage repository secrets.
+4. Complete off-site backup infrastructure or document an explicit M1 acceptance deferral.
+5. Resolve or formally defer new-device SMS MFA before commercial release if required by the frozen specification.
+6. Configure hosted admin Google Workspace SSO if required for hosted M1 acceptance rather than local/CI acceptance.
 
 ## Current M1 assessment
 
-Foundation, tenant isolation, hosted production database connectivity, production web deployment, health, CI, and local-stack E2E are working. The principal remaining hosted blocker is Auth/provider configuration plus off-site operational hardening, not application/database connectivity.
+Foundation, tenant isolation, hosted production database connectivity, production web deployment, health, CI, local-stack E2E, and hosted email sign-in/session enforcement are working. The remaining gaps are operational hardening and provider/account configuration rather than core application/database connectivity.
