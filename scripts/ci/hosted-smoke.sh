@@ -2,7 +2,8 @@
 # Hosted smoke check for one exact Vercel deployment (Section 24 deploy gate).
 #
 # Usage: scripts/ci/hosted-smoke.sh <deployment-url> <expected-commit-sha>
-# Env:   VERCEL_TOKEN (required), VERCEL_CLI (default vercel@63.1.0)
+# Env:   VERCEL_TOKEN (required; read by the CLI from the environment),
+#        VERCEL_CLI (default vercel@63.1.0)
 #
 # Preview deployments are behind Vercel Deployment Protection. Plain curl gets
 # a 302 to vercel.com/login, so this goes through `vercel curl`, which sends
@@ -19,18 +20,25 @@ sha="${2:?expected commit sha}"
 cli="${VERCEL_CLI:-vercel@63.1.0}"
 export VERCEL_TELEMETRY_DISABLED=1
 
+errlog=$(mktemp)
+trap 'rm -f "$errlog"' EXIT
+
+# The token is read from VERCEL_TOKEN in the environment. Do not pass --token:
+# `vercel curl` forwards global flags to curl, which rejects them.
 vcurl() {
-  npx --yes "$cli" curl "$1" --deployment "$url" --token "$VERCEL_TOKEN" --yes -- \
+  npx --yes "$cli" curl "$1" --deployment "$url" --yes -- \
     --fail --silent --show-error --max-time 20 "${@:2}"
 }
 
 body=""
 for i in $(seq 1 30); do
-  if body=$(vcurl /api/health 2>/dev/null) && echo "$body" | jq -e . >/dev/null 2>&1; then
+  if body=$(vcurl /api/health 2>"$errlog") && echo "$body" | jq -e . >/dev/null 2>&1; then
     if echo "$body" | jq -e '.status == "ok" and .database.ok == true' >/dev/null; then break; fi
   fi
   if [ "$i" -eq 30 ]; then
     echo "::error::health check failed for $url (last body was $(echo "$body" | head -c 200 | tr -d '\n' | jq -Rr @json 2>/dev/null || echo 'not JSON'))"
+    # CLI/curl diagnostics (no secrets: the bypass header is never echoed without --debug).
+    grep -v '^Vercel CLI' "$errlog" | head -n 5 | sed 's/^/::error::vercel curl: /' || true
     exit 1
   fi
   sleep 10
