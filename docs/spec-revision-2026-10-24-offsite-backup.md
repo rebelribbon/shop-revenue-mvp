@@ -1,7 +1,7 @@
-# PROPOSED Spec Revision — Off-site Backup Timing for M1
+# Spec Revision — Off-site Backup Timing for M1
 
 Date: 2026-10-24
-Status: **PROPOSED — not in force until the product owner approves it.** Until then, the off-site backup job remains an open M1 acceptance item.
+Status: **Approved by the product owner (in session, 2026-10-24).**
 
 ## Current state (facts)
 
@@ -21,7 +21,7 @@ Status: **PROPOSED — not in force until the product owner approves it.** Until
 - The production project has no shop or customer data yet.
 - Supabase daily backups and PITR are the first line of defense. Whether PITR is enabled on the production project will be proven by the Deploy workflow's PITR gate.
 
-## Proposed decision
+## Decision
 
 Move "off-site backup job running" from **M1 acceptance** to the **pre-launch gate before the first design-partner shop's real data enters production** (the Section 27 launch checklist, "off-site nightly backup running").
 
@@ -44,4 +44,4 @@ Tenant isolation, PITR requirements, encryption design, retention target, restor
 
 ## Approval
 
-Approved by: ______________________  Date: __________
+Approved by: product owner, in the Claude session, 2026-10-24.
