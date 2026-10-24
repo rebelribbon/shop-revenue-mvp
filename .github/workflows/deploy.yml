@@ -51,7 +51,15 @@ jobs:
           for v in DATABASE_URL_MIGRATION VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
           if [ -n "$missing" ]; then echo "::error::BLOCKED: staging credentials not configured:$missing"; exit 1; fi
       - name: Migrate staging (migration_owner)
-        run: pnpm db:migrate && pnpm db:check-rls
+        run: |
+          set -o pipefail
+          # On failure, surface the database error as an annotation; connection
+          # strings and passwords are stripped first.
+          report() { sed -E 's#postgres(ql)?://[^[:space:]]+#postgres://[redacted]#g' "$1" \
+            | grep -iE 'error|fail|refus|denied|timeout|ENOTFOUND|ECONN|code' | head -n 5 | sed 's/^/::error::/'; }
+          pnpm db:migrate > migrate.log 2>&1 || { report migrate.log; exit 1; }
+          pnpm db:check-rls > check-rls.log 2>&1 || { report check-rls.log; exit 1; }
+          cat migrate.log check-rls.log
       - name: Deploy web (Vercel)
         run: |
           npx --yes vercel@63.1.0 pull --yes --environment=preview --token "$VERCEL_TOKEN"
@@ -106,7 +114,15 @@ jobs:
             || { echo "::error::No recent restore point $summary; refusing to migrate production"; exit 1; }
           echo "restore point ok: $summary"
       - name: Migrate production (migration_owner; lock_timeout 5s, statement_timeout 60s)
-        run: pnpm db:migrate && pnpm db:check-rls
+        run: |
+          set -o pipefail
+          # On failure, surface the database error as an annotation; connection
+          # strings and passwords are stripped first.
+          report() { sed -E 's#postgres(ql)?://[^[:space:]]+#postgres://[redacted]#g' "$1" \
+            | grep -iE 'error|fail|refus|denied|timeout|ENOTFOUND|ECONN|code' | head -n 5 | sed 's/^/::error::/'; }
+          pnpm db:migrate > migrate.log 2>&1 || { report migrate.log; exit 1; }
+          pnpm db:check-rls > check-rls.log 2>&1 || { report check-rls.log; exit 1; }
+          cat migrate.log check-rls.log
       - name: Deploy web (Vercel)
         run: |
           npx --yes vercel@63.1.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
