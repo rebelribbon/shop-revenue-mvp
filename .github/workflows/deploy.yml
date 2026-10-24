@@ -1,5 +1,8 @@
 name: Deploy
 
+# Hosted smoke checks target the exact deployment just created and go through
+# Vercel Deployment Protection with `vercel curl` (scripts/ci/hosted-smoke.sh);
+# protection is never disabled for CI.
 # Section 24 order: CI -> migrate staging -> deploy staging -> hosted smoke ->
 # approve -> migrate production as migration_owner -> deploy app. Full M1 E2E
 # stays in the local-stack workflow because those tests intentionally depend on
@@ -36,7 +39,6 @@ jobs:
     env:
       DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      STAGING_BASE_URL: https://shop-revenue-mvp-git-m1-foundation-brads-projects-3548d304.vercel.app
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -55,17 +57,8 @@ jobs:
           npx --yes vercel@63.1.0 pull --yes --environment=preview --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 build --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 deploy --prebuilt --token "$VERCEL_TOKEN" > deploy-url.txt
-      - name: Hosted staging smoke
-        run: |
-          for i in $(seq 1 30); do
-            if curl -fsS "$STAGING_BASE_URL/api/health" | jq -e '.status == "ok" and .database.ok == true' >/dev/null; then
-              break
-            fi
-            if [ "$i" -eq 30 ]; then echo "::error::staging health check failed"; exit 1; fi
-            sleep 10
-          done
-          curl -fsS -o /dev/null "$STAGING_BASE_URL/sign-in"
-          curl -fsS -o /dev/null "$STAGING_BASE_URL/no-access"
+      - name: Hosted staging smoke (exact deployment, through Deployment Protection)
+        run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
 
   production:
     needs: staging
@@ -89,21 +82,40 @@ jobs:
           for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
           if [ -n "$missing" ]; then echo "::error::BLOCKED: production credentials not configured:$missing"; exit 1; fi
       - name: Verify a PITR restore point exists
+        # GET /v1/projects/{ref}/database/backups (fine-grained permission
+        # backups_read). Response fields per the Management API reference:
+        # pitr_enabled, walg_enabled, backups[], physical_backup_data
+        # {earliest_physical_backup_date_unix, latest_physical_backup_date_unix}.
+        # Fails closed on any error, PITR off, or no recent restore point.
+        env:
+          PITR_MAX_AGE_HOURS: "24"
         run: |
-          body=$(curl -fsS -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/backups")
-          echo "$body" | jq -e '.pitr_enabled == true and (.physical_backup_data.latest_physical_backup_unix_timestamp // 0) > 0' > /dev/null \
-            || { echo "::error::No PITR restore point; refusing to migrate production"; exit 1; }
+          body=$(curl -fsS --max-time 20 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/backups") \
+            || { echo "::error::Supabase Management API request failed; refusing to migrate production"; exit 1; }
+          now=$(date +%s)
+          echo "$body" | jq -e --argjson now "$now" --argjson max "$(( PITR_MAX_AGE_HOURS * 3600 ))" '
+            .pitr_enabled == true
+            and ((.physical_backup_data.latest_physical_backup_date_unix // 0) > 0)
+            and (($now - .physical_backup_data.latest_physical_backup_date_unix) <= $max)' > /dev/null \
+            || { echo "::error::No recent PITR restore point (pitr_enabled=$(echo "$body" | jq -c '.pitr_enabled'), latest=$(echo "$body" | jq -c '.physical_backup_data.latest_physical_backup_date_unix')); refusing to migrate production"; exit 1; }
+          echo "PITR ok: latest restore point $(( (now - $(echo "$body" | jq '.physical_backup_data.latest_physical_backup_date_unix')) / 60 )) minutes ago"
       - name: Migrate production (migration_owner; lock_timeout 5s, statement_timeout 60s)
         run: pnpm db:migrate && pnpm db:check-rls
       - name: Deploy web (Vercel)
         run: |
           npx --yes vercel@63.1.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 build --prod --token "$VERCEL_TOKEN"
-          npx --yes vercel@63.1.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
-      - name: Production health
+          npx --yes vercel@63.1.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN" > deploy-url.txt
+      - name: Production smoke (exact deployment)
+        run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+      - name: Production health (public canonical domain serves this commit)
         run: |
           for i in $(seq 1 30); do
-            if curl -fsS "$PRODUCTION_BASE_URL/api/health" | jq -e '.status == "ok" and .database.ok == true' >/dev/null; then exit 0; fi
+            body=$(curl -fsS --max-time 20 "$PRODUCTION_BASE_URL/api/health" || true)
+            if echo "$body" | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .database.ok == true and .version == $sha' >/dev/null 2>&1; then
+              echo "production ok: $(echo "$body" | jq -c '{status, database, version}')"; exit 0
+            fi
             sleep 10
           done
-          echo "::error::production health check failed"; exit 1
+          echo "::error::production health check failed or canonical domain is not serving $GITHUB_SHA"; exit 1
