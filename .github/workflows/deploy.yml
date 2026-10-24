@@ -9,8 +9,10 @@ name: Deploy
 # - production environment -> shop-revenue-mvp-staging
 # No separate hosted restore-scratch project is required; restore drills use
 # isolated disposable local/ephemeral Postgres.
-# BLOCKED until Vercel, Render and the GitHub environments are configured; each
-# job fails and names what is missing rather than passing.
+# The paid always-on Render worker is deferred for hosted M1 under
+# docs/spec-revision-2026-10-23-defer-always-on-worker.md.
+# BLOCKED until Vercel and the GitHub environments are configured; each job
+# fails and names what is missing rather than passing.
 on:
   workflow_dispatch:
 
@@ -30,7 +32,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
       STAGING_BASE_URL: ${{ vars.APP_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +42,7 @@ jobs:
       - name: Require configuration
         run: |
           missing=""
-          for v in DATABASE_URL_MIGRATION VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID RENDER_DEPLOY_HOOK_URL STAGING_BASE_URL; do [ -n "${!v}" ] || missing="$missing $v"; done
+          for v in DATABASE_URL_MIGRATION VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID STAGING_BASE_URL; do [ -n "${!v}" ] || missing="$missing $v"; done
           if [ -n "$missing" ]; then echo "::error::BLOCKED: staging not configured:$missing"; exit 1; fi
       - name: Migrate staging (migration_owner)
         run: pnpm db:migrate && pnpm db:check-rls
@@ -50,8 +51,6 @@ jobs:
           npx --yes vercel@63.1.0 pull --yes --environment=preview --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 build --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 deploy --prebuilt --token "$VERCEL_TOKEN" > deploy-url.txt
-      - name: Deploy worker (Render)
-        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
       - name: Health
         run: |
           for i in $(seq 1 30); do curl -fsS "$STAGING_BASE_URL/api/health" && exit 0; sleep 10; done
@@ -70,7 +69,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
       PRODUCTION_BASE_URL: ${{ vars.APP_BASE_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +79,7 @@ jobs:
       - name: Require configuration
         run: |
           missing=""
-          for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID RENDER_DEPLOY_HOOK_URL PRODUCTION_BASE_URL; do [ -n "${!v}" ] || missing="$missing $v"; done
+          for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID PRODUCTION_BASE_URL; do [ -n "${!v}" ] || missing="$missing $v"; done
           if [ -n "$missing" ]; then echo "::error::BLOCKED: production not configured:$missing"; exit 1; fi
       - name: Verify a PITR restore point exists
         run: |
@@ -95,8 +93,6 @@ jobs:
           npx --yes vercel@63.1.0 pull --yes --environment=production --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 build --prod --token "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 deploy --prebuilt --prod --token "$VERCEL_TOKEN"
-      - name: Deploy worker (Render)
-        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL" > /dev/null
       - name: Health
         run: |
           for i in $(seq 1 30); do curl -fsS "$PRODUCTION_BASE_URL/api/health" && exit 0; sleep 10; done
