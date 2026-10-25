@@ -54,6 +54,11 @@ jobs:
           echo "::add-mask::$SCRATCH_PASSWORD"
           echo "SCRATCH_PASSWORD=$SCRATCH_PASSWORD" >> "$GITHUB_ENV"
           export POSTGRES_PASSWORD="$SCRATCH_PASSWORD"
+          for i in 1 2 3 4 5; do
+            docker pull -q "$PG_TOOLS_IMAGE" >/dev/null && break
+            [ "$i" -lt 5 ] || { echo "::error::could not pull $PG_TOOLS_IMAGE"; exit 1; }
+            echo "pull attempt $i failed (registry rate limit?); retrying in $((i * 20))s"; sleep $((i * 20))
+          done
           docker run -d --name restore-scratch -e POSTGRES_PASSWORD -p "127.0.0.1:${SCRATCH_PORT}:5432" "$PG_TOOLS_IMAGE" >/dev/null
           ready=0
           for i in $(seq 1 90); do
