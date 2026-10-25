@@ -82,21 +82,29 @@ async function counts(url: string) {
   });
 }
 
-// Security state that must survive a restore exactly: ACLs on schemas,
-// relations and functions (grantee=privileges; grantor ignored); RLS flags;
-// policy definitions; migration journal.
+// Security state that must survive a restore exactly: owner and effective ACL
+// of schemas, relations and functions (grantee=privileges; grantor ignored);
+// RLS flags; policy definitions; migration journal.
 async function securitySnapshot(url: string) {
   return withClient(url, async (c) => {
+    // Effective ACL: a NULL acl means the built-in default (acldefault), which
+    // pg_dump does not re-emit, so compare COALESCE(acl, acldefault(...)).
+    // Owner is part of the value: who owns an object is security state too.
     const acl = await c.query(
-      `SELECT 'schema ' || n.nspname AS k, array_to_string(ARRAY(SELECT regexp_replace(unnest(n.nspacl)::text, '/[^/]*$', '') ORDER BY 1), ' ') AS v
+      `SELECT 'schema ' || n.nspname AS k,
+              pg_get_userbyid(n.nspowner) || ' ' || array_to_string(ARRAY(
+                SELECT regexp_replace(unnest(COALESCE(n.nspacl, acldefault('n', n.nspowner)))::text, '/[^/]*$', '') ORDER BY 1), ' ') AS v
          FROM pg_namespace n WHERE n.nspname = ANY($1)
        UNION ALL
-       SELECT 'rel ' || n.nspname || '.' || c.relname, array_to_string(ARRAY(SELECT regexp_replace(unnest(c.relacl)::text, '/[^/]*$', '') ORDER BY 1), ' ')
+       SELECT 'rel ' || n.nspname || '.' || c.relname,
+              pg_get_userbyid(c.relowner) || ' ' || array_to_string(ARRAY(
+                SELECT regexp_replace(unnest(COALESCE(c.relacl, acldefault(CASE WHEN c.relkind = 'S' THEN 's' ELSE 'r' END::"char", c.relowner)))::text, '/[^/]*$', '') ORDER BY 1), ' ')
          FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = ANY($1) AND c.relkind IN ('r', 'p', 'v', 'm', 'S')
        UNION ALL
        SELECT 'fn ' || n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
-              array_to_string(ARRAY(SELECT regexp_replace(unnest(p.proacl)::text, '/[^/]*$', '') ORDER BY 1), ' ')
+              pg_get_userbyid(p.proowner) || ' ' || array_to_string(ARRAY(
+                SELECT regexp_replace(unnest(COALESCE(p.proacl, acldefault('f', p.proowner)))::text, '/[^/]*$', '') ORDER BY 1), ' ')
          FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
         WHERE n.nspname = ANY($1)`,
       [SCHEMAS],
