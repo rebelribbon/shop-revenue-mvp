@@ -6,7 +6,7 @@ name: E2E (local stack)
 on:
   pull_request:
   push:
-    branches: [main, m1-foundation]
+    branches: [main, m1-foundation, m2-customer-vehicle-memory]
   workflow_dispatch:
 
 concurrency:
