@@ -127,7 +127,8 @@ async function securitySnapshot(url: string) {
 const diff = (a: Record<string, string>, b: Record<string, string>) =>
   Object.keys({ ...a, ...b })
     .filter((k) => a[k] !== b[k])
-    .sort();
+    .sort()
+    .map((k) => `${k}: source=[${a[k] ?? "missing"}] restored=[${b[k] ?? "missing"}]`);
 
 // Tenant tables: app schema tables with a business_id column, plus app.business.
 async function tenantTables(adminUrl: string) {
