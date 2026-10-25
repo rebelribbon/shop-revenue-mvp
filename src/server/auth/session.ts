@@ -51,6 +51,34 @@ export const verifySigned = (signed: string | undefined) => {
   return i > 0 && safeEqual(sign(v), signed.slice(i + 1)) ? v : null;
 };
 
+export const PASSWORD_RESET_COOKIE = "pw_reset";
+const PASSWORD_RESET_WINDOW_MS = 15 * 60 * 1000;
+
+// A successful recovery-link exchange (/auth/callback) grants a signed,
+// httpOnly, 15-minute permission to choose a new password, bound to that user.
+export async function grantPasswordReset(authSubject: string) {
+  const jar = await cookies();
+  jar.set(PASSWORD_RESET_COOKIE, signValue(`${authSubject}:${Date.now() + PASSWORD_RESET_WINDOW_MS}`), {
+    httpOnly: true,
+    secure: !["local", "test"].includes(process.env.APP_ENV ?? "local"),
+    sameSite: "lax",
+    path: "/",
+    maxAge: PASSWORD_RESET_WINDOW_MS / 1000,
+  });
+}
+
+export async function hasPasswordResetGrant(identity: Identity | null): Promise<boolean> {
+  if (!identity) return false;
+  const grant = verifySigned((await cookies()).get(PASSWORD_RESET_COOKIE)?.value);
+  if (!grant) return false;
+  const [subject, until] = grant.split(":");
+  return subject === identity.authSubject && Number(until) > Date.now();
+}
+
+export async function clearPasswordResetGrant() {
+  (await cookies()).delete(PASSWORD_RESET_COOKIE);
+}
+
 export type SessionState =
   | { kind: "anonymous" }
   | { kind: "no_access"; identity: Identity }
