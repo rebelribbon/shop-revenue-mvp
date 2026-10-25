@@ -8,11 +8,10 @@ name: Restore drill
 # migration journal, RLS enabled + forced, policies, grants, app_user with no
 # tenant context, and cross-tenant isolation, then tears everything down.
 #
-# Production read access: a temporary login role created through the Supabase
-# Management API (existing SUPABASE_ACCESS_TOKEN secret) with BYPASSRLS +
-# pg_read_all_data, a random masked password, VALID UNTIL 90 minutes, and
-# dropped in an always() step. The pooler host and project ref come from the
-# existing DATABASE_URL_MIGRATION secret. No new secrets.
+# Production read access: BACKUP_DATABASE_URL (production environment secret,
+# the Supabase session pooler string for the postgres role; the same secret the
+# nightly off-site backup job uses). It is only written to a mode-600 file on
+# the runner and passed to Docker by environment name, never printed.
 on:
   workflow_dispatch:
 
@@ -31,17 +30,15 @@ jobs:
     env:
       PG_TOOLS_IMAGE: public.ecr.aws/supabase/postgres:17.11.0.004
       SCRATCH_PORT: "54329"
-      DRILL_ROLE: drill_ro_${{ github.run_id }}
-      DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
     steps:
       - name: Require configuration
         run: |
           missing=""
-          for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN; do
-            [ -n "${!v}" ] || missing="$missing $v"
-          done
-          if [ -n "$missing" ]; then echo "::error::BLOCKED: not configured:$missing"; exit 1; fi
+          if [ -z "$BACKUP_DATABASE_URL" ]; then
+            echo "::error::BLOCKED: production environment secret BACKUP_DATABASE_URL is not set (Supabase > Connect > Session pooler string, user postgres)"
+            exit 1
+          fi
 
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -88,58 +85,27 @@ jobs:
             echo "ADMIN_USER_PASSWORD=${PW_ADMIN}"
           } > "$RUNNER_TEMP/restore-target.env"
 
-      - name: Create temporary read-only production login role
+      - name: Write production source env (masked, mode 600)
         run: |
           umask 077
-          DRILL_PASSWORD=$(openssl rand -hex 24)
-          echo "::add-mask::$DRILL_PASSWORD"
-          export DRILL_PASSWORD
           node - <<'JS'
           const fs = require("node:fs");
-          const u = new URL(process.env.DATABASE_URL_MIGRATION);
+          let u;
+          try { u = new URL(process.env.BACKUP_DATABASE_URL); } catch { console.error("::error::BACKUP_DATABASE_URL is not a valid URL"); process.exit(1); }
           const user = decodeURIComponent(u.username);
-          const ref = user.includes(".") ? user.slice(user.indexOf(".") + 1) : "";
-          if (!/^[a-z0-9]{20}$/.test(ref)) { console.error("::error::cannot derive project ref from DATABASE_URL_MIGRATION user"); process.exit(1); }
-          if (!u.hostname.endsWith(".pooler.supabase.com")) { console.error("::error::DATABASE_URL_MIGRATION is not a Supabase pooler URL"); process.exit(1); }
-          const role = process.env.DRILL_ROLE;
-          if (!/^drill_ro_[0-9]+$/.test(role)) { console.error("::error::bad role name"); process.exit(1); }
-          const until = new Date(Date.now() + 90 * 60 * 1000).toISOString();
-          const pw = process.env.DRILL_PASSWORD;
-          const sql = `
-            CREATE ROLE ${role} LOGIN BYPASSRLS CONNECTION LIMIT 10 PASSWORD '${pw}' VALID UNTIL '${until}';
-            DO $do$ BEGIN
-              EXECUTE 'GRANT pg_read_all_data TO ${role}';
-            EXCEPTION WHEN insufficient_privilege THEN
-              EXECUTE 'GRANT migration_owner TO ${role}';
-            END $do$;
-            SELECT pg_has_role('${role}', 'pg_read_all_data', 'member') AS read_all_data,
-                   pg_has_role('${role}', 'migration_owner', 'member') AS via_migration_owner;`;
-          fs.writeFileSync(process.env.RUNNER_TEMP + "/create-role.json", JSON.stringify({ query: sql }));
-          fs.writeFileSync(process.env.RUNNER_TEMP + "/project-ref", ref);
-          // Session pooler (port 5432) on the same host; pg_dump needs session mode.
-          const s = new URL(process.env.DATABASE_URL_MIGRATION);
-          s.username = `${role}.${ref}`;
-          s.password = pw;
-          s.port = "5432";
-          s.pathname = "/postgres";
-          s.search = "";
-          s.searchParams.set("sslmode", "require");
-          s.searchParams.set("uselibpqcompat", "true");
-          fs.writeFileSync(process.env.RUNNER_TEMP + "/restore-source.env", `DATABASE_URL_BOOTSTRAP=${s.toString()}\n`);
+          if (!u.hostname.endsWith(".pooler.supabase.com")) { console.error("::error::BACKUP_DATABASE_URL must be the Supabase session pooler string (host ends in .pooler.supabase.com)"); process.exit(1); }
+          if (!/^postgres\.[a-z0-9]{20}$/.test(user)) { console.error("::error::BACKUP_DATABASE_URL user must be postgres.<project-ref>"); process.exit(1); }
+          if (!u.password) { console.error("::error::BACKUP_DATABASE_URL has no password"); process.exit(1); }
+          u.port = "5432"; // session mode; pg_dump cannot use the transaction pooler
+          u.pathname = "/postgres";
+          u.search = "";
+          u.searchParams.set("sslmode", "require");
+          u.searchParams.set("uselibpqcompat", "true");
+          fs.writeFileSync(process.env.RUNNER_TEMP + "/restore-source.env", `DATABASE_URL_BOOTSTRAP=${u.toString()}\n`);
+          console.log(`source: ${u.hostname}:5432 as postgres.<ref>`);
           JS
-          ref=$(cat "$RUNNER_TEMP/project-ref")
-          echo "PROJECT_REF=$ref" >> "$GITHUB_ENV"
-          code=$(curl -sS -o "$RUNNER_TEMP/create-role.out" -w '%{http_code}' -X POST \
-            "https://api.supabase.com/v1/projects/$ref/database/query" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            --data-binary "@$RUNNER_TEMP/create-role.json")
-          rm -f "$RUNNER_TEMP/create-role.json"
-          echo "Management API status: $code"
-          echo "Role grants: $(cat "$RUNNER_TEMP/create-role.out")"
-          case "$code" in 2*) ;; *) echo "::error::could not create the temporary role"; exit 1;; esac
-          echo "DRILL_ROLE_CREATED=1" >> "$GITHUB_ENV"
 
-      - name: Wait for pooler to accept the temporary role
+      - name: Check production connectivity
         run: |
           node - <<'JS'
           const fs = require("node:fs");
@@ -153,7 +119,7 @@ jobs:
               catch (e) { console.log(`attempt ${i}: ${e.code || "error"}`); try { await c.end(); } catch {} }
               await new Promise((r) => setTimeout(r, 3000));
             }
-            console.error("::error::temporary role never accepted by the pooler"); process.exit(1);
+            console.error("::error::could not connect to production with BACKUP_DATABASE_URL"); process.exit(1);
           })();
           JS
 
@@ -181,24 +147,6 @@ jobs:
           path: restore-drill-result.json
           if-no-files-found: warn
           retention-days: 90
-
-      - name: Drop temporary production role
-        if: always() && env.DRILL_ROLE_CREATED == '1'
-        run: |
-          node -e '
-            const role = process.env.DRILL_ROLE;
-            const sql = `DO $do$ BEGIN
-                PERFORM pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = $q$${role}$q$;
-              EXCEPTION WHEN insufficient_privilege THEN NULL; END $do$;
-              DROP ROLE IF EXISTS ${role};
-              SELECT count(*) AS remaining FROM pg_roles WHERE rolname = $q$${role}$q$;`;
-            require("node:fs").writeFileSync(process.env.RUNNER_TEMP + "/drop-role.json", JSON.stringify({ query: sql }));'
-          code=$(curl -sS -o "$RUNNER_TEMP/drop-role.out" -w '%{http_code}' -X POST \
-            "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
-            --data-binary "@$RUNNER_TEMP/drop-role.json")
-          echo "Management API status: $code; $(cat "$RUNNER_TEMP/drop-role.out")"
-          case "$code" in 2*) ;; *) echo "::error::temporary role was not dropped; it expires on its own within 90 minutes"; exit 1;; esac
 
       - name: Tear down scratch Postgres and env files
         if: always()
