@@ -1,0 +1,19 @@
+name: Restore drill
+
+# Dispatch stub. GitHub only offers "Run workflow" for workflows that exist on the
+# default branch. The real drill lives on m1-foundation
+# (.github/workflows/restore-drill.yml); choose that branch when running it.
+# Run from main, this job only fails with a pointer and touches nothing.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "::error::Run this workflow on the m1-foundation branch; main holds only this stub."
+          exit 1
