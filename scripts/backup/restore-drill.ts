@@ -1,18 +1,24 @@
 // Restore drill (Section 27 "one full restore drill documented with time to
 // restore"; M1 acceptance "one backup restored successfully into a scratch
 // project"). Dumps the source database, restores it into a fresh scratch
-// database, and verifies it: per-table row counts equal the source, RLS is
-// still enabled + forced with policies, grants survive (app_user outside a
-// tenant context sees nothing), and the migration journal matches.
+// database, and verifies it against the source:
+//   - per-table row counts equal the source
+//   - migration journal equals the source and the repo's journal
+//   - RLS enabled + forced on every tenant table; RLS flags and policies identical to the source
+//   - grants (table, sequence, schema, function ACLs) identical to the source
+//   - app_user outside a tenant context sees zero rows in every tenant table
+//   - app_user inside one business's context sees no other business's rows
 //
-//   SOURCE_ENV=.env.dev-hosted TARGET_ENV=.env.local pnpm exec tsx scripts/backup/restore-drill.ts [--keep]
+// SOURCE_ENV=.env.dev-hosted TARGET_ENV=.env.local pnpm exec tsx scripts/backup/restore-drill.ts [--keep]
 //
-// Until the hosted restore-scratch project exists, the target is a scratch
-// database on the local Supabase stack. Secrets go to Docker as environment
-// passthrough (-e NAME), never on a command line or in output.
+// In CI (.github/workflows/restore-drill.yml) the source is production through a
+// temporary read-only login role and the target is a disposable Postgres on the
+// runner. Secrets go to Docker as environment passthrough (-e NAME), never on a
+// command line or in output. DRILL_RESULT_FILE, when set, also receives the
+// non-secret JSON result.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
@@ -22,12 +28,13 @@ import { findRlsViolations } from "../db/check-rls";
 
 const PG_IMAGE = process.env.PG_TOOLS_IMAGE ?? "public.ecr.aws/supabase/postgres:17.11.0.004";
 const SCHEMAS = ["app", "graphile_worker", "drizzle"];
+const TENANT_GUC = "app.business_id";
 const keep = process.argv.includes("--keep");
 
 const readEnv = (file: string) => parseEnv(readFileSync(file, "utf8")) as Record<string, string>;
 const source = readEnv(process.env.SOURCE_ENV ?? ".env.dev-hosted");
 const target = readEnv(process.env.TARGET_ENV ?? ".env.local");
-const sourceUrl = source.DATABASE_URL_BOOTSTRAP; // backup role: must bypass RLS (Supabase postgres does)
+const sourceUrl = source.DATABASE_URL_BOOTSTRAP; // backup role: must bypass RLS
 const targetAdminUrl = target.DATABASE_URL_BOOTSTRAP;
 const name = `restore_drill_${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}`;
 const withDb = (url: string, db: string) => Object.assign(new URL(url), { pathname: `/${db}` }).toString();
@@ -49,25 +56,144 @@ function docker(args: string[], env: Record<string, string>) {
   return r.stdout;
 }
 
-async function counts(url: string) {
+async function withClient<T>(url: string, fn: (c: pg.Client) => Promise<T>): Promise<T> {
   const c = new pg.Client({ connectionString: url });
   await c.connect();
   try {
-    const { rows } = await c.query(
-      `SELECT n.nspname || '.' || c.relname AS t FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relkind = 'r' AND n.nspname = ANY($1) ORDER BY 1`,
-      [SCHEMAS],
-    );
-    const out: Record<string, number> = {};
-    for (const { t } of rows) {
-      const [s, r] = t.split(".");
-      out[t] = Number((await c.query(`SELECT count(*) AS n FROM ${c.escapeIdentifier(s)}.${c.escapeIdentifier(r)}`)).rows[0].n);
-    }
-    return out;
+    return await fn(c);
   } finally {
     await c.end();
   }
 }
+
+async function counts(url: string) {
+  return withClient(url, async (c) => {
+    const { rows } = await c.query(
+      `SELECT n.nspname || '.' || c.relname AS t FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE c.relkind = 'r' AND n.nspname = ANY($1) ORDER BY 1`,
+      [SCHEMAS],
+    );
+    const out: Record<string, number> = {};
+    for (const { t } of rows) {
+      const [s, r] = String(t).split(".");
+      out[t] = Number((await c.query(`SELECT count(*) AS n FROM ${c.escapeIdentifier(s)}.${c.escapeIdentifier(r)}`)).rows[0].n);
+    }
+    return out;
+  });
+}
+
+// Security state that must survive a restore exactly: ACLs on schemas,
+// relations and functions (grantee=privileges; grantor ignored); RLS flags;
+// policy definitions; migration journal.
+async function securitySnapshot(url: string) {
+  return withClient(url, async (c) => {
+    const acl = await c.query(
+      `SELECT 'schema ' || n.nspname AS k, array_to_string(ARRAY(SELECT regexp_replace(unnest(n.nspacl)::text, '/[^/]*$', '') ORDER BY 1), ' ') AS v
+         FROM pg_namespace n WHERE n.nspname = ANY($1)
+       UNION ALL
+       SELECT 'rel ' || n.nspname || '.' || c.relname, array_to_string(ARRAY(SELECT regexp_replace(unnest(c.relacl)::text, '/[^/]*$', '') ORDER BY 1), ' ')
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = ANY($1) AND c.relkind IN ('r', 'p', 'v', 'm', 'S')
+       UNION ALL
+       SELECT 'fn ' || n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')',
+              array_to_string(ARRAY(SELECT regexp_replace(unnest(p.proacl)::text, '/[^/]*$', '') ORDER BY 1), ' ')
+         FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = ANY($1)`,
+      [SCHEMAS],
+    );
+    const rls = await c.query(
+      `SELECT n.nspname || '.' || c.relname AS k, c.relrowsecurity || '/' || c.relforcerowsecurity AS v
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = ANY($1) AND c.relkind IN ('r', 'p')`,
+      [SCHEMAS],
+    );
+    const policies = await c.query(
+      `SELECT schemaname || '.' || tablename || ' ' || policyname AS k,
+              concat_ws(' | ', permissive, cmd, array_to_string(ARRAY(SELECT unnest(roles) ORDER BY 1), ','), qual, with_check) AS v
+         FROM pg_policies WHERE schemaname = ANY($1)`,
+      [SCHEMAS],
+    );
+    const journal = Number((await c.query("SELECT count(*) AS n FROM drizzle.__drizzle_migrations")).rows[0].n);
+    const toMap = (rows: { k: string; v: string | null }[]) => Object.fromEntries(rows.map((r) => [r.k, r.v ?? ""]));
+    return {
+      acl: toMap(acl.rows),
+      rls: toMap(rls.rows),
+      policies: toMap(policies.rows),
+      journal,
+    };
+  });
+}
+
+const diff = (a: Record<string, string>, b: Record<string, string>) =>
+  Object.keys({ ...a, ...b })
+    .filter((k) => a[k] !== b[k])
+    .sort();
+
+// Tenant tables: app schema tables with a business_id column, plus app.business.
+async function tenantTables(adminUrl: string) {
+  return withClient(adminUrl, async (c) => {
+    const { rows } = await c.query(
+      `SELECT c.relname AS t, (c.relname = 'business') AS is_business
+         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'app' AND c.relkind IN ('r', 'p')
+          AND (c.relname = 'business' OR EXISTS (
+                SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'business_id' AND NOT a.attisdropped))
+        ORDER BY 1`,
+    );
+    return rows as { t: string; is_business: boolean }[];
+  });
+}
+
+// Runs one count as app_user inside a savepoint; a missing grant counts as zero
+// rows visible (the grant model is itself verified by the ACL comparison).
+async function visibleCount(c: pg.Client, sql: string, params: unknown[] = []) {
+  await c.query("SAVEPOINT probe");
+  try {
+    const n = Number((await c.query(sql, params)).rows[0].n);
+    await c.query("RELEASE SAVEPOINT probe");
+    return n;
+  } catch (e) {
+    await c.query("ROLLBACK TO SAVEPOINT probe");
+    if ((e as { code?: string }).code === "42501") return 0;
+    throw e;
+  }
+}
+
+async function tenantChecks(appUrl: string, adminUrl: string) {
+  const tables = await tenantTables(adminUrl);
+  const businessIds = await withClient(adminUrl, async (c) =>
+    (await c.query("SELECT id::text AS id FROM app.business ORDER BY 1")).rows.map((r) => String(r.id)),
+  );
+  return withClient(appUrl, async (c) => {
+    const withoutContext: Record<string, number> = {};
+    await c.query("BEGIN");
+    for (const { t } of tables) {
+      withoutContext[`app.${t}`] = await visibleCount(c, `SELECT count(*) AS n FROM app.${c.escapeIdentifier(t)}`);
+    }
+    await c.query("ROLLBACK");
+
+    const crossTenant: Record<string, number> = {};
+    for (const id of businessIds) {
+      await c.query("BEGIN");
+      await c.query("SELECT set_config($1, $2, true)", [TENANT_GUC, id]);
+      for (const { t, is_business } of tables) {
+        const col = is_business ? "id" : "business_id";
+        const n = await visibleCount(c, `SELECT count(*) AS n FROM app.${c.escapeIdentifier(t)} WHERE ${col}::text <> $1`, [id]);
+        if (n > 0) crossTenant[`${id} app.${t}`] = n;
+      }
+      await c.query("ROLLBACK");
+    }
+    return {
+      tenantTables: tables.map(({ t }) => `app.${t}`),
+      rowsVisibleWithoutContext: Object.values(withoutContext).reduce((a, b) => a + b, 0),
+      tablesVisibleWithoutContext: Object.keys(withoutContext).filter((k) => withoutContext[k] > 0),
+      businessesChecked: businessIds.length,
+      crossTenantRowsVisible: crossTenant,
+    };
+  });
+}
+
+const repoMigrations = (JSON.parse(readFileSync("db/migrations/meta/_journal.json", "utf8")) as { entries: unknown[] }).entries.length;
 
 const dir = mkdtempSync(join(tmpdir(), "restore-drill-"));
 const timings: Record<string, number> = {};
@@ -82,13 +208,11 @@ try {
   const dump = readFileSync(join(dir, "backup.pgc"));
   const sha256 = createHash("sha256").update(dump).digest("hex");
   const sourceCounts = await counts(sourceUrl);
+  const sourceSecurity = await securitySnapshot(sourceUrl);
   lap("dumpMs");
 
   // 2. Restore into a fresh scratch database with the production roles.
-  const admin = new pg.Client({ connectionString: targetAdminUrl });
-  await admin.connect();
-  await admin.query(`CREATE DATABASE ${admin.escapeIdentifier(name)}`);
-  await admin.end();
+  await withClient(targetAdminUrl, (c) => c.query(`CREATE DATABASE ${c.escapeIdentifier(name)}`));
   await bootstrapRoles({
     bootstrapUrl: targetUrl,
     databaseName: name,
@@ -109,45 +233,66 @@ try {
   // 3. Verify.
   const restoredCounts = await counts(targetUrl);
   const mismatched = Object.keys({ ...sourceCounts, ...restoredCounts }).filter((k) => sourceCounts[k] !== restoredCounts[k]);
-  const mo = new pg.Client({ connectionString: withDb(target.DATABASE_URL_MIGRATION, name) });
-  await mo.connect();
-  const rlsViolations = await findRlsViolations(mo);
-  const journal = Number((await mo.query("SELECT count(*) n FROM drizzle.__drizzle_migrations")).rows[0].n);
-  await mo.end();
-  const app = new pg.Client({ connectionString: withDb(target.DATABASE_URL_APP, name) });
-  await app.connect();
-  const visibleWithoutTenant = Number((await app.query("SELECT count(*) n FROM app.business")).rows[0].n);
-  await app.end();
+  const restoredSecurity = await securitySnapshot(targetUrl);
+  const rlsViolations = await withClient(withDb(target.DATABASE_URL_MIGRATION, name), (c) => findRlsViolations(c));
+  const visibleWithoutTenant = await withClient(withDb(target.DATABASE_URL_APP, name), async (c) =>
+    Number((await c.query("SELECT count(*) n FROM app.business")).rows[0].n),
+  );
+  const tenant = await tenantChecks(withDb(target.DATABASE_URL_APP, name), targetUrl);
   lap("verifyMs");
 
-  const ok = mismatched.length === 0 && rlsViolations.length === 0 && visibleWithoutTenant === 0 && journal > 0;
-  console.log(
-    JSON.stringify(
-      {
-        ok,
-        source: new URL(sourceUrl).hostname,
-        target: `${new URL(targetAdminUrl).hostname}/${name}`,
-        dump: { bytes: statSync(join(dir, "backup.pgc")).size, sha256 },
-        tables: Object.keys(sourceCounts).length,
-        rows: Object.values(sourceCounts).reduce((a, b) => a + b, 0),
-        mismatched,
-        rlsViolations,
-        migrationsApplied: journal,
-        appUserRowsWithoutTenant: visibleWithoutTenant,
-        timings,
-        timeToRestoreMs: timings.restoreMs + timings.verifyMs,
-      },
-      null,
-      2,
-    ),
-  );
+  const grantsMismatched = diff(sourceSecurity.acl, restoredSecurity.acl);
+  const rlsFlagsMismatched = diff(sourceSecurity.rls, restoredSecurity.rls);
+  // Every tenant table must have RLS enabled and forced after the restore.
+  const rlsNotEnabledAndForced = tenant.tenantTables.filter((k) => restoredSecurity.rls[k] !== "true/true");
+  const policiesMismatched = diff(sourceSecurity.policies, restoredSecurity.policies);
+  const migrations = { repo: repoMigrations, source: sourceSecurity.journal, restored: restoredSecurity.journal };
+
+  const ok =
+    mismatched.length === 0 &&
+    rlsViolations.length === 0 &&
+    visibleWithoutTenant === 0 &&
+    migrations.restored > 0 &&
+    migrations.restored === migrations.source &&
+    migrations.source === migrations.repo &&
+    grantsMismatched.length === 0 &&
+    rlsFlagsMismatched.length === 0 &&
+    rlsNotEnabledAndForced.length === 0 &&
+    policiesMismatched.length === 0 &&
+    tenant.rowsVisibleWithoutContext === 0 &&
+    Object.keys(tenant.crossTenantRowsVisible).length === 0;
+
+  const result = {
+    ok,
+    ranAt: new Date().toISOString(),
+    commit: process.env.GITHUB_SHA ?? null,
+    source: new URL(sourceUrl).hostname,
+    target: `${new URL(targetAdminUrl).hostname}/${name}`,
+    dump: { bytes: statSync(join(dir, "backup.pgc")).size, sha256 },
+    tables: Object.keys(sourceCounts).length,
+    rows: Object.values(sourceCounts).reduce((a, b) => a + b, 0),
+    mismatched,
+    migrations,
+    rlsTables: Object.keys(restoredSecurity.rls).length,
+    rlsViolations,
+    rlsFlagsMismatched,
+    rlsNotEnabledAndForced,
+    policies: Object.keys(restoredSecurity.policies).length,
+    policiesMismatched,
+    aclEntries: Object.keys(restoredSecurity.acl).length,
+    grantsMismatched,
+    appUserRowsWithoutTenant: visibleWithoutTenant,
+    tenantIsolation: tenant,
+    timings,
+    timeToRestoreMs: timings.restoreMs + timings.verifyMs,
+  };
+  const json = JSON.stringify(result, null, 2);
+  console.log(json);
+  if (process.env.DRILL_RESULT_FILE) writeFileSync(process.env.DRILL_RESULT_FILE, json + "\n");
   if (!ok) process.exitCode = 1;
 } finally {
   rmSync(dir, { recursive: true, force: true });
   if (!keep) {
-    const admin = new pg.Client({ connectionString: targetAdminUrl });
-    await admin.connect();
-    await admin.query(`DROP DATABASE IF EXISTS ${admin.escapeIdentifier(name)} WITH (FORCE)`);
-    await admin.end();
+    await withClient(targetAdminUrl, (c) => c.query(`DROP DATABASE IF EXISTS ${c.escapeIdentifier(name)} WITH (FORCE)`));
   }
 }
