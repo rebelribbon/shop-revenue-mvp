@@ -52,7 +52,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   const tomorrow = page.getByRole("heading", { name: "Tomorrow" }).locator("..", { hasText: `${first} ${last}` });
   await expect(tomorrow).toContainText("Brake inspection");
 
-  await page.goto(/\/app\/customers/.source ? "/app/customers" : "/app/customers");
+  await page.goto("/app/customers");
   await page.getByRole("link", { name: `${first} ${last}` }).click();
   await expect(page.getByText(/Appointment scheduled/)).toBeVisible();
 });
