@@ -101,48 +101,6 @@ export async function updatePassword(_: AuthFormState | null, form: FormData): P
   redirect(safeNext(parsed.data.next));
 }
 
-export async function createPreviewOwnerAccount(_: AuthFormState | null, form: FormData): Promise<AuthFormState> {
-  if (process.env.APP_ENV !== "staging") return { ok: false, message: "Preview setup is unavailable here." };
-  const email = process.env.DEV_OWNER_EMAIL;
-  if (!email) return { ok: false, message: "Preview owner setup is not configured." };
-  const parsed = z
-    .object({ password: z.string().min(8), confirmPassword: z.string() })
-    .safeParse({
-      password: String(form.get("password") ?? ""),
-      confirmPassword: String(form.get("confirmPassword") ?? ""),
-    });
-  if (!parsed.success) return { ok: false, message: "Use a password with at least 8 characters." };
-  if (parsed.data.password !== parsed.data.confirmPassword) return { ok: false, message: "Passwords do not match." };
-
-  const supabase = await supabaseServer();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password: parsed.data.password,
-    options: { emailRedirectTo: `${base()}/dev/setup-owner` },
-  });
-  if (error) {
-    if (error.message.toLowerCase().includes("already")) return { ok: true, message: "Preview account already exists. Use Finish setup below." };
-    return { ok: false, message: "We could not create the preview account. Please try again." };
-  }
-  if (!data.user) return { ok: false, message: "We could not create the preview account. Please try again." };
-  return {
-    ok: true,
-    message: data.session
-      ? "Preview account created. Click Finish setup below."
-      : "Preview account created. Confirm the email once, sign in, then click Finish setup below.",
-  };
-}
-
-export async function finishPreviewOwnerSetup(): Promise<AuthFormState> {
-  if (process.env.APP_ENV !== "staging") return { ok: false, message: "Preview setup is unavailable here." };
-  const identity = await getIdentity();
-  if (!identity) return { ok: false, message: "Sign in to the preview first, then finish setup." };
-  const supabase = await supabaseServer();
-  const { error } = await supabase.functions.invoke("dev-provision-preview-owner", { body: {} });
-  if (error) return { ok: false, message: "We could not connect the preview shop yet. Please try once more." };
-  redirect("/app");
-}
-
 // Invite path. Email invites use Supabase recovery email so a new invitee proves
 // control of the invited address and chooses a password before accepting access.
 export async function startInviteSignIn(_: AuthFormState | null, form: FormData): Promise<AuthFormState> {
