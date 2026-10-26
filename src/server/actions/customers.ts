@@ -4,6 +4,12 @@ import { createCustomer, createVehicle } from "@/domain/customers";
 import { normalizeEmail, normalizePhone } from "@/lib/normalize";
 import { defineShopAction } from "./define";
 
+const optionalInt = (min: number, max: number) =>
+  z.preprocess(
+    (value) => (value === "" || value == null ? null : Number(value)),
+    z.union([z.number().int().min(min).max(max), z.null()]),
+  );
+
 export const createCustomerAction = defineShopAction({
   name: "createCustomer",
   input: z.object({
@@ -28,25 +34,25 @@ export const createVehicleAction = defineShopAction({
   name: "createVehicle",
   input: z.object({
     customerId: z.uuid(),
-    year: z.union([z.number().int().min(1886).max(2200), z.null()]).optional(),
+    year: optionalInt(1886, 2200),
     make: z.string().max(100).optional().or(z.literal("")),
     model: z.string().max(100).optional().or(z.literal("")),
     trim: z.string().max(100).optional().or(z.literal("")),
     vin: z.string().max(17).optional().or(z.literal("")),
     plate: z.string().max(20).optional().or(z.literal("")),
-    mileage: z.union([z.number().int().min(0).max(3000000), z.null()]).optional(),
+    mileage: optionalInt(0, 3000000),
     notes: z.string().max(5000).optional().or(z.literal("")),
   }),
   run: ({ tx, meta }, input) =>
     createVehicle(tx, meta, {
       customerId: input.customerId,
-      year: input.year ?? null,
+      year: input.year,
       make: input.make || null,
       model: input.model || null,
       trim: input.trim || null,
       vin: input.vin || null,
       plate: input.plate || null,
-      mileage: input.mileage ?? null,
+      mileage: input.mileage,
       notes: input.notes || null,
     }),
   persist: (row) => ({ id: row.id, customerId: row.customerId }),
