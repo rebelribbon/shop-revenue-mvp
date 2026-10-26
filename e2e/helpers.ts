@@ -26,6 +26,9 @@ export async function signInWithPassword(page: Page, email: string, path = "/sig
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  // Server actions set the session cookie before redirecting. Do not let the
+  // caller navigate away while that response is still in flight.
+  await expect(page).toHaveURL(path === "/admin/sign-in" ? /\/admin$/ : /\/app$/);
 }
 
 export async function setInvitePassword(page: Page, email: string, since: number, password = E2E_PASSWORD) {
