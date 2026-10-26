@@ -117,16 +117,26 @@ export async function createPreviewOwnerAccount(_: AuthFormState | null, form: F
   const supabase = await supabaseServer();
   const { data, error } = await supabase.auth.signUp({ email, password: parsed.data.password });
   if (error) {
-    if (error.message.toLowerCase().includes("already")) return { ok: true, message: "Preview account already exists. You can sign in with the password you set." };
+    if (error.message.toLowerCase().includes("already")) return { ok: true, message: "Preview account already exists. Use Finish setup below." };
     return { ok: false, message: "We could not create the preview account. Please try again." };
   }
   if (!data.user) return { ok: false, message: "We could not create the preview account. Please try again." };
   return {
     ok: true,
     message: data.session
-      ? "Preview account created. Your shop access is being connected next."
-      : "Preview account created. Check your email once to confirm the address, then your shop access can be connected.",
+      ? "Preview account created. Click Finish setup below."
+      : "Preview account created. Confirm the email once, sign in, then click Finish setup below.",
   };
+}
+
+export async function finishPreviewOwnerSetup(): Promise<AuthFormState> {
+  if (process.env.APP_ENV !== "staging") return { ok: false, message: "Preview setup is unavailable here." };
+  const identity = await getIdentity();
+  if (!identity) return { ok: false, message: "Sign in to the preview first, then finish setup." };
+  const supabase = await supabaseServer();
+  const { error } = await supabase.functions.invoke("dev-provision-preview-owner", { body: {} });
+  if (error) return { ok: false, message: "We could not connect the preview shop yet. Please try once more." };
+  redirect("/app");
 }
 
 // Invite path. Email invites use Supabase recovery email so a new invitee proves
