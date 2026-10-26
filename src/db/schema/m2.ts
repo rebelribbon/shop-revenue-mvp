@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { check, foreignKey, index, integer, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { app, id, tenantColumns } from "./common";
+import { app, tenantColumns } from "./common";
 import { business, user } from "./tenancy";
 
 export const customer = app.table(
