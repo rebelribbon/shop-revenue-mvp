@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, foreignKey, index, integer, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { check, foreignKey, index, integer, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { app, tenantColumns } from "./common";
 import { business, user } from "./tenancy";
 
@@ -50,6 +50,7 @@ export const vehicle = app.table(
   },
   (t) => [
     unique("vehicle_business_id_id_key").on(t.businessId, t.id),
+    unique("vehicle_business_customer_id_id_key").on(t.businessId, t.customerId, t.id),
     index("vehicle_business_customer_idx").on(t.businessId, t.customerId),
     index("vehicle_business_plate_idx").on(t.businessId, t.plateNormalized).where(sql`${t.plateNormalized} IS NOT NULL`),
     index("vehicle_business_vin_last6_idx").on(t.businessId, t.vinLast6).where(sql`${t.vinLast6} IS NOT NULL`),
@@ -63,5 +64,35 @@ export const vehicle = app.table(
     foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "vehicle_business_fk" }),
     foreignKey({ columns: [t.businessId, t.customerId], foreignColumns: [customer.businessId, customer.id], name: "vehicle_customer_tenant_fk" }),
     foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "vehicle_created_by_fk" }),
+  ],
+);
+
+export const appointment = app.table(
+  "appointment",
+  {
+    ...tenantColumns(),
+    customerId: uuid("customer_id").notNull(),
+    vehicleId: uuid("vehicle_id"),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    reason: text("reason"),
+    notes: text("notes"),
+    status: text("status").notNull().default("scheduled"),
+  },
+  (t) => [
+    unique("appointment_business_id_id_key").on(t.businessId, t.id),
+    index("appointment_business_starts_idx").on(t.businessId, t.startsAt),
+    index("appointment_business_customer_starts_idx").on(t.businessId, t.customerId, t.startsAt),
+    check("appointment_status_check", sql`${t.status} IN ('scheduled', 'completed', 'cancelled', 'no_show')`),
+    check("appointment_time_check", sql`${t.endsAt} IS NULL OR ${t.endsAt} > ${t.startsAt}`),
+    check("appointment_reason_check", sql`${t.reason} IS NULL OR length(btrim(${t.reason})) > 0`),
+    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "appointment_business_fk" }),
+    foreignKey({ columns: [t.businessId, t.customerId], foreignColumns: [customer.businessId, customer.id], name: "appointment_customer_tenant_fk" }),
+    foreignKey({
+      columns: [t.businessId, t.customerId, t.vehicleId],
+      foreignColumns: [vehicle.businessId, vehicle.customerId, vehicle.id],
+      name: "appointment_vehicle_customer_tenant_fk",
+    }),
+    foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "appointment_created_by_fk" }),
   ],
 );
