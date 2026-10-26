@@ -64,6 +64,13 @@
       "when": 1792839098638,
       "tag": "0008_audit_support_session_tenant_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792976000000,
+      "tag": "0009_m2_customer_vehicle_memory",
+      "breakpoints": true
     }
   ]
 }
