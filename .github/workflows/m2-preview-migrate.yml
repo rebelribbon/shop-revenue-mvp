@@ -1,0 +1,47 @@
+name: M2 Preview Migrate
+
+on:
+  push:
+    branches: [m2-preview-deploy]
+    paths:
+      - .github/workflows/m2-preview-migrate.yml
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate preview database
+        run: |
+          test -n "$DATABASE_URL_MIGRATION"
+          pnpm db:migrate
+          pnpm db:check-rls
+      - name: Verify M2 tables
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const db = new pg.Client({ connectionString: process.env.DATABASE_URL_MIGRATION });
+          await db.connect();
+          const { rows } = await db.query(`
+            SELECT c.relname, c.relrowsecurity AS rls_enabled, c.relforcerowsecurity AS rls_forced
+              FROM pg_class c
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+             WHERE n.nspname = 'app' AND c.relname IN ('customer','vehicle','appointment')
+             ORDER BY c.relname
+          `);
+          await db.end();
+          if (rows.length !== 3 || rows.some((r) => !r.rls_enabled || !r.rls_forced)) throw new Error('M2 table verification failed');
+          console.log('M2 preview schema verified: customer, vehicle, appointment all have forced RLS.');
+          NODE
