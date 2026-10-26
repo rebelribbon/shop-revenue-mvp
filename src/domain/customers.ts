@@ -48,7 +48,6 @@ export async function updateCustomer(tx: TenantTx, meta: RequestMeta, customerId
     phoneE164: input.phoneE164 ?? null,
     phoneDigits: phoneDigits(input.phoneE164),
     notes: input.notes ?? null,
-    updatedAt: new Date(),
   }).where(and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId))).returning();
   await audit(tx, meta, { action: "customer.updated", targetType: "customer", targetId: row.id, before: { displayName: before.displayName }, after: { displayName: row.displayName } });
   await recordActivity(tx, { kind: "customer.updated", subjectType: "customer", subjectId: row.id, summary: `Customer updated: ${row.displayName}` });
@@ -56,10 +55,10 @@ export async function updateCustomer(tx: TenantTx, meta: RequestMeta, customerId
 }
 
 export async function archiveCustomer(tx: TenantTx, meta: RequestMeta, customerId: string) {
-  const [row] = await tx.update(customer).set({ status: "archived", updatedAt: new Date() })
+  const [row] = await tx.update(customer).set({ status: "archived" })
     .where(and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId), eq(customer.status, "active"))).returning();
   if (!row) throw notFound("That customer");
-  await tx.update(vehicle).set({ status: "archived", updatedAt: new Date() })
+  await tx.update(vehicle).set({ status: "archived" })
     .where(and(eq(vehicle.businessId, tx.businessId), eq(vehicle.customerId, customerId), eq(vehicle.status, "active")));
   await audit(tx, meta, { action: "customer.archived", targetType: "customer", targetId: row.id, after: { status: "archived" } });
   await recordActivity(tx, { kind: "customer.archived", subjectType: "customer", subjectId: row.id, summary: `Customer archived: ${row.displayName}` });
@@ -129,7 +128,6 @@ export async function updateVehicle(tx: TenantTx, meta: RequestMeta, vehicleId: 
     plateNormalized: normalizePlate(input.plate),
     mileage: input.mileage ?? null,
     notes: input.notes ?? null,
-    updatedAt: new Date(),
   }).where(and(eq(vehicle.businessId, tx.businessId), eq(vehicle.id, vehicleId))).returning();
   await audit(tx, meta, { action: "vehicle.updated", targetType: "vehicle", targetId: row.id, before: { label: vehicleLabel(before) }, after: { label: vehicleLabel(row) } });
   await recordActivity(tx, { kind: "vehicle.updated", subjectType: "vehicle", subjectId: row.id, summary: `Vehicle updated: ${vehicleLabel(row)}` });
@@ -137,7 +135,7 @@ export async function updateVehicle(tx: TenantTx, meta: RequestMeta, vehicleId: 
 }
 
 export async function archiveVehicle(tx: TenantTx, meta: RequestMeta, customerId: string, vehicleId: string) {
-  const [row] = await tx.update(vehicle).set({ status: "archived", updatedAt: new Date() })
+  const [row] = await tx.update(vehicle).set({ status: "archived" })
     .where(and(eq(vehicle.businessId, tx.businessId), eq(vehicle.customerId, customerId), eq(vehicle.id, vehicleId), eq(vehicle.status, "active"))).returning();
   if (!row) throw notFound("That vehicle");
   await audit(tx, meta, { action: "vehicle.archived", targetType: "vehicle", targetId: row.id, after: { status: "archived" } });
