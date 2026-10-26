@@ -17,7 +17,7 @@ export default async function AdminSignIn({ searchParams }: { searchParams: Prom
       </form>
       {local && (
         <>
-          <p className="muted">Local development only: allowlisted internal users may sign in by email link.</p>
+          <p className="muted">Local development only: allowlisted internal users may sign in with their test email and password.</p>
           <SignInForms next="/admin" />
         </>
       )}
