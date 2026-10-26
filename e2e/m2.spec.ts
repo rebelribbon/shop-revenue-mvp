@@ -1,8 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 
-test.describe.configure({ mode: "serial" });
-
 const chicagoTomorrow = () => {
   const now = new Date();
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now).map((x) => [x.type, x.value]));
@@ -15,7 +13,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   const first = `M2${stamp.slice(-8)}`;
   const last = "Customer";
   const phone = "(210) 555-0199";
-  const vin = "1HGCM82633A004352";
+  const vin = info.project.name === "phone" ? "1HGCM82633A004352" : "1HGCM82633A004353";
   const plate = `M2${stamp.replace(/\D/g, "").slice(-5)}`;
 
   await signInWithPassword(page, "owner.a@shop-a.test");
@@ -37,7 +35,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(page).toHaveURL(/\/vehicles\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { name: /2022 Honda Accord/ })).toBeVisible();
 
-  await page.goto("/app/customers?q=004352");
+  await page.goto(`/app/customers?q=${vin.slice(-6)}`);
   await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
   await page.goto(`/app/customers?q=${encodeURIComponent("210 555 0199")}`);
   await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
