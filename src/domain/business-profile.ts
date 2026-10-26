@@ -31,7 +31,6 @@ export async function updateBusinessProfile(tx: TenantTx, meta: RequestMeta, inp
     region: input.region || null,
     postalCode: input.postalCode || null,
     timezone: input.timezone,
-    updatedAt: new Date(),
   }).where(eq(business.id, tx.businessId)).returning();
   await audit(tx, meta, {
     action: "business.profile_updated",
