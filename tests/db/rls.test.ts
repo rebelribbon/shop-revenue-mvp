@@ -4,7 +4,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { withAdmin } from "@/db/admin";
-import { file, location, membership, requestIdempotency, supportSession } from "@/db/schema";
+import { customer, file, location, membership, requestIdempotency, supportSession, vehicle } from "@/db/schema";
 import { ingestWebhookEvent, withTenant, type Actor } from "@/db/tenant";
 import { audit, recordActivity } from "@/domain/records";
 import { eq, sql } from "drizzle-orm";
@@ -21,7 +21,6 @@ beforeAll(async () => {
   adminId = (await createInternalUser("admin")).id;
 });
 
-// One builder per table with business_id: inserts a row owned by `t` and returns its id.
 type Builder = (t: SeededTenant) => Promise<string>;
 const builders: Record<string, Builder> = {
   "app.location": async (t) =>
@@ -36,8 +35,39 @@ const builders: Record<string, Builder> = {
         .insert(membership)
         .values({ businessId: t.businessId, role: "staff", status: "invited", inviteEmail: `x${randomUUID()}@example.test` })
         .returning();
-      // Free the staff seat again so other tests can invite.
       await tx.update(membership).set({ status: "removed" }).where(eq(membership.id, r.id));
+      return r.id;
+    }),
+  "app.customer": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [r] = await tx.insert(customer).values({
+        businessId: t.businessId,
+        createdByUserId: t.owner.userId,
+        firstName: "RLS",
+        lastName: "Customer",
+        displayName: `RLS Customer ${randomUUID()}`,
+      }).returning();
+      return r.id;
+    }),
+  "app.vehicle": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [c] = await tx.insert(customer).values({
+        businessId: t.businessId,
+        createdByUserId: t.owner.userId,
+        firstName: "Vehicle",
+        lastName: "Owner",
+        displayName: `Vehicle Owner ${randomUUID()}`,
+      }).returning();
+      const [r] = await tx.insert(vehicle).values({
+        businessId: t.businessId,
+        createdByUserId: t.owner.userId,
+        customerId: c.id,
+        year: 2024,
+        make: "BMW",
+        model: "X5",
+        plate: `T${randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase()}`,
+        plateNormalized: `T${randomUUID().replaceAll("-", "").slice(0, 6).toUpperCase()}`,
+      }).returning();
       return r.id;
     }),
   "app.activity": async (t) =>
@@ -91,7 +121,6 @@ const builders: Record<string, Builder> = {
       eventType: "test.fixture",
       payload: { fixture: true },
     });
-    // Resolving an event to its business is a worker step.
     const w = await rawClient("worker");
     await w.query("UPDATE app.webhook_event SET business_id = $1 WHERE id = $2", [t.businessId, eventId]);
     await w.end();
@@ -112,8 +141,6 @@ async function tenantTables(): Promise<string[]> {
 }
 
 const ROLES = ["app", "worker", "admin"] as const;
-// Global tables that carry business_id (spec issue 2) are readable across tenants
-// only by these roles, through role-specific policies; app_user stays isolated.
 const GLOBAL_READERS: Record<string, string[]> = {
   "app.support_session": ["worker", "admin"],
   "app.webhook_event": ["worker", "admin"],
@@ -131,7 +158,7 @@ async function countAs(role: (typeof ROLES)[number], ctx: SeededTenant, table: s
       return rows[0].n as number;
     }, roleOpt(role));
   } catch (e) {
-    if ((e as { code?: string }).code === "42501") return 0; // no grant at all: also zero rows
+    if ((e as { code?: string }).code === "42501") return 0;
     throw e;
   }
 }
@@ -154,13 +181,11 @@ describe("RLS presence check (CI rule)", () => {
       await c.query("ALTER TABLE app.half_done ENABLE ROW LEVEL SECURITY");
       await c.query("ALTER TABLE app.half_done FORCE ROW LEVEL SECURITY");
       const v = await findRlsViolations(c);
-      expect(v).toEqual(
-        expect.arrayContaining([
-          { table: "app.bad_tenant_table", problems: ["RLS not enabled", "RLS not forced", "no permissive policy"] },
-          { table: "scratch_ci.bad_other_schema", problems: ["RLS not enabled", "RLS not forced", "no permissive policy"] },
-          { table: "app.half_done", problems: ["no permissive policy"] },
-        ]),
-      );
+      expect(v).toEqual(expect.arrayContaining([
+        { table: "app.bad_tenant_table", problems: ["RLS not enabled", "RLS not forced", "no permissive policy"] },
+        { table: "scratch_ci.bad_other_schema", problems: ["RLS not enabled", "RLS not forced", "no permissive policy"] },
+        { table: "app.half_done", problems: ["no permissive policy"] },
+      ]));
     } finally {
       await c.query("ROLLBACK");
       await c.end();
@@ -210,7 +235,6 @@ describe("generated tenant isolation for every business_id table", async () => {
 
       it("owner tenant can see its own row", async () => {
         const visible = await Promise.all(ROLES.map((r) => countAs(r, A, table, "id = $1", [rowId])));
-        // At least one runtime role reads it inside A's context (proves the fixture landed).
         expect(Math.max(...visible)).toBe(1);
       });
 
