@@ -115,7 +115,11 @@ export async function createPreviewOwnerAccount(_: AuthFormState | null, form: F
   if (parsed.data.password !== parsed.data.confirmPassword) return { ok: false, message: "Passwords do not match." };
 
   const supabase = await supabaseServer();
-  const { data, error } = await supabase.auth.signUp({ email, password: parsed.data.password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: parsed.data.password,
+    options: { emailRedirectTo: `${base()}/dev/setup-owner` },
+  });
   if (error) {
     if (error.message.toLowerCase().includes("already")) return { ok: true, message: "Preview account already exists. Use Finish setup below." };
     return { ok: false, message: "We could not create the preview account. Please try again." };
