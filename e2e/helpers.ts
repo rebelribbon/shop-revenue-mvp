@@ -1,9 +1,8 @@
-import { readFileSync, existsSync } from "node:fs";
 import { expect, type Page } from "@playwright/test";
 
 const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
+export const E2E_PASSWORD = process.env.E2E_TEST_PASSWORD ?? "ShopRevenueLocal123!";
 
-// Latest email to `to` received after `since`, polled from Mailpit's API.
 export async function waitForEmail(to: string, since: number, match: RegExp): Promise<string> {
   for (let i = 0; i < 40; i++) {
     const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
@@ -19,42 +18,20 @@ export async function waitForEmail(to: string, since: number, match: RegExp): Pr
   throw new Error(`no email to ${to} matching ${match}`);
 }
 
-export const signInLink = (to: string, since: number) => waitForEmail(to, since, /http:\/\/127\.0\.0\.1:54321\/auth\/v1\/verify\?[^\s"'<>]+/);
+export const recoveryLink = (to: string, since: number) => waitForEmail(to, since, /http:\/\/127\.0\.0\.1:54321\/auth\/v1\/verify\?[^\s"'<>]+/);
 export const inviteLink = (to: string, since: number) => waitForEmail(to, since, /http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43}/);
 
-// SMS codes from the fake messaging adapter's dev inbox (Section 23 "Local").
-export async function waitForSmsCode(to: string, since: number): Promise<string> {
-  for (let i = 0; i < 40; i++) {
-    if (existsSync(".dev-inbox/messages.jsonl")) {
-      const lines = readFileSync(".dev-inbox/messages.jsonl", "utf8").trim().split("\n").reverse();
-      for (const l of lines) {
-        const m = JSON.parse(l) as { to: string; at: string; body: string };
-        if (m.to === to && new Date(m.at).getTime() >= since - 1000) {
-          const code = m.body.match(/\b(\d{6})\b/);
-          if (code) return code[1];
-        }
-      }
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`no SMS code to ${to}`);
-}
-
-export async function signInByEmail(page: Page, email: string, path = "/sign-in") {
-  const since = Date.now();
+export async function signInWithPassword(page: Page, email: string, path = "/sign-in", password = E2E_PASSWORD) {
   await page.goto(path);
   await page.getByLabel("Email").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-  await expect(page.getByRole("status")).toContainText("If that address has access");
-  await page.goto(await signInLink(email, since));
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-export async function signInBySms(page: Page, phoneE164: string, typed: string) {
-  const since = Date.now();
-  await page.goto("/sign-in");
-  await page.getByRole("button", { name: "Use my mobile number instead" }).click();
-  await page.getByLabel("Mobile number").fill(typed);
-  await page.getByRole("button", { name: "Text me a code" }).click();
-  await page.getByLabel("6-digit code").fill(await waitForSmsCode(phoneE164, since));
-  await page.getByRole("button", { name: "Sign in" }).click();
+export async function setInvitePassword(page: Page, email: string, since: number, password = E2E_PASSWORD) {
+  await page.goto(await recoveryLink(email, since));
+  await expect(page.getByRole("heading", { name: /password/i })).toBeVisible();
+  await page.getByLabel("New password").fill(password);
+  await page.getByLabel("Confirm password").fill(password);
+  await page.getByRole("button", { name: "Save password" }).click();
 }
