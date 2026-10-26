@@ -25,19 +25,26 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       )}
       <header className="topbar">
         <strong>{b?.dba || b?.legalName}</strong>
-        <nav aria-label="Main">
+        <nav className="desktop-nav" aria-label="Main">
           <Link href="/app">Money</Link>
           <Link href="/app/customers">Customers</Link>
-          <Link href="/app/settings/team">Team</Link>
-          {s.role !== "staff" && <Link href="/app/settings/support-access">Support access</Link>}
+          <Link href="/app/schedule">Schedule</Link>
+          <Link href="/app/settings">Settings</Link>
           {!s.supportSession && (
             <form action="/auth/sign-out" method="post" style={{ display: "inline" }}>
-              <button className="btn secondary" style={{ marginTop: 0, minHeight: 32, padding: "2px 10px" }}>Sign out</button>
+              <button className="btn secondary compact-btn">Sign out</button>
             </form>
           )}
         </nav>
       </header>
       {children}
+      <nav className="mobile-nav" aria-label="Mobile navigation">
+        <Link href="/app"><span aria-hidden>◉</span><small>Money</small></Link>
+        <Link href="/app/customers"><span aria-hidden>◎</span><small>Customers</small></Link>
+        <Link className="mobile-new" href="/app/new"><span aria-hidden>＋</span><small>New</small></Link>
+        <Link href="/app/schedule"><span aria-hidden>▣</span><small>Schedule</small></Link>
+        <Link href="/app/settings"><span aria-hidden>☰</span><small>Settings</small></Link>
+      </nav>
     </>
   );
 }
