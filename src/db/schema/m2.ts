@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, foreignKey, index, integer, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { check, foreignKey, index, integer, jsonb, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { app, tenantColumns } from "./common";
 import { business, user } from "./tenancy";
 
@@ -96,3 +96,34 @@ export const appointment = app.table(
     foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "appointment_created_by_fk" }),
   ],
 );
+
+
+export const asset = app.table("asset", {
+  ...tenantColumns(), customerId: uuid("customer_id").notNull(),
+  type: text("type").notNull().default("vehicle"), displayName: text("display_name").notNull(),
+  status: text("status").notNull().default("active"),
+}, t => [unique("asset_business_id_id_key").on(t.businessId,t.id),
+  foreignKey({columns:[t.businessId,t.customerId],foreignColumns:[customer.businessId,customer.id]}),
+  index("asset_customer_idx").on(t.businessId,t.customerId)]);
+
+export const assetReading = app.table("asset_reading", {
+  ...tenantColumns(), assetId: uuid("asset_id").notNull(),
+  readingType: text("reading_type").notNull().default("odometer"), value: integer("value").notNull(),
+  unit: text("unit").notNull().default("mi"), readOn: timestamp("read_on",{withTimezone:true}).notNull().defaultNow(),
+  source: text("source").notNull().default("manual"),
+}, t => [unique("asset_reading_business_id_id_key").on(t.businessId,t.id),
+  foreignKey({columns:[t.businessId,t.assetId],foreignColumns:[asset.businessId,asset.id]}),
+  index("asset_reading_history_idx").on(t.businessId,t.assetId,t.readOn,t.id)]);
+
+export const note = app.table("note", {
+  ...tenantColumns(), customerId: uuid("customer_id").notNull(), vehicleId: uuid("vehicle_id"),
+  body: text("body").notNull(), deletedAt: timestamp("deleted_at",{withTimezone:true}),
+}, t => [unique("note_business_id_id_key").on(t.businessId,t.id),
+  foreignKey({columns:[t.businessId,t.customerId],foreignColumns:[customer.businessId,customer.id]}),
+  foreignKey({columns:[t.businessId,t.customerId,t.vehicleId],foreignColumns:[vehicle.businessId,vehicle.customerId,vehicle.id]}),
+  index("note_customer_idx").on(t.businessId,t.customerId,t.createdAt)]);
+
+export const vinDecodeCache = app.table("vin_decode_cache", {
+  vin: text("vin").primaryKey(), payload: jsonb("payload").$type<{year:number|null;make:string|null;model:string|null;trim:string|null}>().notNull(),
+  decodedAt: timestamp("decoded_at",{withTimezone:true}).notNull().defaultNow(),
+});

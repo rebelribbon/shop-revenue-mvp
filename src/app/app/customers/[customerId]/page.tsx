@@ -1,3 +1,5 @@
+import { Notes, NoteRevision } from "@/components/memory";
+import { listNotes } from "@/domain/memory";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { VehicleFields } from "@/components/vehicle-fields";
@@ -9,8 +11,8 @@ import { requireShopSession } from "@/server/views/shop";
 export default async function CustomerDetailPage(props: { params: Promise<{ customerId: string }> }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
-  const [data, timeline] = await withTenant(s.businessId, s.actor, async (tx) =>
-    Promise.all([getCustomerWithVehicles(tx, customerId), listCustomerTimeline(tx, customerId)]),
+  const [data, timeline, notes] = await withTenant(s.businessId, s.actor, async (tx) =>
+    Promise.all([getCustomerWithVehicles(tx, customerId), listCustomerTimeline(tx, customerId), listNotes(tx,customerId)]),
   );
   const c = data.customer;
   return (
@@ -29,6 +31,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
         <ActionForm action={archiveCustomerAction} hidden={{ customerId }} submitLabel="Archive customer" variant="danger" confirm="Archive this customer and their active vehicles? Their history stays in Shop Revenue." />
       </div>
 
+      <Notes customerId={customerId} notes={notes}/>
       <h2>Vehicles</h2>
       <div className="card table-wrap">
         <table>
@@ -53,9 +56,10 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
       <h2>History</h2>
       <div className="card">
         {timeline.length ? <div className="timeline">{timeline.map((event) => (
-          <div className="timeline-item" key={event.id}><strong>{event.summary}</strong><div className="muted">{event.occurredAt.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}</div></div>
+          <div className="timeline-item" key={event.id}><strong>{event.summary}</strong>{event.kind.startsWith("note.") && <NoteRevision data={event.data}/>}<div className="muted">{event.occurredAt.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" })}</div></div>
         ))}</div> : <p className="muted">No history yet.</p>}
       </div>
     </main>
   );
 }
+

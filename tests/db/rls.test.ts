@@ -4,7 +4,7 @@
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { withAdmin } from "@/db/admin";
-import { appointment, customer, file, location, membership, requestIdempotency, supportSession, vehicle } from "@/db/schema";
+import { assetReading, note, appointment, customer, file, location, membership, requestIdempotency, supportSession, vehicle } from "@/db/schema";
 import { ingestWebhookEvent, withTenant, type Actor } from "@/db/tenant";
 import { audit, recordActivity } from "@/domain/records";
 import { eq, sql } from "drizzle-orm";
@@ -23,6 +23,19 @@ beforeAll(async () => {
 
 type Builder = (t: SeededTenant) => Promise<string>;
 const builders: Record<string, Builder> = {
+  "app.asset": async t => builders["app.vehicle"](t),
+  "app.asset_reading": async t => {
+    const id=await builders["app.vehicle"](t);
+    return withTenant(t.businessId,t.owner.actor,async tx => {
+      const [r]=await tx.insert(assetReading).values({businessId:t.businessId,assetId:id,value:100}).returning(); return r.id;
+    });
+  },
+  "app.note": async t => {
+    const id=await builders["app.customer"](t);
+    return withTenant(t.businessId,t.owner.actor,async tx => {
+      const [r]=await tx.insert(note).values({businessId:t.businessId,customerId:id,body:"RLS note"}).returning(); return r.id;
+    });
+  },
   "app.location": async (t) =>
     (await withAdmin({ internalUserId: adminId }, async (tx) => {
       await tx.execute(sql`SELECT set_config('app.business_id', ${t.businessId}, true)`);
@@ -240,3 +253,4 @@ describe("cross-tenant writes are rejected", () => {
     expect(ids.every((r) => r.business_id === B.businessId)).toBe(true);
   });
 });
+

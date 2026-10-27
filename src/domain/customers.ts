@@ -195,8 +195,9 @@ export async function listCustomerTimeline(tx: TenantTx, customerId: string) {
   const subject = ids.length
     ? or(and(eq(activity.subjectType, "customer"), eq(activity.subjectId, customerId)), and(eq(activity.subjectType, "vehicle"), inArray(activity.subjectId, ids)))
     : and(eq(activity.subjectType, "customer"), eq(activity.subjectId, customerId));
-  return tx.select({ id: activity.id, kind: activity.kind, summary: activity.summary, occurredAt: activity.occurredAt })
+  return tx.select({ id: activity.id, kind: activity.kind, summary: activity.summary, data: activity.data, occurredAt: activity.occurredAt })
     .from(activity)
     .where(and(eq(activity.businessId, tx.businessId), subject))
     .orderBy(desc(activity.occurredAt)).limit(100);
 }
+
