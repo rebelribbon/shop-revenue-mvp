@@ -33,11 +33,12 @@ const requireMode = (mode: boolean) => {
     );
 };
 export async function connectShop(shop: Shop, meta: RequestMeta) {
+  const base = paymentBaseUrl();
+  const stripe = stripeClient();
   const row = await withTenant(shop.businessId, shop.actor, (tx) =>
     prepareStripeConnection(tx),
   );
   requireMode(row.livemode);
-  const stripe = stripeClient();
   let accountId = row.accountId;
   if (!accountId) {
     const profile = await withTenant(shop.businessId, shop.actor, (tx) =>
@@ -82,7 +83,6 @@ export async function connectShop(shop: Shop, meta: RequestMeta) {
       });
     });
   }
-  const base = paymentBaseUrl();
   const link = await stripe.v2.core.accountLinks.create({
     account: accountId,
     use_case: {
@@ -116,6 +116,12 @@ export async function refreshShopConnection(businessId: string) {
   return { ...c, cardPaymentsStatus: status };
 }
 export async function beginInvoiceCheckout(token: string, meta: RequestMeta) {
+  const base = paymentBaseUrl();
+  if (!process.env.STRIPE_WEBHOOK_SECRET)
+    throw new AppError(
+      "PROVIDER_UNAVAILABLE",
+      "Online payment confirmation is not configured yet.",
+    );
   const context = await resolveInvoicePaymentToken(token);
   await refreshShopConnection(context.businessId);
   const a = await withPaymentTenant(context.businessId, (tx) =>
@@ -135,7 +141,6 @@ export async function beginInvoiceCheckout(token: string, meta: RequestMeta) {
         "CONFLICT",
         "The shop needs to reconcile an earlier checkout attempt.",
       );
-    const base = paymentBaseUrl();
     session = await stripe.checkout.sessions.create(
       {
         mode: "payment",

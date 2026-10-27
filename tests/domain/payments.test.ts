@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
-import { beforeAll,describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 import {
   estimateVersion,
   invoiceCheckout,
@@ -31,7 +31,10 @@ import {
 } from "@/domain/payments";
 import { newToken } from "@/lib/tokens";
 import { meta, seedTenant } from "../helpers/fixtures";
-beforeAll(()=>{process.env.PAYMENTS_BASE_URL="https://payments.example.test";});
+beforeAll(() => {
+  process.env.PAYMENTS_BASE_URL = "https://payments.example.test";
+  process.env.STRIPE_WEBHOOK_SECRET = "synthetic-webhook-fixture";
+});
 
 async function fixture() {
   const t = await seedTenant("Stripe", { withStaff: true });
