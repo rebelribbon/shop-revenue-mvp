@@ -35,7 +35,7 @@ export async function revokeEstimate(tx:TenantTx,meta:RequestMeta,id:string){
  const [row]=await tx.update(estimateVersion).set({revokedAt:new Date()}).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.id,id))).returning();if(!row)throw notFound("That estimate");
  await audit(tx,meta,{action:"estimate.revoked",targetType:"estimate_version",targetId:id});return {id};
 }
-export type PublicEstimate={id:string;version:number;snapshot:EstimateSnapshot;expiresAt:string;authorization:null|{signerName:string;approvedLineIds:string[];signedAt:string;consentText:string}};
+export type PublicEstimate={id:string;version:number;supplementReason:string|null;snapshot:EstimateSnapshot;expiresAt:string;authorization:null|{signerName:string;approvedLineIds:string[];signedAt:string;consentText:string}};
 export async function readPublicEstimate(token:string):Promise<PublicEstimate|null>{
  if(!isWellFormedToken(token))return null;
  return runInContext(null,{type:"customer",id:null},async tx=>{const r=await tx.execute(sql`select app.read_estimate(${hashToken(token)}) as data`);return (r.rows[0]?.data??null) as PublicEstimate|null;});

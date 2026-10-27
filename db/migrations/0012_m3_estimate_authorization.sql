@@ -31,7 +31,7 @@ CREATE POLICY capability_authorization ON app.estimate_authorization TO migratio
 CREATE POLICY capability_activity ON app.activity FOR INSERT TO migration_owner WITH CHECK(business_id=app.current_business_id());
 CREATE POLICY capability_audit ON app.audit_event FOR INSERT TO migration_owner WITH CHECK(business_id=app.current_business_id());
 CREATE FUNCTION app.read_estimate(p_hash text) RETURNS jsonb LANGUAGE sql SECURITY DEFINER SET search_path=pg_catalog,app AS $$
- SELECT jsonb_build_object('id',e.id,'version',e.version,'snapshot',e.snapshot,'expiresAt',e.expires_at,
+ SELECT jsonb_build_object('id',e.id,'version',e.version,'supplementReason',e.supplement_reason,'snapshot',e.snapshot,'expiresAt',e.expires_at,
   'authorization',(SELECT jsonb_build_object('signerName',a.signer_name,'approvedLineIds',a.approved_line_ids,'signedAt',a.created_at,'consentText',a.consent_text) FROM app.estimate_authorization a WHERE a.version_id=e.id))
  FROM app.estimate_version e WHERE e.token_hash=p_hash AND e.revoked_at IS NULL AND e.expires_at>now()
 $$;
