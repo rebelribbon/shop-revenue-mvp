@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import {
   invoiceCheckout,
   invoicePayment,
@@ -10,6 +10,7 @@ import { withTenant, type Actor } from "@/db/tenant";
 import { AppError } from "@/lib/errors";
 import { paymentBaseUrl, stripeClient, stripeLivemode } from "@/lib/stripe";
 import {
+  lockInvoice,
   getStripeConnection,
   prepareStripeConnection,
   reserveCheckout,
@@ -219,20 +220,57 @@ export async function requestStripeRefund(
         "CONFLICT",
         "Reconcile the earlier refund before trying again.",
       );
-    result = await stripe.refunds.create(
-      {
-        payment_intent: payment.stripePaymentIntentId!,
-        amount: refund.amountCents,
-        metadata: {
-          refund_request_id: refund.id,
-          business_id: shop.businessId,
+    try {
+      result = await stripe.refunds.create(
+        {
+          payment_intent: payment.stripePaymentIntentId!,
+          amount: refund.amountCents,
+          metadata: {
+            refund_request_id: refund.id,
+            business_id: shop.businessId,
+          },
         },
-      },
-      {
-        stripeAccount: payment.stripeAccountId!,
-        idempotencyKey: `invoice-refund-${refund.id}`,
-      },
-    );
+        {
+          stripeAccount: payment.stripeAccountId!,
+          idempotencyKey: `invoice-refund-${refund.id}`,
+        },
+      );
+    } catch (error) {
+      // Stripe's explicit validation rejection means this request created no
+      // refund. Unknown network outcomes stay reserved and retry the same key.
+      if (
+        error instanceof Stripe.errors.StripeInvalidRequestError &&
+        error.statusCode === 400 &&
+        !["idempotency_key_in_use", "lock_timeout"].includes(error.code ?? "")
+      ) {
+        await withPaymentTenant(shop.businessId, async (tx) => {
+          await lockInvoice(tx, payment.invoiceId);
+          const [row] = await tx
+            .update(invoiceRefund)
+            .set({ status: "failed", updatedAt: new Date() })
+            .where(
+              and(
+                eq(invoiceRefund.businessId, tx.businessId),
+                eq(invoiceRefund.id, refund.id),
+                eq(invoiceRefund.status, "creating"),
+              ),
+            )
+            .returning();
+          if (row)
+            await audit(tx, meta, {
+              action: "invoice.refund_rejected",
+              targetType: "invoice_refund",
+              targetId: row.id,
+              after: { providerCode: error.code ?? "invalid_request" },
+            });
+        });
+        throw new AppError(
+          "VALIDATION",
+          "Stripe rejected this refund request. Refresh payment status and check the remaining refundable amount before submitting a new request.",
+        );
+      }
+      throw error;
+    }
   }
   await withPaymentTenant(shop.businessId, (tx) =>
     settleRefund(tx, meta, payment.stripeAccountId!, result),

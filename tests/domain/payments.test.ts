@@ -611,3 +611,67 @@ it("keeps uncertain network attempts reserved and retries the same provider idem
     spy.mockRestore();
   }
 });
+
+it("releases definitively rejected refunds while preserving uncertain attempts", async () => {
+  const { vi } = await import("vitest");
+  const { default: Stripe } = await import("stripe");
+  const stripeLib = await import("@/lib/stripe");
+  const { requestStripeRefund } = await import("@/domain/stripe-payments");
+  const f = await fixture();
+  const p = await pay(f);
+  const provider = {
+    refunds: {
+      create: vi
+        .fn()
+        .mockRejectedValueOnce(
+          new Stripe.errors.StripeInvalidRequestError({
+            message: "Amount exceeds remaining funds",
+            statusCode: 400,
+            type: "invalid_request_error",
+            code: "charge_already_refunded",
+          }),
+        )
+        .mockRejectedValueOnce(new Error("network timeout")),
+    },
+  };
+  const spy = vi
+    .spyOn(stripeLib, "stripeClient")
+    .mockReturnValue(
+      provider as unknown as ReturnType<typeof stripeLib.stripeClient>,
+    );
+  try {
+    await expect(
+      requestStripeRefund(
+        { businessId: f.businessId, actor: f.owner.actor },
+        meta(),
+        {
+          paymentId: p.id,
+          amountCents: 10000,
+          reason: "Rejected",
+          requestId: randomUUID(),
+        },
+      ),
+    ).rejects.toThrow(/rejected/);
+    const retry = {
+      paymentId: p.id,
+      amountCents: 10000,
+      reason: "New attempt",
+      requestId: randomUUID(),
+    };
+    await expect(
+      requestStripeRefund(
+        { businessId: f.businessId, actor: f.owner.actor },
+        meta(),
+        retry,
+      ),
+    ).rejects.toThrow(/timeout/);
+    await expect(
+      withTenant(f.businessId, f.owner.actor, (tx) =>
+        reserveRefund(tx, meta(), { ...retry, requestId: randomUUID() }),
+      ),
+    ).rejects.toThrow(/exceeds/);
+    expect((await readPublicInvoice(f.token))?.paidCents).toBe(10000);
+  } finally {
+    spy.mockRestore();
+  }
+});

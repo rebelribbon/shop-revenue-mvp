@@ -120,6 +120,10 @@ export function StripeRefundForm({
             });
             if (!r.ok) {
               setMessage(r.error.message);
+              if (r.error.code === "VALIDATION") {
+                setRequestId(crypto.randomUUID());
+                setConfirming(false);
+              }
               return;
             }
             setMessage(
