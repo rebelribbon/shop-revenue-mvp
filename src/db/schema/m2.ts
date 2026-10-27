@@ -31,6 +31,15 @@ export const customer = app.table(
   ],
 );
 
+export const asset = app.table("asset", {
+  ...tenantColumns(), customerId: uuid("customer_id").notNull(),
+  type: text("type").notNull().default("vehicle"), displayName: text("display_name").notNull(),
+  status: text("status").notNull().default("active"),
+}, t => [unique("asset_business_id_id_key").on(t.businessId,t.id),
+  foreignKey({columns:[t.businessId,t.customerId],foreignColumns:[customer.businessId,customer.id]}),
+  index("asset_customer_idx").on(t.businessId,t.customerId)]);
+
+
 export const vehicle = app.table(
   "vehicle",
   {
@@ -62,6 +71,7 @@ export const vehicle = app.table(
     check("vehicle_plate_normalized_check", sql`${t.plateNormalized} IS NULL OR ${t.plateNormalized} ~ '^[A-Z0-9]+$'`),
     check("vehicle_mileage_check", sql`${t.mileage} IS NULL OR ${t.mileage} BETWEEN 0 AND 3000000`),
     foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "vehicle_business_fk" }),
+    foreignKey({columns:[t.businessId,t.id],foreignColumns:[asset.businessId,asset.id],name:"vehicle_asset_tenant_fk"}),
     foreignKey({ columns: [t.businessId, t.customerId], foreignColumns: [customer.businessId, customer.id], name: "vehicle_customer_tenant_fk" }),
     foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "vehicle_created_by_fk" }),
   ],
@@ -97,14 +107,6 @@ export const appointment = app.table(
   ],
 );
 
-
-export const asset = app.table("asset", {
-  ...tenantColumns(), customerId: uuid("customer_id").notNull(),
-  type: text("type").notNull().default("vehicle"), displayName: text("display_name").notNull(),
-  status: text("status").notNull().default("active"),
-}, t => [unique("asset_business_id_id_key").on(t.businessId,t.id),
-  foreignKey({columns:[t.businessId,t.customerId],foreignColumns:[customer.businessId,customer.id]}),
-  index("asset_customer_idx").on(t.businessId,t.customerId)]);
 
 export const assetReading = app.table("asset_reading", {
   ...tenantColumns(), assetId: uuid("asset_id").notNull(),
