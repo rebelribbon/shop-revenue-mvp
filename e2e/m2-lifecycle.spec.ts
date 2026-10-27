@@ -36,14 +36,14 @@ test("customer and vehicle edits persist, and archive preserves history", async 
   await expect(page.getByText(/12,600 mi —/)).toBeVisible();
   await page.getByLabel("New note",{exact:true}).fill("Inspect brake pads next visit");
   await page.getByRole("button",{name:"Add note",exact:true}).click();
-  await expect(page.getByText("Inspect brake pads next visit",{exact:true})).toBeVisible();
+  await expect(page.locator("article > p").filter({hasText:"Inspect brake pads next visit"})).toBeVisible();
   await page.getByText("Edit or remove note",{exact:true}).click();
   await page.getByLabel("Note text",{exact:true}).fill("Brake pads inspected");
   await page.getByRole("button",{name:"Save note",exact:true}).click();
-  await expect(page.getByText("Brake pads inspected",{exact:true})).toBeVisible();
+  await expect(page.locator("article > p").filter({hasText:"Brake pads inspected"})).toBeVisible();
   await page.getByRole("button",{name:"Remove note",exact:true}).click();
   await page.getByRole("button",{name:"Yes, continue",exact:true}).click();
-  await expect(page.getByText("Brake pads inspected",{exact:true})).toHaveCount(0);
+  await expect(page.locator("article > p").filter({hasText:"Brake pads inspected"})).toHaveCount(0);
   await page.reload();
   await expect(page.getByText(/12,000 mi —/)).toBeVisible();
   await expect(page.getByText(/12,600 mi —/)).toBeVisible();

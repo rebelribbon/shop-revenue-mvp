@@ -3,7 +3,7 @@ import { addNoteAction, editNoteAction, deleteNoteAction } from "@/server/action
 import type { listNotes, listReadings } from "@/domain/memory";
 
 export function Notes({customerId,vehicleId,notes}:{customerId:string;vehicleId?:string;notes:Awaited<ReturnType<typeof listNotes>>}) {
-  return <section aria-label="Notes"><h2>Notes</h2>
+  return <section aria-label="Note entries"><h2>Notes</h2>
     <div className="card"><ActionForm action={addNoteAction} hidden={{customerId,...(vehicleId?{vehicleId}:{})}} submitLabel="Add note">
       <label htmlFor="new-note">New note</label><textarea id="new-note" name="body" rows={3} required maxLength={5000}/>
     </ActionForm></div>
