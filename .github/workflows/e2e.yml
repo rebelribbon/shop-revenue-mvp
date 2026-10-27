@@ -58,3 +58,49 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+
+
+  preview-ci:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/m2-customer-vehicle-memory'
+    uses: ./.github/workflows/ci.yml
+
+  preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/m2-customer-vehicle-memory'
+    needs: [e2e, preview-ci]
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
+      VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate preview and verify tenant protections
+        env:
+          DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
+        run: |
+          test -n "$DATABASE_URL_MIGRATION"
+          node --input-type=module -e '
+            const u = new URL(process.env.DATABASE_URL_MIGRATION);
+            if (!`${u.hostname} ${u.username}`.includes("gcclcuvdrqqllolxqhok")) {
+              console.error("Refusing migration: unexpected preview database"); process.exit(1);
+            }
+          '
+          pnpm db:migrate > migrate.log 2>&1 || { sed -E 's#postgres(ql)?://[^[:space:]]+#postgres://[redacted]#g' migrate.log; exit 1; }
+          pnpm db:check-rls
+          cat migrate.log
+      - name: Build and deploy tested preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          test -n "$VERCEL_TOKEN"
+          npx --yes vercel@63.1.0 pull --yes --environment=preview
+          npx --yes vercel@63.1.0 build
+          npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
+          scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+          echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"

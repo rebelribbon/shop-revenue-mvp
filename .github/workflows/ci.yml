@@ -7,7 +7,7 @@ on:
   workflow_call:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -77,3 +77,4 @@ jobs:
 
       - name: Test suites (real Postgres, production roles, RLS and triggers)
         run: pnpm test
+
