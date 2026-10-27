@@ -40,6 +40,7 @@ CREATE FUNCTION app.authorize_estimate(p_hash text,p_name text,p_ids jsonb,p_ip 
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog,app AS $$
 DECLARE e app.estimate_version; result uuid; consent text := 'I have reviewed this estimate version. I authorize only the selected items at the displayed prices and decline all unselected items. My typed name is my electronic signature.';
 BEGIN
+ IF app.current_actor_type() IS DISTINCT FROM 'customer' THEN RAISE EXCEPTION 'INVALID_TRANSITION: customer authorization context required'; END IF;
  SELECT * INTO e FROM app.estimate_version WHERE token_hash=p_hash FOR UPDATE;
  IF NOT FOUND OR e.revoked_at IS NOT NULL OR e.expires_at<=now() THEN RAISE EXCEPTION 'INVALID_TRANSITION: estimate unavailable'; END IF;
  IF length(btrim(p_name)) NOT BETWEEN 1 AND 200 OR jsonb_typeof(p_ids) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'INVALID_TRANSITION: invalid signature'; END IF;

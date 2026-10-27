@@ -1,5 +1,6 @@
 import {it,expect} from "vitest";
 import {and,eq,sql} from "drizzle-orm";
+import {hashToken} from "@/lib/tokens";
 import {withTenant} from "@/db/tenant";
 import {estimateVersion,estimateAuthorization} from "@/db/schema";
 import {createCustomer,createVehicle} from "@/domain/customers";
@@ -15,6 +16,7 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
  const first=await withTenant(a.businessId,a.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:saved.version,taxBps:825,supplementReason:"",terms:"Call before additional work."}));const token=first.path.split("/").pop()!;
  const visible=await readPublicEstimate(token);expect(visible?.snapshot.totalCents).toBe(48713);expect(JSON.stringify(visible)).not.toMatch(/unitCost|costRate|actualHours|GrossProfit|12345/);
  await expect(signEstimate(token,"Customer",["fake-line"],meta())).rejects.toThrow();
+ await expect(withTenant(a.businessId,{type:"support",id:null},tx=>tx.execute(sql`select app.authorize_estimate(${hashToken(token)},'Support','[]'::jsonb,null,'blocked-support')`),{supportAudit:true})).rejects.toThrow();
  await signEstimate(token,"Customer One",["part-0"],meta());
  const signed=await readPublicEstimate(token);expect(signed?.authorization?.approvedLineIds).toEqual(["part-0"]);
  await expect(signEstimate(token,"Duplicate",[],meta())).rejects.toThrow();
