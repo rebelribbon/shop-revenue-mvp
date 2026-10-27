@@ -4,12 +4,13 @@ Implemented on `m4-invoices-payments`:
 
 - Shop-owned Accounts v2 merchant accounts with a full Stripe Dashboard, direct charges, Stripe fee collection and Stripe loss liability. No application transaction fee.
 - Hosted onboarding and authenticated, owner-only notification-banner sessions. Account details and payment credentials never enter the application database or logs.
+- Stable checkout return URLs with short-lived, HttpOnly per-attempt return cookies; invoice link rotation does not change Stripe idempotency parameters. Return pages never declare a payment successful.
 - Invoice-token checkout, USD balances in integer cents, server-side capability checks, stable provider idempotency, and one active checkout per invoice.
 - Signed webhook ingestion before processing. Payment processing occurs before acknowledgement; failures return 503 for Stripe retry even without a hosted queue worker. Queue workers register the same idempotent handlers.
 - Amount, currency, account, invoice, checkout and mode verification against the provider's current Checkout session. Return URLs never mark invoices paid. Duplicate and out-of-order notifications preserve one ledger entry per provider payment/refund.
 - Owner-only partial/full refund requests with durable identity and provider idempotency. Pending refunds preserve the current paid balance; only confirmed successes append a negative entry. Manual corrections cannot reverse Stripe payments.
 - Tenant-isolated, forced-RLS payment tables. Active online attempts block manual money changes and invoice voids; owners can expire an unpaid Checkout session after Stripe confirms its status.
-- Status refresh reconciles active attempts, requested refunds, and refunds on the most recent 100 online payments, including refunds initiated in Stripe Dashboard. A network timeout retains the reservation until the provider's result is known.
+- Status refresh reconciles active attempts, requested refunds, and refunds on the most recent 100 online payments, including refunds initiated in Stripe Dashboard. A network timeout retains the reservation until the provider's result is known. Owners can safely retry an uncertain refund using its original request identity.
 
 ## Environment configuration
 

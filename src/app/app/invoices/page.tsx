@@ -177,9 +177,14 @@ export default async function InvoicesPage() {
           {data.refunds
             .filter((r) => r.invoiceId === i.id)
             .map((r) => (
-              <p key={r.id}>
+              <div key={r.id}>
                 Refund: {formatMoney(r.amountCents)} · {r.status} · {r.reason}
-              </p>
+                {s.role === "owner" &&
+                  s.actor.type !== "support" &&
+                  ["creating", "pending"].includes(r.status) && (
+                    <StripeButton kind="retry-refund" checkoutId={r.id} />
+                  )}
+              </div>
             ))}
           {!i.voidedAt &&
             i.balanceCents > 0 &&

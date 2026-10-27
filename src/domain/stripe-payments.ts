@@ -168,8 +168,8 @@ export async function beginInvoiceCheckout(token: string, meta: RequestMeta) {
         },
         integration_identifier: "shop_revenue_kqjvmbxz",
         expires_at: Math.floor(a.expiresAt.getTime() / 1000),
-        success_url: `${base}/invoice/${token}?payment=processing`,
-        cancel_url: `${base}/invoice/${token}?payment=canceled`,
+        success_url: `${base}/payment-return/${a.id}?outcome=processing`,
+        cancel_url: `${base}/payment-return/${a.id}?outcome=canceled`,
       },
       {
         stripeAccount: a.accountId,
@@ -188,7 +188,7 @@ export async function beginInvoiceCheckout(token: string, meta: RequestMeta) {
         ? "That checkout expired. Please try the Pay button again."
         : "Your payment is processing. Refresh this invoice shortly.",
     );
-  return { url: session.url };
+  return { url: session.url, checkoutId: a.id };
 }
 export async function requestStripeRefund(
   shop: Shop,
@@ -200,12 +200,12 @@ export async function requestStripeRefund(
     requestId: string;
   },
 ) {
+  const stripe = stripeClient();
   const { refund, payment } = await withTenant(
     shop.businessId,
     shop.actor,
     (tx) => reserveRefund(tx, meta, input),
   );
-  const stripe = stripeClient();
   let result: Stripe.Refund;
   if (refund.stripeRefundId)
     result = await stripe.refunds.retrieve(

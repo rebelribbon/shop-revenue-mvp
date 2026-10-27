@@ -493,6 +493,7 @@ it("uses account-scoped Checkout idempotency and reconciles confirmed provider e
     );
     expect(params).not.toHaveProperty("payment_method_types");
     expect(params).not.toHaveProperty("application_fee_amount");
+    expect(params.success_url).not.toContain(f.token);
     expect(params.integration_identifier).toMatch(/_[a-z]{8}$/);
     await gateway.beginInvoiceCheckout(f.token, meta());
     expect(create).toHaveBeenCalledTimes(1);
@@ -587,11 +588,15 @@ it("keeps uncertain network attempts reserved and retries the same provider idem
     await expect(beginInvoiceCheckout(f.token, meta())).rejects.toThrow(
       /timeout/,
     );
-    await expect(beginInvoiceCheckout(f.token, meta())).rejects.toThrow(
+    const rotated = await withTenant(f.businessId, f.owner.actor, (tx) =>
+      rotateInvoiceLink(tx, meta(), f.invoiceId),
+    );
+    const nextToken = rotated.path.split("/").pop()!;
+    await expect(beginInvoiceCheckout(nextToken, meta())).rejects.toThrow(
       /timeout/,
     );
     expect(create.mock.calls[0]).toEqual(create.mock.calls[1]);
-    expect((await readPublicInvoice(f.token))?.paidCents).toBe(0);
+    expect((await readPublicInvoice(nextToken))?.paidCents).toBe(0);
     await expect(
       withTenant(f.businessId, f.owner.actor, (tx) =>
         recordInvoicePayment(tx, meta(), {

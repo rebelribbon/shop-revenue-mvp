@@ -1,5 +1,6 @@
 "use server";
 import { z } from "zod";
+import { cookies } from "next/headers";
 import { safeStripeError } from "@/lib/stripe";
 import { getSessionState } from "@/server/auth/session";
 import { getRequestMeta } from "@/server/request";
@@ -96,7 +97,18 @@ export async function payInvoiceAction(
     const state = await getSessionState();
     if (state.kind === "shop" && state.session.actor.type === "support")
       throw new AppError("FORBIDDEN", "View-as is read-only.");
-    return { ok: true, data: await beginInvoiceCheckout(token, meta) };
+    const data = await beginInvoiceCheckout(token, meta);
+    if ("checkoutId" in data && data.checkoutId) {
+      const jar = await cookies();
+      jar.set(`invoice_return_${data.checkoutId}`, token, {
+        httpOnly: true,
+        secure: !["local", "test"].includes(process.env.APP_ENV ?? "local"),
+        sameSite: "lax",
+        maxAge: 3600,
+        path: "/payment-return",
+      });
+    }
+    return { ok: true, data };
   } catch (e) {
     return {
       ok: false,
@@ -149,6 +161,51 @@ export async function cancelStripeCheckoutAction(
     return {
       ok: false,
       error: toActionError(safeStripeError(e), meta, "cancelStripeCheckout"),
+    };
+  }
+}
+
+export async function retryStripeRefundAction(
+  raw: unknown,
+): Promise<ActionResult<{ message: string }>> {
+  const meta = await getRequestMeta();
+  try {
+    const shop = await shopContext(true);
+    const id = z.uuid().parse(raw);
+    const { withTenant } = await import("@/db/tenant");
+    const { invoiceRefund } = await import("@/db/schema");
+    const { and, eq } = await import("drizzle-orm");
+    const [r] = await withTenant(shop.businessId, shop.actor, (tx) =>
+      tx
+        .select()
+        .from(invoiceRefund)
+        .where(
+          and(
+            eq(invoiceRefund.businessId, tx.businessId),
+            eq(invoiceRefund.id, id),
+          ),
+        ),
+    );
+    if (!r) throw new AppError("NOT_FOUND", "That refund was not found.");
+    const result = await requestStripeRefund(shop, meta, {
+      paymentId: r.paymentId,
+      amountCents: r.amountCents,
+      reason: r.reason,
+      requestId: r.id,
+    });
+    return {
+      ok: true,
+      data: {
+        message:
+          result.status === "succeeded"
+            ? "Refund confirmed by Stripe."
+            : "Refund request checked. Refresh payment status for progress.",
+      },
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "retryStripeRefund"),
     };
   }
 }
