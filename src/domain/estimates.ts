@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { activity, business, estimateAuthorization, estimateVersion, type EstimateSnapshot } from "@/db/schema";
+import { activity, business, invoice, estimateAuthorization, estimateVersion, type EstimateSnapshot } from "@/db/schema";
 import { type TenantTx, runInContext } from "@/db/tenant";
 import { jobInput } from "./jobs";
 import { getCustomerWithVehicles,getVehicle } from "./customers";
@@ -12,6 +12,8 @@ export async function freezeEstimate(tx:TenantTx,meta:RequestMeta,input:{jobId:s
  const [job]=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.subjectId,input.jobId),eq(activity.kind,"job.costed"))).orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1);
  if(!job) throw notFound("That job");
  if(job.id!==input.expectedJobVersion) throw new AppError("CONFLICT","The job changed. Refresh before publishing.");
+ const [issued]=await tx.select({id:invoice.id}).from(invoice).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.quoteId,input.jobId),sql`${invoice.voidedAt} IS NULL`));
+ if(issued)throw new AppError("CONFLICT","This job has an issued invoice. Create a new job for additional work.");
  const data=jobInput.parse(job.data);
  const c=await getCustomerWithVehicles(tx,data.customerId);const v=await getVehicle(tx,data.customerId,data.vehicleId);
  const [shop]=await tx.select().from(business).where(eq(business.id,tx.businessId));

@@ -6,7 +6,7 @@ name: E2E (local stack)
 on:
   pull_request:
   push:
-    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing]
+    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments]
   workflow_dispatch:
 
 concurrency:
@@ -61,11 +61,11 @@ jobs:
 
 
   preview-ci:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments')
     uses: ./.github/workflows/ci.yml
 
   preview:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments')
     needs: [e2e, preview-ci]
     runs-on: ubuntu-latest
     environment: staging

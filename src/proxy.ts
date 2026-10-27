@@ -4,7 +4,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const TOKEN_ROUTES = /^\/(e|i|r|invite|estimate)\//;
+const TOKEN_ROUTES = /^\/(e|i|r|invite|estimate|invoice)\//;
 
 export async function proxy(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();

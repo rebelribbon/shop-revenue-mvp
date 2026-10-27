@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing]
+    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments]
   workflow_call:
 
 concurrency:

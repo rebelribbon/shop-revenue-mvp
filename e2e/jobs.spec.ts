@@ -19,4 +19,10 @@ test("prices and saves an internal job sheet",async({page},info)=>{
  await page.getByRole("button",{name:"Sign authorization",exact:true}).click();
  await expect(page.getByRole("heading",{name:"Decision recorded",exact:true})).toBeVisible();
  await page.reload();await expect(page.getByText("Pads: Approved",{exact:true})).toBeVisible();
+ await page.goto("/app/invoices");await page.getByLabel("Authorized estimate",{exact:true}).selectOption({label:`Brakes ${info.project.name} · Version 1 · Job ${info.project.name}`});
+ const issuer=page.getByRole("button",{name:"Issue invoice",exact:true}).locator("..");await issuer.getByRole("button",{name:"Issue invoice",exact:true}).click();await expect(issuer.getByRole("link",{name:"Open customer invoice",exact:true})).toBeVisible();
+ const invoiceHref=await issuer.getByRole("link",{name:"Open customer invoice",exact:true}).getAttribute("href");
+ const invoice=page.getByRole("heading",{name:new RegExp(`Invoice #.*Brakes ${info.project.name}`)}).locator("..");
+ await invoice.getByLabel("Amount ($)",{exact:true}).fill("50");await invoice.getByRole("button",{name:"Record payment",exact:true}).click();await expect(invoice.getByText("Partially paid",{exact:true})).toBeVisible();
+ await page.goto(invoiceHref!);await expect(page.getByText("Balance due:",{exact:false})).toContainText("$150.00");await expect(page.locator("body")).not.toContainText("unit cost");
 });
