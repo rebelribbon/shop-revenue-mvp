@@ -9,3 +9,4 @@ M2 must be completed before the estimate and job workflow is accepted. M3 adds j
 M4 adds invoices and payments. M7 derives opportunities from data entered or generated within the product, including declined work and recorded service recommendations; missing historical data must never be invented. M8 keeps directly recovered and influenced revenue separate and uses evidence for attribution. M9 completes the release gates. No outreach is sent by Shop Revenue.
 
 This revision does not change customer authorization requirements, existing release security requirements, or the scope of M1 acceptance.
+

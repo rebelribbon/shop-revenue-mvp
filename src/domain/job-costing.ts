@@ -63,3 +63,4 @@ export function calculateJob(parts: JobPart[], labor: JobLabor[]) {
     estimatedMarginBps: subtotalCents === 0 ? null : Math.round((subtotalCents - estimatedCostCents) * 10000 / subtotalCents),
   };
 }
+

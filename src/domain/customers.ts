@@ -32,6 +32,7 @@ export async function createCustomer(tx: TenantTx, meta: RequestMeta, input: Cus
   }).returning();
   await audit(tx, meta, { action: "customer.created", targetType: "customer", targetId: row.id, after: { displayName: row.displayName } });
   await recordActivity(tx, { kind: "customer.created", subjectType: "customer", subjectId: row.id, summary: `Customer added: ${row.displayName}` });
+  if (row.notes) await recordActivity(tx, { kind: "note.created", subjectType: "customer", subjectId: row.id, summary: "Customer note added", data: { text: row.notes } });
   return row;
 }
 
@@ -51,6 +52,7 @@ export async function updateCustomer(tx: TenantTx, meta: RequestMeta, customerId
   }).where(and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId))).returning();
   await audit(tx, meta, { action: "customer.updated", targetType: "customer", targetId: row.id, before: { displayName: before.displayName }, after: { displayName: row.displayName } });
   await recordActivity(tx, { kind: "customer.updated", subjectType: "customer", subjectId: row.id, summary: `Customer updated: ${row.displayName}` });
+  if (before.notes !== row.notes) await recordActivity(tx, { kind: "note.updated", subjectType: "customer", subjectId: row.id, summary: row.notes ? "Customer note updated" : "Customer note cleared", data: { before: before.notes, after: row.notes } });
   return row;
 }
 
@@ -109,6 +111,8 @@ export async function createVehicle(tx: TenantTx, meta: RequestMeta, input: Vehi
   const label = vehicleLabel(row);
   await audit(tx, meta, { action: "vehicle.created", targetType: "vehicle", targetId: row.id, after: { customerId: row.customerId, label } });
   await recordActivity(tx, { kind: "vehicle.created", subjectType: "vehicle", subjectId: row.id, summary: `Vehicle added: ${label}` });
+  if (row.notes) await recordActivity(tx, { kind: "note.created", subjectType: "vehicle", subjectId: row.id, summary: "Vehicle note added", data: { text: row.notes } });
+  if (row.mileage !== null) await recordActivity(tx, { kind: "vehicle.mileage_recorded", subjectType: "vehicle", subjectId: row.id, summary: `Mileage recorded: ${row.mileage.toLocaleString()} mi`, data: { mileage: row.mileage } });
   return row;
 }
 
@@ -131,6 +135,8 @@ export async function updateVehicle(tx: TenantTx, meta: RequestMeta, vehicleId: 
   }).where(and(eq(vehicle.businessId, tx.businessId), eq(vehicle.id, vehicleId))).returning();
   await audit(tx, meta, { action: "vehicle.updated", targetType: "vehicle", targetId: row.id, before: { label: vehicleLabel(before) }, after: { label: vehicleLabel(row) } });
   await recordActivity(tx, { kind: "vehicle.updated", subjectType: "vehicle", subjectId: row.id, summary: `Vehicle updated: ${vehicleLabel(row)}` });
+  if (before.notes !== row.notes) await recordActivity(tx, { kind: "note.updated", subjectType: "vehicle", subjectId: row.id, summary: row.notes ? "Vehicle note updated" : "Vehicle note cleared", data: { before: before.notes, after: row.notes } });
+  if (before.mileage !== row.mileage && row.mileage !== null) await recordActivity(tx, { kind: "vehicle.mileage_recorded", subjectType: "vehicle", subjectId: row.id, summary: `Mileage recorded: ${row.mileage.toLocaleString()} mi`, data: { mileage: row.mileage } });
   return row;
 }
 
@@ -189,8 +195,9 @@ export async function listCustomerTimeline(tx: TenantTx, customerId: string) {
   const subject = ids.length
     ? or(and(eq(activity.subjectType, "customer"), eq(activity.subjectId, customerId)), and(eq(activity.subjectType, "vehicle"), inArray(activity.subjectId, ids)))
     : and(eq(activity.subjectType, "customer"), eq(activity.subjectId, customerId));
-  return tx.select({ id: activity.id, kind: activity.kind, summary: activity.summary, occurredAt: activity.occurredAt })
+  return tx.select({ id: activity.id, kind: activity.kind, summary: activity.summary, data: activity.data, occurredAt: activity.occurredAt })
     .from(activity)
     .where(and(eq(activity.businessId, tx.businessId), subject))
     .orderBy(desc(activity.occurredAt)).limit(100);
 }
+

@@ -20,3 +20,4 @@ describe("job costing", () => {
     expect(() => calculateJob([{ ...parts[0], quantity: Number.MAX_SAFE_INTEGER }], [])).toThrow();
   });
 });
+

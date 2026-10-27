@@ -28,6 +28,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         <nav className="desktop-nav" aria-label="Main">
           <Link href="/app">Money</Link>
           <Link href="/app/customers">Customers</Link>
+          <Link href="/app/jobs">Jobs</Link>
           <Link href="/app/schedule">Schedule</Link>
           <Link href="/app/settings">Settings</Link>
           {!s.supportSession && (
@@ -48,3 +49,4 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
     </>
   );
 }
+
