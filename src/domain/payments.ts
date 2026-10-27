@@ -116,6 +116,11 @@ export async function reserveCheckout(tx: TenantTx, invoiceId: string) {
   const amount = i.totalCents - Number(s.paid);
   if (amount <= 0)
     throw new AppError("INVALID_TRANSITION", "This invoice is already paid.");
+  if (amount < 50)
+    throw new AppError(
+      "NOT_ELIGIBLE",
+      "Please contact the shop for balances under $0.50.",
+    );
   if (amount > 99999999)
     throw new AppError(
       "NOT_ELIGIBLE",

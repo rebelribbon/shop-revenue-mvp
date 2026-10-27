@@ -42,6 +42,10 @@ export async function proxy(request: NextRequest) {
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
   }
+  if(request.nextUrl.pathname === "/app/settings/payments"){
+    response.headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://*.stripe.com; frame-src https://*.stripe.com https://*.link.com; connect-src 'self' https://*.stripe.com https://*.link.com; img-src 'self' data: https://*.stripe.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+    response.headers.set("Cache-Control","no-store");
+  }
   return response;
 }
 

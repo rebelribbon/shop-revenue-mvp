@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StripeNotifications } from "@/components/stripe-notifications";
 import { withTenant } from "@/db/tenant";
 import { getStripeConnection } from "@/domain/payments";
 import { requireOwnerView } from "@/server/views/shop";
@@ -44,6 +45,11 @@ export default async function PaymentsSettings() {
           s.actor.type !== "support" && (
             <>
               <StripeButton kind="connect" />
+              {c?.accountId && process.env.STRIPE_PUBLISHABLE_KEY && (
+                <StripeNotifications
+                  publishableKey={process.env.STRIPE_PUBLISHABLE_KEY}
+                />
+              )}
               {c?.accountId && <StripeButton kind="reconcile" />}
             </>
           )

@@ -115,6 +115,9 @@ importers:
       '@sentry/node':
         specifier: ^11.6.0
         version: 11.6.0(@babel/core@7.29.7(supports-color@7.2.0))(rollup@4.64.3)
+      '@stripe/connect-js':
+        specifier: 3.4.6
+        version: 3.4.6
       '@supabase/ssr':
         specifier: ^0.12.7
         version: 0.12.7(@supabase/supabase-js@2.117.3(@opentelemetry/api@1.9.1))
@@ -1560,6 +1563,9 @@ packages:
   '@sentry/vercel-edge@11.6.0':
     resolution: {integrity: sha512-+yLRb6lqV7Rdi2zOoUGAk0sO752MDxFOU0eMGCtMkSrJWzJ4yV4wEpOeZb6WipAZb22pTkjyzN6j4sMpZS0SEQ==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
+
+  '@stripe/connect-js@3.4.6':
+    resolution: {integrity: sha512-fuC/U/ONDBMKwTBxKAnEBQH+m0x+Tze62/bV1ZDLT7oRnsJgddEnRi7FzdwIxz9pmFZhOJpSaikLIBw9g/1o1w==}
 
   '@supabase/auth-js@2.117.3':
     resolution: {integrity: sha512-XOZV+jllcU2Hzij8SwgM78zl0lOEr6BTjzi2MYkBb39nOAQzb5AelGpMUvVj7lwGSB11JmpAs/FEQroAyFzWEA==}
@@ -4685,6 +4691,8 @@ snapshots:
       '@opentelemetry/api': 1.9.1
       '@sentry/core': 11.6.0
       '@sentry/server-utils': 11.6.0
+
+  '@stripe/connect-js@3.4.6': {}
 
   '@supabase/auth-js@2.117.3':
     dependencies:

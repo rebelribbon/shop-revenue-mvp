@@ -33,3 +33,12 @@ export function paymentBaseUrl() {
     );
   return u.origin;
 }
+
+export function safeStripeError(error: unknown) {
+  return error instanceof Stripe.errors.StripeError
+    ? new AppError(
+        "PROVIDER_UNAVAILABLE",
+        "Stripe could not complete this request. Refresh payment status before retrying.",
+      )
+    : error;
+}

@@ -82,14 +82,12 @@ async function fixture() {
   );
   const accountId = `acct_${randomUUID()}`;
   await withTenant(t.businessId, t.owner.actor, (tx) =>
-    tx
-      .insert(stripeConnection)
-      .values({
-        businessId: t.businessId,
-        accountId,
-        cardPaymentsStatus: "active",
-        livemode: false,
-      }),
+    tx.insert(stripeConnection).values({
+      businessId: t.businessId,
+      accountId,
+      cardPaymentsStatus: "active",
+      livemode: false,
+    }),
   );
   return { ...t, invoiceId: i.id, token: i.path.split("/").pop()!, accountId };
 }
@@ -281,31 +279,27 @@ describe("online invoice payments", () => {
     ).rejects.toThrow();
     await expect(
       withTenant(f.businessId, f.owner.actor, (tx) =>
-        tx
-          .insert(invoiceCheckout)
-          .values({
-            businessId: f.businessId,
-            invoiceId: f.invoiceId,
-            accountId: f.accountId,
-            amountCents: 10000,
-            expiresAt: new Date(),
-          }),
+        tx.insert(invoiceCheckout).values({
+          businessId: f.businessId,
+          invoiceId: f.invoiceId,
+          accountId: f.accountId,
+          amountCents: 10000,
+          expiresAt: new Date(),
+        }),
       ),
     ).rejects.toThrow();
     const a = await reserve(f);
     await expect(
       withTenant(f.businessId, f.owner.actor, (tx) =>
-        tx
-          .insert(invoicePayment)
-          .values({
-            businessId: f.businessId,
-            invoiceId: f.invoiceId,
-            amountCents: 10000,
-            method: "stripe",
-            stripeAccountId: f.accountId,
-            stripePaymentIntentId: "pi_fake",
-            checkoutId: a.id,
-          }),
+        tx.insert(invoicePayment).values({
+          businessId: f.businessId,
+          invoiceId: f.invoiceId,
+          amountCents: 10000,
+          method: "stripe",
+          stripeAccountId: f.accountId,
+          stripePaymentIntentId: "pi_fake",
+          checkoutId: a.id,
+        }),
       ),
     ).rejects.toThrow();
   });
@@ -426,4 +420,184 @@ describe("Stripe refunds", () => {
       ),
     ).resolves.toBeTruthy();
   });
+});
+
+it("uses account-scoped Checkout idempotency and reconciles confirmed provider events and refunds", async () => {
+  const { vi } = await import("vitest");
+  const stripeLib = await import("@/lib/stripe");
+  const gateway = await import("@/domain/stripe-payments");
+  const f = await fixture();
+  let current: Stripe.Checkout.Session;
+  const create = vi.fn(async (params: Stripe.Checkout.SessionCreateParams) => {
+    const id = params.metadata!.checkout_id as string;
+    current = session(
+      f,
+      { id, amountCents: 10000 },
+      {
+        status: "open",
+        payment_status: "unpaid",
+        url: "https://checkout.stripe.com/c/pay/test",
+      },
+    );
+    return current;
+  });
+  const provider = {
+    v2: {
+      core: {
+        accounts: {
+          retrieve: vi.fn(async () => ({
+            configuration: {
+              merchant: {
+                capabilities: { card_payments: { status: "active" } },
+              },
+            },
+          })),
+        },
+      },
+    },
+    checkout: {
+      sessions: {
+        create,
+        retrieve: vi.fn(async () => current),
+        list: vi.fn(async () => ({ data: [current] })),
+      },
+    },
+    refunds: {
+      create: vi.fn(),
+      retrieve: vi.fn(),
+      list: vi.fn(() => ({ async *[Symbol.asyncIterator]() {} })),
+    },
+  };
+  const spy = vi
+    .spyOn(stripeLib, "stripeClient")
+    .mockReturnValue(
+      provider as unknown as ReturnType<typeof stripeLib.stripeClient>,
+    );
+  try {
+    expect(await gateway.beginInvoiceCheckout(f.token, meta())).toMatchObject({
+      url: "https://checkout.stripe.com/c/pay/test",
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+    const [params, options] = create.mock.calls[0] as unknown as [
+      Stripe.Checkout.SessionCreateParams,
+      { stripeAccount: string; idempotencyKey: string },
+    ];
+    expect(options.stripeAccount).toBe(f.accountId);
+    expect(options.idempotencyKey).toBe(
+      `invoice-checkout-${params.metadata!.checkout_id}`,
+    );
+    expect(params).not.toHaveProperty("payment_method_types");
+    expect(params).not.toHaveProperty("application_fee_amount");
+    expect(params.integration_identifier).toMatch(/_[a-z]{8}$/);
+    await gateway.beginInvoiceCheckout(f.token, meta());
+    expect(create).toHaveBeenCalledTimes(1);
+    expect((await readPublicInvoice(f.token))?.paidCents).toBe(0);
+    current = { ...current!, status: "complete", payment_status: "paid" };
+    const event = {
+      id: `evt_${randomUUID()}`,
+      account: f.accountId,
+      livemode: false,
+      type: "checkout.session.completed",
+      data: { object: current },
+    } as unknown as Stripe.Event;
+    expect(await gateway.applyStripeEvent(event)).toBe(true);
+    expect(await gateway.applyStripeEvent(event)).toBe(true);
+    expect((await readPublicInvoice(f.token))?.paidCents).toBe(10000);
+    const [i] = await withTenant(f.businessId, f.owner.actor, (tx) =>
+      listInvoices(tx),
+    );
+    const p = i.entries[0];
+    const request = {
+      paymentId: p.id,
+      amountCents: 2500,
+      reason: "Adjustment",
+      requestId: randomUUID(),
+    };
+    const refund = {
+      id: `re_${randomUUID()}`,
+      amount: 2500,
+      currency: "usd",
+      payment_intent: p.stripePaymentIntentId,
+      status: "pending",
+      metadata: { refund_request_id: request.requestId },
+    } as unknown as Stripe.Refund;
+    provider.refunds.create.mockResolvedValue(refund);
+    await gateway.requestStripeRefund(
+      { businessId: f.businessId, actor: f.owner.actor },
+      meta(),
+      request,
+    );
+    expect((await readPublicInvoice(f.token))?.paidCents).toBe(10000);
+    provider.refunds.retrieve.mockResolvedValue({
+      ...refund,
+      status: "succeeded",
+    });
+    expect(
+      await gateway.applyStripeEvent({
+        ...event,
+        id: `evt_${randomUUID()}`,
+        type: "refund.updated",
+        data: { object: refund },
+      } as unknown as Stripe.Event),
+    ).toBe(true);
+    expect((await readPublicInvoice(f.token))?.paidCents).toBe(7500);
+    await expect(
+      gateway.applyStripeEvent({ ...event, livemode: true }),
+    ).rejects.toThrow(/mode/);
+  } finally {
+    spy.mockRestore();
+  }
+});
+
+it("keeps uncertain network attempts reserved and retries the same provider idempotency key", async () => {
+  const { vi } = await import("vitest");
+  const stripeLib = await import("@/lib/stripe");
+  const { beginInvoiceCheckout } = await import("@/domain/stripe-payments");
+  const f = await fixture();
+  const create = vi.fn(async () => {
+    throw new Error("network timeout");
+  });
+  const provider = {
+    v2: {
+      core: {
+        accounts: {
+          retrieve: async () => ({
+            configuration: {
+              merchant: {
+                capabilities: { card_payments: { status: "active" } },
+              },
+            },
+          }),
+        },
+      },
+    },
+    checkout: { sessions: { create } },
+  };
+  const spy = vi
+    .spyOn(stripeLib, "stripeClient")
+    .mockReturnValue(
+      provider as unknown as ReturnType<typeof stripeLib.stripeClient>,
+    );
+  try {
+    await expect(beginInvoiceCheckout(f.token, meta())).rejects.toThrow(
+      /timeout/,
+    );
+    await expect(beginInvoiceCheckout(f.token, meta())).rejects.toThrow(
+      /timeout/,
+    );
+    expect(create.mock.calls[0]).toEqual(create.mock.calls[1]);
+    expect((await readPublicInvoice(f.token))?.paidCents).toBe(0);
+    await expect(
+      withTenant(f.businessId, f.owner.actor, (tx) =>
+        recordInvoicePayment(tx, meta(), {
+          invoiceId: f.invoiceId,
+          amountCents: 10000,
+          method: "cash",
+          reference: "Conflict",
+        }),
+      ),
+    ).rejects.toThrow();
+  } finally {
+    spy.mockRestore();
+  }
 });

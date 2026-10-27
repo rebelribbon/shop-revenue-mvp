@@ -167,6 +167,13 @@ export default async function InvoicesPage() {
               status before recording a manual payment or voiding this invoice.
             </p>
           )}
+          {s.role === "owner" &&
+            s.actor.type !== "support" &&
+            data.checkouts
+              .filter((c) => c.invoiceId === i.id && c.sessionId)
+              .map((c) => (
+                <StripeButton key={c.id} kind="cancel" checkoutId={c.id} />
+              ))}
           {data.refunds
             .filter((r) => r.invoiceId === i.id)
             .map((r) => (

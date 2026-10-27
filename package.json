@@ -25,6 +25,7 @@
   "dependencies": {
     "@sentry/nextjs": "^11.6.0",
     "@sentry/node": "^11.6.0",
+    "@stripe/connect-js": "3.4.6",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "drizzle-orm": "0.45.4",

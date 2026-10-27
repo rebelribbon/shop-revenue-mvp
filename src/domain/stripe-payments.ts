@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type Stripe from "stripe";
 import {
   invoiceCheckout,
@@ -388,6 +388,17 @@ export async function reconcileShopPayments(
           inArray(invoiceRefund.status, ["creating", "pending"]),
         ),
       ),
+    payments: await tx
+      .select()
+      .from(invoicePayment)
+      .where(
+        and(
+          eq(invoicePayment.businessId, businessId),
+          eq(invoicePayment.method, "stripe"),
+        ),
+      )
+      .orderBy(desc(invoicePayment.createdAt))
+      .limit(100),
     connection: await getStripeConnection(tx),
   }));
   let checked = 0;
@@ -459,5 +470,79 @@ export async function reconcileShopPayments(
       }
     }
   }
+  // Recover refunds initiated in Stripe even if every refund webhook was lost.
+  for (const p of data.payments) {
+    if (!p.stripePaymentIntentId || !p.stripeAccountId) continue;
+    for await (const refund of stripe.refunds.list(
+      { payment_intent: p.stripePaymentIntentId, limit: 100 },
+      { stripeAccount: p.stripeAccountId },
+    )) {
+      await importRefund(businessId, p.stripeAccountId, refund, meta);
+      checked++;
+    }
+  }
   return { checked };
+}
+
+export async function cancelInvoiceCheckout(
+  shop: Shop,
+  meta: RequestMeta,
+  id: string,
+) {
+  const { assertOwner } = await import("./membership");
+  const a = await withTenant(shop.businessId, shop.actor, async (tx) => {
+    await assertOwner(tx);
+    const [row] = await tx
+      .select()
+      .from(invoiceCheckout)
+      .where(
+        and(
+          eq(invoiceCheckout.businessId, tx.businessId),
+          eq(invoiceCheckout.id, id),
+        ),
+      );
+    if (!row) throw new AppError("NOT_FOUND", "That checkout was not found.");
+    return row;
+  });
+  if (!activeCheckoutStates.includes(a.status))
+    return { message: "This checkout is already closed." };
+  if (!a.sessionId)
+    throw new AppError(
+      "CONFLICT",
+      "Refresh payment status first to locate this checkout in Stripe.",
+    );
+  const stripe = stripeClient();
+  let session = await stripe.checkout.sessions.retrieve(
+    a.sessionId,
+    {},
+    { stripeAccount: a.accountId },
+  );
+  if (session.status === "open")
+    session = await stripe.checkout.sessions.expire(
+      session.id,
+      {},
+      { stripeAccount: a.accountId },
+    );
+  await applySession(shop.businessId, a.accountId, session, meta);
+  if (session.payment_status === "paid")
+    return {
+      message:
+        "Stripe confirmed payment before cancellation. The payment has been recorded.",
+    };
+  if (session.status !== "expired")
+    throw new AppError(
+      "CONFLICT",
+      "This payment is already processing and cannot be canceled here.",
+    );
+  await withTenant(shop.businessId, shop.actor, (tx) =>
+    audit(tx, meta, {
+      action: "invoice.checkout_canceled",
+      targetType: "invoice_checkout",
+      targetId: id,
+    }),
+  );
+  return {
+    message:
+      "Unpaid checkout canceled. You can record a manual payment or let the customer start a fresh checkout.",
+  };
 }

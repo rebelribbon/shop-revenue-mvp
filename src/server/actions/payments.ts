@@ -1,5 +1,6 @@
 "use server";
 import { z } from "zod";
+import { safeStripeError } from "@/lib/stripe";
 import { getSessionState } from "@/server/auth/session";
 import { getRequestMeta } from "@/server/request";
 import { toActionError, type ActionResult } from "./define";
@@ -32,7 +33,10 @@ export async function connectStripeAction(): Promise<
   try {
     return { ok: true, data: await connectShop(await shopContext(true), meta) };
   } catch (e) {
-    return { ok: false, error: toActionError(e, meta, "connectStripe") };
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "connectStripe"),
+    };
   }
 }
 export async function reconcileStripeAction(): Promise<
@@ -50,7 +54,10 @@ export async function reconcileStripeAction(): Promise<
       },
     };
   } catch (e) {
-    return { ok: false, error: toActionError(e, meta, "reconcileStripe") };
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "reconcileStripe"),
+    };
   }
 }
 export async function refundStripeAction(
@@ -75,7 +82,10 @@ export async function refundStripeAction(
       );
     return { ok: true, data: await requestStripeRefund(s, meta, parsed.data) };
   } catch (e) {
-    return { ok: false, error: toActionError(e, meta, "refundStripe") };
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "refundStripe"),
+    };
   }
 }
 export async function payInvoiceAction(
@@ -88,6 +98,57 @@ export async function payInvoiceAction(
       throw new AppError("FORBIDDEN", "View-as is read-only.");
     return { ok: true, data: await beginInvoiceCheckout(token, meta) };
   } catch (e) {
-    return { ok: false, error: toActionError(e, meta, "payInvoice") };
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "payInvoice"),
+    };
+  }
+}
+
+export async function stripeBannerSessionAction(): Promise<
+  ActionResult<{ clientSecret: string }>
+> {
+  const meta = await getRequestMeta();
+  try {
+    const shop = await shopContext(true);
+    const { withTenant } = await import("@/db/tenant");
+    const { getStripeConnection } = await import("@/domain/payments");
+    const { stripeClient, stripeLivemode } = await import("@/lib/stripe");
+    const c = await withTenant(shop.businessId, shop.actor, (tx) =>
+      getStripeConnection(tx),
+    );
+    if (!c?.accountId || c.livemode !== stripeLivemode())
+      throw new AppError("NOT_ELIGIBLE", "Connect this shop to Stripe first.");
+    const session = await stripeClient().accountSessions.create({
+      account: c.accountId,
+      components: { notification_banner: { enabled: true } },
+    });
+    return { ok: true, data: { clientSecret: session.client_secret } };
+  } catch (e) {
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "stripeBannerSession"),
+    };
+  }
+}
+
+export async function cancelStripeCheckoutAction(
+  raw: unknown,
+): Promise<ActionResult<{ message: string }>> {
+  const meta = await getRequestMeta();
+  try {
+    const shop = await shopContext(true);
+    const parsed = z.object({ id: z.uuid() }).strict().safeParse(raw);
+    if (!parsed.success) throw new AppError("VALIDATION", "Invalid checkout.");
+    const { cancelInvoiceCheckout } = await import("@/domain/stripe-payments");
+    return {
+      ok: true,
+      data: await cancelInvoiceCheckout(shop, meta, parsed.data.id),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      error: toActionError(safeStripeError(e), meta, "cancelStripeCheckout"),
+    };
   }
 }

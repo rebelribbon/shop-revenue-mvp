@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  cancelStripeCheckoutAction,
   connectStripeAction,
   payInvoiceAction,
   reconcileStripeAction,
@@ -10,9 +11,11 @@ import {
 export function StripeButton({
   kind,
   token,
+  checkoutId,
 }: {
-  kind: "connect" | "pay" | "reconcile";
+  kind: "connect" | "pay" | "reconcile" | "cancel";
   token?: string;
+  checkoutId?: string;
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -25,11 +28,13 @@ export function StripeButton({
           start(async () => {
             try {
               const r =
-                kind === "connect"
-                  ? await connectStripeAction()
-                  : kind === "pay"
-                    ? await payInvoiceAction(token!)
-                    : await reconcileStripeAction();
+                kind === "cancel"
+                  ? await cancelStripeCheckoutAction({ id: checkoutId })
+                  : kind === "connect"
+                    ? await connectStripeAction()
+                    : kind === "pay"
+                      ? await payInvoiceAction(token!)
+                      : await reconcileStripeAction();
               if (!r.ok) {
                 setMessage(
                   `${r.error.message} (reference ${r.error.referenceId})`,
@@ -64,9 +69,11 @@ export function StripeButton({
           ? "Checking Stripe…"
           : kind === "connect"
             ? "Set up / update Stripe"
-            : kind === "pay"
-              ? "Pay online securely"
-              : "Refresh payment status"}
+            : kind === "cancel"
+              ? "Cancel unpaid checkout"
+              : kind === "pay"
+                ? "Pay online securely"
+                : "Refresh payment status"}
       </button>
       {message && <p role="status">{message}</p>}
     </div>
