@@ -9,7 +9,7 @@ export function verifyStripeSignature(body: string, header: string | null, secre
   const parts = header.split(",").map((p) => p.split("=") as [string, string]);
   const t = parts.find(([k]) => k === "t")?.[1];
   const sigs = parts.filter(([k]) => k === "v1").map(([, v]) => v);
-  if (!t || !sigs.length || Math.abs(now / 1000 - Number(t)) > toleranceSeconds) return false;
+  if (!t || !/^\d+$/.test(t) || !Number.isSafeInteger(Number(t)) || !sigs.length || Math.abs(now / 1000 - Number(t)) > toleranceSeconds) return false;
   const expected = createHmac("sha256", secret).update(`${t}.${body}`).digest("hex");
   return sigs.some((s) => safeEqual(s, expected));
 }
@@ -30,3 +30,4 @@ export function verifyBasicAuth(header: string | null, username: string, passwor
   const expected = Buffer.from(`${username}:${password}`).toString("base64");
   return safeEqual(header.slice(6), expected);
 }
+

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import { getBusinessProfile } from "@/domain/business-profile";
@@ -13,7 +14,7 @@ export default async function BusinessSettingsPage() {
   const complete = Boolean(profile.legalName && profile.phoneE164 && profile.addressLine1 && profile.city && profile.region && profile.postalCode && profile.timezone);
   return (
     <main>
-      <h1>Business profile</h1>
+      <h1>Business profile</h1><p><Link href="/app/settings/payments">Set up online payments</Link></p>
       <div className={`notice ${complete ? "ok" : ""}`}>
         {complete ? "Shop setup is complete." : "Finish the basics below so appointments and future documents use the right shop information."}
       </div>
@@ -45,3 +46,4 @@ export default async function BusinessSettingsPage() {
     </main>
   );
 }
+

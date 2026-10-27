@@ -5,8 +5,13 @@ import type { TaskList } from "graphile-worker";
 import { sql } from "drizzle-orm";
 import { withGlobalWorker } from "@/db/tenant";
 import { closeExpiredSupportSessions } from "@/domain/support";
+import {applyStripeEvent} from "@/domain/stripe-payments";
+import type Stripe from "stripe";
+import {registerWebhookHandler} from "@/domain/webhooks";
 import { processWebhookEvent } from "@/domain/webhooks";
 import { logger } from "@/lib/logger";
+
+for(const eventType of ["checkout.session.completed","checkout.session.async_payment_succeeded","checkout.session.async_payment_failed","checkout.session.expired","refund.created","refund.updated","refund.failed","account.updated"]){registerWebhookHandler("stripe",eventType,async row=>(await applyStripeEvent(row.payload as Stripe.Event))?"applied":"ignored");}
 
 const meta = (job: string) => ({ requestId: `job-${job}-${randomUUID()}` });
 
@@ -36,3 +41,4 @@ export const crontab = [
   "*/5 * * * * close_expired_support_sessions",
   "15 8 * * * purge_request_idempotency",
 ].join("\n");
+

@@ -99,6 +99,13 @@
       "when": 1793129000000,
       "tag": "0013_m4_invoice_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793142000000,
+      "tag": "0014_m4_stripe_connect_payments",
+      "breakpoints": true
     }
   ]
 }

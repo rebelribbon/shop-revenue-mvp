@@ -4,3 +4,5 @@ export * from "./m2";
 
 export * from "./m3";
 export * from "./m4";
+
+export * from "./payments";

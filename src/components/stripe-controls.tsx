@@ -1,0 +1,179 @@
+"use client";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  connectStripeAction,
+  payInvoiceAction,
+  reconcileStripeAction,
+  refundStripeAction,
+} from "@/server/actions/payments";
+export function StripeButton({
+  kind,
+  token,
+}: {
+  kind: "connect" | "pay" | "reconcile";
+  token?: string;
+}) {
+  const [busy, start] = useTransition();
+  const [message, setMessage] = useState("");
+  const router = useRouter();
+  return (
+    <div>
+      <button
+        disabled={busy}
+        onClick={() =>
+          start(async () => {
+            try {
+              const r =
+                kind === "connect"
+                  ? await connectStripeAction()
+                  : kind === "pay"
+                    ? await payInvoiceAction(token!)
+                    : await reconcileStripeAction();
+              if (!r.ok) {
+                setMessage(
+                  `${r.error.message} (reference ${r.error.referenceId})`,
+                );
+                return;
+              }
+              const data = r.data as { url?: string; message?: string };
+              if (data.url) {
+                const u = new URL(data.url);
+                if (
+                  u.protocol === "https:" &&
+                  (u.hostname === "stripe.com" ||
+                    u.hostname.endsWith(".stripe.com"))
+                ) {
+                  window.location.assign(u.href);
+                  return;
+                }
+              }
+              setMessage(
+                data.message || "Payment confirmed. Refreshing your invoice.",
+              );
+              router.refresh();
+            } catch {
+              setMessage(
+                "Could not reach the payment service. Please try again.",
+              );
+            }
+          })
+        }
+      >
+        {busy
+          ? "Checking Stripe…"
+          : kind === "connect"
+            ? "Set up / update Stripe"
+            : kind === "pay"
+              ? "Pay online securely"
+              : "Refresh payment status"}
+      </button>
+      {message && <p role="status">{message}</p>}
+    </div>
+  );
+}
+export function StripeRefundForm({
+  paymentId,
+  maxCents,
+}: {
+  paymentId: string;
+  maxCents: number;
+}) {
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [busy, start] = useTransition();
+  const [message, setMessage] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const router = useRouter();
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!confirming) {
+          setConfirming(true);
+          return;
+        }
+        const form = e.currentTarget;
+        const data = new FormData(form);
+        const amount = String(data.get("amount") || "");
+        if (!/^\d+(\.\d{1,2})?$/.test(amount)) {
+          setMessage("Enter a valid dollar amount.");
+          return;
+        }
+        const cents = Math.round(Number(amount) * 100);
+        start(async () => {
+          try {
+            const r = await refundStripeAction({
+              paymentId,
+              amountCents: cents,
+              reason: String(data.get("reason") || ""),
+              requestId,
+            });
+            if (!r.ok) {
+              setMessage(r.error.message);
+              return;
+            }
+            setMessage(
+              r.data.status === "succeeded"
+                ? "Refund confirmed by Stripe."
+                : "Refund submitted. Refresh payment status to check progress.",
+            );
+            setRequestId(crypto.randomUUID());
+            setConfirming(false);
+            form.reset();
+            router.refresh();
+          } catch {
+            setMessage(
+              "The result is uncertain. Refresh payment status before retrying this same request.",
+            );
+          }
+        });
+      }}
+    >
+      <label htmlFor={`refund-amount-${paymentId}`}>Refund amount ($)</label>
+      <input
+        id={`refund-amount-${paymentId}`}
+        name="amount"
+        type="number"
+        min="0.01"
+        max={maxCents / 100}
+        step="0.01"
+        required
+        defaultValue={(maxCents / 100).toFixed(2)}
+        readOnly={confirming}
+        disabled={busy}
+      />
+      <label htmlFor={`refund-reason-${paymentId}`}>Refund reason</label>
+      <input
+        id={`refund-reason-${paymentId}`}
+        name="reason"
+        required
+        maxLength={1000}
+        readOnly={confirming}
+        disabled={busy}
+      />
+      {confirming && (
+        <p role="alert">
+          Confirm: send this refund through Stripe? This moves money back to the
+          customer.
+        </p>
+      )}
+      <button disabled={busy}>
+        {busy
+          ? "Submitting refund…"
+          : confirming
+            ? "Confirm Stripe refund"
+            : "Review refund"}
+      </button>
+      {confirming && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setConfirming(false)}
+        >
+          Cancel
+        </button>
+      )}
+      {message && <p role="status">{message}</p>}
+    </form>
+  );
+}
