@@ -44,3 +44,10 @@ export async function signEstimate(token:string,name:string,ids:string[],meta:Re
  if(!isWellFormedToken(token))throw notFound("That estimate");
  return runInContext(null,{type:"customer",id:null},async tx=>{await tx.execute(sql`select app.authorize_estimate(${hashToken(token)},${name},${JSON.stringify(ids)}::jsonb,${meta.ip??null},${meta.requestId})`);return {signed:true};});
 }
+
+export async function rotateEstimateLink(tx:TenantTx,meta:RequestMeta,id:string){
+ const token=newToken();const [row]=await tx.update(estimateVersion).set({tokenHash:token.hash,expiresAt:new Date(Date.now()+30*86400000)}).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.id,id),sql`${estimateVersion.revokedAt} IS NULL`)).returning();
+ if(!row)throw notFound("That active estimate");
+ await audit(tx,meta,{action:"estimate.link_rotated",targetType:"estimate_version",targetId:id});
+ return {id,path:`/estimate/${token.token}`};
+}

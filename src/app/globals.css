@@ -93,3 +93,7 @@ pre { white-space: pre-wrap; word-break: break-word; background: var(--bg); padd
   .appointment-actions .btn { margin-top: 6px; }
   th, td { min-width: 100px; }
 }
+
+
+input[type="checkbox"] { width: 24px; min-height: 24px; height: 24px; vertical-align: middle; margin-right: 8px; }
+fieldset { min-width: 0; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; }

@@ -4,7 +4,7 @@ import {withTenant} from "@/db/tenant";
 import {estimateVersion,estimateAuthorization} from "@/db/schema";
 import {createCustomer,createVehicle} from "@/domain/customers";
 import {createJob,listJobs} from "@/domain/jobs";
-import {freezeEstimate,listEstimates,readPublicEstimate,signEstimate} from "@/domain/estimates";
+import {rotateEstimateLink,freezeEstimate,listEstimates,readPublicEstimate,signEstimate} from "@/domain/estimates";
 import {rawClient,meta,seedTenant} from "../helpers/fixtures";
 it("freezes cost-free customer estimates, records partial signatures, and requires fresh supplement authorization",async()=>{
  const a=await seedTenant("Estimates"),b=await seedTenant("Other estimates");
@@ -28,6 +28,8 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
  const second=await withTenant(a.businessId,a.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:revised.version,taxBps:0,supplementReason:"Updated parts",terms:""}));
  expect(await readPublicEstimate(token)).toBeNull();await expect(signEstimate(token,"Old link",[],meta())).rejects.toThrow();
  const secondToken=second.path.split("/").pop()!;expect((await readPublicEstimate(secondToken))?.authorization).toBeNull();await signEstimate(secondToken,"Customer One",[],meta());
+ const replacement=await withTenant(a.businessId,a.owner.actor,tx=>rotateEstimateLink(tx,meta(),second.id));
+ expect(await readPublicEstimate(secondToken)).toBeNull();expect((await readPublicEstimate(replacement.path.split("/").pop()!))?.authorization?.signerName).toBe("Customer One");
  const history=await withTenant(a.businessId,a.owner.actor,tx=>listEstimates(tx));expect(history).toHaveLength(2);expect(history.every(e=>!!e.authorization)).toBe(true);
  await expect(withTenant(a.businessId,a.owner.actor,tx=>tx.delete(estimateAuthorization).where(eq(estimateAuthorization.versionId,first.id)))).rejects.toThrow();
  expect(await readPublicEstimate("x".repeat(43))).toBeNull();

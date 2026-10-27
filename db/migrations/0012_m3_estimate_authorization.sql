@@ -9,7 +9,7 @@ CREATE TABLE app.estimate_version (
 );
 SELECT app.apply_tenant_rls('app.estimate_version');
 GRANT SELECT,INSERT ON app.estimate_version TO app_user;
-GRANT UPDATE(revoked_at) ON app.estimate_version TO app_user;
+GRANT UPDATE(revoked_at,token_hash,expires_at) ON app.estimate_version TO app_user;
 GRANT SELECT ON app.estimate_version TO worker_user,admin_user;
 CREATE INDEX estimate_quote_idx ON app.estimate_version(business_id,quote_id,version DESC);
 CREATE TABLE app.estimate_authorization (
