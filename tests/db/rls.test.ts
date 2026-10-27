@@ -1,6 +1,9 @@
 // RLS suite (Section 22): generated for every table with a business_id column,
 // discovered from the catalog. Insert in A; B sees nothing, changes nothing and
 // cannot write into A; a raw query without tenant context sees nothing.
+import { newToken } from "@/lib/tokens";
+import { signEstimate } from "@/domain/estimates";
+import { estimateVersion } from "@/db/schema";
 import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import { withAdmin } from "@/db/admin";
@@ -22,7 +25,13 @@ beforeAll(async () => {
 });
 
 type Builder = (t: SeededTenant) => Promise<string>;
+async function estimateFixture(t:SeededTenant){
+ const vehicleId=await builders["app.vehicle"](t);const token=newToken();
+ const id=await withTenant(t.businessId,t.owner.actor,async tx=>{const [v]=await tx.select().from(vehicle).where(eq(vehicle.id,vehicleId));const [e]=await tx.insert(estimateVersion).values({businessId:t.businessId,quoteId:randomUUID(),version:1,customerId:v.customerId,vehicleId,snapshot:{title:"Test",shopName:"Shop",customerName:"Customer",vehicleLabel:"Vehicle",lines:[],subtotalCents:0,taxBps:0,taxCents:0,totalCents:0,terms:""},tokenHash:token.hash,expiresAt:new Date(Date.now()+86400000)}).returning();return e.id;});return {id,token:token.token};
+}
 const builders: Record<string, Builder> = {
+ "app.estimate_version":async t=>(await estimateFixture(t)).id,
+ "app.estimate_authorization":async t=>{const f=await estimateFixture(t);await signEstimate(f.token,"Fixture",[],meta());return withTenant(t.businessId,t.owner.actor,async tx=>(await clientOf(tx).query("SELECT id FROM app.estimate_authorization WHERE version_id=$1",[f.id])).rows[0].id);},
   "app.asset": async t => builders["app.vehicle"](t),
   "app.asset_reading": async t => {
     const id=await builders["app.vehicle"](t);

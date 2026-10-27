@@ -4,7 +4,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const TOKEN_ROUTES = /^\/(e|i|r|invite)\//;
+const TOKEN_ROUTES = /^\/(e|i|r|invite|estimate)\//;
 
 export async function proxy(request: NextRequest) {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -15,7 +15,7 @@ export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const isWebhook = request.nextUrl.pathname.startsWith("/webhooks/") || request.nextUrl.pathname.startsWith("/api/");
-  if (url && anon && !isWebhook) {
+  if (url && anon && !isWebhook && !TOKEN_ROUTES.test(request.nextUrl.pathname)) {
     const secure = !["local", "test"].includes(process.env.APP_ENV ?? "local");
     const supabase = createServerClient(url, anon, {
       cookieOptions: { httpOnly: true, secure, sameSite: "lax", path: "/" },
@@ -48,3 +48,4 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
+

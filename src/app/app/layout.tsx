@@ -29,6 +29,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           <Link href="/app">Money</Link>
           <Link href="/app/customers">Customers</Link>
           <Link href="/app/jobs">Jobs</Link>
+          <Link href="/app/estimates">Estimates</Link>
           <Link href="/app/schedule">Schedule</Link>
           <Link href="/app/settings">Settings</Link>
           {!s.supportSession && (

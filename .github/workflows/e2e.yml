@@ -47,7 +47,7 @@ jobs:
           pnpm build
           nohup pnpm start > web.log 2>&1 &
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: timeout 180 pnpm exec playwright install chromium
       - name: Playwright (phone 390x844 and desktop)
         run: pnpm e2e
       - if: failure()

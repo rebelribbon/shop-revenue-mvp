@@ -85,6 +85,13 @@
       "when": 1793109000000,
       "tag": "0011_m2_memory_history",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793126000000,
+      "tag": "0012_m3_estimate_authorization",
+      "breakpoints": true
     }
   ]
 }
