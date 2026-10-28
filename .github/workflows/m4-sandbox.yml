@@ -24,6 +24,7 @@ jobs:
     env:
       VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
       VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
+      VERCEL_TELEMETRY_DISABLED: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,20 +33,21 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Link the verified sandbox merchant through the runtime role
+      - name: Run fixture setup inside a hosted preview build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          M4_SANDBOX_SETUP: 'true'
         run: |
           set -euo pipefail
-          npx --yes vercel@63.1.0 pull --yes --environment=preview
-          pnpm exec tsx --env-file=.vercel/.env.preview.local scripts/dev/link-m4-sandbox.ts
-      - name: Clear pulled credentials
-        if: always()
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          for path in Path('.vercel').glob('.env*'):
-              if path.is_file():
-                  path.unlink()
-          PY
+          # Sensitive variables stay inside Vercel; `vercel pull` cannot export
+          # them. This deployment-only build command is never a web endpoint.
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          fs.mkdirSync('.vercel', { recursive: true });
+          fs.writeFileSync('.vercel/m4-sandbox.json', JSON.stringify({
+            framework: 'nextjs',
+            buildCommand: 'M4_SANDBOX_SETUP=true pnpm exec tsx scripts/dev/link-m4-sandbox.ts && pnpm build'
+          }));
+          JS
+          npx --yes vercel@63.1.0 deploy --yes --local-config .vercel/m4-sandbox.json > sandbox-url.txt
+          scripts/ci/hosted-smoke.sh "$(tail -n 1 sandbox-url.txt)" "$GITHUB_SHA"
+          echo "Sandbox fixture preview: $(tail -n 1 sandbox-url.txt)" >> "$GITHUB_STEP_SUMMARY"
