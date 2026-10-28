@@ -16,15 +16,19 @@ const title = "SANDBOX: Stripe payment and refund verification";
 const meta = { requestId: "m4-sandbox-invoice-20261028", ip: "127.0.0.1" };
 const system = { type: "system" as const, id: null };
 const inShop = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
-  withTenant(businessId, system, fn, { role: "worker" });
+  withTenant(businessId, system, fn, { role: "app" });
+let stage = "environment";
 
 async function main() {
   const url = new URL(process.env.DATABASE_URL_WORKER ?? "");
+  const appUrl = new URL(process.env.DATABASE_URL_APP ?? "");
   if (process.env.M4_SANDBOX_SETUP !== "true" || process.env.APP_ENV === "production" ||
     process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://gcclcuvdrqqllolxqhok.supabase.co" ||
-    url.username !== "worker_user.gcclcuvdrqqllolxqhok" || !/^[a-f0-9]{64}$/.test(fixture.invoiceTokenHash))
+    url.username !== "worker_user.gcclcuvdrqqllolxqhok" ||
+    appUrl.username !== "app_user.gcclcuvdrqqllolxqhok" || !/^[a-f0-9]{64}$/.test(fixture.invoiceTokenHash))
     throw new Error("Refusing invoice fixture outside the expected preview");
 
+  stage = "estimate";
   const version = await inShop(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${fixture.quoteId}, 0))`);
     const [connection] = await tx.select().from(stripeConnection)
@@ -67,7 +71,9 @@ async function main() {
     return { id: row.id, token: token.token };
   });
 
+  stage = "authorization";
   if (version.token) await signEstimate(version.token, "Synthetic sandbox customer", ["sandbox-part", "sandbox-labor"], meta);
+  stage = "invoice";
   const result = await inShop(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${"sandbox-invoice:" + fixture.quoteId}, 0))`);
     let [row] = await tx.select().from(invoice)
@@ -89,6 +95,8 @@ async function main() {
 }
 
 try { await main(); } catch (error) {
-  console.error(JSON.stringify({ event: "m4.sandbox_invoice_failed", errorType: error instanceof Error ? error.name : "unknown" }));
+  const cause = (error as { cause?: { code?: string }; code?: string })?.cause ?? error as { code?: string };
+  const code = typeof cause?.code === "string" && /^[A-Z0-9_]{1,40}$/.test(cause.code) ? cause.code : undefined;
+  console.error(JSON.stringify({ event: "m4.sandbox_invoice_failed", stage, code, errorType: error instanceof Error ? error.name : "unknown" }));
   process.exitCode = 1;
 } finally { await closePools(); }
