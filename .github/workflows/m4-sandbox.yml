@@ -6,6 +6,8 @@ on:
     branches: [m4-invoices-payments]
     paths:
       - scripts/dev/link-m4-sandbox.ts
+      - scripts/dev/prepare-m4-sandbox-invoice.ts
+      - scripts/dev/m4-sandbox-fixture.json
       - .github/workflows/m4-sandbox.yml
 
 permissions:
@@ -45,7 +47,7 @@ jobs:
           fs.mkdirSync('.vercel', { recursive: true });
           fs.writeFileSync('.vercel/m4-sandbox.json', JSON.stringify({
             framework: 'nextjs',
-            buildCommand: 'M4_SANDBOX_SETUP=true pnpm exec tsx scripts/dev/link-m4-sandbox.ts && pnpm build'
+            buildCommand: 'M4_SANDBOX_SETUP=true pnpm exec tsx scripts/dev/link-m4-sandbox.ts && M4_SANDBOX_SETUP=true pnpm exec tsx scripts/dev/prepare-m4-sandbox-invoice.ts && pnpm build'
           }));
           JS
           npx --yes vercel@63.1.0 deploy --yes --local-config .vercel/m4-sandbox.json > sandbox-url.txt
