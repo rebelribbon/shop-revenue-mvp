@@ -6,6 +6,7 @@ import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { maskEmail, normalizeEmail } from "@/lib/normalize";
 import { safeNext } from "@/lib/safe-next";
+import { authServiceUnavailable, signInFailureMessage } from "@/lib/auth-errors";
 import { getRequestMeta } from "../request";
 import {
   clearPasswordResetGrant,
@@ -44,8 +45,10 @@ export async function signInWithPassword(_: AuthFormState | null, form: FormData
     requestId: meta.requestId,
     email: maskEmail(parsed.data.email),
     accepted: !error,
+    providerStatus: error?.status,
+    providerCode: error?.code,
   });
-  if (error) return { ok: false, message: "Email or password is incorrect." };
+  if (error) return { ok: false, message: signInFailureMessage(error) };
   redirect(safeNext(parsed.data.next));
 }
 
@@ -68,8 +71,10 @@ export async function requestPasswordReset(_: AuthFormState | null, form: FormDa
     requestId: meta.requestId,
     email: maskEmail(email),
     accepted: !error,
+    providerStatus: error?.status,
+    providerCode: error?.code,
   });
-  if (error && error.status && error.status >= 500) {
+  if (error && authServiceUnavailable(error)) {
     return { ok: false, message: "Password reset email is unavailable right now. Please try again shortly." };
   }
   return { ok: true, message: RESET_SENT };
@@ -151,3 +156,4 @@ export async function acceptInviteAction(_: AuthFormState | null, form: FormData
   }
   redirect("/app");
 }
+
