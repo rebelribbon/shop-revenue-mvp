@@ -49,13 +49,16 @@ The implementation has database-backed tests using synthetic Stripe objects and 
 
 Remaining operational limits: a creation attempt whose outcome remains uncertain stays reserved; do not clear it based only on a local timeout. Reconcile with Stripe first. Payments already processing cannot be canceled through the unpaid-checkout control. Subscription billing for Shop Revenue itself is outside this invoice-payment implementation.
 
-## Sandbox integration progress (2026-10-27)
+## Sandbox integration progress (2026-10-28)
 
 - Shop Revenue sandbox is claimed, CLI-authorized, and enabled for Connect with direct merchant payments.
 - One synthetic full-Dashboard test merchant was created through Accounts v2. Its card-payments capability is still restricted pending Stripe-hosted onboarding.
 - A restricted sandbox app key is configured for preview deployments. Actual SDK calls successfully retrieved the connected merchant and created a v2 hosted-onboarding link.
 - The key permits Accounts v2 reads, merchant configuration writes, onboarding links and banner sessions, and connected-account Checkout/refund operations and PaymentIntent reads. No transfer or payout permissions were selected.
 - Earlier sandbox keys exposed in the setup interface were expired. Active credentials are stored privately; no secret values belong in this repository.
-- The webhook inventory was verified empty through both CLI and Dashboard. Webhook creation remains pending explicit approval to share a Vercel deployment-protection bypass credential with Stripe, or a separately reviewed public relay design that keeps that credential private.
+- With explicit user approval, one sandbox Connect snapshot webhook was created for the eight listed events. Its signing secret is configured as a sensitive preview variable. The Vercel protection credential is shared only with this provider destination; the setup-screen token was replaced and revoked after the interface displayed it. Deployment Protection remains enabled.
+- Hosted verification exposed a missing `DATABASE_URL_WORKER`. The existing preview `worker_user` credential was rotated and configured for the same TLS-encrypted Supavisor transaction connection used by the hosted setup script; its existing RLS and column grants remain unchanged. No production variables or databases were changed.
+- The stable preview now serves tested commit `0ef7398132a6ed4230eecc78ff49d1d8bbb510cf` with these runtime settings. Health and database checks passed. An invalid webhook signature returned 400; a signed synthetic probe and its replay returned 200 and produced one ignored inbox row. This verifies the deployed signature and inbox path, not actual Stripe-originated delivery.
+- Stripe-originated verification is still pending: Workbench OAuth rejected a harmless synthetic-merchant profile update (`oauth_not_supported`), so that attempt generated no provider event. Do not widen runtime permissions for this probe.
 - Full-Dashboard onboarding reached the test merchant's owner-signup step. Password creation must be completed by the user, or the user can choose an existing Stripe sign-in.
 - Real hosted Checkout, provider webhook delivery/replay, and provider refunds remain unverified. Automated tests using synthetic provider objects are not a substitute for these checks.
