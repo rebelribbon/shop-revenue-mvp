@@ -103,4 +103,7 @@ jobs:
           npx --yes vercel@63.1.0 build
           npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
           scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ]; then
+            npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"
+          fi
           echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"

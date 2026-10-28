@@ -14,12 +14,12 @@ Implemented on `m4-invoices-payments`:
 
 ## Environment configuration
 
-Use the separate claimed Shop Revenue sandbox, never the Rebel Ribbon account. Keep all preview credentials in Vercel sensitive environment variables, scoped to this branch and preview target. Do not use CLI OAuth access/refresh tokens as deployed application credentials.
+Use the separate claimed Shop Revenue sandbox, never the Rebel Ribbon account. Keep the sandbox runtime key and webhook signing secret in Vercel sensitive environment variables, scoped to the preview target. This Vercel project is deployed through CLI and has no Git integration, so Vercel rejects branch-scoped environment variables. The M4 workflow assigns its tested deployment to a dedicated stable preview alias; production variables remain separate. Do not use CLI OAuth access/refresh tokens as deployed application credentials.
 
 - `STRIPE_SECRET_KEY`: restricted sandbox application API key. Permit the required Accounts v2 merchant create/retrieve, account link/session creation, connected-account Checkout Session create/read/expire, PaymentIntent read and Refund create/read operations. Grant the corresponding connected-account access. Webhook endpoint setup permissions belong on a separate setup credential, rather than the runtime key.
 - `STRIPE_PUBLISHABLE_KEY`: sandbox publishable key for the account-requirements banner.
 - `STRIPE_WEBHOOK_SECRET`: signing secret for the Connect webhook endpoint.
-- `PAYMENTS_BASE_URL`: stable HTTPS branch-preview origin used for onboarding and Checkout return URLs. Never infer a trusted origin from request headers.
+- `PAYMENTS_BASE_URL`: stable HTTPS branch-preview origin used for onboarding and Checkout return URLs. Never infer a trusted origin from request headers. The M4 preview uses `https://shop-revenue-m4-preview-brads-projects-3548d304.vercel.app`; alias assignment happens only after exact-deployment smoke checks pass.
 
 Enable a Connect webhook endpoint for snapshot events on connected accounts:
 
@@ -48,3 +48,14 @@ The implementation has database-backed tests using synthetic Stripe objects and 
 6. Confirm no customer document includes internal costs, provider credentials, or private ledger notes. Check public links and mobile/desktop navigation.
 
 Remaining operational limits: a creation attempt whose outcome remains uncertain stays reserved; do not clear it based only on a local timeout. Reconcile with Stripe first. Payments already processing cannot be canceled through the unpaid-checkout control. Subscription billing for Shop Revenue itself is outside this invoice-payment implementation.
+
+## Sandbox integration progress (2026-10-27)
+
+- Shop Revenue sandbox is claimed, CLI-authorized, and enabled for Connect with direct merchant payments.
+- One synthetic full-Dashboard test merchant was created through Accounts v2. Its card-payments capability is still restricted pending Stripe-hosted onboarding.
+- A restricted sandbox app key is configured for preview deployments. Actual SDK calls successfully retrieved the connected merchant and created a v2 hosted-onboarding link.
+- The key permits Accounts v2 reads, merchant configuration writes, onboarding links and banner sessions, and connected-account Checkout/refund operations and PaymentIntent reads. No transfer or payout permissions were selected.
+- Earlier sandbox keys exposed in the setup interface were expired. Active credentials are stored privately; no secret values belong in this repository.
+- The webhook inventory was verified empty through both CLI and Dashboard. Webhook creation remains pending explicit approval to share a Vercel deployment-protection bypass credential with Stripe, or a separately reviewed public relay design that keeps that credential private.
+- Full-Dashboard onboarding reached the test merchant's owner-signup step. Password creation must be completed by the user, or the user can choose an existing Stripe sign-in.
+- Real hosted Checkout, provider webhook delivery/replay, and provider refunds remain unverified. Automated tests using synthetic provider objects are not a substitute for these checks.
