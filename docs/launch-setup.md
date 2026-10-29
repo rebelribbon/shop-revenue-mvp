@@ -4,7 +4,7 @@ The application code is complete through M9. Commercial activation is not approv
 
 ## Reviewed release candidate
 
-The consolidated PR targets main and includes M1, M2, M3, M4, M7, M8 and M9. Automated texting and imports remain out of scope. Production releases are manual and must run from protected main. Enable main branch protection/rulesets, require CI and browser checks, and configure a production environment reviewer and main-only deployment rule before dispatching a production workflow.
+[The consolidated release PR](https://github.com/rebelribbon/shop-revenue-mvp/pull/8) was merged into main at `8a0b27859723238166f1e060e14f8c1b9a2cf191` and includes M1, M2, M3, M4, M7, M8 and M9. Automated texting and imports remain out of scope. Production releases are manual and must run from protected main. Enable main branch protection/rulesets, require CI and browser checks, and configure a production environment reviewer and main-only deployment rule before dispatching a production workflow.
 
 Production now stages a build without assigning live domains, tests that exact deployment through protection, then promotes the tested build. The backup workflow explicitly names the configured KMS key on every upload.
 
@@ -43,5 +43,6 @@ The off-site role needs permission to generate data keys/encrypt with the intend
 - Main was unprotected when inspected; the new release/inspection guards will refuse production actions until this is corrected.
 - Vercel production does not yet have the required email, monitoring, worker/admin or live-payment configuration.
 - No external service account was created or paid add-on enabled by this preparation.
-- The local execution workspace is unavailable. Changes are saved directly in GitHub and checked by Actions; CLI-based service provisioning cannot run here until the workspace returns.
+- The workspace reconnected. Local lint/type checking and all six setup-inspector boundary tests passed. The merged application passed the 360 server/database tests and 27 browser checks, with one desktop-only skip. Superseded milestone PRs are closed; their commits are included in main.
+- Stripe CLI and its Projects plugin are installed. Current catalog searches found neither Postmark nor Sentry, so no substitute provider was selected or account created. Vercel service discovery is waiting on account authorization. The provider configuration inspection itself has not run; its credential-free validation is separate.
 - Unused preview pg_net cleanup and provider compromised-password protection remain in the dated M9 report.
