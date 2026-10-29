@@ -55,7 +55,7 @@ export function MoneyFinder({data,category,view,query,page,readOnly}:{data:Money
         </Link>;
       })}
     </div>
-    <div className="money-actions"><Link href={url(undefined)}>All categories</Link>
+    <div className="money-actions"><Link href="/app/revenue#follow-ups">Recent manual follow-ups</Link><Link href={url(undefined)}>All categories</Link>
       {(['active','snoozed','dismissed'] as const).map(v=><Link key={v} href={url(category,1,v)} aria-current={view===v?'page':undefined}>{v[0].toUpperCase()+v.slice(1)}</Link>)}
     </div>
     <form className="money-search" action="/app">

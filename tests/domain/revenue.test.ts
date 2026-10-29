@@ -1,13 +1,14 @@
 import {describe,it,expect} from 'vitest';
 import {eq} from 'drizzle-orm';
-import {activity,estimateVersion,estimateRecommendationLine,invoice,revenueAttribution,revenueAttributionEvent} from '@/db/schema';
+import {activity,recoveryItem,estimateVersion,estimateRecommendationLine,invoice,revenueAttribution,revenueAttributionEvent} from '@/db/schema';
 import {withTenant} from '@/db/tenant';
 import {createCustomer,createVehicle} from '@/domain/customers';
 import {addRecommendation,updateRecovery,startRecoveryWork} from '@/domain/money-finder';
 import {createJob,listJobs} from '@/domain/jobs';
 import {freezeEstimate,signEstimate,readPublicEstimate} from '@/domain/estimates';
 import {issueInvoice,recordInvoicePayment,reverseInvoicePayment,setInvoiceDispute} from '@/domain/invoices';
-import {reconcileRevenue,reviewRevenue,listRevenue,revenueDetail} from '@/domain/revenue';
+import {reconcileRevenue,reviewRevenue,listRevenue,revenueDetail,recentRecoveryFollowups} from '@/domain/revenue';
+import {recordActivity} from '@/domain/records';
 import {localDateKey} from '@/lib/timezone';
 import {meta,seedTenant} from '../helpers/fixtures';
 async function fixture(){
@@ -34,6 +35,20 @@ async function billed(f:Fixture,{response=true,delivery=true}:{response?:boolean
  return {doc,estimate:e,touch,source};
 }
 describe('durable revenue attribution',()=>{
+ it('continues a real recorded follow-up after its item leaves the active list, without fabricating another contact',async()=>{
+  const f=await fixture();
+  const evidence=await run(f,async tx=>{const [r]=await tx.insert(recoveryItem).values({businessId:f.businessId,category:'lapsed',subjectId:f.customerId,customerId:f.customerId,status:'contacted',lastContactAt:new Date(),lastContactMethod:'in_person'}).returning();const contact=await recordActivity(tx,{kind:'recovery.contact',subjectType:'customer',subjectId:f.customerId,summary:'Recorded lapsed follow-up',data:{recoveryItemId:r.id,deliveryConfirmed:true,method:'in_person'}});return {r,contact};});
+  await run(f,tx=>updateRecovery(tx,meta(),{category:'lapsed',subjectId:f.customerId,action:'responded',note:'Customer responded to the recorded contact'}));
+  const source=await run(f,tx=>startRecoveryWork(tx,meta(),{category:'lapsed',subjectId:f.customerId,destination:'job'}));
+  expect(source.redirectTo).toContain(`sourceContactActivityId=${evidence.contact.id}`);
+  expect((await run(f,tx=>recentRecoveryFollowups(tx))).some(r=>r.id===evidence.r.id)).toBe(true);
+ });
+ it('records staff responses without upgrading them to owner-confirmed proof',async()=>{
+  const f=await fixture();await run(f,tx=>updateRecovery(tx,meta(),{category:'declined',subjectId:f.vehicleId,action:'contact',method:'in_person'}));
+  const result=await withTenant(f.businessId,f.staff!.actor,tx=>updateRecovery(tx,meta(),{category:'declined',subjectId:f.vehicleId,action:'responded',note:'Staff noted a response'}));
+  const [event]=await run(f,tx=>tx.select().from(activity).where(eq(activity.id,result.activityId)));expect(event.data).toMatchObject({ownerConfirmed:false});
+ });
+
  it('credits real paid lines only, preserves calculation references, and is idempotent',async()=>{
   const f=await fixture(),{doc,estimate}=await billed(f);
   await run(f,tx=>recordInvoicePayment(tx,meta(),{invoiceId:doc.id,amountCents:doc.totalCents,method:'cash',reference:'Receipt'}));

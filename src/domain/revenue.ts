@@ -98,3 +98,13 @@ export async function revenueDetail(tx:TenantTx,id:string){
  const [shop]=await tx.select({timezone:business.timezone}).from(business).where(eq(business.id,tx.businessId));
  return {row,invoice:doc,events,evidence,timezone:shop.timezone};
 }
+
+export async function recentRecoveryFollowups(tx:TenantTx){
+ const rows=await tx.execute(sql`SELECT r.id,r.category,r.subject_id AS "subjectId",r.status,r.customer_id AS "customerId",c.display_name AS "customerName",
+  r.last_contact_at AS "lastContactAt",r.last_contact_method AS "method",concat_ws(' ',v.year,v.make,v.model,v.plate) AS "vehicleLabel"
+  FROM app.recovery_item r JOIN app.customer c ON c.business_id=r.business_id AND c.id=r.customer_id
+  LEFT JOIN app.vehicle v ON v.business_id=r.business_id AND v.id=r.vehicle_id
+  WHERE r.business_id=${tx.businessId} AND r.last_contact_at IS NOT NULL AND c.status='active' AND NOT c.do_not_contact AND (r.vehicle_id IS NULL OR v.status='active')
+  ORDER BY r.last_contact_at DESC,r.id DESC LIMIT 50`);
+ return rows.rows as unknown as {id:string;category:'declined'|'open_estimate'|'unpaid_invoice'|'lapsed'|'service_due';subjectId:string;status:string;customerId:string;customerName:string;lastContactAt:string;method:string;vehicleLabel:string}[];
+}

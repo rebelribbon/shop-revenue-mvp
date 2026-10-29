@@ -118,7 +118,7 @@ describe("append-only evidence (audit_event, activity)", () => {
 
     it(`${table}: even the owning role cannot update, delete or truncate`, async () => {
       const c = await rawClient("migration");
-      for (const stmt of [`UPDATE app.${table} SET created_at = now()`, `DELETE FROM app.${table}`, `TRUNCATE app.${table}`]) {
+      for (const stmt of [`UPDATE app.${table} SET created_at = now()`, `DELETE FROM app.${table}`, `TRUNCATE app.${table} CASCADE`]) {
         await c.query("BEGIN");
         await c.query(`CREATE POLICY t_tmp ON app.${table} FOR ALL TO migration_owner USING (true)`);
         await expect(c.query(stmt)).rejects.toMatchObject({ message: expect.stringContaining("APPEND_ONLY") });
@@ -339,3 +339,4 @@ describe("uuid_v7", () => {
     expect(Math.abs(ms - Date.now())).toBeLessThan(60_000);
   });
 });
+

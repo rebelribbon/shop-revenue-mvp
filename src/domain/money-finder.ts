@@ -161,9 +161,20 @@ export async function getMoneyFinder(tx: TenantTx, options: {
     items:data.items.map(i=>({...i,amountCents:safeCents(i.amountCents)}))};
 }
 
-async function findCandidate(tx:TenantTx,category:MoneyCategory,subjectId:string) {
+async function findCandidate(tx:TenantTx,category:MoneyCategory,subjectId:string,allowRecorded=false) {
   const rows=await tx.execute(sql`${candidates(tx,new Date())} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`);
-  const item=rows.rows[0]?.data as unknown as MoneyItem|undefined;
+  let item=rows.rows[0]?.data as unknown as MoneyItem|undefined;
+  if(!item&&allowRecorded){
+   const recorded=await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,
+    'customerName',c.display_name,'vehicleLabel',concat_ws(' ',v.year,v.make,v.model,v.plate),'phone',c.phone_e164,'email',c.email,'reason','Recorded manual follow-up','amountCents',NULL,'occurredAt',r.created_at,'renewFirst',false,
+    'recoveryId',r.id,'status',r.status,'snoozedUntil',r.snoozed_until,'dismissedReason',r.dismissed_reason,'lastContactAt',r.last_contact_at,'lastContactMethod',r.last_contact_method) AS data
+    FROM app.recovery_item r JOIN app.customer c ON c.business_id=r.business_id AND c.id=r.customer_id
+    LEFT JOIN app.vehicle v ON v.business_id=r.business_id AND v.id=r.vehicle_id
+    WHERE r.business_id=${tx.businessId} AND r.category=${category} AND r.subject_id=${subjectId}::uuid
+     AND c.status='active' AND NOT c.do_not_contact AND (r.vehicle_id IS NULL OR v.status='active')
+     AND EXISTS(SELECT 1 FROM app.activity a WHERE a.business_id=r.business_id AND a.kind='recovery.contact' AND a.data->>'recoveryItemId'=r.id::text)`);
+   item=recorded.rows[0]?.data as unknown as MoneyItem|undefined;
+  }
   if(!item) throw notFound("That opportunity (it may have resolved)");
   return {...item,amountCents:safeCents(item.amountCents)};
 }
@@ -174,7 +185,7 @@ export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
 }) {
   await lockRevenue(tx);
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
-  const source=await findCandidate(tx,input.category,input.subjectId);
+  const source=await findCandidate(tx,input.category,input.subjectId,input.action==='responded'||input.action==='booked');
   await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,
     category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId})
     .onConflictDoNothing();
@@ -253,7 +264,7 @@ export async function setDoNotContact(tx:TenantTx,meta:RequestMeta,id:string,val
 
 export async function startRecoveryWork(tx:TenantTx,meta:RequestMeta,input:{category:MoneyCategory;subjectId:string;destination:'job'|'appointment'}) {
  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
- const source=await findCandidate(tx,input.category,input.subjectId);
+ const source=await findCandidate(tx,input.category,input.subjectId,true);
  if(source.status==='dismissed') throw new AppError('INVALID_TRANSITION','Restore this opportunity first.');
  await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId}).onConflictDoNothing();
  const [row]=await tx.select().from(recoveryItem).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.category,input.category),eq(recoveryItem.subjectId,input.subjectId)));
