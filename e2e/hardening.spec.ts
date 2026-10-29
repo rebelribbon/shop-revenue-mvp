@@ -7,6 +7,7 @@ test('owner can download tenant records while staff and anonymous users cannot',
  await signInWithPassword(page,'owner.a@shop-a.test');await page.goto('/app/settings/export');await expect(page.getByRole('heading',{name:'Export shop data',exact:true})).toBeVisible();
  await page.screenshot({path:`test-results/hardening-export-${info.project.name}.png`,fullPage:true});
  const result=await page.request.get('/app/settings/export/customers');expect(result.status()).toBe(200);expect(result.headers()['content-type']).toContain('application/x-ndjson');expect(result.headers()['cache-control']).toContain('no-store');const text=await result.text();expect(text).not.toContain('tokenHash');expect(JSON.parse(text.split('\n')[0]).format).toBe('shop-revenue-ndjson-v1');
+ await page.request.post('/auth/sign-out');
  await signInWithPassword(page,'staff.a@shop-a.test');expect((await page.request.get('/app/settings/export/customers')).status()).toBe(403);
  await page.goto('/app/settings/export');await expect(page).toHaveURL(/\/app\?denied=1/);
  expect((await page.request.get('/api/cron/maintenance')).status()).toBe(503);
