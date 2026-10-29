@@ -35,10 +35,23 @@ env:
   VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
 
 jobs:
+  target:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require protected main before a production release
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_REF_PROTECTED: ${{ github.ref_protected }}
+        run: |
+          test "$RELEASE_REF" = refs/heads/main
+          test "$RELEASE_REF_PROTECTED" = true
+
   ci:
+    needs: target
     uses: ./.github/workflows/ci.yml
 
   e2e:
+    needs: target
     uses: ./.github/workflows/e2e.yml
 
   staging:
@@ -143,9 +156,11 @@ jobs:
         run: |
           npx --yes vercel@63.1.0 pull --yes --environment=production
           npx --yes vercel@63.1.0 build --prod
-          npx --yes vercel@63.1.0 deploy --prebuilt --prod > deploy-url.txt
+          npx --yes vercel@63.1.0 deploy --prebuilt --prod --skip-domain > deploy-url.txt
       - name: Production smoke (exact deployment)
         run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+      - name: Promote the tested production build
+        run: npx --yes vercel@63.1.0 promote "$(tail -n 1 deploy-url.txt)" --yes
       - name: Production health (public canonical domain serves this commit)
         run: |
           for i in $(seq 1 30); do

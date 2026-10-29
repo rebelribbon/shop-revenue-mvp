@@ -1,0 +1,76 @@
+name: Launch setup inspection
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_commit:
+        description: Exact reviewed main commit SHA; this workflow reads configuration only
+        required: true
+        type: string
+  push:
+    branches: [m9-launch-hardening, main]
+    paths: [.github/workflows/launch-config-audit.yml, scripts/ci/launch-config-audit.mjs, tests/ci/launch-config-audit.test.mjs]
+  pull_request:
+    paths: [.github/workflows/launch-config-audit.yml, scripts/ci/launch-config-audit.mjs, tests/ci/launch-config-audit.test.mjs]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: 24}
+      - run: node --check scripts/ci/launch-config-audit.mjs
+      - run: node --test tests/ci/launch-config-audit.test.mjs
+  reviewed-target:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require an exact reviewed protected-main candidate
+        env:
+          REVIEWED_COMMIT: ${{ inputs.reviewed_commit }}
+          ACTUAL_COMMIT: ${{ github.sha }}
+          ACTUAL_REF: ${{ github.ref }}
+          REF_PROTECTED: ${{ github.ref_protected }}
+        run: |
+          test "$ACTUAL_REF" = refs/heads/main
+          test "$REF_PROTECTED" = true
+          test "$REVIEWED_COMMIT" = "$ACTUAL_COMMIT"
+  inspect:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [validate, reviewed-target]
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    environment: ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: 24}
+      - name: Inspect provider settings; never print provider responses or credentials
+        env:
+          SETUP_ENVIRONMENT: ${{ matrix.environment }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          HAS_BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL != '' }}
+          HAS_BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET != '' }}
+          HAS_BACKUP_AWS_REGION: ${{ vars.BACKUP_AWS_REGION != '' }}
+          HAS_BACKUP_AWS_ROLE_ARN: ${{ vars.BACKUP_AWS_ROLE_ARN != '' }}
+          HAS_BACKUP_KMS_KEY_ARN: ${{ vars.BACKUP_KMS_KEY_ARN != '' }}
+          HAS_BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT != '' }}
+          HAS_BACKUP_AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY != '' }}
+          HAS_STORAGE_S3_ENDPOINT: ${{ vars.STORAGE_S3_ENDPOINT != '' }}
+          HAS_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.STORAGE_S3_ACCESS_KEY_ID != '' }}
+          HAS_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_S3_SECRET_ACCESS_KEY != '' }}
+        run: node scripts/ci/launch-config-audit.mjs
+      - name: Save non-secret inspection report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: launch-setup-${{ matrix.environment }}
+          path: ${{ runner.temp }}/launch-setup-${{ matrix.environment }}.json
+          retention-days: 7
+          if-no-files-found: ignore

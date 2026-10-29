@@ -27,6 +27,7 @@ jobs:
       BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
       BACKUP_AWS_REGION: ${{ vars.BACKUP_AWS_REGION }}
       BACKUP_AWS_ROLE_ARN: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+      BACKUP_KMS_KEY_ARN: ${{ vars.BACKUP_KMS_KEY_ARN }}
       BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
       STORAGE_S3_ENDPOINT: ${{ vars.STORAGE_S3_ENDPOINT }}
       STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.STORAGE_S3_ACCESS_KEY_ID }}
@@ -35,7 +36,7 @@ jobs:
       - name: Require configuration
         run: |
           missing=""
-          for v in BACKUP_DATABASE_URL BACKUP_S3_BUCKET BACKUP_AWS_REGION BACKUP_AWS_ROLE_ARN BACKUP_AGE_RECIPIENT STORAGE_S3_ENDPOINT STORAGE_S3_ACCESS_KEY_ID STORAGE_S3_SECRET_ACCESS_KEY; do
+          for v in BACKUP_DATABASE_URL BACKUP_S3_BUCKET BACKUP_AWS_REGION BACKUP_AWS_ROLE_ARN BACKUP_KMS_KEY_ARN BACKUP_AGE_RECIPIENT STORAGE_S3_ENDPOINT STORAGE_S3_ACCESS_KEY_ID STORAGE_S3_SECRET_ACCESS_KEY; do
             [ -n "${!v}" ] || missing="$missing $v"
           done
           if [ -n "$missing" ]; then echo "::error::BLOCKED: not configured:$missing"; exit 1; fi
@@ -71,8 +72,8 @@ jobs:
       - name: Upload (SSE-KMS; retention by bucket lifecycle)
         run: |
           prefix="s3://$BACKUP_S3_BUCKET/nightly/$STAMP"
-          aws s3 cp db.pgc.age "$prefix/db.pgc.age" --sse aws:kms --only-show-errors
-          aws s3 cp db.pgc.sha256 "$prefix/db.pgc.sha256" --sse aws:kms --only-show-errors
-          aws s3 cp storage.tar.age "$prefix/storage.tar.age" --sse aws:kms --only-show-errors
+          aws s3 cp db.pgc.age "$prefix/db.pgc.age" --sse aws:kms --sse-kms-key-id "$BACKUP_KMS_KEY_ARN" --only-show-errors
+          aws s3 cp db.pgc.sha256 "$prefix/db.pgc.sha256" --sse aws:kms --sse-kms-key-id "$BACKUP_KMS_KEY_ARN" --only-show-errors
+          aws s3 cp storage.tar.age "$prefix/storage.tar.age" --sse aws:kms --sse-kms-key-id "$BACKUP_KMS_KEY_ARN" --only-show-errors
           aws s3 ls "$prefix/"
 
