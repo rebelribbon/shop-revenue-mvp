@@ -1,5 +1,5 @@
 // Sentry error reporting and tracing (Section 20) for the web app and the worker.
-// Disabled unless SENTRY_DSN is set: BLOCKED until the Sentry project exists.
+// Accept the server DSN or the DSN supplied by the Vercel Sentry integration.
 import * as Sentry from "@sentry/node";
 import { safeErrorDiagnostic } from "./errors";
 import { logger } from "./logger";
@@ -8,9 +8,9 @@ let started = false;
 export function initServerObservability(service: "web" | "worker") {
   if (started) return;
   started = true;
-  const dsn = process.env.SENTRY_DSN;
+  const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
   if (!dsn) {
-    logger.warn({ event: "observability.sentry_disabled", service, reason: "SENTRY_DSN not set" });
+    logger.warn({ event: "observability.sentry_disabled", service, reason: "Sentry DSN not set" });
     return;
   }
   Sentry.init({
@@ -33,6 +33,6 @@ export function initServerObservability(service: "web" | "worker") {
 
 export function reportError(err: unknown, context: { requestId?: string; businessId?: string | null; action?: string }) {
   logger.error({ event: "error", ...context, ...safeErrorDiagnostic(err) });
-  if (process.env.SENTRY_DSN) Sentry.captureException(new Error(safeErrorDiagnostic(err).errorName), { tags: { requestId: context.requestId, businessId: context.businessId ?? undefined, action: context.action } });
+  if (process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN) Sentry.captureException(new Error(safeErrorDiagnostic(err).errorName), { tags: { requestId: context.requestId, businessId: context.businessId ?? undefined, action: context.action } });
 }
 
