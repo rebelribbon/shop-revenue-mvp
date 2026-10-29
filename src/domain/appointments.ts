@@ -1,5 +1,5 @@
 import { and, asc, eq, gte, lt } from "drizzle-orm";
-import { appointment, business, customer, vehicle } from "@/db/schema";
+import { appointment, business, customer, recoveryItem, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { validateRecoverySource } from "./recovery-source";
 import { notFound } from "@/lib/errors";
@@ -56,8 +56,9 @@ export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: 
     reason: input.reason || null,
     notes: input.notes || null,
   }).returning();
+  if(input.sourceRecoveryItemId) await tx.update(recoveryItem).set({status:"booked",snoozedUntil:null}).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.id,input.sourceRecoveryItemId)));
   await audit(tx, meta, { action: "appointment.created", targetType: "appointment", targetId: row.id, after: { customerId: row.customerId, startsAt: row.startsAt.toISOString() } });
-  await recordActivity(tx, { kind: "appointment.created", subjectType: "customer", subjectId: row.customerId, summary: `Appointment scheduled for ${c.name}`, data: { appointmentId: row.id } });
+  await recordActivity(tx, { kind: "appointment.created", subjectType: "customer", subjectId: row.customerId, summary: `Appointment scheduled for ${c.name}`, data: { appointmentId: row.id,sourceRecoveryItemId:row.sourceRecoveryItemId } });
   return row;
 }
 

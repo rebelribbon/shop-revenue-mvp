@@ -50,7 +50,7 @@ async function bill(f:Fixture,age:number,paid:number,paidAge=age) {
 describe('Money Finder live list rules',()=>{
   it('keeps the live dashboard bounded at 20,000 customers',async()=>{
     const f=await fixture();
-    await run(f,tx=>tx.execute(sql`INSERT INTO app.customer(business_id,first_name,display_name) SELECT ${f.businessId},'Scale','Scale '||n FROM generate_series(1,19999) n`));
+    await run(f,tx=>tx.execute(sql`INSERT INTO app.customer(business_id,first_name,last_name,display_name) SELECT ${f.businessId},'Scale','','Scale '||n FROM generate_series(1,19999) n`));
     await estimate(f,3,30,[]);
     await dashboard(f);
     const times:number[]=[];
