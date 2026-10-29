@@ -1,6 +1,9 @@
+import type Stripe from 'stripe';
+import {randomUUID} from 'node:crypto';
+import {reserveCheckout,settleCheckout,settleRefund,withPaymentTenant} from '@/domain/payments';
 import {describe,it,expect} from 'vitest';
 import {eq} from 'drizzle-orm';
-import {activity,recoveryItem,estimateVersion,estimateRecommendationLine,invoice,revenueAttribution,revenueAttributionEvent} from '@/db/schema';
+import {activity,stripeConnection,recoveryItem,estimateVersion,estimateRecommendationLine,invoice,revenueAttribution,revenueAttributionEvent} from '@/db/schema';
 import {withTenant} from '@/db/tenant';
 import {createCustomer,createVehicle} from '@/domain/customers';
 import {addRecommendation,updateRecovery,startRecoveryWork} from '@/domain/money-finder';
@@ -35,6 +38,21 @@ async function billed(f:Fixture,{response=true,delivery=true}:{response?:boolean
  return {doc,estimate:e,touch,source};
 }
 describe('durable revenue attribution',()=>{
+ it('re-evaluates verified Stripe-shaped settlement/refunds and worker repair without duplicate credit',async()=>{
+  const f=await fixture(),{doc}=await billed(f),accountId=`acct_${randomUUID()}`;
+  await run(f,tx=>tx.insert(stripeConnection).values({businessId:f.businessId,accountId,cardPaymentsStatus:'active',livemode:false}));
+  const checkout=await withPaymentTenant(f.businessId,tx=>reserveCheckout(tx,doc.id));
+  const session={id:`cs_test_${checkout.id}`,object:'checkout.session',mode:'payment',livemode:false,amount_total:doc.totalCents,currency:'usd',status:'complete',payment_status:'paid',payment_intent:`pi_${checkout.id}`,metadata:{checkout_id:checkout.id,invoice_id:doc.id,business_id:f.businessId}} as unknown as Stripe.Checkout.Session;
+  await withPaymentTenant(f.businessId,tx=>settleCheckout(tx,meta(),checkout.id,accountId,session));
+  expect((await run(f,tx=>listRevenue(tx))).direct).toBe('64000');
+  const refund={id:`re_${checkout.id}`,object:'refund',payment_intent:`pi_${checkout.id}`,amount:doc.totalCents,currency:'usd',status:'pending',metadata:{}} as Stripe.Refund;
+  await withPaymentTenant(f.businessId,tx=>settleRefund(tx,meta(),accountId,refund));expect((await run(f,tx=>listRevenue(tx))).direct).toBe('64000');
+  await withPaymentTenant(f.businessId,tx=>settleRefund(tx,meta(),accountId,{...refund,status:'succeeded'}));expect((await run(f,tx=>listRevenue(tx))).direct).toBe('0');
+  await withPaymentTenant(f.businessId,tx=>settleRefund(tx,meta(),accountId,{...refund,status:'succeeded'}));
+  expect((await withTenant(f.businessId,{type:'system',id:null},tx=>reconcileRevenue(tx,meta()),{role:'worker'})).changed).toBe(0);
+  expect(await run(f,tx=>tx.select().from(revenueAttributionEvent))).toHaveLength(2);
+ });
+
  it('continues a real recorded follow-up after its item leaves the active list, without fabricating another contact',async()=>{
   const f=await fixture();
   const evidence=await run(f,async tx=>{const [r]=await tx.insert(recoveryItem).values({businessId:f.businessId,category:'lapsed',subjectId:f.customerId,customerId:f.customerId,status:'contacted',lastContactAt:new Date(),lastContactMethod:'in_person'}).returning();const contact=await recordActivity(tx,{kind:'recovery.contact',subjectType:'customer',subjectId:f.customerId,summary:'Recorded lapsed follow-up',data:{recoveryItemId:r.id,deliveryConfirmed:true,method:'in_person'}});return {r,contact};});
