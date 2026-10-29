@@ -1,4 +1,5 @@
 "use server";
+import { safeErrorDiagnostic } from "@/lib/errors";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { acceptInvite, peekInvite } from "@/domain/membership";
@@ -6,6 +7,7 @@ import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { maskEmail, normalizeEmail } from "@/lib/normalize";
 import { safeNext } from "@/lib/safe-next";
+import { checkAuthThrottle } from "@/domain/auth-throttle";
 import { authServiceUnavailable, signInFailureMessage } from "@/lib/auth-errors";
 import { getRequestMeta } from "../request";
 import {
@@ -35,6 +37,7 @@ export async function signInWithPassword(_: AuthFormState | null, form: FormData
   });
   if (!parsed.success) return { ok: false, message: "Enter your email and password." };
 
+  try{await checkAuthThrottle("sign_in",parsed.data.email,meta.ip);}catch(e){return {ok:false,message:e instanceof AppError?e.message:"Sign-in is unavailable right now."};}
   const supabase = await supabaseServer();
   const { error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
@@ -61,6 +64,7 @@ export async function requestPasswordReset(_: AuthFormState | null, form: FormDa
     return { ok: false, message: "Enter a valid email address." };
   }
 
+  try{await checkAuthThrottle("reset",email,meta.ip);}catch(e){return {ok:false,message:e instanceof AppError?e.message:"Password reset is unavailable right now."};}
   const supabase = await supabaseServer();
   const next = "/reset-password";
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -102,6 +106,7 @@ export async function updatePassword(_: AuthFormState | null, form: FormData): P
   const supabase = await supabaseServer();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) return { ok: false, message: "We could not update your password. Request a new reset link and try again." };
+  await supabase.auth.signOut({scope:"others"});
   await clearPasswordResetGrant();
   redirect(safeNext(parsed.data.next));
 }
@@ -117,6 +122,7 @@ export async function startInviteSignIn(_: AuthFormState | null, form: FormData)
     return { ok: false, message: "This MVP requires an email invitation. Ask the shop owner to send a new invite by email." };
   }
 
+  try{await checkAuthThrottle("invite",invite.inviteEmail,meta.ip);}catch(e){return {ok:false,message:e instanceof AppError?e.message:"Account setup is unavailable right now."};}
   try {
     const admin = supabaseAdmin();
     const { error } = await admin.auth.admin.createUser({ email: invite.inviteEmail, email_confirm: true });
@@ -124,7 +130,7 @@ export async function startInviteSignIn(_: AuthFormState | null, form: FormData)
       throw new AppError("PROVIDER_UNAVAILABLE", "Sign-in is unavailable right now.");
     }
   } catch (e) {
-    logger.warn({ event: "invite.auth_user_failed", requestId: meta.requestId, err: (e as Error).message });
+    logger.warn({ event: "invite.auth_user_failed", requestId: meta.requestId, ...safeErrorDiagnostic(e) });
     return { ok: false, message: "Account setup is unavailable right now. Please try again shortly." };
   }
 

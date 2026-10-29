@@ -1,3 +1,5 @@
+import { assertSessionAssurance } from "../auth/assurance";
+import { safeErrorDiagnostic } from "@/lib/errors";
 // Server action contract (Section 10): Zod validation with unknown fields
 // rejected; caller resolved from the session; one withTenant transaction;
 // clientRequestId idempotency stored in request_idempotency (48 h); typed
@@ -41,9 +43,10 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
       if (session.actor.type === "support") {
         await withTenant(session.businessId, { ...session.actor }, (tx) =>
           audit(tx, meta, { action: "support.mutation_blocked", targetType: "action", targetId: null, after: { action: cfg.name } }),
-        { supportAudit: true }).catch((e) => logger.error({ event: "audit.failed", requestId: meta.requestId, err: (e as Error).message }));
+        { supportAudit: true }).catch((e) => logger.error({ event: "audit.failed", requestId: meta.requestId, ...safeErrorDiagnostic(e) }));
         throw new AppError("FORBIDDEN", "View-as is read-only.");
       }
+      await assertSessionAssurance(session.role);
       const parsed = schema.safeParse(trimStrings(raw));
       if (!parsed.success) {
         const fields = Object.fromEntries(parsed.error.issues.map((i) => [i.path.join(".") || "_", i.message]));
@@ -119,7 +122,7 @@ export function toActionError(err: unknown, meta: RequestMeta, action: string): 
       fields: app.details?.fields as Record<string, string> | undefined,
     };
   }
-  logger.error({ event: "action.error", action, requestId: meta.requestId, err: err instanceof Error ? err.message : String(err) });
+  logger.error({ event: "action.error", action, requestId: meta.requestId, ...safeErrorDiagnostic(err) });
   return { code: "CONFLICT", message: "Something went wrong. Your input was kept; please try again.", referenceId: meta.requestId };
 }
 
@@ -129,3 +132,4 @@ function trimStrings(v: unknown): unknown {
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, trimStrings(x)]));
   return v;
 }
+

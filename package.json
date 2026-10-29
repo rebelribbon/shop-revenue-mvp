@@ -20,7 +20,9 @@
     "seed": "tsx scripts/dev/seed.ts",
     "e2e": "playwright test",
     "backup:restore-drill": "tsx scripts/backup/restore-drill.ts",
-    "db:interleave-pooler": "tsx scripts/db/interleave-pooler.ts"
+    "db:interleave-pooler": "tsx scripts/db/interleave-pooler.ts",
+    "security:secrets": "tsx scripts/ci/secret-scan.ts",
+    "release:check": "tsx scripts/ci/release-check.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.6.0",

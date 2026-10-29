@@ -134,6 +134,13 @@
       "when": 1793290140244,
       "tag": "0018_m8_revenue_attribution",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793293915125,
+      "tag": "0019_m9_security_and_operations",
+      "breakpoints": true
     }
   ]
 }

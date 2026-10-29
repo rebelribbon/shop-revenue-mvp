@@ -1,3 +1,4 @@
+import { safeErrorDiagnostic } from "@/lib/errors";
 // Delivers an invite link after the inviting transaction commits (Section 10:
 // external calls never run inside a transaction). The plaintext token exists
 // only here and in the link; failure is reported honestly and the owner can
@@ -37,7 +38,8 @@ export async function deliverInvite(d: InviteDelivery, businessName: string, req
     logger.info({ event: "invite.delivered", requestId, membershipId: d.membershipId, channel });
     return { membershipId: d.membershipId, channel, status: "sent", message: `Invite sent by ${channel === "email" ? "email" : "text"}.` };
   } catch (e) {
-    logger.warn({ event: "invite.delivery_failed", requestId, membershipId: d.membershipId, channel, err: (e as Error).message });
+    logger.warn({ event: "invite.delivery_failed", requestId, membershipId: d.membershipId, channel, ...safeErrorDiagnostic(e) });
     return { membershipId: d.membershipId, channel, status: "failed", message: "The invite was saved but could not be sent. Use Resend invite." };
   }
 }
+

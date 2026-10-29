@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const TOKEN_ROUTES = /^\/(e|i|r|invite|estimate|invoice|payment-return)\//;
 
 export async function proxy(request: NextRequest) {
-  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestId = crypto.randomUUID();
   const headers = new Headers(request.headers);
   headers.set("x-request-id", requestId);
   let response = NextResponse.next({ request: { headers } });
@@ -36,7 +36,12 @@ export async function proxy(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  if (TOKEN_ROUTES.test(request.nextUrl.pathname)) {
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if(request.nextUrl.protocol==='https:')response.headers.set('Strict-Transport-Security','max-age=31536000');
+  if(request.nextUrl.pathname.startsWith('/app')||request.nextUrl.pathname.startsWith('/admin')||request.nextUrl.pathname.startsWith('/auth')||['/sign-in','/forgot-password','/reset-password','/verify'].includes(request.nextUrl.pathname)){
+    response.headers.set('Cache-Control','private, no-store');response.headers.set('X-Robots-Tag','noindex, nofollow');
+  }
+  if (TOKEN_ROUTES.test(request.nextUrl.pathname)||request.nextUrl.pathname.startsWith('/auth/')) {
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("X-Robots-Tag", "noindex");
     response.headers.set("Referrer-Policy", "no-referrer");

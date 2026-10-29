@@ -5,6 +5,7 @@
 // paid always-on worker runtime until a milestone requires provider-specific
 // asynchronous processing. For M1, this endpoint therefore reports the health
 // of the deployed web service and its required database dependency only.
+import { maintenanceStatus } from "@/domain/maintenance";
 import { pingDatabase } from "@/db/tenant";
 
 export const dynamic = "force-dynamic";
@@ -13,11 +14,12 @@ export async function GET() {
   const started = Date.now();
   try {
     await pingDatabase();
+    const maintenance=process.env.CRON_SECRET?await maintenanceStatus().catch(()=>({healthy:false,lastSuccessAt:null})):null;
     return Response.json(
       {
         status: "ok",
         database: { ok: true, latencyMs: Date.now() - started },
-        backgroundProcessing: { mode: "deferred", requiredForM1: false },
+        backgroundProcessing: maintenance?{mode:process.env.MAINTENANCE_SCHEDULE_ENABLED==="true"?"scheduled":"manual",...maintenance}:{mode:"unconfigured",healthy:false},
         version: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev",
       },
       { status: 200, headers: { "Cache-Control": "no-store" } },
@@ -39,3 +41,4 @@ export async function GET() {
     );
   }
 }
+

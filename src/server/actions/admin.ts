@@ -2,6 +2,7 @@
 // Internal admin actions (Section 10: createBusiness, startSupportSession,
 // endSupportSession, replayWebhook, approveLegalPolicy ...). All require an
 // active internal user; admin-only ones require role admin; all are audited.
+import { assertSessionAssurance } from "../auth/assurance";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -31,6 +32,7 @@ function defineAdminAction<S extends z.ZodObject, R>(cfg: {
     try {
       const me = await getInternalUser();
       if (!me) throw new AppError("FORBIDDEN", "Please sign in to the admin console.");
+      await assertSessionAssurance(me.role);
       if (cfg.role === "admin" && me.role !== "admin") throw new AppError("FORBIDDEN", "Admins only.");
       const parsed = schema.safeParse(raw);
       if (!parsed.success) {
@@ -159,3 +161,4 @@ export async function signInWithGoogle() {
   if (error || !data.url) redirect("/admin/sign-in?error=google");
   redirect(data.url);
 }
+

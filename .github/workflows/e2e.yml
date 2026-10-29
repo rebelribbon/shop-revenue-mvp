@@ -6,8 +6,9 @@ name: E2E (local stack)
 on:
   pull_request:
   push:
-    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments, m7-money-finder, m8-recovered-revenue]
+    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments, m7-money-finder, m8-recovered-revenue, m9-launch-hardening]
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: e2e-${{ github.ref }}
@@ -21,9 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
@@ -53,7 +54,7 @@ jobs:
       - if: failure()
         run: tail -100 web.log
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: money-finder-screenshots
           path: |
@@ -62,7 +63,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-traces
           path: test-results/
@@ -70,11 +71,11 @@ jobs:
 
 
   preview-ci:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue' || github.ref == 'refs/heads/m9-launch-hardening')
     uses: ./.github/workflows/ci.yml
 
   preview:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue' || github.ref == 'refs/heads/m9-launch-hardening')
     needs: [e2e, preview-ci]
     runs-on: ubuntu-latest
     environment: staging
@@ -82,11 +83,11 @@ jobs:
       VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
       VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Migrate preview and verify tenant protections
@@ -112,7 +113,7 @@ jobs:
           npx --yes vercel@63.1.0 build
           npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
           scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
-          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ]; then
+          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ] || [ "$GITHUB_REF_NAME" = "m9-launch-hardening" ]; then
             npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"
           fi
           echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"

@@ -8,6 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="topbar">
         <strong>Admin · {me.displayName} ({me.role})</strong>
         <nav aria-label="Admin">
+          <Link href="/admin/release">Release readiness</Link>
           <Link href="/admin">Tenants</Link>
           {me.role === "admin" && <Link href="/admin/policies">Legal policies</Link>}
           {me.role === "admin" && <Link href="/admin/webhooks">Webhooks</Link>}
@@ -20,3 +21,4 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     </>
   );
 }
+

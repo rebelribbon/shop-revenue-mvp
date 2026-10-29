@@ -45,3 +45,13 @@ export function fromDatabaseError(err: unknown): AppError | null {
 
 // Serialization failures and deadlocks are retried (Section 19).
 export const isRetryableDatabaseError = (err: unknown) => ["40001", "40P01"].includes((err as PgError)?.code ?? "");
+
+
+// Driver errors may contain SQL parameters, credentials and customer details.
+// Keep only stable diagnostic categories in logs and monitoring.
+export function safeErrorDiagnostic(error:unknown){
+ const e=error&&typeof error==='object'?error as {name?:unknown;code?:unknown;cause?:unknown}:{};
+ const cause=e.cause&&typeof e.cause==='object'?e.cause as {code?:unknown}:{};
+ const code=typeof cause.code==='string'?cause.code:e.code;
+ return {errorName:typeof e.name==='string'&&/^[A-Za-z][A-Za-z0-9]{0,63}$/.test(e.name)?e.name:'Error',errorCode:typeof code==='string'&&/^[0-9A-Z]{5}$/.test(code)?code:null};
+}

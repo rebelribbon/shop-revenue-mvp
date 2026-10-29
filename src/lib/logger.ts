@@ -8,6 +8,15 @@ export const REDACT_PATHS = [
   "*.token",
   "*.inviteToken",
   "*.password",
+  "password",
+  "authorization",
+  "cookie",
+  "secret",
+  "*.secret",
+  "apiKey",
+  "*.apiKey",
+  "connectionString",
+  "*.connectionString",
   "*.authorization",
   "*.cookie",
   "*.body",
@@ -38,5 +47,7 @@ export const logger = pino({
 });
 
 // Public-link paths carry tokens; route logging masks the token segment (Section 16).
-export const maskTokenPath = (path: string) =>
-  path.replace(/^\/(e|i|r|invite)\/[^/?#]+/, "/$1/[token]");
+export const maskTokenPath = (path: string) => {
+ const clean=path.split(/[?#]/,1)[0];
+ return clean.replace(/^\/(e|i|r|invite|estimate|invoice|payment-return)\/[^/]+/, "/$1/[token]");
+};

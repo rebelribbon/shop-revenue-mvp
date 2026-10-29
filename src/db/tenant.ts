@@ -57,6 +57,9 @@ export function dbForRole(role: RuntimeRole | "admin"): Db {
   return connectionFor(role).db;
 }
 
+// Queue maintenance uses the worker pool only; tenant data still uses withTenant.
+export const maintenancePool = () => connectionFor("worker").pool;
+
 // Tests only: the shared pool itself, to probe for context leaking across requests.
 export const poolForRole = (role: RuntimeRole | "admin") => connectionFor(role).pool;
 
@@ -194,3 +197,4 @@ export async function ingestWebhookEvent(input: {
 export async function pingDatabase(): Promise<void> {
   await connectionFor("app").pool.query("SELECT 1");
 }
+
