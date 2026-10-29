@@ -224,6 +224,10 @@ export async function settleCheckout(
     });
     return { paid: true };
   }
+  // A slower request may carry an unpaid snapshot fetched before another worker
+  // confirmed failure/expiry. Never reactivate that terminal reservation: a new
+  // checkout may already exist, and only a verified payment can supersede it.
+  if (["failed", "expired"].includes(a.status)) return { paid: false };
   // A return URL or a completed-but-unpaid session never marks an invoice paid.
   const status =
     session.status === "expired"
@@ -387,7 +391,12 @@ export async function settleRefund(
       );
     row = requested;
   }
-  if (row && (row.paymentId !== p.id || row.amountCents !== refund.amount))
+  if (
+    row &&
+    (row.paymentId !== p.id ||
+      row.amountCents !== refund.amount ||
+      (row.stripeRefundId && row.stripeRefundId !== refund.id))
+  )
     throw new AppError(
       "CONFLICT",
       "Refund details do not match the recorded request.",
@@ -395,6 +404,13 @@ export async function settleRefund(
   if (refund.currency !== "usd" || refund.amount <= 0)
     throw new AppError("CONFLICT", "Invalid refund amount or currency.");
   if (row?.status === "succeeded") return true;
+  // Provider reads happen before the invoice lock. An old pending snapshot must
+  // not restore a failed/canceled refund's reservation after a retry was allowed.
+  if (
+    row &&
+    ["failed", "canceled"].includes(row.status) &&
+    refund.status !== "succeeded"
+  ) return true;
   const status =
     refund.status === "succeeded"
       ? "succeeded"
