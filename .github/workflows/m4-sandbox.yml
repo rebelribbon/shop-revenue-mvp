@@ -1,0 +1,55 @@
+name: M4 sandbox fixture
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [m4-invoices-payments]
+    paths:
+      - scripts/dev/link-m4-sandbox.ts
+      - scripts/dev/prepare-m4-sandbox-invoice.ts
+      - scripts/dev/m4-sandbox-fixture.json
+      - .github/workflows/m4-sandbox.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m4-sandbox-fixture
+  cancel-in-progress: false
+
+jobs:
+  link:
+    if: github.ref == 'refs/heads/m4-invoices-payments'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    env:
+      VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
+      VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
+      VERCEL_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Run fixture setup inside a hosted preview build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Sensitive variables stay inside Vercel; `vercel pull` cannot export
+          # them. This deployment-only build command is never a web endpoint.
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          fs.mkdirSync('.vercel', { recursive: true });
+          fs.writeFileSync('.vercel/m4-sandbox.json', JSON.stringify({
+            framework: 'nextjs',
+            buildCommand: 'M4_SANDBOX_SETUP=true pnpm exec tsx scripts/dev/link-m4-sandbox.ts && M4_SANDBOX_SETUP=true pnpm exec tsx scripts/dev/prepare-m4-sandbox-invoice.ts && pnpm build'
+          }));
+          JS
+          npx --yes vercel@63.1.0 deploy --yes --local-config .vercel/m4-sandbox.json > sandbox-url.txt
+          scripts/ci/hosted-smoke.sh "$(tail -n 1 sandbox-url.txt)" "$GITHUB_SHA"
+          echo "Sandbox fixture preview: $(tail -n 1 sandbox-url.txt)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,43 @@
+import {it,expect} from "vitest";
+import {and,eq,sql} from "drizzle-orm";
+import {hashToken} from "@/lib/tokens";
+import {withTenant} from "@/db/tenant";
+import {estimateVersion,estimateAuthorization} from "@/db/schema";
+import {createCustomer,createVehicle} from "@/domain/customers";
+import {createJob,listJobs} from "@/domain/jobs";
+import {rotateEstimateLink,freezeEstimate,listEstimates,readPublicEstimate,signEstimate} from "@/domain/estimates";
+import {rawClient,meta,seedTenant} from "../helpers/fixtures";
+it("freezes cost-free customer estimates, records partial signatures, and requires fresh supplement authorization",async()=>{
+ const a=await seedTenant("Estimates"),b=await seedTenant("Other estimates");
+ const c=await withTenant(a.businessId,a.owner.actor,tx=>createCustomer(tx,meta(),{firstName:"Customer",lastName:"One"}));
+ const v=await withTenant(a.businessId,a.owner.actor,tx=>createVehicle(tx,meta(),{customerId:c.id,make:"Honda"}));
+ const input={customerId:c.id,vehicleId:v.id,title:"Brake service",parts:[{description:"Pads",quantity:1,unitCostCents:12345,unitPriceCents:20000}],labor:[{description:"Install",estimatedHoursHundredths:200,actualHoursHundredths:null,sellRateCents:12500,costRateCents:3500}]};
+ const job=await withTenant(a.businessId,a.owner.actor,tx=>createJob(tx,input));const [saved]=await withTenant(a.businessId,a.owner.actor,tx=>listJobs(tx));
+ const first=await withTenant(a.businessId,a.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:saved.version,taxBps:825,supplementReason:"",terms:"Call before additional work."}));const token=first.path.split("/").pop()!;
+ const visible=await readPublicEstimate(token);expect(visible?.snapshot.totalCents).toBe(48713);expect(JSON.stringify(visible)).not.toMatch(/unitCost|costRate|actualHours|GrossProfit|12345/);
+ await expect(signEstimate(token,"Customer",["fake-line"],meta())).rejects.toThrow();
+ await expect(withTenant(a.businessId,{type:"support",id:null},tx=>tx.execute(sql`select app.authorize_estimate(${hashToken(token)},'Support','[]'::jsonb,null,'blocked-support')`),{supportAudit:true})).rejects.toThrow();
+ await signEstimate(token,"Customer One",["part-0"],meta());
+ const signed=await readPublicEstimate(token);expect(signed?.authorization?.approvedLineIds).toEqual(["part-0"]);
+ await expect(signEstimate(token,"Duplicate",[],meta())).rejects.toThrow();
+ expect(await withTenant(b.businessId,b.owner.actor,tx=>listEstimates(tx))).toEqual([]);
+ await expect(withTenant(b.businessId,b.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:saved.version,taxBps:0,supplementReason:"",terms:""}))).rejects.toThrow();
+ await expect(withTenant(a.businessId,a.owner.actor,tx=>tx.update(estimateVersion).set({snapshot:{...visible!.snapshot,title:"Tampered"}}).where(eq(estimateVersion.id,first.id)))).rejects.toThrow();
+ await withTenant(a.businessId,a.owner.actor,tx=>createJob(tx,{...input,jobId:job.id,expectedVersion:saved.version,parts:[{...input.parts[0],unitPriceCents:25000}]}));
+ expect((await readPublicEstimate(token))?.snapshot.totalCents).toBe(48713);
+ const [revised]=await withTenant(a.businessId,a.owner.actor,tx=>listJobs(tx));
+ await expect(withTenant(a.businessId,a.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:revised.version,taxBps:0,supplementReason:"",terms:""}))).rejects.toThrow();
+ const second=await withTenant(a.businessId,a.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:revised.version,taxBps:0,supplementReason:"Updated parts",terms:""}));
+ expect(await readPublicEstimate(token)).toBeNull();await expect(signEstimate(token,"Old link",[],meta())).rejects.toThrow();
+ const secondToken=second.path.split("/").pop()!;expect((await readPublicEstimate(secondToken))?.authorization).toBeNull();await signEstimate(secondToken,"Customer One",[],meta());
+ const replacement=await withTenant(a.businessId,a.owner.actor,tx=>rotateEstimateLink(tx,meta(),second.id));
+ expect(await readPublicEstimate(secondToken)).toBeNull();expect((await readPublicEstimate(replacement.path.split("/").pop()!))?.authorization?.signerName).toBe("Customer One");
+ const history=await withTenant(a.businessId,a.owner.actor,tx=>listEstimates(tx));expect(history).toHaveLength(2);expect(history.every(e=>!!e.authorization)).toBe(true);
+ await expect(withTenant(a.businessId,a.owner.actor,tx=>tx.delete(estimateAuthorization).where(eq(estimateAuthorization.versionId,first.id)))).rejects.toThrow();
+ expect(await readPublicEstimate("x".repeat(43))).toBeNull();
+ const third=await withTenant(a.businessId,a.owner.actor,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:revised.version,taxBps:0,supplementReason:"New review",terms:""}));
+ // Expiry is enforced inside the capability resolver, not just hidden in the UI.
+ const txResult=await withTenant(a.businessId,a.owner.actor,tx=>tx.select().from(estimateVersion).where(and(eq(estimateVersion.id,third.id),sql`${estimateVersion.expiresAt}>now()`)));expect(txResult).toHaveLength(1);
+ const migration=await rawClient("migration");try{await migration.query("UPDATE app.estimate_version SET expires_at=now()-interval '1 day' WHERE id=$1",[third.id]);}finally{await migration.end();}
+ const thirdToken=third.path.split("/").pop()!;expect(await readPublicEstimate(thirdToken)).toBeNull();await expect(signEstimate(thirdToken,"Expired",[],meta())).rejects.toThrow();
+});

@@ -1,0 +1,79 @@
+name: Off-site backup
+
+# Section 25: nightly pg_dump and storage sync to an encrypted S3 bucket in a
+# separate AWS account, 35-day retention (S3 lifecycle rule on the bucket).
+# BLOCKED until the production Supabase project and the backup AWS account
+# exist; the job fails and names what is missing rather than passing.
+on:
+  schedule:
+    - cron: "0 7 * * *" # 02:00 CDT / 01:00 CST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC to assume the backup role in the separate AWS account
+
+concurrency:
+  group: offsite-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    env:
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+      BACKUP_AWS_REGION: ${{ vars.BACKUP_AWS_REGION }}
+      BACKUP_AWS_ROLE_ARN: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+      BACKUP_KMS_KEY_ARN: ${{ vars.BACKUP_KMS_KEY_ARN }}
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      STORAGE_S3_ENDPOINT: ${{ vars.STORAGE_S3_ENDPOINT }}
+      STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.STORAGE_S3_ACCESS_KEY_ID }}
+      STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.STORAGE_S3_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Require configuration
+        run: |
+          missing=""
+          for v in BACKUP_DATABASE_URL BACKUP_S3_BUCKET BACKUP_AWS_REGION BACKUP_AWS_ROLE_ARN BACKUP_KMS_KEY_ARN BACKUP_AGE_RECIPIENT STORAGE_S3_ENDPOINT STORAGE_S3_ACCESS_KEY_ID STORAGE_S3_SECRET_ACCESS_KEY; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then echo "::error::BLOCKED: not configured:$missing"; exit 1; fi
+
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Dump database (schemas app, graphile_worker, drizzle, auth, storage)
+        run: |
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          url=$(printf '%s' "$BACKUP_DATABASE_URL" | sed 's/[?&]uselibpqcompat=true//')
+          docker run --rm -e PGSRC="$url" -v "$PWD:/out" postgres:17 \
+            sh -c 'pg_dump "$PGSRC" -Fc -n app -n graphile_worker -n drizzle -n auth -n storage -f /out/db.pgc'
+          sha256sum db.pgc | tee db.pgc.sha256
+          age -r "$BACKUP_AGE_RECIPIENT" -o db.pgc.age db.pgc && rm db.pgc
+
+      - name: Sync storage objects (private buckets files, imports)
+        run: |
+          mkdir -p storage
+          for bucket in files imports; do
+            AWS_ACCESS_KEY_ID="$STORAGE_S3_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$STORAGE_S3_SECRET_ACCESS_KEY" \
+              aws s3 sync "s3://$bucket" "storage/$bucket" --endpoint-url "$STORAGE_S3_ENDPOINT" --region "$BACKUP_AWS_REGION" --only-show-errors
+          done
+          tar -cf - storage | age -r "$BACKUP_AGE_RECIPIENT" -o storage.tar.age
+          rm -rf storage
+
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.BACKUP_AWS_REGION }}
+
+      - name: Upload (SSE-KMS; retention by bucket lifecycle)
+        run: |
+          prefix="s3://$BACKUP_S3_BUCKET/nightly/$STAMP"
+          aws s3 cp db.pgc.age "$prefix/db.pgc.age" --sse aws:kms --sse-kms-key-id "$BACKUP_KMS_KEY_ARN" --only-show-errors
+          aws s3 cp db.pgc.sha256 "$prefix/db.pgc.sha256" --sse aws:kms --sse-kms-key-id "$BACKUP_KMS_KEY_ARN" --only-show-errors
+          aws s3 cp storage.tar.age "$prefix/storage.tar.age" --sse aws:kms --sse-kms-key-id "$BACKUP_KMS_KEY_ARN" --only-show-errors
+          aws s3 ls "$prefix/"
+

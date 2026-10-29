@@ -1,19 +1,174 @@
 name: Deploy
 
-# Dispatch bootstrap only. The real M1 deployment workflow lives on the
-# m1-foundation branch. When manually running this workflow, select
-# m1-foundation in the branch dropdown.
+# Hosted smoke checks target the exact deployment just created and go through
+# Vercel Deployment Protection with `vercel curl` (scripts/ci/hosted-smoke.sh);
+# protection is never disabled for CI.
+# Section 24 order: CI -> migrate staging -> deploy staging -> hosted smoke ->
+# approve -> migrate production as migration_owner -> deploy app. Full M1 E2E
+# stays in the local-stack workflow because those tests intentionally depend on
+# seeded tenants, Mailpit and the local SMS inbox. Production migrations require
+# a PITR restore point. GitHub environments "staging" and "production" hold only
+# credentials; "production" requires reviewer approval.
+# Two-project hosted model (revision 2026-10-23):
+# - staging environment -> shop-revenue-dev
+# - production environment -> shop-revenue-mvp-staging
+# No separate hosted restore-scratch project is required; restore drills use
+# isolated disposable local/ephemeral Postgres.
+# The paid always-on Render worker is deferred for hosted M1 under
+# docs/spec-revision-2026-10-23-defer-always-on-worker.md.
+# Nonsecret hosted target IDs/URLs are intentionally pinned here so environment
+# setup requires credentials only.
 on:
   workflow_dispatch:
+    inputs:
+      release_evidence_json:
+        description: "Non-secret verification references for the exact release commit; production remains blocked without them"
+        required: false
+        default: "{}"
+        type: string
 
 permissions:
   contents: read
 
+env:
+  VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
+  VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
+
 jobs:
-  guard:
-    if: github.ref == 'refs/heads/main'
+  target:
     runs-on: ubuntu-latest
     steps:
-      - run: |
-          echo "::error::Select the m1-foundation branch when running Deploy."
-          exit 1
+      - name: Require protected main before a production release
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_REF_PROTECTED: ${{ github.ref_protected }}
+        run: |
+          test "$RELEASE_REF" = refs/heads/main
+          test "$RELEASE_REF_PROTECTED" = true
+
+  ci:
+    needs: target
+    uses: ./.github/workflows/ci.yml
+
+  e2e:
+    needs: target
+    uses: ./.github/workflows/e2e.yml
+
+  staging:
+    needs: [ci, e2e]
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Require configuration
+        run: |
+          missing=""
+          for v in DATABASE_URL_MIGRATION VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::BLOCKED: staging credentials not configured:$missing"; exit 1; fi
+      - name: Migrate staging (migration_owner)
+        run: |
+          set -o pipefail
+          # On failure, surface the database error as an annotation; connection
+          # strings and passwords are stripped first.
+          report() { sed -E 's#postgres(ql)?://[^[:space:]]+#postgres://[redacted]#g' "$1" \
+            | grep -iE 'error|fail|refus|denied|timeout|ENOTFOUND|ECONN|code' | head -n 5 | sed 's/^/::error::/'; }
+          pnpm db:migrate > migrate.log 2>&1 || { report migrate.log; exit 1; }
+          pnpm db:check-rls > check-rls.log 2>&1 || { report check-rls.log; exit 1; }
+          cat migrate.log check-rls.log
+      - name: Deploy web (Vercel)
+        run: |
+          npx --yes vercel@63.1.0 pull --yes --environment=preview
+          npx --yes vercel@63.1.0 build
+          npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
+      - name: Hosted staging smoke (exact deployment, through Deployment Protection)
+        run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+
+  production:
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      SUPABASE_PROJECT_REF: akwxgjxdhfylebsteyqi
+      PRODUCTION_BASE_URL: https://shop-revenue-mvp.vercel.app
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Require configuration
+        run: |
+          missing=""
+          for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::BLOCKED: production credentials not configured:$missing"; exit 1; fi
+      - name: Require reviewed release evidence
+        env:
+          RELEASE_EVIDENCE_JSON: ${{ inputs.release_evidence_json }}
+        run: |
+          node --input-type=module -e 'import fs from "node:fs"; const data=JSON.parse(process.env.RELEASE_EVIDENCE_JSON||"{}"); fs.writeFileSync(process.env.RUNNER_TEMP+"/release-evidence.json",JSON.stringify(data));'
+          npx --yes vercel@63.1.0 pull --yes --environment=production
+          RELEASE_EVIDENCE_FILE="$RUNNER_TEMP/release-evidence.json" node --env-file=.vercel/.env.production.local --import tsx scripts/ci/release-check.ts
+      - name: Verify a recent production restore point exists
+        # GET /v1/projects/{ref}/database/backups (fine-grained permission
+        # backups_read). Response fields per the Management API reference:
+        # pitr_enabled, walg_enabled, backups[{status, inserted_at, ...}],
+        # physical_backup_data {earliest_/latest_physical_backup_date_unix}.
+        # Passes on EITHER a PITR restore point within 24 h OR (revision
+        # docs/spec-revision-2026-10-24-production-restore-point.md) a
+        # COMPLETED daily backup within 26 h. Fails closed on any error.
+        run: |
+          body=$(curl -fsS --max-time 20 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/backups") \
+            || { echo "::error::Supabase Management API request failed; refusing to migrate production"; exit 1; }
+          now=$(date +%s)
+          summary=$(echo "$body" | jq -c '{pitr_enabled, latest_pitr: .physical_backup_data.latest_physical_backup_date_unix,
+            latest_daily: ([.backups[]? | select(.status == "COMPLETED") | .inserted_at] | max)}')
+          echo "$body" | jq -e --argjson now "$now" --argjson pitr_max 86400 --argjson daily_max 93600 '
+            def ts: (.[0:19] | strptime("%Y-%m-%dT%H:%M:%S") | mktime);
+            (.pitr_enabled == true
+              and ((.physical_backup_data.latest_physical_backup_date_unix // 0) > 0)
+              and (($now - .physical_backup_data.latest_physical_backup_date_unix) <= $pitr_max))
+            or ((([.backups[]? | select(.status == "COMPLETED") | .inserted_at | ts] | max) // 0) as $t
+                | $t > 0 and ($now - $t) <= $daily_max)' > /dev/null \
+            || { echo "::error::No recent restore point $summary; refusing to migrate production"; exit 1; }
+          echo "restore point ok: $summary"
+      - name: Migrate production (migration_owner; lock_timeout 5s, statement_timeout 60s)
+        run: |
+          set -o pipefail
+          # On failure, surface the database error as an annotation; connection
+          # strings and passwords are stripped first.
+          report() { sed -E 's#postgres(ql)?://[^[:space:]]+#postgres://[redacted]#g' "$1" \
+            | grep -iE 'error|fail|refus|denied|timeout|ENOTFOUND|ECONN|code' | head -n 5 | sed 's/^/::error::/'; }
+          pnpm db:migrate > migrate.log 2>&1 || { report migrate.log; exit 1; }
+          pnpm db:check-rls > check-rls.log 2>&1 || { report check-rls.log; exit 1; }
+          cat migrate.log check-rls.log
+      - name: Deploy web (Vercel)
+        run: |
+          npx --yes vercel@63.1.0 pull --yes --environment=production
+          npx --yes vercel@63.1.0 build --prod
+          npx --yes vercel@63.1.0 deploy --prebuilt --prod --skip-domain > deploy-url.txt
+      - name: Production smoke (exact deployment)
+        run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+      - name: Promote the tested production build
+        run: npx --yes vercel@63.1.0 promote "$(tail -n 1 deploy-url.txt)" --yes
+      - name: Production health (public canonical domain serves this commit)
+        run: |
+          for i in $(seq 1 30); do
+            body=$(curl -fsS --max-time 20 "$PRODUCTION_BASE_URL/api/health" || true)
+            if echo "$body" | jq -e --arg sha "$GITHUB_SHA" '.status == "ok" and .database.ok == true and .version == $sha' >/dev/null 2>&1; then
+              echo "production ok: $(echo "$body" | jq -c '{status, database, version}')"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::production health check failed or canonical domain is not serving $GITHUB_SHA"; exit 1
+

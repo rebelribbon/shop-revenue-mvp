@@ -1,0 +1,28 @@
+import {test,expect} from "@playwright/test";
+import {signInWithPassword} from "./helpers";
+test("prices and saves an internal job sheet",async({page},info)=>{
+ await signInWithPassword(page,"owner.a@shop-a.test");
+ await page.goto("/app/customers");await page.getByLabel("First name").fill(`Job ${info.project.name}`);await page.getByRole("button",{name:"Add customer",exact:true}).click();await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
+ await page.getByLabel("Make",{exact:true}).fill("Honda");await page.getByRole("button",{name:"Add vehicle",exact:true}).click();await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
+ await page.goto("/app/jobs");await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);await page.getByLabel("Customer",{exact:true}).selectOption({label:`Job ${info.project.name}`});await page.getByLabel("Vehicle",{exact:true}).selectOption({label:"Honda"});
+ await page.getByRole("button",{name:"Add part",exact:true}).click();await page.getByLabel("Description",{exact:true}).fill("Pads");await page.getByLabel("Unit cost",{exact:true}).fill("100");await page.getByLabel("Unit selling price",{exact:true}).fill("200");await expect(page.getByText("Quoted subtotal:",{exact:false}).first()).toContainText("$200.00");
+ await page.getByRole("button",{name:"Save job sheet",exact:true}).click();await expect(page.getByRole("button",{name:"Save job sheet",exact:true}).locator("..").getByRole("status")).toContainText("Job sheet saved");await page.reload();await expect(page.getByRole("heading",{name:`Brakes ${info.project.name}`,exact:true})).toBeVisible();
+ const card=page.getByRole("heading",{name:`Brakes ${info.project.name}`,exact:true}).locator("..");
+ await card.getByRole("button",{name:"Freeze and publish estimate",exact:true}).click();
+ await expect(card.getByRole("link",{name:"Open customer estimate",exact:true})).toBeVisible();
+ const href=await card.getByRole("link",{name:"Open customer estimate",exact:true}).getAttribute("href");
+ await page.goto(href!);
+ await expect(page.getByRole("heading",{name:"Estimate · Version 1",exact:true})).toBeVisible();
+ await expect(page.locator("body")).not.toContainText("unit cost");
+ await page.getByLabel("Your full name",{exact:true}).fill("Test Customer");
+ await page.getByRole("checkbox",{name:/I have reviewed/}).check();
+ await page.getByRole("button",{name:"Sign authorization",exact:true}).click();
+ await expect(page.getByRole("heading",{name:"Decision recorded",exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByText("Pads: Approved",{exact:true})).toBeVisible();
+ await page.goto("/app/invoices");await page.getByLabel("Authorized estimate",{exact:true}).selectOption({label:`Brakes ${info.project.name} · Version 1 · Job ${info.project.name}`});
+ const issuer=page.getByRole("button",{name:"Issue invoice",exact:true}).locator("..");await issuer.getByRole("button",{name:"Issue invoice",exact:true}).click();await expect(issuer.getByRole("link",{name:"Open customer invoice",exact:true})).toBeVisible();
+ const invoiceHref=await issuer.getByRole("link",{name:"Open customer invoice",exact:true}).getAttribute("href");
+ const invoice=page.getByRole("heading",{name:new RegExp(`Invoice #.*Brakes ${info.project.name}`)}).locator("..");
+ await invoice.getByLabel("Amount ($)",{exact:true}).fill("50");await invoice.getByRole("button",{name:"Record payment",exact:true}).click();await expect(invoice.getByText("Partially paid",{exact:true})).toBeVisible();
+ await page.goto(invoiceHref!);await expect(page.getByText("Balance due:",{exact:false})).toContainText("$150.00");await expect(page.locator("body")).not.toContainText("unit cost");
+});

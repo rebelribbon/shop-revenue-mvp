@@ -1,0 +1,120 @@
+name: E2E (local stack)
+
+# Deployment-blocking E2E #1 and the M1 flows against the Supabase CLI local
+# stack (Postgres, Auth, Storage, Mailpit) on the runner, with a production
+# build of the app. Staging E2E runs from deploy.yml once staging exists.
+on:
+  pull_request:
+  push:
+    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments, m7-money-finder, m8-recovered-revenue, m9-launch-hardening]
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
+        with: { version: 2.121.0 }
+      - name: Local stack secrets (per run)
+        run: |
+          hook=$(openssl rand -base64 32)
+          echo "::add-mask::$hook"
+          printf 'SUPABASE_AUTH_HOOK_SECRET="v1,whsec_%s"\nSUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN="placeholder-not-used-hook-delivers-sms"\n' "$hook" > supabase/.env
+      - name: Start Supabase local stack
+        run: supabase start -x vector,logflare,imgproxy,postgres-meta,studio,realtime,edge-runtime,supavisor,postgrest > /dev/null
+      - name: Environment, roles, migrations, seed
+        run: |
+          pnpm env:local
+          pnpm db:bootstrap
+          pnpm db:migrate
+          pnpm db:check-rls
+          pnpm seed
+      - name: Build and start the app
+        run: |
+          pnpm build
+          nohup pnpm start > web.log 2>&1 &
+          for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
+      - run: timeout 180 pnpm exec playwright install chromium
+      - name: Playwright (phone 390x844 and desktop)
+        run: pnpm e2e
+      - if: failure()
+        run: tail -100 web.log
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: money-finder-screenshots
+          path: |
+            test-results/money-finder-*.png
+            test-results/revenue-*.png
+            test-results/hardening-*.png
+          if-no-files-found: ignore
+          retention-days: 7
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+
+
+  preview-ci:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue' || github.ref == 'refs/heads/m9-launch-hardening')
+    uses: ./.github/workflows/ci.yml
+
+  preview:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue' || github.ref == 'refs/heads/m9-launch-hardening')
+    needs: [e2e, preview-ci]
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      VERCEL_ORG_ID: team_ErajC90RgZfezuIaos4BoBjw
+      VERCEL_PROJECT_ID: prj_c3KFd0Yr6iufwUAuvLRdu30GE68o
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate preview and verify tenant protections
+        env:
+          DATABASE_URL_MIGRATION: ${{ secrets.DATABASE_URL_MIGRATION }}
+        run: |
+          test -n "$DATABASE_URL_MIGRATION"
+          node --input-type=module -e '
+            const u = new URL(process.env.DATABASE_URL_MIGRATION);
+            if (!`${u.hostname} ${u.username}`.includes("gcclcuvdrqqllolxqhok")) {
+              console.error("Refusing migration: unexpected preview database"); process.exit(1);
+            }
+          '
+          pnpm db:migrate > migrate.log 2>&1 || { sed -E 's#postgres(ql)?://[^[:space:]]+#postgres://[redacted]#g' migrate.log; exit 1; }
+          pnpm db:check-rls
+          cat migrate.log
+      - name: Build and deploy tested preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          test -n "$VERCEL_TOKEN"
+          npx --yes vercel@63.1.0 pull --yes --environment=preview
+          npx --yes vercel@63.1.0 build
+          npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
+          scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
+          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ] || [ "$GITHUB_REF_NAME" = "m9-launch-hardening" ]; then
+            npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"
+          fi
+          echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"

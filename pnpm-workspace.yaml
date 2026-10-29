@@ -1,4 +1,22 @@
 allowBuilds:
-  esbuild: set this to true or false
+  esbuild: true
   sharp: false
   unrs-resolver: false
+# Supply-chain hygiene: only install versions published at least 14 days ago.
+minimumReleaseAge: 20160
+# Security exception (2026-10-22): next <=16.4.0 has GHSA-2464-fhr4-w9xw and
+# GHSA-673q-mjm6-r5xr (critical, unauthenticated RCE) and GHSA-p3m5-59mp-jv5r
+# (high, DoS); patched in 16.4.1. A known critical fix outweighs the age window.
+minimumReleaseAgeExclude:
+  - next
+  - "@next/*"
+  - eslint-config-next
+
+# Security exceptions (2026-10-29): reviewed recipient-parser fixes
+# GHSA-8c8m-p3m8-cjg8, GHSA-m943-m63m-w62w, GHSA-85x2-q946-cp5h;
+# qs serialization fix GHSA-6pq8-jhm2-2vcw. Allow only these patch versions.
+  - nodemailer@10.1.4
+  - qs@6.16.1
+
+overrides:
+  qs: 6.16.1
