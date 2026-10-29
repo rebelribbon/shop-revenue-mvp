@@ -68,7 +68,9 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, second staff s
   await owner.getByLabel("Name").fill("Sid Staff");
   await owner.getByLabel("Email").fill(staffEmail);
   await owner.getByRole("button", { name: "Send invite" }).click();
-  await expect(owner.getByRole("status")).toContainText("Invite sent by email");
+  // The invite form unmounts when the occupied seat arrives in the refreshed RSC.
+  // Assert the durable invitation, then prove delivered email and access below.
+  await expect(owner.getByRole("row").filter({ hasText: staffEmail })).toContainText("Invite sent");
   await expect(owner.getByText("Your plan includes one staff login")).toBeVisible();
 
   const staff = await (await browser.newContext()).newPage();
