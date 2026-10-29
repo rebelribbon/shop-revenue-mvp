@@ -40,3 +40,7 @@ The preview provider scheduler uses a private `ops` function and synchronous `ht
 - Confirm final commercial authorization language and design-partner onboarding/release evidence against the frozen release checklist. No legal review or provider purchase is initiated automatically.
 
 No production application deployment has been made as part of this M9 work. Preview bootstrap environment credential values were cleared and the production public Supabase build key was corrected; these were configuration changes, not a production release.
+
+## Verified preview
+
+See [the dated verification report](m9-verification-2026-10-29.md) for the exact tested application commit, CI runs, hosted scheduler proof and remaining launch gates.

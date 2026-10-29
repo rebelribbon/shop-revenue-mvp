@@ -11,7 +11,6 @@ LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,extensions AS $func
 DECLARE result extensions.http_response;
 BEGIN
  PERFORM extensions.http_set_curlopt('CURLOPT_TIMEOUT_MS','180000');
- PERFORM extensions.http_set_curlopt('CURLOPT_FOLLOWLOCATION','0');
  SELECT * INTO result FROM extensions.http(ROW(
  'GET','https://shop-revenue-m4-preview-brads-projects-3548d304.vercel.app/api/cron/maintenance',
  ARRAY[
