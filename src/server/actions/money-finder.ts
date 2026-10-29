@@ -7,9 +7,9 @@ const cents=(s?:string)=>s ? Math.round(Number(s)*100) : null;
 export const updateRecoveryAction=defineShopAction({
   name:'updateRecovery',input:z.object({category:z.enum(moneyCategories),subjectId:z.uuid(),
     action:z.enum(['contact','responded','booked','snooze','dismiss','restore']),
-    method:z.enum(['phone','email','in_person','other']).optional(),note:z.string().max(1000).optional(),
+    deliveryConfirmed:z.enum(['true','false']).optional(),method:z.enum(['phone','email','in_person','other']).optional(),note:z.string().max(1000).optional(),
     days:z.enum(['30','90']).optional(),reason:z.string().max(1000).optional()}),
-  run:({tx,meta},input)=>updateRecovery(tx,meta,{...input,days:input.days?Number(input.days) as 30|90:undefined}),
+  run:({tx,meta},input)=>updateRecovery(tx,meta,{...input,deliveryConfirmed:input.deliveryConfirmed==='true',days:input.days?Number(input.days) as 30|90:undefined}),
   persist:r=>({...r,message:'Follow-up updated. No message was sent.'}),
 });
 export const addRecommendationAction=defineShopAction({

@@ -1,7 +1,7 @@
 // RLS suite (Section 22): generated for every table with a business_id column,
 // discovered from the catalog. Insert in A; B sees nothing, changes nothing and
 // cannot write into A; a raw query without tenant context sees nothing.
-import {invoiceCheckout,invoiceRefund,stripeConnection,recommendation,recoveryItem} from "@/db/schema";
+import {estimateRecommendationLine,revenueAttribution,revenueAttributionEvent,invoiceCheckout,invoiceRefund,stripeConnection,recommendation,recoveryItem} from "@/db/schema";
 import {issueInvoice,recordInvoicePayment} from "@/domain/invoices";
 import { newToken } from "@/lib/tokens";
 import { signEstimate } from "@/domain/estimates";
@@ -33,6 +33,10 @@ async function estimateFixture(t:SeededTenant){
 }
 async function invoiceFixture(t:SeededTenant){const e=await estimateFixture(t);await signEstimate(e.token,"Fixture",["part-0"],meta());return withTenant(t.businessId,t.owner.actor,tx=>issueInvoice(tx,meta(),{versionId:e.id,dueOn:null,terms:""}));}
 const builders: Record<string, Builder> = {
+ "app.estimate_recommendation_line":async t=>{const e=await estimateFixture(t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [v]=await tx.select().from(estimateVersion).where(eq(estimateVersion.id,e.id));const [rec]=await tx.insert(recommendation).values({businessId:t.businessId,customerId:v.customerId,vehicleId:v.vehicleId,description:'Traced fixture'}).returning();const [row]=await tx.insert(estimateRecommendationLine).values({businessId:t.businessId,versionId:e.id,lineId:'part-0',recommendationId:rec.id}).returning();return row.id;});},
+ "app.revenue_attribution":async t=>{const i=await invoiceFixture(t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [row]=await tx.insert(revenueAttribution).values({businessId:t.businessId,invoiceId:i.id,ruleVersion:'manual-v1',decision:{}}).returning();return row.id;});},
+ "app.revenue_attribution_event":async t=>{const id=await builders['app.revenue_attribution'](t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [row]=await tx.insert(revenueAttributionEvent).values({businessId:t.businessId,attributionId:id,revision:1,directDeltaCents:0,influencedDeltaCents:0,reason:'Isolation fixture',before:{},after:{},ruleVersion:'manual-v1'}).returning();return row.id;});},
+
  "app.recommendation":async t=>{const vehicleId=await builders['app.vehicle'](t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [v]=await tx.select().from(vehicle).where(eq(vehicle.id,vehicleId));const [r]=await tx.insert(recommendation).values({businessId:t.businessId,customerId:v.customerId,vehicleId,description:'Brake service',amountCents:10000}).returning();return r.id;});},
  "app.recovery_item":async t=>{const vehicleId=await builders['app.vehicle'](t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [v]=await tx.select().from(vehicle).where(eq(vehicle.id,vehicleId));const [r]=await tx.insert(recoveryItem).values({businessId:t.businessId,category:'service_due',subjectId:vehicleId,customerId:v.customerId,vehicleId}).returning();return r.id;});},
  "app.stripe_connection":async t=>withTenant(t.businessId,t.owner.actor,async tx=>{const [row]=await tx.insert(stripeConnection).values({businessId:t.businessId,accountId:`acct_${randomUUID()}`}).onConflictDoUpdate({target:stripeConnection.businessId,set:{cardPaymentsStatus:"active"}}).returning();return row.id;}),

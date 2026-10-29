@@ -4,6 +4,8 @@ import { business, customer, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { requireShopSession } from "@/server/views/shop";
 import { getMoneyFinder, moneyCategories, type MoneyCategory } from "@/domain/money-finder";
+import { listRevenue } from "@/domain/revenue";
+import { RevenueSummary } from "@/components/revenue-summary";
 import { MoneyFinder } from "@/components/money-finder";
 
 export default async function MoneyHome({ searchParams }: { searchParams: Promise<{ denied?: string;category?:string;view?:string;q?:string;page?:string }> }) {
@@ -13,7 +15,7 @@ export default async function MoneyHome({ searchParams }: { searchParams: Promis
   const view=params.view==='snoozed'||params.view==='dismissed'?params.view:'active';
   const page=Math.max(1,Math.min(Number.parseInt(params.page??'1',10)||1,10000));
   const query=(params.q??'').slice(0,100);
-  const money=await withTenant(s.businessId,s.actor,tx=>getMoneyFinder(tx,{category,view,page,query}));
+  const [money,revenue]=await withTenant(s.businessId,s.actor,tx=>Promise.all([getMoneyFinder(tx,{category,view,page,query}),listRevenue(tx)]));
   const setup = await withTenant(s.businessId, s.actor, async (tx) => {
     const [b] = await tx.select().from(business).where(eq(business.id, s.businessId));
     const [c] = await tx.select({ n: sql<number>`count(*)::int` }).from(customer).where(and(eq(customer.businessId, s.businessId), eq(customer.status, "active")));
@@ -44,6 +46,7 @@ export default async function MoneyHome({ searchParams }: { searchParams: Promis
         <p><strong>{setup.customerCount}</strong> active customers · <strong>{setup.vehicleCount}</strong> active vehicles</p>
         <p className="muted">Money Finder uses recorded shop history. You contact customers through your own phone or email.</p>
       </div>
+      <RevenueSummary {...revenue}/>
       <MoneyFinder data={money} category={category} view={view} query={query} page={page} readOnly={s.actor.type==='support'}/>
     </main>
   );

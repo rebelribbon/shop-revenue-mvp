@@ -27,6 +27,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         <strong>{b?.dba || b?.legalName}</strong>
         <nav className="desktop-nav" aria-label="Main">
           <Link href="/app">Money</Link>
+          <Link href="/app/revenue">Revenue</Link>
           <Link href="/app/customers">Customers</Link>
           <Link href="/app/jobs">Jobs</Link>
           <Link href="/app/estimates">Estimates</Link>

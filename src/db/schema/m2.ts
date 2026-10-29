@@ -88,6 +88,7 @@ export const appointment = app.table(
     customerId: uuid("customer_id").notNull(),
     vehicleId: uuid("vehicle_id"),
     sourceRecoveryItemId: uuid("source_recovery_item_id"),
+    sourceContactActivityId: uuid("source_contact_activity_id"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     reason: text("reason"),

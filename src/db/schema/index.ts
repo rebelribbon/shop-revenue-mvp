@@ -7,3 +7,5 @@ export * from "./m4";
 
 export * from "./payments";
 export * from "./m7";
+
+export * from "./m8";

@@ -1,10 +1,13 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { customer, recommendation, recoveryItem, vehicle } from "@/db/schema";
+import { activity, customer, recommendation, recoveryItem, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { getVehicle } from "./customers";
+
+import { currentMemberRole } from "./membership";
+import { lockRevenue, reconcileRevenue } from "./revenue";
 
 export const moneyCategories = ["declined", "open_estimate", "unpaid_invoice", "lapsed", "service_due"] as const;
 export type MoneyCategory = typeof moneyCategories[number];
@@ -167,8 +170,9 @@ async function findCandidate(tx:TenantTx,category:MoneyCategory,subjectId:string
 
 export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
   category:MoneyCategory;subjectId:string;action:"contact"|"responded"|"booked"|"snooze"|"dismiss"|"restore";
-  method?:"phone"|"email"|"in_person"|"other";note?:string;days?:30|90;reason?:string;
+  deliveryConfirmed?:boolean;method?:"phone"|"email"|"in_person"|"other";note?:string;days?:30|90;reason?:string;
 }) {
+  await lockRevenue(tx);
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
   const source=await findCandidate(tx,input.category,input.subjectId);
   await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,
@@ -201,10 +205,14 @@ export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
   }
   await tx.update(recoveryItem).set(change).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.id,row.id)));
   await audit(tx,meta,{action:`recovery.${input.action}`,targetType:'recovery_item',targetId:row.id,after:{...change,note:input.note??null}});
-  await recordActivity(tx,{kind:`recovery.${input.action}`,subjectType:'customer',subjectId:source.customerId,
+  const priorContact=input.action==='responded'?(await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.contact'),sql`${activity.data}->>'recoveryItemId'=${row.id}`)).orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1))[0]:undefined;
+  if(input.action==='responded'&&!priorContact)throw new AppError('VALIDATION','Log the manual contact before recording a response.');
+  const recommendationIds=input.action==='contact'&&input.category==='declined'?(await tx.select({id:recommendation.id}).from(recommendation).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.vehicleId,input.subjectId),eq(recommendation.status,'open')))).map(r=>r.id):[];
+  const event=await recordActivity(tx,{kind:`recovery.${input.action}`,subjectType:'customer',subjectId:source.customerId,
     summary:`${categoryLabels[input.category]}: ${input.action==='contact'?'manual contact recorded':input.action}`,
-    data:{recoveryItemId:row.id,category:input.category,subjectId:input.subjectId,amountCents:source.amountCents,method:input.method??null,note:input.note??null}});
-  return {id:row.id};
+    data:{recoveryItemId:row.id,category:input.category,subjectId:input.subjectId,amountCents:source.amountCents,method:input.method??null,note:input.note??null,deliveryConfirmed:input.action==='contact'&&input.deliveryConfirmed===true,recommendationIds,contactActivityId:priorContact?.id??null,ownerConfirmed:input.action==='responded'&&(await currentMemberRole(tx))==='owner'}});
+  if(input.action==='responded')await reconcileRevenue(tx,meta,'Customer response recorded',source.customerId);
+  return {id:row.id,activityId:event.id};
 }
 
 export async function addRecommendation(tx:TenantTx,meta:RequestMeta,input:{customerId:string;vehicleId:string;description:string;amountCents:number|null;declinedOn:string}) {
@@ -250,6 +258,10 @@ export async function startRecoveryWork(tx:TenantTx,meta:RequestMeta,input:{cate
  await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId}).onConflictDoNothing();
  const [row]=await tx.select().from(recoveryItem).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.category,input.category),eq(recoveryItem.subjectId,input.subjectId)));
  await audit(tx,meta,{action:'recovery.work_started',targetType:'recovery_item',targetId:row.id,after:{destination:input.destination}});
- const params=new URLSearchParams({sourceRecoveryItemId:row.id,customerId:source.customerId,...(source.vehicleId?{vehicleId:source.vehicleId}:{})});
+ const contacts=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.contact'),sql`${activity.data}->>'recoveryItemId'=${row.id}`)).orderBy(desc(activity.occurredAt),desc(activity.id));
+ const responses=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.responded'),sql`${activity.data}->>'recoveryItemId'=${row.id} AND ${activity.data}->>'ownerConfirmed'='true'`)).orderBy(desc(activity.occurredAt),desc(activity.id));
+ const response=responses.find(r=>contacts.some(c=>c.id===(r.data as Record<string,unknown>).contactActivityId&&r.occurredAt>=c.occurredAt&&r.occurredAt.getTime()-c.occurredAt.getTime()<=30*86400000));
+ const contactId=(response?.data as Record<string,unknown>|undefined)?.contactActivityId as string|undefined??contacts[0]?.id;
+ const params=new URLSearchParams({sourceRecoveryItemId:row.id,...(contactId?{sourceContactActivityId:contactId}:{}),customerId:source.customerId,...(source.vehicleId?{vehicleId:source.vehicleId}:{})});
  return {id:row.id,redirectTo:`/app/${input.destination==='job'?'jobs':'schedule'}?${params}${input.destination==='appointment'?'#new-appointment':''}`};
 }

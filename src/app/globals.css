@@ -118,3 +118,8 @@ fieldset { min-width: 0; margin: 12px 0; border: 1px solid var(--line); border-r
 .money-opportunity summary, section[aria-label='Service recommendations'] summary { min-height: 44px; cursor: pointer; }
 .money-search { margin-top: 24px; }
 @media (max-width: 600px) { .money-hero { padding: 16px; } .money-actions { gap: 8px 16px; } }
+
+.checkline { display:flex; align-items:flex-start; gap:10px; font-weight:400; }
+.checkline input { width:20px; min-width:20px; height:20px; min-height:20px; margin-top:3px; }
+.revenue-summary { border-left:4px solid var(--ok); }
+.revenue-summary h2 { font-size:clamp(1.3rem,4vw,1.8rem); margin:6px 0; }

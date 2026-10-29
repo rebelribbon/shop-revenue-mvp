@@ -59,7 +59,7 @@ export async function recordActivity(
   e: { kind: string; subjectType: string; subjectId: string; summary: string; data?: Record<string, unknown> },
 ) {
   const a = tx.actor;
-  await tx.insert(activity).values({
+  const [row] = await tx.insert(activity).values({
     businessId: tx.businessId,
     kind: e.kind,
     subjectType: e.subjectType,
@@ -69,5 +69,7 @@ export async function recordActivity(
     createdByUserId: a.type === "user" ? a.id : null,
     summary: e.summary,
     data: e.data ?? {},
-  });
+  }).returning();
+  return row;
 }
+

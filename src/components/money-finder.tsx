@@ -19,9 +19,12 @@ function Controls({item,readOnly}:{item:MoneyItem;readOnly:boolean}) {
         <option value="email" disabled={!item.email}>Email{!item.email?' (missing)':''}</option>
         <option value="in_person">In person</option><option value="other">Other</option>
       </select>
+      <label className="checkline"><input type="checkbox" name="deliveryConfirmed" value="true"/>I reached the customer or confirmed this message was delivered.</label>
+      <p className="muted">Leave this unchecked for an unanswered attempt or uncertain delivery.</p>
       <label htmlFor={`${key}-note`}>Contact notes</label><textarea id={`${key}-note`} name="note" maxLength={1000} rows={2}/>
     </ActionForm>
     <ActionForm action={updateRecoveryAction} hidden={{...hidden,action:'responded'}} submitLabel="Record customer response" variant="secondary">
+      <p className="muted">Record an actual response to the latest logged contact. Direct recovery requires owner confirmation before the resulting work or payment.</p>
       <label htmlFor={`${key}-response`}>What did the customer say?</label><input id={`${key}-response`} name="note" maxLength={1000} required/>
     </ActionForm>
     <div className="money-actions">

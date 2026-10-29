@@ -4,6 +4,7 @@ import {runInContext,type TenantTx} from "@/db/tenant";
 import {AppError,notFound} from "@/lib/errors";
 import {hashToken,isWellFormedToken,newToken} from "@/lib/tokens";
 import {audit,recordActivity,type RequestMeta} from "./records";
+import {lockRevenue,reconcileRevenue} from "./revenue";
 import {assertOwner} from "./membership";
 export async function issueInvoice(tx:TenantTx,meta:RequestMeta,input:{versionId:string;dueOn:string|null;terms:string}){
  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${'invoice-number:'+tx.businessId},0))`);
@@ -30,23 +31,23 @@ export async function listInvoices(tx:TenantTx){
  const payments=await tx.select().from(invoicePayment).where(eq(invoicePayment.businessId,tx.businessId)).orderBy(desc(invoicePayment.createdAt));
  return invoices.map(i=>{const entries=payments.filter(p=>p.invoiceId===i.id);const paidCents=entries.reduce((n,p)=>n+p.amountCents,0);return {...i,entries,paidCents,balanceCents:i.totalCents-paidCents};});
 }
-async function requireInvoice(tx:TenantTx,id:string){const [row]=await tx.select().from(invoice).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).for("update");if(!row)throw notFound("That invoice");return row;}
+async function requireInvoice(tx:TenantTx,id:string){await lockRevenue(tx);const [row]=await tx.select().from(invoice).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).for("update");if(!row)throw notFound("That invoice");return row;}
 export async function recordInvoicePayment(tx:TenantTx,meta:RequestMeta,input:{invoiceId:string;amountCents:number;method:string;reference:string}){
  const i=await requireInvoice(tx,input.invoiceId);
  const [sum]=await tx.select({paid:sql<string>`coalesce(sum(${invoicePayment.amountCents}),0)`}).from(invoicePayment).where(and(eq(invoicePayment.businessId,tx.businessId),eq(invoicePayment.invoiceId,i.id)));
  if(input.amountCents>i.totalCents-Number(sum.paid))throw new AppError("VALIDATION","The amount exceeds the outstanding balance.");
  const [p]=await tx.insert(invoicePayment).values({businessId:tx.businessId,createdByUserId:tx.actor.id,...input}).returning();
  await audit(tx,meta,{action:"invoice.payment_recorded",targetType:"invoice_payment",targetId:p.id,after:{invoiceId:i.id,amountCents:p.amountCents,method:p.method}});
- await recordActivity(tx,{kind:"invoice.payment_recorded",subjectType:"vehicle",subjectId:i.vehicleId,summary:`Payment recorded for invoice #${i.number}`,data:{invoiceId:i.id,paymentId:p.id}});return {id:p.id};
+ await recordActivity(tx,{kind:"invoice.payment_recorded",subjectType:"vehicle",subjectId:i.vehicleId,summary:`Payment recorded for invoice #${i.number}`,data:{invoiceId:i.id,paymentId:p.id}});await reconcileRevenue(tx,meta,"Payment recorded",i.customerId);return {id:p.id};
 }
 export async function reverseInvoicePayment(tx:TenantTx,meta:RequestMeta,paymentId:string,reason:string){
  await assertOwner(tx);
  const [original]=await tx.select().from(invoicePayment).where(and(eq(invoicePayment.businessId,tx.businessId),eq(invoicePayment.id,paymentId)));
- if(!original)throw notFound("That payment");if(original.method==="stripe")throw new AppError("INVALID_TRANSITION","Use the Stripe refund control to refund an online payment.");await requireInvoice(tx,original.invoiceId);
+ if(!original)throw notFound("That payment");if(original.method==="stripe")throw new AppError("INVALID_TRANSITION","Use the Stripe refund control to refund an online payment.");const sourceInvoice=await requireInvoice(tx,original.invoiceId);
  const [row]=await tx.insert(invoicePayment).values({businessId:tx.businessId,createdByUserId:tx.actor.id,invoiceId:original.invoiceId,amountCents:-original.amountCents,method:"reversal",reversesPaymentId:original.id,reason}).returning();
- await audit(tx,meta,{action:"invoice.payment_reversed",targetType:"invoice_payment",targetId:row.id,after:{paymentId,reason}});return {id:row.id};
+ await audit(tx,meta,{action:"invoice.payment_reversed",targetType:"invoice_payment",targetId:row.id,after:{paymentId,reason}});await reconcileRevenue(tx,meta,"Manual payment reversed",sourceInvoice.customerId);return {id:row.id};
 }
-export async function voidInvoice(tx:TenantTx,meta:RequestMeta,id:string,reason:string){await assertOwner(tx);await requireInvoice(tx,id);const [row]=await tx.update(invoice).set({voidedAt:new Date(),voidReason:reason}).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).returning();await audit(tx,meta,{action:"invoice.voided",targetType:"invoice",targetId:id,after:{reason}});return {id:row.id};}
+export async function voidInvoice(tx:TenantTx,meta:RequestMeta,id:string,reason:string){await assertOwner(tx);await requireInvoice(tx,id);const [row]=await tx.update(invoice).set({voidedAt:new Date(),voidReason:reason}).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).returning();await audit(tx,meta,{action:"invoice.voided",targetType:"invoice",targetId:id,after:{reason}});await reconcileRevenue(tx,meta,"Invoice voided",row.customerId);return {id:row.id};}
 export async function rotateInvoiceLink(tx:TenantTx,meta:RequestMeta,id:string){const token=newToken();const [row]=await tx.update(invoice).set({tokenHash:token.hash,expiresAt:new Date(Date.now()+90*86400000)}).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).returning();if(!row)throw notFound("That invoice");await audit(tx,meta,{action:"invoice.link_rotated",targetType:"invoice",targetId:id});return {id,path:`/invoice/${token.token}`};}
 export type PublicInvoice={number:number;snapshot:InvoiceSnapshot;issuedAt:string;dueOn:string|null;terms:string;voided:boolean;totalCents:number;paidCents:number;onlinePaymentEnabled?:boolean};
 export async function readPublicInvoice(token:string):Promise<PublicInvoice|null>{if(!isWellFormedToken(token))return null;return runInContext(null,{type:"customer",id:null},async tx=>{const r=await tx.execute(sql`select app.read_invoice(${hashToken(token)}) as data`);return (r.rows[0]?.data??null) as PublicInvoice|null;});}
@@ -57,5 +58,6 @@ export async function setInvoiceDispute(tx:TenantTx,meta:RequestMeta,id:string,r
  const [row]=await tx.update(invoice).set({disputeOpen:reason}).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).returning();
  await audit(tx,meta,{action:reason?'invoice.dispute_opened':'invoice.dispute_resolved',targetType:'invoice',targetId:id,before:{disputeOpen:before.disputeOpen},after:{disputeOpen:reason}});
  await recordActivity(tx,{kind:'invoice.dispute_updated',subjectType:'customer',subjectId:row.customerId,summary:`Invoice #${row.number}: dispute ${reason?'opened':'resolved'}`,data:{invoiceId:id,reason}});
+ await reconcileRevenue(tx,meta,reason?"Dispute opened":"Dispute resolved",row.customerId);
  return {id};
 }

@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { activity, business, invoice, estimateAuthorization, estimateVersion, recommendation, type EstimateSnapshot } from "@/db/schema";
+import { activity, business, invoice, estimateRecommendationLine, estimateAuthorization, estimateVersion, recommendation, type EstimateSnapshot } from "@/db/schema";
 import { type TenantTx, runInContext } from "@/db/tenant";
 import { jobInput } from "./jobs";
 import { getCustomerWithVehicles,getVehicle } from "./customers";
@@ -26,7 +26,11 @@ export async function freezeEstimate(tx:TenantTx,meta:RequestMeta,input:{jobId:s
  const snapshot:EstimateSnapshot={title:data.title,shopName:shop.dba||shop.legalName,customerName:c.customer.displayName,vehicleLabel:[v.year,v.make,v.model,v.plate].filter(Boolean).join(" ")||"Vehicle",lines,subtotalCents,taxBps:input.taxBps,taxCents,totalCents:subtotalCents+taxCents,terms:input.terms};
  // Superseding a version revokes its link but never removes its signature evidence.
  await tx.update(estimateVersion).set({revokedAt:new Date()}).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.quoteId,input.jobId)));
- const token=newToken();const [row]=await tx.insert(estimateVersion).values({businessId:tx.businessId,createdByUserId:tx.actor.id,quoteId:input.jobId,version:(prior?.version??0)+1,sourceRecoveryItemId:data.sourceRecoveryItemId??null,customerId:data.customerId,vehicleId:data.vehicleId,snapshot,supplementReason:input.supplementReason||null,tokenHash:token.hash,expiresAt:new Date(Date.now()+30*86400000)}).returning();
+ const token=newToken();const [row]=await tx.insert(estimateVersion).values({businessId:tx.businessId,createdByUserId:tx.actor.id,quoteId:input.jobId,version:(prior?.version??0)+1,sourceRecoveryItemId:data.sourceRecoveryItemId??null,sourceContactActivityId:data.sourceContactActivityId??null,sourceAppointmentId:data.sourceAppointmentId??null,customerId:data.customerId,vehicleId:data.vehicleId,snapshot,supplementReason:input.supplementReason||null,tokenHash:token.hash,expiresAt:new Date(Date.now()+30*86400000)}).returning();
+ for(const [kind,entries] of [['part',data.parts],['labor',data.labor]] as const)for(const [index,line] of entries.entries())if(line.recommendationId){
+  await tx.insert(estimateRecommendationLine).values({businessId:tx.businessId,createdByUserId:tx.actor.id,versionId:row.id,lineId:`${kind}-${index}`,recommendationId:line.recommendationId});
+  await tx.update(recommendation).set({status:'quoted'}).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.id,line.recommendationId),eq(recommendation.status,'open')));
+ }
  await audit(tx,meta,{action:"estimate.published",targetType:"estimate_version",targetId:row.id,after:{version:row.version,totalCents:snapshot.totalCents}});
  await recordActivity(tx,{kind:"estimate.published",subjectType:"vehicle",subjectId:data.vehicleId,summary:`Estimate version ${row.version} published`,data:{versionId:row.id}});
  return {id:row.id,version:row.version,path:`/estimate/${token.token}`};

@@ -8,6 +8,7 @@ export const createAppointmentAction = defineShopAction({
   input: z.object({
     customerId: z.uuid(),
     sourceRecoveryItemId: z.uuid().optional(),
+    sourceContactActivityId: z.uuid().optional(),
     vehicleId: z.string().optional().or(z.literal("")),
     startsAt: z.string().min(1).max(32),
     reason: z.string().max(200).optional().or(z.literal("")),
@@ -16,6 +17,7 @@ export const createAppointmentAction = defineShopAction({
   run: ({ tx, meta }, input) => createAppointment(tx, meta, {
     customerId: input.customerId,
     sourceRecoveryItemId: input.sourceRecoveryItemId,
+    sourceContactActivityId: input.sourceContactActivityId,
     vehicleId: input.vehicleId || null,
     localStartsAt: input.startsAt,
     reason: input.reason || null,

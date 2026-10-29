@@ -3,7 +3,9 @@
 import { randomUUID } from "node:crypto";
 import type { TaskList } from "graphile-worker";
 import { sql } from "drizzle-orm";
-import { withGlobalWorker } from "@/db/tenant";
+import { reconcileRevenue } from "@/domain/revenue";
+import { z } from "zod";
+import { withTenant, withGlobalWorker } from "@/db/tenant";
 import { closeExpiredSupportSessions } from "@/domain/support";
 import {applyStripeEvent} from "@/domain/stripe-payments";
 import type Stripe from "stripe";
@@ -16,6 +18,10 @@ for(const eventType of ["checkout.session.completed","checkout.session.async_pay
 const meta = (job: string) => ({ requestId: `job-${job}-${randomUUID()}` });
 
 export const taskList: TaskList = {
+  reconcile_revenue: async payload => {
+    const businessId=z.uuid().parse((payload as {business_id?:unknown}).business_id);
+    await withTenant(businessId,{type:"system",id:null},tx=>reconcileRevenue(tx,meta("reconcile_revenue"),"Nightly evidence reconciliation"),{role:"worker"});
+  },
   process_webhook_event: async (payload) => {
     const id = (payload as { webhook_event_id?: string }).webhook_event_id;
     if (!id) throw new Error("process_webhook_event: missing webhook_event_id");

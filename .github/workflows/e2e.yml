@@ -6,7 +6,7 @@ name: E2E (local stack)
 on:
   pull_request:
   push:
-    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments, m7-money-finder]
+    branches: [main, m1-foundation, m2-customer-vehicle-memory, m3-job-costing, m4-invoices-payments, m7-money-finder, m8-recovered-revenue]
   workflow_dispatch:
 
 concurrency:
@@ -56,7 +56,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: money-finder-screenshots
-          path: test-results/money-finder-*.png
+          path: |
+            test-results/money-finder-*.png
+            test-results/revenue-*.png
           if-no-files-found: ignore
           retention-days: 7
       - if: failure()
@@ -68,11 +70,11 @@ jobs:
 
 
   preview-ci:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue')
     uses: ./.github/workflows/ci.yml
 
   preview:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue')
     needs: [e2e, preview-ci]
     runs-on: ubuntu-latest
     environment: staging
@@ -110,7 +112,7 @@ jobs:
           npx --yes vercel@63.1.0 build
           npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
           scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
-          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ]; then
+          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ]; then
             npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"
           fi
           echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"

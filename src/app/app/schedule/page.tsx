@@ -19,6 +19,7 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
             <div>{a.reason || "Appointment"}</div>
             {(a.make || a.model || a.plate) && <div className="muted">{[a.year, a.make, a.model].filter(Boolean).join(" ")}{a.plate ? ` • ${a.plate}` : ""}</div>}
             <span className="pill">{a.status.replace("_", " ")}</span>
+            {a.vehicleId&&a.status!=='cancelled'&&<Link href={`/app/jobs?${new URLSearchParams({sourceAppointmentId:a.id,customerId:a.customerId,vehicleId:a.vehicleId})}`}>Create job from appointment</Link>}
           </div>
           {a.status === "scheduled" && (
             <div className="appointment-actions">
@@ -32,7 +33,7 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
   );
 }
 
-export default async function SchedulePage({searchParams}:{searchParams:Promise<{customerId?:string;vehicleId?:string;sourceRecoveryItemId?:string}>}) {
+export default async function SchedulePage({searchParams}:{searchParams:Promise<{customerId?:string;vehicleId?:string;sourceRecoveryItemId?:string;sourceContactActivityId?:string}>}) {
   const params=await searchParams;
   const s = await requireShopSession("/app/schedule");
   const [days, choices] = await withTenant(s.businessId, s.actor, async (tx) =>
@@ -57,7 +58,7 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
       <section className="card" id="new-appointment">
         <h2 style={{ marginTop: 0 }}>New appointment</h2>
         {choices.customers.length ? (
-          <ActionForm action={createAppointmentAction} hidden={params.sourceRecoveryItemId?{sourceRecoveryItemId:params.sourceRecoveryItemId}:{}} submitLabel="Schedule appointment" successText="Appointment scheduled.">
+          <ActionForm action={createAppointmentAction} hidden={params.sourceRecoveryItemId?{sourceRecoveryItemId:params.sourceRecoveryItemId,...(params.sourceContactActivityId?{sourceContactActivityId:params.sourceContactActivityId}:{})}:{}} submitLabel="Schedule appointment" successText="Appointment scheduled.">
             <label htmlFor="customerId">Customer</label>
             <select id="customerId" name="customerId" required defaultValue={selectedCustomer}>
               <option value="" disabled>Select customer</option>
