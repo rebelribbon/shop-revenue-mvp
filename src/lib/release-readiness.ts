@@ -8,7 +8,7 @@ export function releaseConfiguration(env:Record<string,string|undefined>,allowRu
   {key:'account-administration',ready:present('SUPABASE_SERVICE_ROLE_KEY'),message:'Server-side account invitation administration configured'},
   {key:'email',ready:present('POSTMARK_SERVER_TOKEN')&&present('EMAIL_FROM')&&env.EMAIL_PROVIDER==='postmark',message:'Transactional email configured; delivered email still requires verification'},
   {key:'maintenance',ready:((env.CRON_SECRET?.length??0)>=32||(allowRuntimePlaceholders&&env.CRON_SECRET==='[SENSITIVE]'))&&env.MAINTENANCE_SCHEDULE_ENABLED==='true',message:'Authenticated maintenance and hosted schedule configured'},
-  {key:'monitoring',ready:present('SENTRY_DSN'),message:'Error monitoring configured; alert delivery still requires verification'},
+  {key:'monitoring',ready:present('SENTRY_DSN')||present('NEXT_PUBLIC_SENTRY_DSN'),message:'Error monitoring configured; alert delivery still requires verification'},
   {key:'admin-sso',ready:present('ADMIN_ALLOWED_EMAIL_DOMAIN'),message:'Admin Google domain configured; provider and allowlist still require verification'},
   {key:'session-secret',ready:((env.SESSION_SIGNING_SECRET?.length??0)>=32||(allowRuntimePlaceholders&&env.SESSION_SIGNING_SECRET==='[SENSITIVE]')),message:'Session signing key meets minimum length'},
   {key:'production-payments',ready:(/^(sk|rk)_live_/.test(env.STRIPE_SECRET_KEY??'')||(allowRuntimePlaceholders&&env.STRIPE_SECRET_KEY==='[SENSITIVE]'))&&present('STRIPE_WEBHOOK_SECRET'),message:'Production payment configuration present; live verification remains required'},
