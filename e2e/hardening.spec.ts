@@ -19,6 +19,6 @@ test('authenticator enrollment verifies an actual local-stack TOTP code',async({
  // The local stack is shared by both viewport projects. The first project enrolls;
  // the second verifies that the previously enrolled factor requires a code.
  if(await setup.count()){
-  await setup.click();await expect(page.getByAltText('Authenticator enrollment QR code')).toBeVisible();await page.getByText('Enter setup key manually',{exact:true}).click();const secret=(await page.locator('code').textContent())!;await page.getByLabel('Authenticator code').fill(totp(secret));await page.getByRole('button',{name:'Verify authenticator',exact:true}).click();await expect(page).toHaveURL(/\/app\/settings$/);
+  await setup.click();await expect(page.getByAltText('Authenticator enrollment QR code')).toBeVisible();await expect.poll(()=>page.getByAltText('Authenticator enrollment QR code').evaluate(el=>(el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);await page.getByText('Enter setup key manually',{exact:true}).click();const secret=(await page.locator('code').textContent())!;await page.getByLabel('Authenticator code').fill(totp(secret));await page.getByRole('button',{name:'Verify authenticator',exact:true}).click();await expect(page).toHaveURL(/\/app\/settings$/);
  }else await expect(page.getByLabel('Authenticator code')).toBeVisible();
 });

@@ -15,7 +15,7 @@ Status: implementation under verification; commercial release is blocked until t
 
 ## Runtime and schedules
 
-`GET /api/cron/maintenance` requires `Authorization: Bearer <CRON_SECRET>` with a separately generated secret of at least 32 characters. Never place it in a URL. An authenticated Vercel production cron is declared daily at 10:15 UTC. Vercel cron does not execute on preview deployments. A preview/provider schedule must be configured and observed before setting `MAINTENANCE_SCHEDULE_ENABLED=true`. Configuration alone is not proof of execution; check the health maintenance heartbeat and scheduler response.
+`GET /api/cron/maintenance` requires `Authorization: Bearer <CRON_SECRET>` with a separately generated secret of at least 32 characters. Never place it in a URL. An authenticated Vercel production cron is declared daily at 10:15 UTC. Vercel cron does not execute on preview deployments. A preview/provider schedule must be configured before setting `MAINTENANCE_SCHEDULE_ENABLED=true`; a healthy heartbeat additionally requires a real observed success. Configuration alone is not proof of execution; check the health maintenance heartbeat and scheduler response.
 
 The bounded worker handles at most 25 completed/failed jobs per call, checks its 90-second budget between jobs, and applies a 15-second SQL timeout to reconciliation. Further due jobs await another run. Payment provider jobs remain on the dedicated worker path.
 
@@ -26,6 +26,8 @@ CI must pass the full migration chain, RLS checks, production-role tests, browse
 Production deploy requires non-secret `release_evidence_json` supplied at dispatch, keyed by:
 `independentSecurityReview`, `productionAuthAndMfa`, `smtpDelivery`, `offsiteBackupRestore`, `pitr`, `alertsAndOnCall`, `productionSmoke`, `designPartnerApproval`.
 Each value is `{ "commit": "<exact SHA>", "verifiedAt": "<ISO timestamp>", "reference": "<review/report reference>" }`. Evidence must be recent (seven days); no secrets or customer records belong in these references. A prepared file outside the repository avoids a self-referential evidence SHA. Human review must actually be independent; generated implementation checks cannot substitute for it.
+
+The preview provider scheduler uses a private `ops` function and synchronous `http`, with a bounded timeout and credentials read from Vault only in memory. Application and anonymous roles cannot call that function or read Vault. The asynchronous `pg_net` request queue was rejected for credentialed calls because provider-owned PUBLIC queue grants could not be revoked by the available postgres role. Its unused extension remains a provider cleanup item; no credentialed requests were queued.
 
 ## Outstanding external gates
 

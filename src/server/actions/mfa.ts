@@ -16,7 +16,7 @@ export async function enrollAuthenticator(){
  for(const f of factors.data.all.filter(f=>f.factor_type==='totp'&&f.status==='unverified'))await supabase.auth.mfa.unenroll({factorId:f.id});
  const {data,error}=await supabase.auth.mfa.enroll({factorType:'totp',friendlyName:'Shop Revenue authenticator',issuer:'Shop Revenue'});
  if(error)return {ok:false as const,message:'Authenticator setup failed. Try again.'};
- return {ok:true as const,factorId:data.id,qrCode:data.totp.qr_code,secret:data.totp.secret};
+ return {ok:true as const,factorId:data.id,qrCode:data.totp.qr_code.replace(/^data:image\/svg\+xml;utf-8,/, ''),secret:data.totp.secret};
 }
 export async function verifyAuthenticator(input:unknown){
  const parsed=z.object({factorId:z.uuid(),code:z.string().regex(/^\d{6}$/)}).safeParse(input);
