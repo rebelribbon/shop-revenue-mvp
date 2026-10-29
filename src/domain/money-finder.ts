@@ -41,8 +41,8 @@ function candidates(tx: TenantTx, now: Date) {
       WHERE business_id=${tx.businessId} GROUP BY invoice_id) p ON p.invoice_id=i.id
     WHERE i.business_id=${tx.businessId} AND i.voided_at IS NULL
   ), visits AS (
-    SELECT *,row_number() OVER(PARTITION BY customer_id ORDER BY paid_at DESC,id DESC) AS visit_rank
-    FROM balances CROSS JOIN settings s WHERE total_cents>0 AND paid>=total_cents AND paid_at IS NOT NULL AND paid_at<=s.as_of
+    SELECT *,created_at AS visit_at,row_number() OVER(PARTITION BY customer_id ORDER BY created_at DESC,id DESC) AS visit_rank
+    FROM balances CROSS JOIN settings s WHERE total_cents>0 AND paid>=total_cents AND paid_at IS NOT NULL AND paid_at<=s.as_of AND created_at<=s.as_of
   ), declines AS (
     SELECT 'declined'::text AS category,v.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
       c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
@@ -79,8 +79,8 @@ function candidates(tx: TenantTx, now: Date) {
   ), lapsed AS (
     SELECT 'lapsed'::text AS category,c.id AS subject_id,c.id AS customer_id,NULL::uuid AS vehicle_id,
       c.display_name AS customer_name,NULL::text AS vehicle_label,c.phone_e164 AS phone,c.email,
-      'No paid visit since ' || to_char(max(v.paid_at) AT TIME ZONE s.zone,'Mon DD, YYYY') AS reason,
-      round(avg(v.total_cents) FILTER(WHERE v.visit_rank<=5)) AS amount_cents,max(v.paid_at) AS occurred_at,
+      'No paid visit since ' || to_char(max(v.visit_at) AT TIME ZONE s.zone,'Mon DD, YYYY') AS reason,
+      round(avg(v.total_cents) FILTER(WHERE v.visit_rank<=5)) AS amount_cents,max(v.visit_at) AS occurred_at,
       false AS renew_first,sum(v.total_cents)::numeric AS lifetime
     FROM contacts c JOIN visits v ON v.customer_id=c.id CROSS JOIN settings s
     WHERE NOT EXISTS(SELECT 1 FROM priority_customers p WHERE p.customer_id=c.id)
@@ -89,7 +89,7 @@ function candidates(tx: TenantTx, now: Date) {
       AND NOT EXISTS(SELECT 1 FROM app.recovery_item r WHERE r.business_id=${tx.businessId} AND r.category='lapsed'
         AND r.customer_id=c.id AND r.last_contact_at>s.as_of-interval '90 days')
     GROUP BY c.id,c.display_name,c.phone_e164,c.email,s.as_of,s.zone
-    HAVING max(v.paid_at) BETWEEN s.as_of-interval '24 months' AND s.as_of-interval '6 months'
+    HAVING max(v.visit_at) BETWEEN s.as_of-interval '24 months' AND s.as_of-interval '6 months'
   ), service_due AS (
     SELECT 'service_due'::text AS category,v.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
       c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
@@ -101,7 +101,7 @@ function candidates(tx: TenantTx, now: Date) {
       AND NOT EXISTS(SELECT 1 FROM app.appointment a WHERE a.business_id=${tx.businessId} AND a.vehicle_id=v.id
         AND a.status='scheduled' AND a.starts_at>=s.as_of)
       AND NOT EXISTS(SELECT 1 FROM visits p WHERE p.vehicle_id=v.id
-        AND (p.paid_at AT TIME ZONE s.zone)::date>=v.next_service_on-30)
+        AND (p.visit_at AT TIME ZONE s.zone)::date>=v.next_service_on-30)
   ), sources AS (
     SELECT * FROM declines UNION ALL SELECT * FROM open_estimates UNION ALL SELECT * FROM unpaid
     UNION ALL SELECT * FROM lapsed UNION ALL SELECT * FROM service_due

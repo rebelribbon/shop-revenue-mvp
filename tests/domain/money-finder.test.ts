@@ -108,7 +108,7 @@ describe('Money Finder live list rules',()=>{
     expect((await dashboard(f,{category:'unpaid_invoice'})).items[0].amountCents).toBe(7500);
   });
   it('requires a real paid visit for lapsed customers and keeps estimates outside known dollars',async()=>{
-    const f=await fixture();await bill(f,220,10000);
+    const f=await fixture();await bill(f,220,10000,1);
     const data=await dashboard(f,{category:'lapsed'});
     expect(data.items).toHaveLength(1);expect(data.items[0].amountCents).toBe(10000);expect(data.knownCents).toBe(0);
     const empty=await fixture();expect((await dashboard(empty)).items).toEqual([]);
