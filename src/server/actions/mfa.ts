@@ -6,6 +6,8 @@ import {checkAuthThrottle} from '@/domain/auth-throttle';
 import {getRequestMeta} from '@/server/request';
 export async function enrollAuthenticator(){
  const identity=await getIdentity();if(!identity)return {ok:false as const,message:'Sign in first.'};
+ const meta=await getRequestMeta();
+ try{await checkAuthThrottle('sign_in',`mfa-enroll:${identity.authSubject}`,meta.ip);}catch{return {ok:false as const,message:'Authenticator setup is temporarily limited. Try again later.'};}
  const supabase=await supabaseServer();
  const factors=await supabase.auth.mfa.listFactors();
  if(factors.error)return {ok:false as const,message:'Authenticator setup is unavailable.'};

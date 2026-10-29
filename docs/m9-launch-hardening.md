@@ -33,7 +33,7 @@ Each value is `{ "commit": "<exact SHA>", "verifiedAt": "<ISO timestamp>", "refe
 - Configure server-side Supabase account administration, production worker/admin roles, internal Google sign-in/domain allowlist, and verify production owner MFA without locking out the owner.
 - Configure monitoring destination and on-call ownership; run a staged alert drill and uptime checks for app/public/webhook paths.
 - Configure independent-account off-site backup credentials, encryption, schedules and complete the off-site restore drill. Enable/verify required PITR retention before real shop data. Repository workflows do not run on a non-default branch schedule.
-- Complete independent security review of the exact candidate and the 20,000-customer performance run.
+- Complete independent security review of the exact candidate and record the candidate’s existing 20,000-customer CI benchmark (this is not a production latency guarantee).
 - Configure production Stripe Connect separately from sandbox. Verify live webhook isolation and each shop's own connected account. Do not treat sandbox payment/refund tests as live settlement evidence.
 - Confirm final commercial authorization language and design-partner onboarding/release evidence against the frozen release checklist. No legal review or provider purchase is initiated automatically.
 

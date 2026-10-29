@@ -106,8 +106,12 @@ export async function updatePassword(_: AuthFormState | null, form: FormData): P
   const supabase = await supabaseServer();
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
   if (error) return { ok: false, message: "We could not update your password. Request a new reset link and try again." };
-  await supabase.auth.signOut({scope:"others"});
+  const {error:revokeError}=await supabase.auth.signOut({scope:"others"});
   await clearPasswordResetGrant();
+  if(revokeError){
+    logger.warn({event:"auth.other_sessions_revocation_failed",...safeErrorDiagnostic(revokeError)});
+    return {ok:false,message:"Your password changed, but other sessions could not be signed out. Contact support before continuing."};
+  }
   redirect(safeNext(parsed.data.next));
 }
 
