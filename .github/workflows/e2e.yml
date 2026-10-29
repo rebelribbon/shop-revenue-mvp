@@ -52,6 +52,13 @@ jobs:
         run: pnpm e2e
       - if: failure()
         run: tail -100 web.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: money-finder-screenshots
+          path: test-results/money-finder-*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

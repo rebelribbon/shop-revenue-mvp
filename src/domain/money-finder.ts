@@ -73,7 +73,7 @@ function candidates(tx: TenantTx, now: Date) {
       'Balance due on invoice #' || i.number::text AS reason,(i.total_cents-i.paid)::numeric AS amount_cents,
       i.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
     FROM balances i JOIN contacts c ON c.id=i.customer_id JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
-    WHERE i.total_cents>i.paid AND i.created_at<=s.as_of-interval '3 days'
+    WHERE i.dispute_open IS NULL AND i.total_cents>i.paid AND i.created_at<=s.as_of-interval '3 days'
   ), priority_customers AS (
     SELECT customer_id FROM declines UNION SELECT customer_id FROM open_estimates UNION SELECT customer_id FROM unpaid
   ), lapsed AS (

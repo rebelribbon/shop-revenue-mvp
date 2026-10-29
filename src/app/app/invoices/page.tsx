@@ -15,6 +15,7 @@ import {
 import { ActionForm } from "@/components/action-form";
 import { formatMoney } from "@/components/estimate-document";
 import {
+  setInvoiceDisputeAction,
   reverseInvoicePaymentAction,
   voidInvoiceAction,
 } from "@/server/actions/invoices";
@@ -96,6 +97,14 @@ export default async function InvoicesPage() {
           {i.dueOn && <p>Due: {i.dueOn}</p>}
           {i.voidReason && <p>Void reason: {i.voidReason}</p>}
           <InvoiceLink id={i.id} />
+          {i.disputeOpen&&<p className="notice">Open dispute: {i.disputeOpen}. Money Finder follow-up is paused.</p>}
+          {!i.voidedAt&&s.actor.type!=='support'&&<details><summary>Record or resolve a dispute</summary>
+            <p>Record disputes reported to the shop here. Clear the reason after resolution. This pauses Money Finder follow-up and does not move money or change Stripe dispute handling.</p>
+            <ActionForm action={setInvoiceDisputeAction} hidden={{id:i.id}} submitLabel="Save dispute status" variant="secondary">
+              <label htmlFor={`dispute-${i.id}`}>Open dispute reason (clear to resolve)</label><input id={`dispute-${i.id}`} name="reason" maxLength={1000} defaultValue={i.disputeOpen??''}/>
+            </ActionForm>
+          </details>}
+
           <h3>Payment history</h3>
           {!i.entries.length && <p>No payments recorded.</p>}
           {i.entries.map((p) => (

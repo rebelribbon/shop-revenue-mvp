@@ -50,3 +50,12 @@ export async function voidInvoice(tx:TenantTx,meta:RequestMeta,id:string,reason:
 export async function rotateInvoiceLink(tx:TenantTx,meta:RequestMeta,id:string){const token=newToken();const [row]=await tx.update(invoice).set({tokenHash:token.hash,expiresAt:new Date(Date.now()+90*86400000)}).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).returning();if(!row)throw notFound("That invoice");await audit(tx,meta,{action:"invoice.link_rotated",targetType:"invoice",targetId:id});return {id,path:`/invoice/${token.token}`};}
 export type PublicInvoice={number:number;snapshot:InvoiceSnapshot;issuedAt:string;dueOn:string|null;terms:string;voided:boolean;totalCents:number;paidCents:number;onlinePaymentEnabled?:boolean};
 export async function readPublicInvoice(token:string):Promise<PublicInvoice|null>{if(!isWellFormedToken(token))return null;return runInContext(null,{type:"customer",id:null},async tx=>{const r=await tx.execute(sql`select app.read_invoice(${hashToken(token)}) as data`);return (r.rows[0]?.data??null) as PublicInvoice|null;});}
+
+export async function setInvoiceDispute(tx:TenantTx,meta:RequestMeta,id:string,reason:string|null){
+ const before=await requireInvoice(tx,id);
+ if(before.voidedAt)throw new AppError('INVALID_TRANSITION','This invoice is void.');
+ const [row]=await tx.update(invoice).set({disputeOpen:reason}).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).returning();
+ await audit(tx,meta,{action:reason?'invoice.dispute_opened':'invoice.dispute_resolved',targetType:'invoice',targetId:id,before:{disputeOpen:before.disputeOpen},after:{disputeOpen:reason}});
+ await recordActivity(tx,{kind:'invoice.dispute_updated',subjectType:'customer',subjectId:row.customerId,summary:`Invoice #${row.number}: dispute ${reason?'opened':'resolved'}`,data:{invoiceId:id,reason}});
+ return {id};
+}

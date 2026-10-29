@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { appointment, estimateAuthorization, estimateVersion, invoice, invoicePayment, recommendation, recoveryItem, vehicle } from "@/db/schema";
+import { activity, appointment, estimateAuthorization, estimateVersion, invoice, invoicePayment, recommendation, recoveryItem, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { createCustomer, createVehicle } from "@/domain/customers";
 import { createJob } from "@/domain/jobs";
 import { createAppointment } from "@/domain/appointments";
-import { signEstimate } from "@/domain/estimates";
+import { setInvoiceDispute } from "@/domain/invoices";
+import { freezeEstimate, signEstimate } from "@/domain/estimates";
 import { startRecoveryWork, getMoneyFinder, setDoNotContact, setNextService, updateRecovery } from "@/domain/money-finder";
 import { localDateKey, addLocalDays } from "@/lib/timezone";
 import { newToken } from "@/lib/tokens";
@@ -47,12 +48,28 @@ async function bill(f:Fixture,age:number,paid:number,paidAge=age) {
 }
 
 describe('Money Finder live list rules',()=>{
+  it('keeps the live dashboard bounded at 20,000 customers',async()=>{
+    const f=await fixture();
+    await run(f,tx=>tx.execute(sql`INSERT INTO app.customer(business_id,first_name,display_name) SELECT ${f.businessId},'Scale','Scale '||n FROM generate_series(1,19999) n`));
+    await estimate(f,3,30,[]);
+    await dashboard(f);
+    const times:number[]=[];
+    for(let i=0;i<5;i++) await run(f,async tx=>{const started=performance.now();const data=await getMoneyFinder(tx,{now});times.push(performance.now()-started);expect(data.total).toBe(1);});
+    times.sort((a,b)=>a-b);
+    console.info(`Money Finder 20,000 customers: median ${times[2].toFixed(1)}ms; max ${times[4].toFixed(1)}ms`);
+    expect(times[2]).toBeLessThan(300);
+  });
+
   it('retains the source when starting work and rejects substituted tenants or customers',async()=>{
     const f=await fixture();await estimate(f,3,30,[]);
     const source=await run(f,tx=>startRecoveryWork(tx,meta(),{category:'declined',subjectId:f.vehicleId,destination:'job'}));
     expect(source.redirectTo).toContain(`sourceRecoveryItemId=${source.id}`);
     const input={sourceRecoveryItemId:source.id,customerId:f.customerId,vehicleId:f.vehicleId,title:'Re-quote',parts:[{description:'Brakes',quantity:1,unitCostCents:1000,unitPriceCents:2000}],labor:[]};
-    await run(f,tx=>createJob(tx,input));
+    const job=await run(f,tx=>createJob(tx,input));
+    const [costed]=await run(f,tx=>tx.select().from(activity).where(eq(activity.subjectId,job.id)));
+    const frozen=await run(f,tx=>freezeEstimate(tx,meta(),{jobId:job.id,expectedJobVersion:costed.id,taxBps:0,supplementReason:'',terms:''}));
+    const [published]=await run(f,tx=>tx.select().from(estimateVersion).where(eq(estimateVersion.id,frozen.id)));
+    expect(published.sourceRecoveryItemId).toBe(source.id);
     const a=await run(f,tx=>createAppointment(tx,meta(),{customerId:f.customerId,vehicleId:f.vehicleId,sourceRecoveryItemId:source.id,localStartsAt:'2026-11-10T10:00'}));
     expect(a.sourceRecoveryItemId).toBe(source.id);
     const other=await fixture();
@@ -85,6 +102,10 @@ describe('Money Finder live list rules',()=>{
     const due=await bill(f,3,2500);await bill(f,2,0);await bill(f,5,10000);
     const data=await dashboard(f,{category:'unpaid_invoice'});
     expect(data.items).toHaveLength(1);expect(data.items[0]).toMatchObject({subjectId:due.id,amountCents:7500});
+    await run(f,tx=>setInvoiceDispute(tx,meta(),due.id,'Customer contests the balance'));
+    expect((await dashboard(f,{category:'unpaid_invoice'})).items).toEqual([]);
+    await run(f,tx=>setInvoiceDispute(tx,meta(),due.id,null));
+    expect((await dashboard(f,{category:'unpaid_invoice'})).items[0].amountCents).toBe(7500);
   });
   it('requires a real paid visit for lapsed customers and keeps estimates outside known dollars',async()=>{
     const f=await fixture();await bill(f,220,10000);

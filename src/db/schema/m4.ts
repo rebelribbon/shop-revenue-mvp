@@ -37,6 +37,7 @@ export const invoice = app.table(
     invoiceTerms: text("invoice_terms").notNull().default(""),
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     voidReason: text("void_reason"),
+    disputeOpen: text("dispute_open"),
     tokenHash: text("token_hash").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
