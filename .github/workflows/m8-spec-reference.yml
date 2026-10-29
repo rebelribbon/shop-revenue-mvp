@@ -1,0 +1,16 @@
+name: M8 reference
+on:
+  push:
+    branches: [m8-recovered-revenue]
+    paths: [.github/workflows/m8-spec-reference.yml]
+permissions:
+  contents: read
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read frozen recovery rules
+        run: |
+          pdftotext -layout docs/build-spec-v1.1.pdf /tmp/spec.txt
+          sed -n '2920,3105p' /tmp/spec.txt
