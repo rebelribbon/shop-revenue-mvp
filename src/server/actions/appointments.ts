@@ -7,6 +7,7 @@ export const createAppointmentAction = defineShopAction({
   name: "createAppointment",
   input: z.object({
     customerId: z.uuid(),
+    sourceRecoveryItemId: z.uuid().optional(),
     vehicleId: z.string().optional().or(z.literal("")),
     startsAt: z.string().min(1).max(32),
     reason: z.string().max(200).optional().or(z.literal("")),
@@ -14,6 +15,7 @@ export const createAppointmentAction = defineShopAction({
   }),
   run: ({ tx, meta }, input) => createAppointment(tx, meta, {
     customerId: input.customerId,
+    sourceRecoveryItemId: input.sourceRecoveryItemId,
     vehicleId: input.vehicleId || null,
     localStartsAt: input.startsAt,
     reason: input.reason || null,
@@ -31,3 +33,4 @@ export const setAppointmentStatusAction = defineShopAction({
   run: ({ tx, meta }, input) => setAppointmentStatus(tx, meta, input.appointmentId, input.status),
   persist: (row) => ({ id: row.id, message: "Appointment updated." }),
 });
+

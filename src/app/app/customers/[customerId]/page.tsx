@@ -7,6 +7,7 @@ import { withTenant } from "@/db/tenant";
 import { getCustomerWithVehicles, listCustomerTimeline } from "@/domain/customers";
 import { archiveCustomerAction, createVehicleAction, updateCustomerAction } from "@/server/actions/customers";
 import { requireShopSession } from "@/server/views/shop";
+import { setDoNotContactAction } from "@/server/actions/money-finder";
 
 export default async function CustomerDetailPage(props: { params: Promise<{ customerId: string }> }) {
   const { customerId } = await props.params;
@@ -19,6 +20,9 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
     <main>
       <p><Link href="/app/customers">← Customers</Link></p>
       <h1>{c.displayName}</h1>
+      <div className="card"><h2>Contact preference</h2><p>{c.doNotContact?'Do not contact — excluded from Money Finder.':'Manual follow-up allowed.'}</p>
+        {s.actor.type!=='support'&&<ActionForm action={setDoNotContactAction} hidden={{customerId,value:c.doNotContact?'false':'true'}} submitLabel={c.doNotContact?'Allow manual follow-up':'Mark do not contact'} variant="secondary"/>}
+      </div>
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Customer details</h2>
         <ActionForm action={updateCustomerAction} hidden={{ customerId }} submitLabel="Save customer" successText="Customer updated.">

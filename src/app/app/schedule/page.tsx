@@ -32,11 +32,14 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
   );
 }
 
-export default async function SchedulePage() {
+export default async function SchedulePage({searchParams}:{searchParams:Promise<{customerId?:string;vehicleId?:string;sourceRecoveryItemId?:string}>}) {
+  const params=await searchParams;
   const s = await requireShopSession("/app/schedule");
   const [days, choices] = await withTenant(s.businessId, s.actor, async (tx) =>
     Promise.all([listTodayTomorrow(tx), listAppointmentChoices(tx)]),
   );
+  const selectedCustomer=choices.customers.some(c=>c.id===params.customerId)?params.customerId:'';
+  const selectedVehicle=choices.vehicles.some(v=>v.id===params.vehicleId&&v.customerId===selectedCustomer)?params.vehicleId:'';
   return (
     <main>
       <h1>Schedule</h1>
@@ -54,14 +57,14 @@ export default async function SchedulePage() {
       <section className="card" id="new-appointment">
         <h2 style={{ marginTop: 0 }}>New appointment</h2>
         {choices.customers.length ? (
-          <ActionForm action={createAppointmentAction} submitLabel="Schedule appointment" successText="Appointment scheduled.">
+          <ActionForm action={createAppointmentAction} hidden={params.sourceRecoveryItemId?{sourceRecoveryItemId:params.sourceRecoveryItemId}:{}} submitLabel="Schedule appointment" successText="Appointment scheduled.">
             <label htmlFor="customerId">Customer</label>
-            <select id="customerId" name="customerId" required defaultValue="">
+            <select id="customerId" name="customerId" required defaultValue={selectedCustomer}>
               <option value="" disabled>Select customer</option>
               {choices.customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <label htmlFor="vehicleId">Vehicle (optional)</label>
-            <select id="vehicleId" name="vehicleId" defaultValue="">
+            <select id="vehicleId" name="vehicleId" defaultValue={selectedVehicle}>
               <option value="">No vehicle selected</option>
               {choices.vehicles.map((v) => (
                 <option key={v.id} value={v.id}>{[v.year, v.make, v.model].filter(Boolean).join(" ") || "Vehicle"}{v.plate ? ` • ${v.plate}` : ""}</option>
@@ -81,3 +84,4 @@ export default async function SchedulePage() {
     </main>
   );
 }
+

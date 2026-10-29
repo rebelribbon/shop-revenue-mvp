@@ -1,7 +1,7 @@
 // RLS suite (Section 22): generated for every table with a business_id column,
 // discovered from the catalog. Insert in A; B sees nothing, changes nothing and
 // cannot write into A; a raw query without tenant context sees nothing.
-import {invoiceCheckout,invoiceRefund,stripeConnection} from "@/db/schema";
+import {invoiceCheckout,invoiceRefund,stripeConnection,recommendation,recoveryItem} from "@/db/schema";
 import {issueInvoice,recordInvoicePayment} from "@/domain/invoices";
 import { newToken } from "@/lib/tokens";
 import { signEstimate } from "@/domain/estimates";
@@ -33,6 +33,8 @@ async function estimateFixture(t:SeededTenant){
 }
 async function invoiceFixture(t:SeededTenant){const e=await estimateFixture(t);await signEstimate(e.token,"Fixture",["part-0"],meta());return withTenant(t.businessId,t.owner.actor,tx=>issueInvoice(tx,meta(),{versionId:e.id,dueOn:null,terms:""}));}
 const builders: Record<string, Builder> = {
+ "app.recommendation":async t=>{const vehicleId=await builders['app.vehicle'](t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [v]=await tx.select().from(vehicle).where(eq(vehicle.id,vehicleId));const [r]=await tx.insert(recommendation).values({businessId:t.businessId,customerId:v.customerId,vehicleId,description:'Brake service',amountCents:10000}).returning();return r.id;});},
+ "app.recovery_item":async t=>{const vehicleId=await builders['app.vehicle'](t);return withTenant(t.businessId,t.owner.actor,async tx=>{const [v]=await tx.select().from(vehicle).where(eq(vehicle.id,vehicleId));const [r]=await tx.insert(recoveryItem).values({businessId:t.businessId,category:'service_due',subjectId:vehicleId,customerId:v.customerId,vehicleId}).returning();return r.id;});},
  "app.stripe_connection":async t=>withTenant(t.businessId,t.owner.actor,async tx=>{const [row]=await tx.insert(stripeConnection).values({businessId:t.businessId,accountId:`acct_${randomUUID()}`}).onConflictDoUpdate({target:stripeConnection.businessId,set:{cardPaymentsStatus:"active"}}).returning();return row.id;}),
  "app.invoice_checkout":async t=>{const i=await invoiceFixture(t);return withTenant(t.businessId,{type:"system",id:null},async tx=>{const [row]=await tx.insert(invoiceCheckout).values({businessId:t.businessId,invoiceId:i.id,accountId:`acct_${randomUUID()}`,amountCents:1000,expiresAt:new Date(Date.now()+3600000)}).returning();return row.id;});},
  "app.invoice_refund":async t=>{const i=await invoiceFixture(t);const p=await withTenant(t.businessId,t.owner.actor,tx=>recordInvoicePayment(tx,meta(),{invoiceId:i.id,amountCents:500,method:"cash",reference:"fixture"}));return withTenant(t.businessId,t.owner.actor,async tx=>{const [row]=await tx.insert(invoiceRefund).values({businessId:t.businessId,invoiceId:i.id,paymentId:p.id,amountCents:100,reason:"Fixture"}).returning();return row.id;});},

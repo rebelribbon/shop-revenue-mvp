@@ -1,5 +1,5 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-import { activity, business, invoice, estimateAuthorization, estimateVersion, type EstimateSnapshot } from "@/db/schema";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { activity, business, invoice, estimateAuthorization, estimateVersion, recommendation, type EstimateSnapshot } from "@/db/schema";
 import { type TenantTx, runInContext } from "@/db/tenant";
 import { jobInput } from "./jobs";
 import { getCustomerWithVehicles,getVehicle } from "./customers";
@@ -19,13 +19,14 @@ export async function freezeEstimate(tx:TenantTx,meta:RequestMeta,input:{jobId:s
  const [shop]=await tx.select().from(business).where(eq(business.id,tx.businessId));
  const [prior]=await tx.select().from(estimateVersion).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.quoteId,input.jobId))).orderBy(desc(estimateVersion.version)).limit(1);
  if(prior&&!input.supplementReason.trim()) throw new AppError("VALIDATION","Explain the change for this new version or supplement.");
+ if(prior) await tx.update(recommendation).set({status:'quoted'}).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.status,'open'),inArray(recommendation.sourceVersionId,tx.select({id:estimateVersion.id}).from(estimateVersion).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.quoteId,input.jobId))))));
  const lines:EstimateSnapshot["lines"]=[...data.parts.map((p,i)=>({id:`part-${i}`,description:p.description,kind:"part" as const,quantity:p.quantity,unitPriceCents:p.unitPriceCents,totalCents:p.quantity*p.unitPriceCents})),...data.labor.map((l,i)=>({id:`labor-${i}`,description:l.description,kind:"labor" as const,quantity:l.estimatedHoursHundredths/100,unitPriceCents:l.sellRateCents,totalCents:Math.round(l.estimatedHoursHundredths*l.sellRateCents/100)}))];
  if(!lines.length) throw new AppError("VALIDATION","Add work to the job before publishing.");
  const subtotalCents=lines.reduce((a,l)=>a+l.totalCents,0),taxCents=Math.round(subtotalCents*input.taxBps/10000);
  const snapshot:EstimateSnapshot={title:data.title,shopName:shop.dba||shop.legalName,customerName:c.customer.displayName,vehicleLabel:[v.year,v.make,v.model,v.plate].filter(Boolean).join(" ")||"Vehicle",lines,subtotalCents,taxBps:input.taxBps,taxCents,totalCents:subtotalCents+taxCents,terms:input.terms};
  // Superseding a version revokes its link but never removes its signature evidence.
  await tx.update(estimateVersion).set({revokedAt:new Date()}).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.quoteId,input.jobId)));
- const token=newToken();const [row]=await tx.insert(estimateVersion).values({businessId:tx.businessId,createdByUserId:tx.actor.id,quoteId:input.jobId,version:(prior?.version??0)+1,customerId:data.customerId,vehicleId:data.vehicleId,snapshot,supplementReason:input.supplementReason||null,tokenHash:token.hash,expiresAt:new Date(Date.now()+30*86400000)}).returning();
+ const token=newToken();const [row]=await tx.insert(estimateVersion).values({businessId:tx.businessId,createdByUserId:tx.actor.id,quoteId:input.jobId,version:(prior?.version??0)+1,sourceRecoveryItemId:data.sourceRecoveryItemId??null,customerId:data.customerId,vehicleId:data.vehicleId,snapshot,supplementReason:input.supplementReason||null,tokenHash:token.hash,expiresAt:new Date(Date.now()+30*86400000)}).returning();
  await audit(tx,meta,{action:"estimate.published",targetType:"estimate_version",targetId:row.id,after:{version:row.version,totalCents:snapshot.totalCents}});
  await recordActivity(tx,{kind:"estimate.published",subjectType:"vehicle",subjectId:data.vehicleId,summary:`Estimate version ${row.version} published`,data:{versionId:row.id}});
  return {id:row.id,version:row.version,path:`/estimate/${token.token}`};

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, foreignKey, index, integer, jsonb, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, date, check, foreignKey, index, integer, jsonb, text, timestamp, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { app, tenantColumns } from "./common";
 import { business, user } from "./tenancy";
 
@@ -14,6 +14,7 @@ export const customer = app.table(
     phoneE164: text("phone_e164"),
     phoneDigits: text("phone_digits"),
     notes: text("notes"),
+    doNotContact: boolean("do_not_contact").notNull().default(false),
     status: text("status").notNull().default("active"),
   },
   (t) => [
@@ -54,6 +55,9 @@ export const vehicle = app.table(
     plate: text("plate"),
     plateNormalized: text("plate_normalized"),
     mileage: integer("mileage"),
+    nextServiceOn: date("next_service_on"),
+    nextServiceDescription: text("next_service_description"),
+    nextServiceAmountCents: integer("next_service_amount_cents"),
     notes: text("notes"),
     status: text("status").notNull().default("active"),
   },
@@ -83,6 +87,7 @@ export const appointment = app.table(
     ...tenantColumns(),
     customerId: uuid("customer_id").notNull(),
     vehicleId: uuid("vehicle_id"),
+    sourceRecoveryItemId: uuid("source_recovery_item_id"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }),
     reason: text("reason"),

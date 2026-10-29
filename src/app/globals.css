@@ -99,3 +99,22 @@ input[type="checkbox"] { width: 24px; min-height: 24px; height: 24px; vertical-a
 fieldset { min-width: 0; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; }
 
 @media print { button, nav, .topbar { display:none !important; } main { max-width:none; padding:0; } .card { break-inside:avoid; } }
+
+.money-hero { padding: 24px; margin: 18px 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.money-hero h2 { font-size: clamp(1.35rem, 4vw, 2rem); margin-top: 4px; }
+.eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .1em; font-size: .8rem; font-weight: 700; }
+.money-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,190px),1fr)); gap: 12px; }
+.money-category { display: block; text-decoration: none; margin: 0; color: var(--text); }
+.money-category h3 { margin-top: 0; }
+.money-category.selected { border-color: var(--accent); }
+.money-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 14px 0; }
+.money-actions > a { min-height: 44px; display: inline-flex; align-items: center; overflow-wrap: anywhere; }
+.money-actions > input { flex: 1; min-width: min(100%,200px); }
+.money-actions .btn { margin-top: 0; }
+.money-opportunity { overflow-wrap: anywhere; }
+.money-opportunity-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.money-opportunity-head h3 { margin: 12px 0 6px; }
+.money-opportunity details { border-top: 1px solid var(--line); padding-top: 14px; }
+.money-opportunity summary, section[aria-label='Service recommendations'] summary { min-height: 44px; cursor: pointer; }
+.money-search { margin-top: 24px; }
+@media (max-width: 600px) { .money-hero { padding: 16px; } .money-actions { gap: 8px 16px; } }

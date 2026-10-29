@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { appointment, business, customer, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
+import { validateRecoverySource } from "./recovery-source";
 import { notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localDateTimeToUtc, localMidnightToUtc } from "@/lib/timezone";
 import type { RequestMeta } from "./records";
@@ -27,6 +28,7 @@ export async function listAppointmentChoices(tx: TenantTx) {
 
 export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: {
   customerId: string;
+  sourceRecoveryItemId?: string;
   vehicleId?: string | null;
   localStartsAt: string;
   reason?: string | null;
@@ -41,12 +43,14 @@ export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: 
     ));
     if (!v) throw notFound("That vehicle");
   }
+  await validateRecoverySource(tx,input.sourceRecoveryItemId,input.customerId,input.vehicleId);
   const timezone = await shopTimezone(tx);
   const startsAt = localDateTimeToUtc(input.localStartsAt, timezone);
   const [row] = await tx.insert(appointment).values({
     businessId: tx.businessId,
     createdByUserId: tx.actor.id,
     customerId: input.customerId,
+    sourceRecoveryItemId: input.sourceRecoveryItemId??null,
     vehicleId: input.vehicleId || null,
     startsAt,
     reason: input.reason || null,
@@ -98,3 +102,4 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
     tomorrow: rows.filter((r) => localDateKey(r.startsAt, timezone) === tomorrow),
   };
 }
+
