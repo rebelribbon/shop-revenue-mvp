@@ -4,7 +4,7 @@ Approved provider change: Resend for application transactional email. Existing P
 
 ## Preview configuration
 
-In Vercel project shop-revenue-mvp, save a separate sending-only key scoped to rebelribbon.com as RESEND_API_KEY, type Secret, Preview only. Never expose it under a NEXT_PUBLIC_ name. Set EMAIL_PROVIDER=resend and EMAIL_FROM_ADDRESS to a sender on the verified domain. The legacy EMAIL_FROM name is accepted as a fallback; the actual sender variable is EMAIL_FROM_ADDRESS.
+In Vercel project shop-revenue-mvp, save a separate sending-only key scoped to shoprevenue.app as RESEND_API_KEY, type Secret, Preview only. Never expose it under a NEXT_PUBLIC_ name. Set EMAIL_PROVIDER=resend and EMAIL_FROM_ADDRESS=no-reply@shoprevenue.app. The legacy EMAIL_FROM name is accepted as a fallback; the actual sender variable is EMAIL_FROM_ADDRESS.
 
 Use separate credentials for production. Deploy the reviewed code before enabling EMAIL_PROVIDER=resend. A successful API acknowledgement means accepted for sending, not delivered to the recipient. Verify the invite in Resend's delivery log and the recipient inbox before recording email-delivery evidence.
 
