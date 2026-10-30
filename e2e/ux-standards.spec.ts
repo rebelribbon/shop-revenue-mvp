@@ -60,7 +60,7 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  await signInWithPassword(page,'admin.one@example.test','/admin/sign-in');
  for(const path of ['/admin','/admin/release','/admin/policies','/admin/webhooks','/admin/help']){await page.goto(path);await auditPage(page);}
  await page.goto('/admin');
- const tenant=page.locator('tbody a').first();await tenant.click();await auditPage(page);
+ const tenant=page.locator('tbody a').first();await tenant.click();await expect(page).toHaveURL(/\/admin\/tenants\/[a-f0-9-]+$/);await auditPage(page);
  if(info.project.name==='phone'){
   await page.setViewportSize({width:320,height:740});await auditPage(page);
   await page.screenshot({path:'test-results/ux-admin-narrow.png',fullPage:true});

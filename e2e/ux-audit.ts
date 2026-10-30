@@ -1,6 +1,8 @@
 import { expect, type Page } from "@playwright/test";
 
 export async function auditUX(page:Page, collect=false) {
+ // Let navigation mutations and the scheduled primary-action selection commit.
+ await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
  await expect(page.locator('[data-ux-primary]')).toHaveCount(1);
  const issues=await page.evaluate(()=>{
   const issues:string[]=[];
