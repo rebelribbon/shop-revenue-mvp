@@ -42,7 +42,7 @@ export async function auditUX(page:Page, collect=false) {
   for(const nav of Array.from(document.querySelectorAll('nav')).filter(shown)){
    const count=Array.from(nav.querySelectorAll('a,button')).filter(shown).length;
    if(count<3||count>5)issues.push(`Navigation has ${count} items`);
-   for(const link of Array.from(nav.querySelectorAll<HTMLElement>('a,button')).filter(shown))if(link.scrollWidth>link.clientWidth+1)issues.push("Navigation label overflows its target");
+   for(const link of Array.from(nav.querySelectorAll<HTMLElement>('a,button')).filter(shown))if(link.scrollWidth>link.clientWidth+1)issues.push(`Navigation label ${link.textContent} overflows its ${link.clientWidth}px target by ${link.scrollWidth-link.clientWidth}px`);
   }
   const primary=document.querySelector<HTMLElement>('[data-ux-primary]')!;
   if(!shown(primary)||!viewport(primary))issues.push("Primary action is outside the viewport");
