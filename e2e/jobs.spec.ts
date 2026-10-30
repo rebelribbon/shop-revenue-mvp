@@ -26,5 +26,6 @@ test("prices and saves an internal job sheet",async({page},info)=>{
  await page.getByRole("link",{name:"Open invoice & record payment",exact:true}).click();
  const invoice=page.getByRole("heading",{name:new RegExp(`Invoice #.*Brakes ${info.project.name}`)}).locator("..");
  await invoice.getByLabel("Amount ($)",{exact:true}).fill("50");await invoice.getByRole("button",{name:"Record payment",exact:true}).click();await expect(invoice.getByText("Partially paid",{exact:true})).toBeVisible();
+ await invoice.getByText('Correct this entry',{exact:true}).click();await invoice.getByLabel('Correction reason',{exact:true}).fill('UX confirmation check only');await invoice.getByRole('button',{name:'Reverse recorded entry',exact:true}).click();await expect(invoice.getByRole('button',{name:'Yes, continue',exact:true})).not.toHaveAttribute('data-ux-primary','true');
  await page.goto(invoiceHref!);await auditUX(page);await expect(page.getByText("Balance due:",{exact:false})).toContainText("$150.00");await expect(page.locator("body")).not.toContainText("unit cost");
 });

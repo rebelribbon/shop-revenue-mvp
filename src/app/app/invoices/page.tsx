@@ -129,6 +129,7 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
                       action={reverseInvoicePaymentAction}
                       hidden={{ paymentId: p.id }}
                       submitLabel="Reverse recorded entry"
+                      variant="danger"
                       confirm="Reverse this bookkeeping entry? This does not refund or move money."
                     >
                       <label htmlFor={`reason-${p.id}`}>
