@@ -15,7 +15,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 html { scroll-padding-block: 96px 160px; }
-body { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 16px/24px system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { overflow-wrap: anywhere; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 16px/24px system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { flex: 1; min-height: 0; width: 100%; max-width: 1152px; margin: 0 auto calc(var(--primary-space) + 32px); padding: 32px 24px; overflow-y: auto; scroll-padding-block: 24px; overflow-wrap: anywhere; }
 h1, h2, h3, h4, p, ul, ol, dl, figure, blockquote { margin: 16px 0; }
 h1 { font-size: 32px; line-height: 40px; margin: 8px 0 24px; letter-spacing: -.025em; }
