@@ -6,7 +6,16 @@ export async function auditUX(page:Page) {
   const issues:string[]=[];
   const shown=(e:Element)=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=="none"&&s.visibility!=="hidden"&&r.width>0&&r.height>0;};
   const tag=(e:Element)=>`${e.tagName.toLowerCase()}${e.id?`#${e.id}`:""}`;
-  const viewport=(e:Element)=>{const r=e.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight&&r.right>0&&r.left<innerWidth;};
+  const viewport=(e:Element)=>{
+   const r=e.getBoundingClientRect();let top=0,left=0,right=innerWidth,bottom=innerHeight;
+   if(getComputedStyle(e).position!=="fixed")for(let parent=e.parentElement;parent;parent=parent.parentElement){
+    const style=getComputedStyle(parent),box=parent.getBoundingClientRect();
+    if(/auto|scroll|hidden|clip/.test(style.overflowY)){top=Math.max(top,box.top);bottom=Math.min(bottom,box.bottom);}
+    if(/auto|scroll|hidden|clip/.test(style.overflowX)){left=Math.max(left,box.left);right=Math.min(right,box.right);}
+   }
+   // Partially clipped edge targets are scrolled into view before interaction.
+   return r.top>=top-.5&&r.bottom<=bottom+.5&&r.left>=left-.5&&r.right<=right+.5;
+  };
   const main=document.querySelector('main')!;
   if(!main||main.id!=="main-content")issues.push("Missing skip-link destination");
   if(getComputedStyle(document.body).fontSize!=="16px")issues.push("Body text must be 16px");
