@@ -16,7 +16,7 @@ export default async function SupportAccessPage() {
     await tx.select().from(auditEvent).where(eq(auditEvent.businessId, s.businessId)).orderBy(desc(auditEvent.occurredAt)).limit(50),
   ] as const);
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Support access</h1>
       <div className="card table-wrap">
         {sessions.length === 0 ? (
@@ -51,3 +51,4 @@ export default async function SupportAccessPage() {
     </main>
   );
 }
+

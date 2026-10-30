@@ -74,7 +74,9 @@ test("M2 mobile navigation opens New without horizontal page overflow", async ({
   await page.goto("/app/customers");
   const nav=page.getByRole("navigation",{name:"Mobile navigation"});
   await expect(nav).toBeVisible();
-  await nav.getByRole("link",{name:"New",exact:true}).click();
+  await expect(nav.getByRole("link")).toHaveCount(5);
+  await nav.getByRole("link",{name:"Work",exact:true}).click();
+  await page.getByRole("link",{name:"New work",exact:true}).click();
   await expect(page.getByRole("heading",{name:"New",exact:true})).toBeVisible();
   await page.getByRole("link",{name:/Add a customer/}).click();
   await expect(page).toHaveURL(/customers#new-customer$/);

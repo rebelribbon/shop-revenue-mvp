@@ -55,7 +55,7 @@ export function ActionForm(props: {
     >
       {props.children}
       {confirming && <p className="confirm">{props.confirm}</p>}
-      <button className={`btn ${props.variant ?? "primary"}`} type="submit" disabled={pending}>
+      <button data-destructive={props.variant === "danger" ? "true" : undefined} className={`btn ${props.variant ?? "secondary"}`} type="submit" disabled={pending}>
         {pending ? (props.pendingLabel ?? "Working…") : confirming ? "Yes, continue" : props.submitLabel}
       </button>
       {message && (
@@ -66,3 +66,4 @@ export function ActionForm(props: {
     </form>
   );
 }
+

@@ -9,7 +9,7 @@ export default async function Policies() {
   const me = await requireInternal("admin");
   const policies = await listPolicies();
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Legal policies</h1>
       {policies.length === 0 && <p className="muted">No policies yet. Production refuses to render documents whose policy is not approved.</p>}
       {policies.map((p) => (
@@ -58,3 +58,4 @@ export default async function Policies() {
     </main>
   );
 }
+

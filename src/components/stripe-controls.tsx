@@ -24,6 +24,7 @@ export function StripeButton({
   return (
     <div>
       <button
+        className={`btn ${kind === "cancel" || kind === "retry-refund" ? "danger" : kind === "pay" || kind === "connect" ? "primary" : "secondary"}`}
         disabled={busy}
         onClick={() =>
           start(async () => {
@@ -171,7 +172,7 @@ export function StripeRefundForm({
           customer.
         </p>
       )}
-      <button disabled={busy}>
+      <button className="btn danger" disabled={busy}>
         {busy
           ? "Submitting refund…"
           : confirming

@@ -12,7 +12,7 @@ export default async function Webhooks({ searchParams }: { searchParams: Promise
   const status = STATUSES.includes(sp.status ?? "") ? sp.status : undefined;
   const events = await listWebhookEvents({ provider, status });
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Webhook events</h1>
       <form className="row card" method="get">
         <select name="provider" defaultValue={provider ?? ""} aria-label="Provider">
@@ -45,3 +45,4 @@ export default async function Webhooks({ searchParams }: { searchParams: Promise
     </main>
   );
 }
+

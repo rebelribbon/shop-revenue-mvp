@@ -1,4 +1,5 @@
 // M1 acceptance flows retained under the M2 email/password auth decision.
+import { auditUX } from "./ux-audit";
 import { expect, test } from "@playwright/test";
 import { E2E_PASSWORD, inviteLink, setInvitePassword, signInWithPassword } from "./helpers";
 
@@ -54,11 +55,13 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, second staff s
   const owner = await (await browser.newContext()).newPage();
   await owner.goto(await inviteLink(ownerEmail, since));
   await expect(owner.getByRole("heading", { name: `Join ${shop}` })).toBeVisible();
+  await auditUX(owner);
   since = Date.now();
   await owner.getByRole("button", { name: "Send account setup email" }).click();
   await expect(owner.getByRole("status")).toContainText("emailed account setup");
   await setInvitePassword(owner, ownerEmail, since, E2E_PASSWORD);
   await expect(owner).toHaveURL(/\/invite\//);
+  await auditUX(owner);
   await owner.getByLabel("Your name").fill("Eve Owner");
   await owner.getByRole("button", { name: "Accept invite" }).click();
   await expect(owner).toHaveURL(/\/app$/);
@@ -93,6 +96,7 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, second staff s
   await expect(owner.getByRole("status")).toContainText("Removed.");
   await staff.goto("/app");
   await expect(staff).toHaveURL(/\/no-access$/);
+  await auditUX(staff);
 
   const support = await (await browser.newContext()).newPage();
   await signInWithPassword(support, "support.one@example.test", "/admin/sign-in");

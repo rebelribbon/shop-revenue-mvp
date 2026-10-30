@@ -1,3 +1,4 @@
+import { WorkspaceNavigation } from "@/components/workspace-navigation";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { business } from "@/db/schema";
@@ -12,7 +13,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   return (
     <>
       {s.supportSession && (
-        <div className="banner" role="alert">
+        <div className="banner" data-support-view role="alert">
           <span>
             Viewing <strong>{s.supportSession.businessName}</strong> as support (read-only) until{" "}
             {s.supportSession.expiresAt.toLocaleTimeString("en-US", { timeZone: "America/Chicago", hour: "numeric", minute: "2-digit" })} CT.
@@ -25,31 +26,12 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       )}
       <header className="topbar">
         <strong>{b?.dba || b?.legalName}</strong>
-        <nav className="desktop-nav" aria-label="Main">
-          <Link href="/app">Money</Link>
-          <Link href="/app/revenue">Revenue</Link>
-          <Link href="/app/customers">Customers</Link>
-          <Link href="/app/jobs">Jobs</Link>
-          <Link href="/app/estimates">Estimates</Link>
-          <Link href="/app/invoices">Invoices</Link>
-          <Link href="/app/schedule">Schedule</Link>
-          <Link href="/app/settings">Settings</Link>
-          {!s.supportSession && (
-            <form action="/auth/sign-out" method="post" style={{ display: "inline" }}>
-              <button className="btn secondary compact-btn">Sign out</button>
-            </form>
-          )}
-        </nav>
+        <WorkspaceNavigation/>
+
       </header>
-      {!b?.businessTypeSelected && s.role === "owner" && <div className="notice"><Link href="/app/settings/business">Choose your line of business to personalize your workspace →</Link></div>}
+      {!b?.businessTypeSelected && s.role === "owner" && <div className="notice setup-notice"><Link href="/app/settings/business">Choose your line of business to personalize your workspace →</Link></div>}
       {children}
-      <nav className="mobile-nav" aria-label="Mobile navigation">
-        <Link href="/app"><span aria-hidden>◉</span><small>Money</small></Link>
-        <Link href="/app/customers"><span aria-hidden>◎</span><small>Customers</small></Link>
-        <Link className="mobile-new" href="/app/new"><span aria-hidden>＋</span><small>New</small></Link>
-        <Link href="/app/schedule"><span aria-hidden>▣</span><small>Schedule</small></Link>
-        <Link href="/app/settings"><span aria-hidden>☰</span><small>Settings</small></Link>
-      </nav>
+      <WorkspaceNavigation mobile/>
     </>
   );
 }

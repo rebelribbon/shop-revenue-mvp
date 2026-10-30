@@ -8,7 +8,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   const state = await getSessionState();
   if (state.kind === "shop") redirect(safeNext(sp.next));
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Sign in</h1>
       {sp.error === "recovery" && <p className="notice error">That password reset link expired or was already used. Request a new one.</p>}
       {sp.reason === "removed" && <p className="notice error">Your access to this shop has ended.</p>}
@@ -16,3 +16,4 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
     </main>
   );
 }
+

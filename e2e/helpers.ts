@@ -1,3 +1,4 @@
+import { auditUX } from "./ux-audit";
 import { expect, type Page } from "@playwright/test";
 
 const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
@@ -34,7 +35,9 @@ export async function signInWithPassword(page: Page, email: string, path = "/sig
 export async function setInvitePassword(page: Page, email: string, since: number, password = E2E_PASSWORD) {
   await page.goto(await recoveryLink(email, since));
   await expect(page.getByRole("heading", { name: /password/i })).toBeVisible();
+  await auditUX(page);
   await page.getByLabel("New password").fill(password);
   await page.getByLabel("Confirm password").fill(password);
   await page.getByRole("button", { name: "Save password" }).click();
 }
+

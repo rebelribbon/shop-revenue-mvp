@@ -1,3 +1,4 @@
+import {auditUX} from "./ux-audit";
 import {test,expect} from "@playwright/test";
 import {signInWithPassword} from "./helpers";
 test("prices and saves an internal job sheet",async({page},info)=>{
@@ -12,17 +13,17 @@ test("prices and saves an internal job sheet",async({page},info)=>{
  await expect(card.getByRole("link",{name:"Open customer estimate",exact:true})).toBeVisible();
  const href=await card.getByRole("link",{name:"Open customer estimate",exact:true}).getAttribute("href");
  await page.goto(href!);
- await expect(page.getByRole("heading",{name:"Estimate · Version 1",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Estimate · Version 1",exact:true})).toBeVisible();await auditUX(page);
  await expect(page.locator("body")).not.toContainText("unit cost");
  await page.getByLabel("Your full name",{exact:true}).fill("Test Customer");
  await page.getByRole("checkbox",{name:/I have reviewed/}).check();
  await page.getByRole("button",{name:"Sign authorization",exact:true}).click();
- await expect(page.getByRole("heading",{name:"Decision recorded",exact:true})).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Decision recorded",exact:true})).toBeVisible();await auditUX(page);
  await page.reload();await expect(page.getByText("Pads: Approved",{exact:true})).toBeVisible();
  await page.goto("/app/invoices");await page.getByLabel("Authorized estimate",{exact:true}).selectOption({label:`Brakes ${info.project.name} · Version 1 · Job ${info.project.name}`});
  const issuer=page.getByRole("button",{name:"Issue invoice",exact:true}).locator("..");await issuer.getByRole("button",{name:"Issue invoice",exact:true}).click();await expect(issuer.getByRole("link",{name:"Open customer invoice",exact:true})).toBeVisible();
  const invoiceHref=await issuer.getByRole("link",{name:"Open customer invoice",exact:true}).getAttribute("href");
  const invoice=page.getByRole("heading",{name:new RegExp(`Invoice #.*Brakes ${info.project.name}`)}).locator("..");
  await invoice.getByLabel("Amount ($)",{exact:true}).fill("50");await invoice.getByRole("button",{name:"Record payment",exact:true}).click();await expect(invoice.getByText("Partially paid",{exact:true})).toBeVisible();
- await page.goto(invoiceHref!);await expect(page.getByText("Balance due:",{exact:false})).toContainText("$150.00");await expect(page.locator("body")).not.toContainText("unit cost");
+ await page.goto(invoiceHref!);await auditUX(page);await expect(page.getByText("Balance due:",{exact:false})).toContainText("$150.00");await expect(page.locator("body")).not.toContainText("unit cost");
 });

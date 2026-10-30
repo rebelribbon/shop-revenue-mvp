@@ -8,7 +8,7 @@ export default function DevInbox() {
   if (!["local", "test", "preview"].includes(process.env.APP_ENV ?? "") || (process.env.MESSAGING_PROVIDER ?? "fake") !== "fake") notFound();
   const messages = readDevInbox();
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Dev SMS inbox</h1>
       <p className="muted">Fake messaging adapter. Nothing here was sent to a real phone.</p>
       <div className="card table-wrap">
@@ -22,3 +22,4 @@ export default function DevInbox() {
     </main>
   );
 }
+
