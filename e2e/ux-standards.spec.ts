@@ -44,6 +44,11 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  if(info.project.name==='phone'){
   await page.setViewportSize({width:320,height:740});await auditPage(page);
   await page.screenshot({path:'test-results/ux-home-narrow.png',fullPage:true});
+  await page.getByRole('button',{name:'Quick find',exact:true}).click();
+  const finder=page.getByRole('dialog',{name:'Quick find',exact:true});
+  await expect(finder.locator('[data-ux-primary]')).toHaveText('Search');await auditUX(page,true);
+  await page.screenshot({path:'test-results/ux-quick-find-narrow.png',fullPage:true});
+  await finder.getByRole('button',{name:'Close',exact:true}).click();
   await page.setViewportSize({width:390,height:844});
  }
  if(info.project.name==='desktop'){
@@ -62,8 +67,19 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  }
 });
 
-test("core pages stay within three homepage clicks and primary actions follow the active form",async({page})=>{
+test("core pages stay within three homepage clicks and primary actions follow the active form",async({page},info)=>{
  await signInWithPassword(page,'owner.a@shop-a.test');
+ await page.getByRole('button',{name:'Quick find',exact:true}).click();
+ const finder=page.getByRole('dialog',{name:'Quick find',exact:true});
+ await expect(finder.getByRole('textbox')).toBeFocused();
+ await expect(finder.locator('[data-ux-primary]')).toHaveText('Search');await auditUX(page);
+ await finder.getByRole('button',{name:'Close',exact:true}).focus();await page.keyboard.press('Shift+Tab');
+ await expect(finder.getByRole('button',{name:'Search',exact:true})).toBeFocused();
+ await finder.getByRole('textbox').fill(`Job ${info.project.name}`);
+ await finder.getByRole('button',{name:'Search',exact:true}).click();
+ await expect(page).toHaveURL(/\/app\/customers\?q=/);
+ await expect(page.getByRole('link',{name:`Job ${info.project.name}`,exact:true})).toBeVisible();
+ await page.goto('/app');
  await page.getByRole('link',{name:'Work',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Jobs',exact:true})).toBeVisible();
  await expect(page.getByLabel('Job name',{exact:true})).toHaveCount(0);
@@ -71,6 +87,11 @@ test("core pages stay within three homepage clicks and primary actions follow th
  await expect(page.locator('[data-ux-primary]')).toHaveText('New job / estimate');
  await page.getByRole('link',{name:'New job / estimate',exact:true}).click();
  await expect(page).toHaveURL(/\/app\/jobs\?new=1$/);
+ await page.getByLabel('Job name',{exact:true}).fill('Keep this draft');
+ await page.keyboard.press('Control+k');
+ await expect(finder).toBeVisible();await expect(finder.locator('[data-ux-primary]')).toHaveText('Search');
+ await page.keyboard.press('Escape');await expect(finder).not.toBeVisible();
+ await expect(page.getByLabel('Job name',{exact:true})).toHaveValue('Keep this draft');
  await page.getByLabel('Job name',{exact:true}).focus();
  await expect(page.locator('[data-ux-primary]')).toHaveText('Save job sheet');
  await page.locator('main').evaluate(e=>e.scrollTo(0,e.scrollHeight));

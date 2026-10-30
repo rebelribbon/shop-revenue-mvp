@@ -21,14 +21,14 @@ export function PageActions() {
     let frame = 0;
     const choose = () => {
       frame = 0;
-      const main = document.querySelector("main");
+      const main = document.querySelector("dialog[open]") ?? document.querySelector("main");
       if (!main || main.getAttribute("aria-busy") === "true") {
         selected?.removeAttribute("data-ux-primary"); setFallback(false); return;
       }
       const candidates = (selector: string) => Array.from(main.querySelectorAll<HTMLElement>(selector)).filter(eligible);
       if (focusedForm && (!focusedForm.isConnected || !main.contains(focusedForm))) focusedForm = null;
       const context = focusedForm ? Array.from(focusedForm.querySelectorAll<HTMLElement>('button[type="submit"],button:not([type]),input[type="submit"]')).find(eligible) : null;
-      const exitSupport=document.querySelector<HTMLElement>("[data-support-view] button");
+      const exitSupport=main.matches("dialog[open]")?null:document.querySelector<HTMLElement>("[data-support-view] button");
       const next = exitSupport ?? candidates('[data-stable-primary]')[0] ?? context ?? candidates('[data-page-primary]')[0] ?? candidates('.btn.primary')[0] ??
         candidates('form button[type="submit"],form button:not([type])')[0] ?? candidates('button')[0] ?? null;
       if (selected !== next) { selected?.removeAttribute("data-ux-primary"); selected = next; }
@@ -41,7 +41,7 @@ export function PageActions() {
     const schedule = () => { if (!frame) frame = requestAnimationFrame(choose); };
     const onFocus = (event: FocusEvent) => {
       const target = event.target;
-      if (target instanceof HTMLElement && target.matches("input:not([readonly]),select,textarea:not([readonly])") && target.closest("main")) {
+      if (target instanceof HTMLElement && target.matches("input:not([readonly]),select,textarea:not([readonly])") && target.closest("main,dialog[open]")) {
         focusedForm = target.closest("form"); schedule();
       }
     };
