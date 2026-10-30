@@ -21,9 +21,9 @@ export async function issueInvoice(tx:TenantTx,meta:RequestMeta,input:{versionId
  const [shop]=await tx.select().from(business).where(eq(business.id,tx.businessId));
  const snapshot:InvoiceSnapshot={...v.snapshot,lines,subtotalCents,taxCents,totalCents,shopPhone:shop.phoneE164,shopAddress:[shop.addressLine1,shop.addressLine2,shop.city,shop.region,shop.postalCode].filter(Boolean).join(", ")};
  const [sequence]=await tx.select({number:sql<number>`coalesce(max(${invoice.number}),1000)+1`}).from(invoice).where(eq(invoice.businessId,tx.businessId));
- const token=newToken();const [row]=await tx.insert(invoice).values({businessId:tx.businessId,createdByUserId:tx.actor.id,number:Number(sequence.number),quoteId:v.quoteId,versionId:v.id,authorizationId:authorization.id,customerId:v.customerId,vehicleId:v.vehicleId,snapshot,totalCents,dueOn:input.dueOn,invoiceTerms:input.terms,tokenHash:token.hash,expiresAt:new Date(Date.now()+90*86400000)}).returning();
+ const token=newToken();const [row]=await tx.insert(invoice).values({businessId:tx.businessId,createdByUserId:tx.actor.id,number:Number(sequence.number),quoteId:v.quoteId,versionId:v.id,authorizationId:authorization.id,customerId:v.customerId,vehicleId:v.vehicleId,serviceAssetId:v.serviceAssetId,snapshot,totalCents,dueOn:input.dueOn,invoiceTerms:input.terms,tokenHash:token.hash,expiresAt:new Date(Date.now()+90*86400000)}).returning();
  await audit(tx,meta,{action:"invoice.issued",targetType:"invoice",targetId:row.id,after:{number:row.number,totalCents,versionId:v.id,authorizationId:authorization.id}});
- await recordActivity(tx,{kind:"invoice.issued",subjectType:"vehicle",subjectId:v.vehicleId,summary:`Invoice #${row.number} issued`,data:{invoiceId:row.id}});
+ await recordActivity(tx,{kind:"invoice.issued",subjectType:v.vehicleId?"vehicle":"customer",subjectId:v.vehicleId??v.customerId,summary:`Invoice #${row.number} issued`,data:{invoiceId:row.id}});
  return {id:row.id,path:`/invoice/${token.token}`};
 }
 export async function listInvoices(tx:TenantTx){
@@ -38,7 +38,7 @@ export async function recordInvoicePayment(tx:TenantTx,meta:RequestMeta,input:{i
  if(input.amountCents>i.totalCents-Number(sum.paid))throw new AppError("VALIDATION","The amount exceeds the outstanding balance.");
  const [p]=await tx.insert(invoicePayment).values({businessId:tx.businessId,createdByUserId:tx.actor.id,...input}).returning();
  await audit(tx,meta,{action:"invoice.payment_recorded",targetType:"invoice_payment",targetId:p.id,after:{invoiceId:i.id,amountCents:p.amountCents,method:p.method}});
- await recordActivity(tx,{kind:"invoice.payment_recorded",subjectType:"vehicle",subjectId:i.vehicleId,summary:`Payment recorded for invoice #${i.number}`,data:{invoiceId:i.id,paymentId:p.id}});await reconcileRevenue(tx,meta,"Payment recorded",i.customerId);return {id:p.id};
+ await recordActivity(tx,{kind:"invoice.payment_recorded",subjectType:i.vehicleId?"vehicle":"customer",subjectId:i.vehicleId??i.customerId,summary:`Payment recorded for invoice #${i.number}`,data:{invoiceId:i.id,paymentId:p.id}});await reconcileRevenue(tx,meta,"Payment recorded",i.customerId);return {id:p.id};
 }
 export async function reverseInvoicePayment(tx:TenantTx,meta:RequestMeta,paymentId:string,reason:string){
  await assertOwner(tx);

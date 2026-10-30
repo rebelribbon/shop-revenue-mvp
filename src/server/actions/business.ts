@@ -1,4 +1,5 @@
 "use server";
+import { businessTypes } from "@/lib/business-types";
 import { z } from "zod";
 import { updateBusinessProfile } from "@/domain/business-profile";
 import { normalizePhone } from "@/lib/normalize";
@@ -8,6 +9,7 @@ export const updateBusinessProfileAction = defineShopAction({
   name: "updateBusinessProfile",
   ownerOnly: true,
   input: z.object({
+    businessType: z.enum(businessTypes).optional(),
     legalName: z.string().min(1).max(200),
     dba: z.string().max(200).optional().or(z.literal("")),
     phone: z.string().max(40).optional().or(z.literal("")),
@@ -19,6 +21,7 @@ export const updateBusinessProfileAction = defineShopAction({
     timezone: z.string().min(1).max(100),
   }),
   run: ({ tx, meta }, input) => updateBusinessProfile(tx, meta, {
+    businessType: input.businessType,
     legalName: input.legalName,
     dba: input.dba || null,
     phoneE164: input.phone ? normalizePhone(input.phone) : null,
@@ -31,3 +34,4 @@ export const updateBusinessProfileAction = defineShopAction({
   }),
   persist: () => ({ message: "Business profile updated." }),
 });
+

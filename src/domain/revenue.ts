@@ -35,7 +35,7 @@ export async function revenueInputs(tx:TenantTx,customerId?:string){
  const rows:RevenueInvoice[]=docs.flatMap(i=>{
   const v=versionMap.get(i.versionId),auth=authMap.get(i.authorizationId);if(!v||!auth)return [];
   const appt=v.sourceAppointmentId?apptMap.get(v.sourceAppointmentId):undefined;
-  const linkedAppt=appt&&appt.customerId===i.customerId&&appt.vehicleId===i.vehicleId&&appt.sourceRecoveryItemId===v.sourceRecoveryItemId&&appt.sourceContactActivityId===v.sourceContactActivityId?appt:undefined;
+  const linkedAppt=appt&&appt.customerId===i.customerId&&appt.vehicleId===i.vehicleId&&appt.serviceAssetId===i.serviceAssetId&&appt.sourceRecoveryItemId===v.sourceRecoveryItemId&&appt.sourceContactActivityId===v.sourceContactActivityId?appt:undefined;
   return [{id:i.id,customerId:i.customerId,vehicleId:i.vehicleId,versionId:v.id,quoteId:v.quoteId,authorizationId:auth.id,authorizedAt:auth.createdAt.toISOString(),createdAt:i.createdAt.toISOString(),workCreatedAt:(linkedAppt?.createdAt??v.createdAt).toISOString(),sourceRecoveryItemId:v.sourceRecoveryItemId,sourceContactActivityId:v.sourceContactActivityId,sourceAppointmentId:linkedAppt?.id??null,voided:!!i.voidedAt,disputed:!!i.disputeOpen,totalCents:i.totalCents,subtotalCents:i.snapshot.subtotalCents,
    lines:i.snapshot.lines.map(l=>({...l,recommendationId:lineMap.get(`${v.id}:${l.id}`)})),payments:(paymentMap.get(i.id)??[]).map(p=>({id:p.id,amountCents:p.amountCents,at:p.createdAt.toISOString(),reversesPaymentId:p.reversesPaymentId}))}];
  });

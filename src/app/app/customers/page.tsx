@@ -1,3 +1,5 @@
+import { getBusinessProfile } from "@/domain/business-profile";
+import { isAutomotive } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
@@ -9,14 +11,16 @@ export default async function CustomersPage(props: { searchParams?: Promise<{ q?
   const searchParams = await props.searchParams;
   const q = searchParams?.q?.trim() ?? "";
   const s = await requireShopSession("/app/customers");
+  const profile = await withTenant(s.businessId,s.actor,tx=>getBusinessProfile(tx));
+  const auto = isAutomotive(profile?.businessType??"automotive");
   const customers = await withTenant(s.businessId, s.actor, (tx) => listCustomers(tx, q));
   return (
     <main>
       <h1>Customers</h1>
-      <p className="muted">Search by customer name, phone, email, plate, or last 6 of the VIN.</p>
+      <p className="muted">{auto ? "Search by customer name, phone, email, plate, or last 6 of the VIN." : "Search customers, service addresses, ZIP codes, equipment and serial numbers."}</p>
       <div className="card">
         <form method="get" style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 260px" }}><label htmlFor="q">Search</label><input id="q" name="q" defaultValue={q} placeholder="Name, phone, plate, last 6 VIN" /></div>
+          <div style={{ flex: "1 1 260px" }}><label htmlFor="q">Search</label><input id="q" name="q" defaultValue={q} placeholder={auto?"Name, phone, plate, last 6 VIN":"Name, phone, address, equipment serial"} /></div>
           <button className="btn secondary" type="submit">Search</button>{q && <Link className="btn secondary" href="/app/customers">Clear</Link>}
         </form>
       </div>
@@ -42,3 +46,4 @@ export default async function CustomersPage(props: { searchParams?: Promise<{ q?
     </main>
   );
 }
+

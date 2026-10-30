@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { activity, customer, vehicle } from "@/db/schema";
+import { activity, asset, customer, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import type { RequestMeta } from "./records";
@@ -62,6 +62,7 @@ export async function archiveCustomer(tx: TenantTx, meta: RequestMeta, customerI
   if (!row) throw notFound("That customer");
   await tx.update(vehicle).set({ status: "archived" })
     .where(and(eq(vehicle.businessId, tx.businessId), eq(vehicle.customerId, customerId), eq(vehicle.status, "active")));
+  await tx.update(asset).set({status:"inactive"}).where(and(eq(asset.businessId,tx.businessId),eq(asset.customerId,customerId),eq(asset.status,"active")));
   await audit(tx, meta, { action: "customer.archived", targetType: "customer", targetId: row.id, after: { status: "archived" } });
   await recordActivity(tx, { kind: "customer.archived", subjectType: "customer", subjectId: row.id, summary: `Customer archived: ${row.displayName}` });
   return row;
@@ -160,6 +161,7 @@ export async function listCustomers(tx: TenantTx, query?: string) {
       .where(and(eq(customer.businessId, tx.businessId), eq(customer.status, "active"), or(
         ilike(customer.displayName, `%${q}%`),
         ilike(customer.email, `%${q.toLowerCase()}%`),
+        sql`EXISTS (SELECT 1 FROM app.asset a WHERE a.business_id=${tx.businessId} AND a.customer_id=${customer.id} AND a.status='active' AND (a.display_name ILIKE ${`%${q}%`} OR a.details->>'addressLine1' ILIKE ${`%${q}%`} OR a.details->>'postalCode' ILIKE ${`%${q}%`} OR a.details->>'serialNumber' ILIKE ${`%${q}%`}))`,
         digits.length >= 4 ? sql`${customer.phoneDigits} LIKE ${`%${digits}%`}` : undefined,
         vinOrPlate.length >= 2 ? eq(vehicle.plateNormalized, vinOrPlate) : undefined,
         vinOrPlate.length === 6 ? eq(vehicle.vinLast6, vinOrPlate) : undefined,

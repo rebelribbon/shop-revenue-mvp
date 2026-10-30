@@ -6,7 +6,7 @@ const day=86400000;
 export type RevenueContact={id:string;recoveryId:string;customerId:string;vehicleId:string|null;category:string;subjectId:string;at:string;delivered:boolean;recommendationIds:string[]};
 export type RevenueResponse={id:string;contactId:string;at:string;ownerConfirmed:boolean};
 export type RevenuePayment={id:string;amountCents:number;at:string;reversesPaymentId:string|null};
-export type RevenueInvoice={id:string;customerId:string;vehicleId:string;versionId:string;quoteId:string;authorizationId:string;authorizedAt:string;createdAt:string;workCreatedAt:string;
+export type RevenueInvoice={id:string;customerId:string;vehicleId:string|null;versionId:string;quoteId:string;authorizationId:string;authorizedAt:string;createdAt:string;workCreatedAt:string;
  sourceRecoveryItemId:string|null;sourceContactActivityId:string|null;sourceAppointmentId:string|null;
  voided:boolean;disputed:boolean;totalCents:number;subtotalCents:number;
  lines:{id:string;totalCents:number;recommendationId?:string}[];payments:RevenuePayment[]};

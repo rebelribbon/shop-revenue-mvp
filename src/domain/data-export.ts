@@ -1,11 +1,11 @@
 import {and,asc,eq,gt,lte,sql} from 'drizzle-orm';
-import {activity,appointment,assetReading,customer,estimateAuthorization,estimateRecommendationLine,estimateVersion,invoice,invoicePayment,note,recommendation,recoveryItem,revenueAttribution,revenueAttributionEvent,vehicle} from '@/db/schema';
+import {activity,appointment,asset,assetReading,customer,estimateAuthorization,estimateRecommendationLine,estimateVersion,invoice,invoicePayment,note,recommendation,recoveryItem,revenueAttribution,revenueAttributionEvent,vehicle} from '@/db/schema';
 import {withTenant,type Actor,type TenantTx} from '@/db/tenant';
 import {assertOwner} from './membership';
 import {audit,type RequestMeta} from './records';
-export const exportDatasets=['customers','vehicles','appointments','mileage','notes','history','estimates','authorizations','invoices','payments','recommendations','recovery','revenue','revenue-history','estimate-lines'] as const;
+export const exportDatasets=['customers','assets','vehicles','appointments','mileage','notes','history','estimates','authorizations','invoices','payments','recommendations','recovery','revenue','revenue-history','estimate-lines'] as const;
 export type ExportDataset=typeof exportDatasets[number];
-const tables={customers:customer,vehicles:vehicle,appointments:appointment,mileage:assetReading,notes:note,history:activity,estimates:estimateVersion,authorizations:estimateAuthorization,invoices:invoice,payments:invoicePayment,recommendations:recommendation,recovery:recoveryItem,revenue:revenueAttribution,'revenue-history':revenueAttributionEvent,'estimate-lines':estimateRecommendationLine};
+const tables={customers:customer,assets:asset,vehicles:vehicle,appointments:appointment,mileage:assetReading,notes:note,history:activity,estimates:estimateVersion,authorizations:estimateAuthorization,invoices:invoice,payments:invoicePayment,recommendations:recommendation,recovery:recoveryItem,revenue:revenueAttribution,'revenue-history':revenueAttributionEvent,'estimate-lines':estimateRecommendationLine};
 const forbidden=new Set(['tokenHash','inviteTokenHash','inviteToken','accessToken','refreshToken','secretKey','password','authProviderId','authSubject']);
 export function exportRecord(value:unknown):unknown{
  if(value instanceof Date)return value.toISOString();

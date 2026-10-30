@@ -15,7 +15,7 @@ import {
   estimateVersion,
   type EstimateSnapshot,
 } from "./m3";
-import { vehicle } from "./m2";
+import { asset, vehicle } from "./m2";
 export type InvoiceSnapshot = EstimateSnapshot & {
   shopPhone?: string | null;
   shopAddress?: string;
@@ -29,7 +29,8 @@ export const invoice = app.table(
     versionId: uuid("version_id").notNull(),
     authorizationId: uuid("authorization_id").notNull(),
     customerId: uuid("customer_id").notNull(),
-    vehicleId: uuid("vehicle_id").notNull(),
+    vehicleId: uuid("vehicle_id"),
+    serviceAssetId: uuid("service_asset_id"),
     snapshot: jsonb("snapshot").$type<InvoiceSnapshot>().notNull(),
     totalCents: bigint("total_cents", { mode: "number" }).notNull(),
     currency: text("currency").notNull().default("usd"),
@@ -42,6 +43,7 @@ export const invoice = app.table(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [
+    foreignKey({columns:[t.businessId,t.customerId,t.serviceAssetId],foreignColumns:[asset.businessId,asset.customerId,asset.id]}),
     unique().on(t.businessId, t.id),
     unique().on(t.businessId, t.number),
     foreignKey({

@@ -220,8 +220,8 @@ export async function settleCheckout(
     });
     await recordActivity(tx, {
       kind: "invoice.payment_received",
-      subjectType: "vehicle",
-      subjectId: i.vehicleId,
+      subjectType: i.vehicleId ? "vehicle" : "customer",
+      subjectId: i.vehicleId ?? i.customerId,
       summary: `Online payment received for invoice #${i.number}`,
       data: { invoiceId: i.id, paymentId: p.id },
     });

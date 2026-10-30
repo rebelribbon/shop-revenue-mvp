@@ -1,3 +1,7 @@
+import { ServiceAssets } from "@/components/service-assets";
+import { listServiceAssets } from "@/domain/service-assets";
+import { getBusinessProfile } from "@/domain/business-profile";
+import { isAutomotive } from "@/lib/business-types";
 import { Notes, NoteRevision } from "@/components/memory";
 import { listNotes } from "@/domain/memory";
 import Link from "next/link";
@@ -12,8 +16,8 @@ import { setDoNotContactAction } from "@/server/actions/money-finder";
 export default async function CustomerDetailPage(props: { params: Promise<{ customerId: string }> }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
-  const [data, timeline, notes] = await withTenant(s.businessId, s.actor, async (tx) =>
-    Promise.all([getCustomerWithVehicles(tx, customerId), listCustomerTimeline(tx, customerId), listNotes(tx,customerId)]),
+  const [data, timeline, notes, profile, assets] = await withTenant(s.businessId, s.actor, async (tx) =>
+    Promise.all([getCustomerWithVehicles(tx, customerId), listCustomerTimeline(tx, customerId), listNotes(tx,customerId), getBusinessProfile(tx), listServiceAssets(tx,customerId)]),
   );
   const c = data.customer;
   return (
@@ -32,10 +36,12 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
           <label htmlFor="email">Email</label><input id="email" name="email" type="email" defaultValue={c.email ?? ""} />
           <label htmlFor="notes">Notes</label><textarea id="notes" name="notes" rows={4} maxLength={5000} defaultValue={c.notes ?? ""} />
         </ActionForm>
-        <ActionForm action={archiveCustomerAction} hidden={{ customerId }} submitLabel="Archive customer" variant="danger" confirm="Archive this customer and their active vehicles? Their history stays in Shop Revenue." />
+        <ActionForm action={archiveCustomerAction} hidden={{ customerId }} submitLabel="Archive customer" variant="danger" confirm="Archive this customer and their active assets? Their history stays in Shop Revenue." />
       </div>
 
       <Notes customerId={customerId} notes={notes}/>
+      {(!isAutomotive(profile?.businessType??"automotive") || assets.length > 0) && <ServiceAssets customerId={customerId} assets={assets} readOnly={s.actor.type==='support'}/>}
+      {(isAutomotive(profile?.businessType??"automotive") || data.vehicles.length > 0) && <>
       <h2>Vehicles</h2>
       <div className="card table-wrap">
         <table>
@@ -57,6 +63,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
         <ActionForm action={createVehicleAction} hidden={{ customerId }} submitLabel="Add vehicle"><VehicleFields /></ActionForm>
       </div>
 
+      </>}
       <h2>History</h2>
       <div className="card">
         {timeline.length ? <div className="timeline">{timeline.map((event) => (

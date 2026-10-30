@@ -1,3 +1,5 @@
+import { getBusinessProfile } from "@/domain/business-profile";
+import { isAutomotive, workspaceLabels } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
@@ -18,8 +20,9 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
             <Link href={`/app/customers/${a.customerId}`}><strong>{a.customerName}</strong></Link>
             <div>{a.reason || "Appointment"}</div>
             {(a.make || a.model || a.plate) && <div className="muted">{[a.year, a.make, a.model].filter(Boolean).join(" ")}{a.plate ? ` • ${a.plate}` : ""}</div>}
+            {a.serviceAssetName&&<div>{a.serviceAssetName} · {[a.serviceAssetDetails?.addressLine1,a.serviceAssetDetails?.city].filter(Boolean).join(", ")}</div>}
             <span className="pill">{a.status.replace("_", " ")}</span>
-            {a.vehicleId&&a.status!=='cancelled'&&<Link href={`/app/jobs?${new URLSearchParams({sourceAppointmentId:a.id,customerId:a.customerId,vehicleId:a.vehicleId})}`}>Create job from appointment</Link>}
+            {(a.vehicleId||a.serviceAssetId)&&a.status!=='cancelled'&&<Link href={`/app/jobs?${new URLSearchParams({sourceAppointmentId:a.id,customerId:a.customerId,...(a.vehicleId?{vehicleId:a.vehicleId}:{}),...(a.serviceAssetId?{serviceAssetId:a.serviceAssetId}:{})})}`}>Create job from appointment</Link>}
           </div>
           {a.status === "scheduled" && (
             <div className="appointment-actions">
@@ -33,18 +36,19 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
   );
 }
 
-export default async function SchedulePage({searchParams}:{searchParams:Promise<{customerId?:string;vehicleId?:string;sourceRecoveryItemId?:string;sourceContactActivityId?:string}>}) {
+export default async function SchedulePage({searchParams}:{searchParams:Promise<{customerId?:string;vehicleId?:string;serviceAssetId?:string;sourceRecoveryItemId?:string;sourceContactActivityId?:string}>}) {
   const params=await searchParams;
   const s = await requireShopSession("/app/schedule");
-  const [days, choices] = await withTenant(s.businessId, s.actor, async (tx) =>
-    Promise.all([listTodayTomorrow(tx), listAppointmentChoices(tx)]),
+  const [days, choices, profile] = await withTenant(s.businessId, s.actor, async (tx) =>
+    Promise.all([listTodayTomorrow(tx), listAppointmentChoices(tx),getBusinessProfile(tx)]),
   );
+  const auto=isAutomotive(profile?.businessType??"automotive");
   const selectedCustomer=choices.customers.some(c=>c.id===params.customerId)?params.customerId:'';
   const selectedVehicle=choices.vehicles.some(v=>v.id===params.vehicleId&&v.customerId===selectedCustomer)?params.vehicleId:'';
   return (
     <main>
       <h1>Schedule</h1>
-      <p className="muted">Today and tomorrow in your shop timezone.</p>
+      <p className="muted">Today and tomorrow in your business timezone.</p>
 
       <section className="card">
         <h2 style={{ marginTop: 0 }}>Today</h2>
@@ -64,17 +68,18 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
               <option value="" disabled>Select customer</option>
               {choices.customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <label htmlFor="vehicleId">Vehicle (optional)</label>
+            {auto ? <><label htmlFor="vehicleId">Vehicle (optional)</label>
             <select id="vehicleId" name="vehicleId" defaultValue={selectedVehicle}>
               <option value="">No vehicle selected</option>
               {choices.vehicles.map((v) => (
                 <option key={v.id} value={v.id}>{[v.year, v.make, v.model].filter(Boolean).join(" ") || "Vehicle"}{v.plate ? ` • ${v.plate}` : ""}</option>
               ))}
             </select>
+            </> : <><label htmlFor="serviceAssetId">Property / equipment (optional)</label><select name="serviceAssetId" id="serviceAssetId" defaultValue={params.serviceAssetId??""}><option value="">No property / equipment selected</option>{choices.serviceAssets.map(a=><option key={a.id} value={a.id}>{a.displayName}</option>)}</select></>}
             <label htmlFor="startsAt">Date and time</label>
             <input id="startsAt" name="startsAt" type="datetime-local" required />
             <label htmlFor="reason">Reason</label>
-            <input id="reason" name="reason" maxLength={200} placeholder="Oil change, diagnosis, follow-up…" />
+            <input id="reason" name="reason" maxLength={200} placeholder={workspaceLabels(profile?.businessType??"automotive").example} />
             <label htmlFor="notes">Notes</label>
             <textarea id="notes" name="notes" rows={3} maxLength={5000} />
           </ActionForm>

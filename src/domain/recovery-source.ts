@@ -14,8 +14,8 @@ export async function validateContactSource(tx:TenantTx,id:string|undefined,reco
  const [contact]=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.id,id),eq(activity.kind,'recovery.contact')));
  if(!contact||!recoveryId||(contact.data as Record<string,unknown>).recoveryItemId!==recoveryId)throw new AppError('VALIDATION','The manual contact does not match this opportunity.');
 }
-export async function validateAppointmentSource(tx:TenantTx,id:string|undefined,customerId:string,vehicleId:string,recoveryId?:string,contactId?:string){
+export async function validateAppointmentSource(tx:TenantTx,id:string|undefined,customerId:string,vehicleId:string|undefined,recoveryId?:string,contactId?:string,serviceAssetId?:string){
  if(!id)return;
  const [row]=await tx.select().from(appointment).where(and(eq(appointment.businessId,tx.businessId),eq(appointment.id,id)));
- if(!row||row.customerId!==customerId||row.vehicleId!==vehicleId||row.sourceRecoveryItemId!==(recoveryId??null)||row.sourceContactActivityId!==(contactId??null))throw new AppError('VALIDATION','The appointment does not match this job source.');
+ if(!row||row.customerId!==customerId||row.vehicleId!==(vehicleId??null)||row.serviceAssetId!==(serviceAssetId??null)||row.sourceRecoveryItemId!==(recoveryId??null)||row.sourceContactActivityId!==(contactId??null))throw new AppError('VALIDATION','The appointment does not match this job source.');
 }
