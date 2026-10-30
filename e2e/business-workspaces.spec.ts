@@ -12,11 +12,12 @@ test("home-service setup creates a real property and equipment job without vehic
  await page.getByRole("button",{name:"Save business profile",exact:true}).click();
  await expect(page.getByRole("status")).toContainText("Business profile updated");
   const name=`HVAC ${info.project.name} ${Date.now()}`;
-  await page.goto("/app/customers#new-customer");
+  await page.goto("/app/customers/new");
   await page.getByLabel("First name",{exact:true}).fill(name);
   await page.getByRole("button",{name:"Add customer",exact:true}).click();
   await expect(page).toHaveURL(/\/customers\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading",{name:"Vehicles",exact:true})).not.toBeVisible();
+  await page.getByRole("link",{name:"Properties & equipment",exact:true}).click();
   const property=page.locator("#new-property");
   await property.getByLabel("Property name",{exact:true}).fill("Main residence");
   await property.getByLabel("Street address",{exact:true}).fill("456 Service Lane");

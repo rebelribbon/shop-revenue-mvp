@@ -2,17 +2,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  {href:"/app",label:"Money",mobile:"Home"},
+  {href:"/app",label:"Home",mobile:"Home"},
   {href:"/app/customers",label:"Customers",mobile:"Clients"},
   {href:"/app/work",label:"Work",mobile:"Work"},
   {href:"/app/schedule",label:"Schedule",mobile:"Visits"},
   {href:"/app/settings",label:"Settings",mobile:"Setup"},
 ];
-const workPaths=["/app/jobs","/app/estimates","/app/invoices","/app/revenue"];
+const workPaths=["/app/jobs","/app/estimates","/app/invoices"];
 export function WorkspaceNavigation({mobile=false}:{mobile?:boolean}) {
   const path=usePathname();
   return <nav className={mobile?"mobile-nav":"desktop-nav"} aria-label={mobile?"Mobile navigation":"Main"}>
-    {shopItems.map(item=><Link key={item.href} href={item.href} aria-label={item.label} aria-current={(item.href==="/app"?path===item.href:path.startsWith(item.href)||(item.href==="/app/work"&&workPaths.some(p=>path.startsWith(p))))?"page":undefined}>{mobile?item.mobile:item.label}</Link>)}
+    {shopItems.map(item=><Link key={item.href} href={item.href} aria-label={item.label} aria-current={(item.href==="/app"?(path===item.href||path.startsWith("/app/opportunities")||path.startsWith("/app/revenue")):path.startsWith(item.href)||(item.href==="/app/work"&&workPaths.some(p=>path.startsWith(p))))?"page":undefined}>{mobile?item.mobile:item.label}</Link>)}
   </nav>;
 }
 export function AdminNavigation({isAdmin,mobile=false}:{isAdmin:boolean;mobile?:boolean}) {

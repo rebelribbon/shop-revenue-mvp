@@ -4,12 +4,13 @@ import { signInWithPassword } from "./helpers";
 test("customer and vehicle edits persist, and archive preserves history", async ({ page }, info) => {
   const name = `Lifecycle ${Date.now()} ${info.project.name}`;
   await signInWithPassword(page, "owner.a@shop-a.test");
-  await page.goto("/app/customers#new-customer");
+  await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill(name);
   await page.getByLabel("Last name").fill("Original");
   await page.getByRole("button", { name: "Add customer" }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
   const customerUrl = page.url();
+  await page.getByRole("link",{name:"Details",exact:true}).click();
   await page.getByLabel("Last name").fill("Updated");
   await page.getByLabel("Notes", { exact: true }).first().fill("Customer note retained after reload");
   await page.getByRole("button", { name: "Save customer" }).click();
@@ -18,12 +19,14 @@ test("customer and vehicle edits persist, and archive preserves history", async 
   await expect(page.getByLabel("Last name")).toHaveValue("Updated");
   await expect(page.getByLabel("Notes", { exact: true }).first()).toHaveValue("Customer note retained after reload");
 
+  await page.getByRole("link",{name:"Vehicles",exact:true}).click();
   await page.getByLabel("Year", { exact: true }).fill("2024");
   await page.getByLabel("Make", { exact: true }).fill("BMW");
   await page.getByLabel("Model", { exact: true }).fill("X5");
   await page.getByLabel("Mileage", { exact: true }).fill("12000");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/\/vehicles\/[0-9a-f-]+$/);
+  await page.getByRole("link",{name:"Edit vehicle",exact:true}).click();
   await page.getByLabel("Mileage", { exact: true }).fill("12500");
   await page.getByLabel("Notes", { exact: true }).fill("Vehicle note retained after reload");
   await page.getByRole("button", { name: "Save vehicle" }).click();
@@ -31,6 +34,7 @@ test("customer and vehicle edits persist, and archive preserves history", async 
   await page.reload();
   await expect(page.getByLabel("Mileage", { exact: true })).toHaveValue("12500");
   await expect(page.getByLabel("Notes", { exact: true })).toHaveValue("Vehicle note retained after reload");
+  await page.getByRole("link",{name:"Service & notes",exact:true}).click();
   await page.getByLabel("Odometer (miles)").fill("12600");
   await page.getByRole("button", {name:"Record mileage",exact:true}).click();
   await expect(page.getByText(/12,600 mi —/)).toBeVisible();
@@ -47,12 +51,16 @@ test("customer and vehicle edits persist, and archive preserves history", async 
   await page.reload();
   await expect(page.getByText(/12,000 mi —/)).toBeVisible();
   await expect(page.getByText(/12,600 mi —/)).toBeVisible();
+  await page.getByRole("link",{name:"Edit vehicle",exact:true}).click();
   await page.getByRole("button", { name: "Archive vehicle" }).click();
   await page.getByRole("button", { name: "Yes, continue" }).click();
   await expect(page).toHaveURL(customerUrl);
+  await page.getByRole("link",{name:"Vehicles",exact:true}).click();
   await expect(page.getByText("No vehicles yet.")).toBeVisible();
+  await page.getByRole("link",{name:"History",exact:true}).click();
   await expect(page.getByText("Vehicle archived: 2024 BMW X5", { exact: true })).toBeVisible();
   await expect(page.getByText("Vehicle updated: 2024 BMW X5", { exact: true })).toBeVisible();
+  await page.getByRole("link",{name:"Details",exact:true}).click();
   await page.getByRole("button", { name: "Archive customer" }).click();
   await page.getByRole("button", { name: "Yes, continue" }).click();
   await expect(page).toHaveURL(/\/app\/customers$/);
