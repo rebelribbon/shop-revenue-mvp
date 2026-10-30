@@ -79,6 +79,6 @@ Core paths: Home → New job → Save → Publish (three actions after entering 
 
 ## Fast navigation and scanning
 
-The workspace header provides Quick Find on every shop page. Ctrl/Command+K opens a native modal with customer/vehicle/property/equipment search and five direct workspace shortcuts. Native focus containment, Escape and focus restoration remain intact. Search is a GET to the existing tenant-protected customer search; no new public data endpoint is added. Only the modal's submit action is primary while it is open; background actions remain inactive.
+The workspace header provides Quick Find on every shop page. Ctrl/Command+K opens a native modal with customer/vehicle/property/equipment search and five direct workspace shortcuts. Native modal behavior, explicit Tab wrapping, Escape and focus restoration keep keyboard navigation inside the search panel. Search is a GET to the existing tenant-protected customer search; no new public data endpoint is added. Only the modal's submit action is primary while it is open; background actions remain inactive.
 
 Customer results use responsive rows with contact links, linked vehicles and direct edit actions. Jobs use compact whole-row links that show the customer, quoted price and update date. This preserves the record/edit paths while making the lists easier to scan. Home removes repeated branding and explanatory copy so daily work starts higher on the screen.

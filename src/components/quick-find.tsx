@@ -24,7 +24,13 @@ export function QuickFind({automotive}:{automotive:boolean}) {
   <button type="button" className="btn secondary quick-find-trigger" aria-label="Quick find" aria-keyshortcuts="Control+k Meta+k" aria-haspopup="dialog" onClick={open}>
    <WorkspaceIcon name="search"/><span className="quick-find-desktop-label">Find a customer or record…</span><span className="quick-find-mobile-label">Search</span><kbd>Ctrl / ⌘ K</kbd>
   </button>
-  <dialog ref={dialog} className="quick-find" aria-labelledby="quick-find-heading">
+  <dialog ref={dialog} className="quick-find" aria-labelledby="quick-find-heading" onKeyDown={event=>{
+   if(event.key!=='Tab')return;
+   const controls=Array.from(event.currentTarget.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')).filter(e=>e.getClientRects().length>0);
+   const first=controls[0],last=controls.at(-1);
+   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+  }}>
    <div className="section-heading"><h2 id="quick-find-heading">Quick find</h2><button type="button" className="btn secondary compact-btn" onClick={()=>dialog.current?.close()}><WorkspaceIcon name="close"/>Close</button></div>
    <p className="muted">Search your customer records or jump straight to a workspace.</p>
    <div className="quick-find-links" aria-label="Workspace shortcuts">

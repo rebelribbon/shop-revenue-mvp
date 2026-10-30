@@ -77,6 +77,7 @@ test("core pages stay within three homepage clicks and primary actions follow th
  await expect(finder.locator('[data-ux-primary]')).toHaveText('Search');await auditUX(page);
  await finder.getByRole('button',{name:'Close',exact:true}).focus();await page.keyboard.press('Shift+Tab');
  await expect(finder.getByRole('button',{name:'Search',exact:true})).toBeFocused();
+ await page.keyboard.press('Tab');await expect(finder.getByRole('button',{name:'Close',exact:true})).toBeFocused();
  await finder.getByRole('textbox').fill(`Job ${info.project.name}`);
  await finder.getByRole('button',{name:'Search',exact:true}).click();
  await expect(page).toHaveURL(/\/app\/customers\?q=/);
