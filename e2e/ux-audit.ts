@@ -46,7 +46,8 @@ export async function auditUX(page:Page, collect=false) {
    if(count<3||count>5)issues.push(`Navigation has ${count} items`);
    for(const link of Array.from(nav.querySelectorAll<HTMLElement>('a,button')).filter(shown))if(link.scrollWidth>link.clientWidth+1)issues.push(`Navigation label ${link.textContent} overflows its ${link.clientWidth}px target by ${link.scrollWidth-link.clientWidth}px`);
   }
-  const primary=document.querySelector<HTMLElement>('[data-ux-primary]')!;
+  const primary=document.querySelector<HTMLElement>('[data-ux-primary]');
+  if(!primary)return [...issues,'Missing primary action after navigation'];
   if(!shown(primary)||!viewport(primary))issues.push("Primary action is outside the viewport");
   if(!modal&&main.getBoundingClientRect().bottom>primary.getBoundingClientRect().top-7.9)issues.push("Content scroll area needs an 8px gap above the primary action");
   if(primary.matches('.danger,[data-destructive="true"]'))issues.push("Destructive action entered the sticky primary area");

@@ -30,15 +30,15 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  await auditPage(page);
  await page.screenshot({path:`test-results/ux-customer-${info.project.name}.png`,fullPage:true});
  await expect(page.getByLabel('First name',{exact:true})).toHaveCount(0);
- await page.getByRole('link',{name:'Details',exact:true}).click();await auditPage(page);
- await page.getByRole('link',{name:'History',exact:true}).click();await auditPage(page);
- await page.getByRole('link',{name:'Vehicles',exact:true}).click();await auditPage(page);
+ await page.getByRole('link',{name:'Details',exact:true}).click();await expect(page.getByRole('link',{name:'Details',exact:true})).toHaveAttribute('aria-current','page');await auditPage(page);
+ await page.getByRole('link',{name:'History',exact:true}).click();await expect(page.getByRole('link',{name:'History',exact:true})).toHaveAttribute('aria-current','page');await auditPage(page);
+ await page.getByRole('link',{name:'Vehicles',exact:true}).click();await expect(page.getByRole('link',{name:'Vehicles',exact:true})).toHaveAttribute('aria-current','page');await auditPage(page);
  await page.getByLabel('Make',{exact:true}).fill('UX vehicle');
  await page.getByRole('button',{name:'Add vehicle',exact:true}).click();
  await expect(page).toHaveURL(/\/vehicles\/[a-f0-9-]+$/);
  await auditPage(page);
- await page.getByRole('link',{name:'Edit vehicle',exact:true}).click();await auditPage(page);
- await page.getByRole('link',{name:'Service & notes',exact:true}).click();await auditPage(page);
+ await page.getByRole('link',{name:'Edit vehicle',exact:true}).click();await expect(page.getByRole('link',{name:'Edit vehicle',exact:true})).toHaveAttribute('aria-current','page');await auditPage(page);
+ await page.getByRole('link',{name:'Service & notes',exact:true}).click();await expect(page.getByRole('link',{name:'Service & notes',exact:true})).toHaveAttribute('aria-current','page');await auditPage(page);
  await page.goto('/app');await auditPage(page);
  await page.screenshot({path:`test-results/ux-home-${info.project.name}.png`,fullPage:true});
  if(info.project.name==='phone'){
