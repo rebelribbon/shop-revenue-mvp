@@ -29,9 +29,11 @@ dd { margin-inline-start: 24px; }
 small, label, input, select, textarea, button, .pill, .eyebrow { font-size: 16px; }
 hr { margin: 24px 0; border: 0; border-top: 1px solid var(--line); }
 a { color: var(--accent); text-underline-offset: .2em; }
-a, button, summary, [role="button"] { transition: color 80ms, background-color 80ms, border-color 80ms, box-shadow 80ms; -webkit-tap-highlight-color: transparent; }
+a, button, input, select, textarea, summary, label:has(input[type="checkbox"]), label:has(input[type="radio"]), [role="button"] { transition: color 80ms, background-color 80ms, border-color 80ms, box-shadow 80ms; -webkit-tap-highlight-color: transparent; }
 a:not(.card):not(.btn):not(.skip-link) { display: inline-flex; align-items: center; min-height: 48px; min-width: 48px; padding: 8px; }
 a:hover { color: var(--accent-hover); text-decoration: underline; background: var(--hover); }
+input:hover, select:hover, textarea:hover { border-color: var(--accent); }
+label:has(input[type="checkbox"]):hover, label:has(input[type="radio"]):hover { background: var(--hover); border-radius: 8px; }
 button:hover, .btn:hover, summary:hover { background: var(--hover); border-color: var(--accent); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 8px; }
 button, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; max-width: 100%; padding: 8px 16px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-weight: 650; line-height: 24px; text-decoration: none; cursor: pointer; background: var(--surface); color: var(--text); margin: 16px 0 0; }
