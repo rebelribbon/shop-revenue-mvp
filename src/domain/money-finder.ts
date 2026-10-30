@@ -39,8 +39,8 @@ function candidates(tx: TenantTx, now: Date) {
     WHERE business_id=${tx.businessId} AND status='active'
   ), service_assets AS (
     SELECT a.*,concat_ws(' · ',a.display_name,NULLIF(concat_ws(', ',
-      coalesce(NULLIF(a.details->>'addressLine1',''),parent.details->>'addressLine1'),
-      coalesce(NULLIF(a.details->>'city',''),parent.details->>'city')),'')) AS label
+      coalesce(NULLIF(a.details->>'addressLine1',''),NULLIF(parent.details->>'addressLine1','')),
+      coalesce(NULLIF(a.details->>'city',''),NULLIF(parent.details->>'city',''))),'')) AS label
     FROM app.asset a LEFT JOIN app.asset parent ON parent.business_id=a.business_id AND parent.customer_id=a.customer_id AND parent.id=a.parent_asset_id
     WHERE a.business_id=${tx.businessId} AND a.status='active' AND a.type IN ('property','equipment')
       AND (a.parent_asset_id IS NULL OR parent.status='active')
