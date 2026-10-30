@@ -67,6 +67,8 @@ test("core pages stay within three homepage clicks and primary actions follow th
  await page.getByRole('link',{name:'Work',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Jobs',exact:true})).toBeVisible();
  await expect(page.getByLabel('Job name',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Find a job',{exact:true}).focus();
+ await expect(page.locator('[data-ux-primary]')).toHaveText('New job / estimate');
  await page.getByRole('link',{name:'New job / estimate',exact:true}).click();
  await expect(page).toHaveURL(/\/app\/jobs\?new=1$/);
  await page.getByLabel('Job name',{exact:true}).focus();

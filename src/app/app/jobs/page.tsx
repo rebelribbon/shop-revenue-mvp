@@ -28,7 +28,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<{edi
  return <main id="main-content" tabIndex={-1}>
   <h1>{editing?(selected?'Edit job':'New job / estimate'):'Jobs'}</h1>
   <WorkNavigation current="jobs"/>
-  <p className="muted">Price the job, publish an estimate, then invoice the work your customer authorizes.</p>
+  <p className="muted">{editing?"Add the work, then save to review and publish an estimate.":selected?"Job pricing and customer estimate.":"Open a job to review pricing, labor hours and costs."}</p>
   {editing?<><p><Link href={selected?`/app/jobs?job=${selected.id}`:'/app/jobs'}>← Back to {selected?'job':'jobs'}</Link></p><JobEditor businessType={data.profile?.businessType} key={selected?.version??[customerId,vehicleId,serviceAssetId,sourceRecoveryItemId,sourceContactActivityId,sourceAppointmentId].join(":")} options={data.options} recommendations={data.recommendations} initial={initial}/></>:selected?(()=>{
    const input=jobInput.parse(selected.data),t=calculateJob(input.parts,input.labor);
    return <><p><Link href="/app/jobs">← All jobs</Link></p>{saved==='1'&&<p role="status" className="notice ok">Job sheet saved. Review the pricing, then publish the customer estimate.</p>}
@@ -39,8 +39,8 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<{edi
      <section className="record-details"><h3>Next: customer estimate</h3><p>Publish a fixed version for the customer to review. Internal costs stay private.</p><EstimatePublisher jobId={selected.id} version={selected.version}/></section>
     </article></>;
   })():<>
-   <Link className="btn primary" data-page-primary href="/app/jobs?new=1">New job / estimate</Link>
-   <form className="card" method="get"><label htmlFor="job-search">Find a job</label><input id="job-search" name="q" defaultValue={q??''} maxLength={100} placeholder="Job or customer name"/><button className="btn secondary">Search</button></form>
+   <Link className="btn primary" data-page-primary data-stable-primary href="/app/jobs?new=1">New job / estimate</Link>
+   <form className="card" method="get"><label htmlFor="job-search">Find a job</label><div className="search-controls"><input id="job-search" name="q" defaultValue={q??''} maxLength={100} placeholder="Job or customer name"/><button className="btn secondary">Search</button></div></form>
    <h2>Recent job sheets</h2>{!rows.length&&<div className="card"><h3>{q?'No matching jobs':'No jobs yet'}</h3><p>{q?'Try another name.':'Start with a customer, add parts or materials and labor, then save the job.'}</p></div>}
    {rows.map(j=>{const input=jobInput.parse(j.data),t=calculateJob(input.parts,input.labor);return <article className="card" key={j.id}><h3>{j.title}</h3><p>{data.options.customers.find(c=>c.id===input.customerId)?.name}</p><div className="record-meta"><strong>{money(t.subtotalCents)} quoted</strong><span className="muted">Updated {j.createdAt.toLocaleDateString('en-US',{timeZone:data.profile?.timezone||'America/Chicago'})}</span></div><Link className="btn secondary" href={`/app/jobs?job=${j.id}`}>Open job</Link></article>;})}
   </>}

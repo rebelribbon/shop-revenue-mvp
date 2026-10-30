@@ -29,7 +29,7 @@ export function PageActions() {
       if (focusedForm && (!focusedForm.isConnected || !main.contains(focusedForm))) focusedForm = null;
       const context = focusedForm ? Array.from(focusedForm.querySelectorAll<HTMLElement>('button[type="submit"],button:not([type]),input[type="submit"]')).find(eligible) : null;
       const exitSupport=document.querySelector<HTMLElement>("[data-support-view] button");
-      const next = exitSupport ?? context ?? candidates('[data-page-primary]')[0] ?? candidates('.btn.primary')[0] ??
+      const next = exitSupport ?? candidates('[data-stable-primary]')[0] ?? context ?? candidates('[data-page-primary]')[0] ?? candidates('.btn.primary')[0] ??
         candidates('form button[type="submit"],form button:not([type])')[0] ?? candidates('button')[0] ?? null;
       if (selected !== next) { selected?.removeAttribute("data-ux-primary"); selected = next; }
       selected?.setAttribute("data-ux-primary", "true");

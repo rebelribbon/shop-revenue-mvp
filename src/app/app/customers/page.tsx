@@ -17,12 +17,12 @@ export default async function CustomersPage(props: { searchParams?: Promise<{ q?
   const vehicles = customers.length ? await withTenant(s.businessId,s.actor,tx=>tx.select({id:vehicle.id,customerId:vehicle.customerId,year:vehicle.year,make:vehicle.make,model:vehicle.model}).from(vehicle).where(and(eq(vehicle.businessId,s.businessId),eq(vehicle.status,"active"),inArray(vehicle.customerId,customers.map(c=>c.id)))).limit(300)) : [];
   return (
     <main id="main-content" tabIndex={-1}>
-      <h1>Customers</h1><Link id="new-customer" href="/app/customers/new" className="btn primary" data-page-primary>Add customer</Link>
+      <h1>Customers</h1><Link id="new-customer" href="/app/customers/new" className="btn primary" data-page-primary data-stable-primary>Add customer</Link>
       <p className="muted">{auto ? "Search by customer name, phone, email, plate, or last 6 of the VIN." : "Search customers, service addresses, ZIP codes, equipment and serial numbers."}</p>
       <div className="card">
         <form method="get" className="search-form">
-          <div ><label htmlFor="q">Search</label><input id="q" name="q" defaultValue={q} placeholder={auto?"Name, phone, plate, last 6 VIN":"Name, phone, address, equipment serial"} /></div>
-          <button className="btn secondary" type="submit">Search</button>{q && <Link className="btn secondary" href="/app/customers">Clear</Link>}
+          <label htmlFor="q">Search</label><div className="search-controls"><input id="q" name="q" defaultValue={q} placeholder={auto?"Name, phone, plate, last 6 VIN":"Name, phone, address, equipment serial"} />
+          <button className="btn secondary" type="submit">Search</button></div>{q && <Link className="btn secondary" href="/app/customers">Clear</Link>}
         </form>
       </div>
       <div className="card table-wrap">
