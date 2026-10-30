@@ -5,7 +5,7 @@ Scope: every existing page template, shared UI, loading/error boundary, automoti
 ## Enforced design system
 
 - Margins, padding and layout gaps use multiples of 8px. Device safe-area spacing rounds up to the grid where CSS stepped math is supported.
-- Shop navigation has five destinations: Money, Customers, Work, Schedule and Settings. Bottom navigation uses the same destinations, with Clients as the shorter visible customer label. Admin navigation has five items; support navigation has three. Sign-out is a utility in Settings/Admin help.
+- Shop navigation has five destinations: Money, Customers, Work, Schedule and Settings. Bottom navigation uses the same destinations, with Clients, Visits and Setup as shorter visible labels. Accessible labels retain the full destination names. Admin navigation has five items; support navigation has three. Sign-out is a utility in Settings/Admin help.
 - Core work pages have homepage shortcuts; the Work hub reaches jobs, estimates, invoices and revenue in two clicks. Business settings and payments are within three homepage clicks. Customer rows link directly to vehicles, so vehicle edit/save can be reached in three clicks. Existing destructive-action confirmations intentionally add a confirmation step; they are preserved rather than weakened to meet a click budget.
 - Text/status/link/hover colors in light and dark themes must reach 4.5:1. Body, input, caption and navigation text use 16px. Prose is capped at 65ch; structured tables are independently scrollable.
 - Forms use one column and persistent labels above text inputs. Checkbox/radio labels provide a minimum 48px effective hit area.
@@ -16,7 +16,7 @@ Scope: every existing page template, shared UI, loading/error boundary, automoti
 
 ## Verification
 
-CSS regression tests calculate contrast from actual light/dark tokens, check every authored spacing declaration and cap hover duration. Browser measurements inspect target dimensions/gaps, input labels/type size, single-column field placement, navigation counts, viewport fit and sticky action geometry. Existing invite/reset/public-estimate/public-invoice flows include UX checks. Additional browser coverage visits the main public, shop and admin screens, both customer/vehicle details, a dark-theme state, and core click paths. The existing home-service flow remains enabled.
+CSS regression tests calculate contrast from actual light/dark tokens, check every authored spacing declaration and cap hover duration. Browser measurements at the top and bottom of reviewed routes inspect target dimensions/gaps, input labels/type size, single-column field placement, navigation counts, viewport fit and sticky action geometry. Existing invite/reset/public-estimate/public-invoice flows include UX checks. Additional browser coverage visits the main public, shop and admin screens, both customer/vehicle details, a dark-theme state, and core click paths. The existing home-service flow remains enabled.
 
 Phone and desktop screenshots are saved by the browser suite. This audit checks application code and Chromium phone/desktop renderings; real iOS Safari, assistive-technology user testing and every possible data/error combination still require device/manual verification. No claim of complete WCAG certification is made.
 
