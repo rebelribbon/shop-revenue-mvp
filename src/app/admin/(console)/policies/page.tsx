@@ -22,7 +22,8 @@ export default async function Policies() {
           {p.status === "draft" ? (
             <>
               <ActionForm action={updatePolicyDraftAction} hidden={{ policyId: p.id }} submitLabel="Save draft" variant="secondary">
-                <textarea name="body" defaultValue={p.body} required aria-label="Policy text" />
+                <label htmlFor={`policy-body-${p.id}`}>Policy text</label>
+                <textarea id={`policy-body-${p.id}`} name="body" defaultValue={p.body} required />
               </ActionForm>
               {p.createdByInternalUserId === me.id ? (
                 <p className="muted">A second admin must approve this draft.</p>

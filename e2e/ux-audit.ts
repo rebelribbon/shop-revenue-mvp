@@ -26,7 +26,7 @@ export async function auditUX(page:Page) {
   for(const e of targets){const r=effective(e).getBoundingClientRect();if(r.width<47.9||r.height<47.9)issues.push(`${tag(e)} has a ${r.width.toFixed(1)}×${r.height.toFixed(1)} target`);}
   for(const e of Array.from(document.querySelectorAll('input:not([type="hidden"]),select,textarea')).filter(shown)) {
    if(getComputedStyle(e).fontSize!=="16px")issues.push(`${tag(e)} input text is not 16px`);
-   if(!(e as HTMLInputElement).labels?.length&&!e.getAttribute('aria-label')&&!e.getAttribute('aria-labelledby'))issues.push(`${tag(e)} has no persistent label`);
+   if(!(e as HTMLInputElement).labels?.length)issues.push(`${tag(e)} has no persistent label`);
    const label=(e as HTMLInputElement).labels?.[0];
    if(label&&!(e instanceof HTMLInputElement&&['checkbox','radio'].includes(e.type))){
     const text=label.childNodes[0];const range=document.createRange();if(text){range.selectNode(text);if(range.getBoundingClientRect().top>e.getBoundingClientRect().top+1)issues.push(`${tag(e)} label is not above the field`);}

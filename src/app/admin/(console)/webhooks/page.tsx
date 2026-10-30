@@ -15,10 +15,12 @@ export default async function Webhooks({ searchParams }: { searchParams: Promise
     <main id="main-content" tabIndex={-1}>
       <h1>Webhook events</h1>
       <form className="row card" method="get">
-        <select name="provider" defaultValue={provider ?? ""} aria-label="Provider">
+        <label htmlFor="webhook-provider">Provider</label>
+        <select id="webhook-provider" name="provider" defaultValue={provider ?? ""}>
           <option value="">All providers</option><option>stripe</option><option>twilio</option><option>postmark</option>
         </select>
-        <select name="status" defaultValue={status ?? ""} aria-label="Status">
+        <label htmlFor="webhook-status">Status</label>
+        <select id="webhook-status" name="status" defaultValue={status ?? ""}>
           <option value="">All statuses</option>
           {STATUSES.map((s) => <option key={s}>{s}</option>)}
         </select>
