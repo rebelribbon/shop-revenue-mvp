@@ -16,8 +16,10 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  }
  await signInWithPassword(page,'owner.a@shop-a.test');
  for(const path of ['/app','/app/work','/app/new','/app/customers','/app/customers/new','/app/opportunities','/app/jobs','/app/jobs?new=1','/app/estimates','/app/invoices','/app/invoices?new=1','/app/schedule','/app/schedule?new=1','/app/revenue','/app/settings','/app/settings/business','/app/settings/team','/app/settings/support-access','/app/settings/payments','/app/settings/export']){
-  await page.goto(path);await auditPage(page);
-  if(['/app/jobs','/app/estimates','/app/invoices','/app/schedule'].includes(path))await page.screenshot({path:`test-results/ux-${path.split('/').pop()}-${info.project.name}.png`,fullPage:true});
+  await page.goto(path);
+  const destination=path==='/app/work'?'/app/jobs':path==='/app/new'?'/app/jobs?new=1':path;
+  await expect(page).toHaveURL(new URL(destination,page.url()).href);await auditPage(page);
+  if(['/app/customers','/app/jobs','/app/estimates','/app/invoices','/app/schedule'].includes(path))await page.screenshot({path:`test-results/ux-${path.split('/').pop()}-${info.project.name}.png`,fullPage:true});
  }
  await page.goto('/app/opportunities');
  const followup=page.locator('summary').filter({hasText:'Track follow-up'}).first();
