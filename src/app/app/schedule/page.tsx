@@ -36,8 +36,9 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
   );
 }
 
-export default async function SchedulePage({searchParams}:{searchParams:Promise<{customerId?:string;vehicleId?:string;serviceAssetId?:string;sourceRecoveryItemId?:string;sourceContactActivityId?:string}>}) {
+export default async function SchedulePage({searchParams}:{searchParams:Promise<{new?:string;customerId?:string;vehicleId?:string;serviceAssetId?:string;sourceRecoveryItemId?:string;sourceContactActivityId?:string}>}) {
   const params=await searchParams;
+  const creating=params.new==='1'||!!params.customerId||!!params.sourceRecoveryItemId;
   const s = await requireShopSession("/app/schedule");
   const [days, choices, profile] = await withTenant(s.businessId, s.actor, async (tx) =>
     Promise.all([listTodayTomorrow(tx), listAppointmentChoices(tx),getBusinessProfile(tx)]),
@@ -47,10 +48,10 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
   const selectedVehicle=choices.vehicles.some(v=>v.id===params.vehicleId&&v.customerId===selectedCustomer)?params.vehicleId:'';
   return (
     <main id="main-content" tabIndex={-1}>
-      <h1>Schedule</h1>
+      <h1>{creating?"New appointment":"Schedule"}</h1>{creating?<p><Link href="/app/schedule">← All appointments</Link></p>:<Link className="btn primary" data-page-primary href="/app/schedule?new=1">Schedule a visit</Link>}
       <p className="muted">Today and tomorrow in your business timezone.</p>
 
-      <section className="card">
+      {!creating&&<><section className="card">
         <h2 style={{ marginTop: 0 }}>Today</h2>
         <AppointmentList rows={days.today} timezone={days.timezone} />
       </section>
@@ -59,7 +60,8 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
         <AppointmentList rows={days.tomorrow} timezone={days.timezone} />
       </section>
 
-      <section className="card" id="new-appointment">
+      </>}
+      {creating&&<section className="card" id="new-appointment">
         <h2 style={{ marginTop: 0 }}>New appointment</h2>
         {choices.customers.length ? (
           <ActionForm variant="primary" action={createAppointmentAction} hidden={params.sourceRecoveryItemId?{sourceRecoveryItemId:params.sourceRecoveryItemId,...(params.sourceContactActivityId?{sourceContactActivityId:params.sourceContactActivityId}:{})}:{}} submitLabel="Schedule appointment" successText="Appointment scheduled.">
@@ -84,9 +86,10 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
             <textarea id="notes" name="notes" rows={3} maxLength={5000} />
           </ActionForm>
         ) : (
-          <p>Add a <Link href="/app/customers#new-customer">customer</Link> before scheduling an appointment.</p>
+          <p>Add a <Link href="/app/customers/new">customer</Link> before scheduling an appointment.</p>
         )}
       </section>
+      }
     </main>
   );
 }

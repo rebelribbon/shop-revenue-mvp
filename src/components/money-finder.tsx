@@ -38,7 +38,7 @@ function Controls({item,readOnly}:{item:MoneyItem;readOnly:boolean}) {
 }
 
 export function MoneyFinder({data,category,view,query,page,readOnly}:{data:MoneyDashboard;category?:MoneyCategory;view:'active'|'snoozed'|'dismissed';query:string;page:number;readOnly:boolean}) {
-  const url=(cat?:MoneyCategory,p=1,v=view)=>`/app?${new URLSearchParams({...(cat?{category:cat}:{}),view:v,...(query?{q:query}:{}),page:String(p)})}`;
+  const url=(cat?:MoneyCategory,p=1,v=view)=>`/app/opportunities?${new URLSearchParams({...(cat?{category:cat}:{}),view:v,...(query?{q:query}:{}),page:String(p)})}`;
   const counts=Object.fromEntries(data.cards.map(c=>[c.category,c]));
   return <section aria-label="Money Finder">
     <div className="money-hero"><div><p className="eyebrow">Money Finder</p><h2>{money(data.knownCents)} in recorded opportunities</h2>
@@ -58,18 +58,18 @@ export function MoneyFinder({data,category,view,query,page,readOnly}:{data:Money
     <div className="money-actions"><Link href="/app/revenue#follow-ups">Recent manual follow-ups</Link><Link href={url(undefined)}>All categories</Link>
       {(['active','snoozed','dismissed'] as const).map(v=><Link key={v} href={url(category,1,v)} aria-current={view===v?'page':undefined}>{v[0].toUpperCase()+v.slice(1)}</Link>)}
     </div>
-    <form className="money-search" action="/app">
+    <form className="money-search" action="/app/opportunities">
       {category&&<input type="hidden" name="category" value={category}/>}<input type="hidden" name="view" value={view}/>
       <label htmlFor="money-search">Search opportunities</label><div className="money-actions"><input id="money-search" name="q" defaultValue={query} maxLength={100} placeholder="Customer, vehicle, property, equipment or work…"/><button className="btn secondary">Search</button></div>
     </form>
-    <h2>{category?categoryLabels[category]:'Follow-up list'} <span className="muted">({data.total})</span></h2>
+    <h2 id="follow-up-list">{category?categoryLabels[category]:'Follow-up list'} <span className="muted">({data.total})</span></h2>
     {!data.items.length&&<div className="card"><h3>Nothing here right now</h3>
       <p>Lists fill from signed declines, unsigned estimates after 2 days, unpaid invoices after 3 days, paid visits 6–24 months ago, and entered service dates.</p>
       <p>Add declined work or a next-service date from a <Link href="/app/customers">customer’s vehicle, property or equipment record</Link>. Missing history is never invented.</p>
     </div>}
     {data.items.map(item=><article className="card money-opportunity" key={`${item.category}:${item.subjectId}`}>
       <div className="money-opportunity-head"><div><span className="pill">{categoryLabels[item.category]}</span><h3><Link href={`/app/customers/${item.customerId}`}>{item.customerName}</Link></h3>
-        {item.serviceAssetId&&<Link href={`/app/customers/${item.customerId}#asset-${item.serviceAssetId}`}>{item.vehicleLabel||'Property / equipment'}</Link>}
+        {item.serviceAssetId&&<Link href={`/app/customers/${item.customerId}?view=assets#asset-${item.serviceAssetId}`}>{item.vehicleLabel||'Property / equipment'}</Link>}
         {item.vehicleId&&<Link href={`/app/customers/${item.customerId}/vehicles/${item.vehicleId}`}>{item.vehicleLabel||'Vehicle'}</Link>}</div>
         <strong>{item.category==='lapsed'?'Average visit (est.): ':''}{money(item.amountCents)}</strong></div>
       <p>{item.reason}</p><p className="muted">Recorded {date(item.occurredAt,data.timezone)} · {item.status.replaceAll('_',' ')}</p>

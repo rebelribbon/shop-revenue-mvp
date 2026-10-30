@@ -3,10 +3,10 @@ import {signInWithPassword} from './helpers';
 test('Money Finder records real work, manual follow-up and source-linked jobs',async({page},info)=>{
  const name=`Money ${Date.now()} ${info.project.name}`;
  await signInWithPassword(page,'owner.a@shop-a.test');
- await page.goto('/app/customers');await page.getByLabel('First name').fill(name);
+ await page.goto('/app/customers/new');await page.getByLabel('First name').fill(name);
  await page.getByRole('button',{name:'Add customer',exact:true}).click();await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
- await page.getByLabel('Make',{exact:true}).fill('Honda');await page.getByRole('button',{name:'Add vehicle',exact:true}).click();await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
- await page.getByText('Record declined / postponed work',{exact:true}).click();
+ await page.getByRole('link',{name:'Vehicles',exact:true}).click();await page.getByLabel('Make',{exact:true}).fill('Honda');await page.getByRole('button',{name:'Add vehicle',exact:true}).click();await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
+ await page.getByRole('link',{name:'Service & notes',exact:true}).click();await page.getByText('Record declined / postponed work',{exact:true}).click();
  await page.getByLabel('Work recommended').fill('Brake pads postponed');await page.getByLabel('Quoted price before tax ($, optional)').fill('250');
  await page.getByRole('button',{name:'Save declined work',exact:true}).click();await expect(page.getByRole('heading',{name:'Brake pads postponed',exact:true})).toBeVisible();
  await page.goto(`/app?category=declined&q=${encodeURIComponent(name)}`);

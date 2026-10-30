@@ -17,7 +17,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   const plate = `M2${stamp.replace(/\D/g, "").slice(-5)}`;
 
   await signInWithPassword(page, "owner.a@shop-a.test");
-  await page.goto("/app/customers#new-customer");
+  await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill(first);
   await page.getByLabel("Last name").fill(last);
   await page.getByLabel("Mobile number").fill(phone);
@@ -25,6 +25,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { name: `${first} ${last}` })).toBeVisible();
 
+  await page.getByRole("link",{name:"Vehicles",exact:true}).click();
   await page.getByLabel("Year").last().fill("2022");
   await page.getByLabel("Make").last().fill("Honda");
   await page.getByLabel("Model").last().fill("Accord");
@@ -42,11 +43,13 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page.goto(`/app/customers?q=${plate}`);
   await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
 
-  await page.goto("/app/schedule#new-appointment");
+  await page.goto("/app/schedule?new=1");
   await page.getByLabel("Customer", { exact: true }).selectOption({ label: `${first} ${last}` });
   await page.getByLabel("Date and time").fill(chicagoTomorrow());
   await page.getByLabel("Reason").fill("Brake inspection");
   await page.getByRole("button", { name: "Schedule appointment" }).click();
+  await expect(page.getByRole("status")).toContainText("Appointment scheduled");
+  await page.getByRole("link",{name:"← All appointments",exact:true}).click();
   const tomorrow = page.getByRole("heading", { name: "Tomorrow" }).locator("..", { hasText: `${first} ${last}` });
   await expect(tomorrow).toContainText("Brake inspection");
 
@@ -68,7 +71,7 @@ test("M2 business settings are Owner editable", async ({ page }) => {
 });
 
 
-test("M2 mobile navigation opens New without horizontal page overflow", async ({page}, info)=>{
+test("M2 mobile navigation reaches focused job and customer creation without overflow", async ({page}, info)=>{
   test.skip(info.project.name!=="phone", "Mobile navigation only");
   await signInWithPassword(page,"owner.a@shop-a.test");
   await page.goto("/app/customers");
@@ -76,9 +79,11 @@ test("M2 mobile navigation opens New without horizontal page overflow", async ({
   await expect(nav).toBeVisible();
   await expect(nav.getByRole("link")).toHaveCount(5);
   await nav.getByRole("link",{name:"Work",exact:true}).click();
-  await page.getByRole("link",{name:"New work",exact:true}).click();
-  await expect(page.getByRole("heading",{name:"New",exact:true})).toBeVisible();
-  await page.getByRole("link",{name:/Add a customer/}).click();
-  await expect(page).toHaveURL(/customers#new-customer$/);
+  await expect(page.getByRole("heading",{name:"Jobs",exact:true})).toBeVisible();
+  await page.getByRole("link",{name:"New job / estimate",exact:true}).click();
+  await expect(page.getByRole("heading",{name:"New job / estimate",exact:true})).toBeVisible();
+  await nav.getByRole("link",{name:"Customers",exact:true}).click();
+  await page.getByRole("link",{name:"Add customer",exact:true}).click();
+  await expect(page).toHaveURL(/customers\/new$/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });

@@ -15,23 +15,31 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
   await page.goto(path);await auditPage(page);
  }
  await signInWithPassword(page,'owner.a@shop-a.test');
- for(const path of ['/app','/app/work','/app/new','/app/customers','/app/jobs','/app/estimates','/app/invoices','/app/schedule','/app/revenue','/app/settings','/app/settings/business','/app/settings/team','/app/settings/support-access','/app/settings/payments','/app/settings/export']){
+ for(const path of ['/app','/app/work','/app/new','/app/customers','/app/customers/new','/app/opportunities','/app/jobs','/app/jobs?new=1','/app/estimates','/app/invoices','/app/invoices?new=1','/app/schedule','/app/schedule?new=1','/app/revenue','/app/settings','/app/settings/business','/app/settings/team','/app/settings/support-access','/app/settings/payments','/app/settings/export']){
   await page.goto(path);await auditPage(page);
+  if(['/app/jobs','/app/estimates','/app/invoices','/app/schedule'].includes(path))await page.screenshot({path:`test-results/ux-${path.split('/').pop()}-${info.project.name}.png`,fullPage:true});
  }
- await page.goto('/app');
+ await page.goto('/app/opportunities');
  const followup=page.locator('summary').filter({hasText:'Track follow-up'}).first();
  if(await followup.count()){await followup.click();await auditPage(page);}
- await page.goto('/app/customers');
+ await page.goto('/app/customers/new');
  const name=`UX ${info.project.name} ${Date.now()}`;
  await page.getByLabel('First name',{exact:true}).fill(name);
  await page.getByRole('button',{name:'Add customer',exact:true}).click();
  await expect(page).toHaveURL(/\/customers\/[a-f0-9-]+$/);
  await auditPage(page);
+ await page.screenshot({path:`test-results/ux-customer-${info.project.name}.png`,fullPage:true});
+ await expect(page.getByLabel('First name',{exact:true})).toHaveCount(0);
+ await page.getByRole('link',{name:'Details',exact:true}).click();await auditPage(page);
+ await page.getByRole('link',{name:'History',exact:true}).click();await auditPage(page);
+ await page.getByRole('link',{name:'Vehicles',exact:true}).click();await auditPage(page);
  await page.getByLabel('Make',{exact:true}).fill('UX vehicle');
  await page.getByRole('button',{name:'Add vehicle',exact:true}).click();
  await expect(page).toHaveURL(/\/vehicles\/[a-f0-9-]+$/);
  await auditPage(page);
- await page.goto('/app');
+ await page.getByRole('link',{name:'Edit vehicle',exact:true}).click();await auditPage(page);
+ await page.getByRole('link',{name:'Service & notes',exact:true}).click();await auditPage(page);
+ await page.goto('/app');await auditPage(page);
  await page.screenshot({path:`test-results/ux-home-${info.project.name}.png`,fullPage:true});
  if(info.project.name==='phone'){
   await page.setViewportSize({width:320,height:740});await auditPage(page);
@@ -57,8 +65,12 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
 test("core pages stay within three homepage clicks and primary actions follow the active form",async({page})=>{
  await signInWithPassword(page,'owner.a@shop-a.test');
  await page.getByRole('link',{name:'Work',exact:true}).click();
- await page.getByRole('link',{name:'Jobs & costing',exact:false}).click();
- await expect(page).toHaveURL(/\/app\/jobs$/);
+ await expect(page.getByRole('heading',{name:'Jobs',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Job name',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Find a job',{exact:true}).focus();
+ await expect(page.locator('[data-ux-primary]')).toHaveText('New job / estimate');
+ await page.getByRole('link',{name:'New job / estimate',exact:true}).click();
+ await expect(page).toHaveURL(/\/app\/jobs\?new=1$/);
  await page.getByLabel('Job name',{exact:true}).focus();
  await expect(page.locator('[data-ux-primary]')).toHaveText('Save job sheet');
  await page.locator('main').evaluate(e=>e.scrollTo(0,e.scrollHeight));

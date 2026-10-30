@@ -1,3 +1,4 @@
+import { WorkNavigation } from "@/components/work-navigation";
 import Link from "next/link";
 import { StripeButton, StripeRefundForm } from "@/components/stripe-controls";
 import { invoiceCheckout, invoiceRefund } from "@/db/schema";
@@ -19,7 +20,8 @@ import {
   reverseInvoicePaymentAction,
   voidInvoiceAction,
 } from "@/server/actions/invoices";
-export default async function InvoicesPage() {
+export default async function InvoicesPage({searchParams}:{searchParams:Promise<{new?:string;versionId?:string;invoiceId?:string}>}) {
+  const params=await searchParams;
   const s = await requireShopSession("/app/invoices");
   const data = await withTenant(s.businessId, s.actor, async (tx) => ({
     invoices: await listInvoices(tx),
@@ -54,24 +56,22 @@ export default async function InvoicesPage() {
     }));
   return (
     <main id="main-content" tabIndex={-1}>
-      <h1>Invoices &amp; payments</h1>
-      <p>
-        <Link href="/app/estimates">Estimates and authorization</Link>
-      </p>
+      <h1>Invoices</h1><WorkNavigation current="invoices"/>{params.new!=="1"&&!params.invoiceId&&<Link className="btn primary" data-page-primary href="/app/invoices?new=1">Create invoice</Link>}
       <p className="muted">
         Record cash, checks, transfers, and verified online payments.
       </p>
-      <p>
+      <details><summary>Payment settings & status</summary>      <p>
         <Link href="/app/settings/payments">Online payment setup</Link>
       </p>
       {Boolean(process.env.STRIPE_SECRET_KEY) && s.actor.type !== "support" && (
         <StripeButton kind="reconcile" />
       )}
-      <InvoiceIssuer choices={choices} />
-      <h2>Issued invoices</h2>
-      {!data.invoices.length && <p>No invoices issued yet.</p>}
-      {data.invoices.map((i) => (
-        <article className="card" key={i.id}>
+      </details>
+      {params.new==="1"&&<><p><Link href="/app/invoices">← All invoices</Link></p><InvoiceIssuer key={params.versionId??"new"} choices={choices} initialVersionId={choices.some(c=>c.id===params.versionId)?params.versionId:undefined} /></>}
+      {params.new!=="1"&&<h2>{params.invoiceId?"Invoice details":"Issued invoices"}</h2>}
+      {params.new!=="1"&&!data.invoices.length && <p>No invoices issued yet.</p>}
+      {data.invoices.filter(i=>params.new!=="1"&&(!params.invoiceId||i.id===params.invoiceId)).map((i) => (
+        <article className="card" key={i.id} id={`invoice-${i.id}`}>
           <h2>
             Invoice #{i.number} · {i.snapshot.title}
           </h2>
@@ -96,6 +96,7 @@ export default async function InvoicesPage() {
           </p>
           {i.dueOn && <p>Due: {i.dueOn}</p>}
           {i.voidReason && <p>Void reason: {i.voidReason}</p>}
+          <details className="record-details" open={params.invoiceId===i.id}><summary>View invoice &amp; payments</summary>
           <InvoiceLink id={i.id} />
           {i.disputeOpen&&<p className="notice">Open dispute: {i.disputeOpen}. Money Finder follow-up is paused.</p>}
           {!i.voidedAt&&s.actor.type!=='support'&&<details><summary>Record or resolve a dispute</summary>
@@ -128,6 +129,7 @@ export default async function InvoicesPage() {
                       action={reverseInvoicePaymentAction}
                       hidden={{ paymentId: p.id }}
                       submitLabel="Reverse recorded entry"
+                      variant="danger"
                       confirm="Reverse this bookkeeping entry? This does not refund or move money."
                     >
                       <label htmlFor={`reason-${p.id}`}>
@@ -228,6 +230,7 @@ export default async function InvoicesPage() {
                 </ActionForm>
               </details>
             )}
+          </details>
         </article>
       ))}
     </main>
