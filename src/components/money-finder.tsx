@@ -32,7 +32,7 @@ function Controls({item,readOnly}:{item:MoneyItem;readOnly:boolean}) {
     </div>
     <ActionForm action={updateRecoveryAction} hidden={{...hidden,action:'dismiss'}} submitLabel="Dismiss" variant="danger" confirm="Dismiss this opportunity? You can restore it later.">
       <label htmlFor={`${key}-reason`}>Dismissal reason</label>
-      <input id={`${key}-reason`} name="reason" maxLength={1000} required placeholder="Moved, sold vehicle, work done elsewhere…"/>
+      <input id={`${key}-reason`} name="reason" maxLength={1000} required placeholder="Moved, equipment replaced, work done elsewhere…"/>
     </ActionForm>
   </details>;
 }
@@ -60,15 +60,16 @@ export function MoneyFinder({data,category,view,query,page,readOnly}:{data:Money
     </div>
     <form className="money-search" action="/app">
       {category&&<input type="hidden" name="category" value={category}/>}<input type="hidden" name="view" value={view}/>
-      <label htmlFor="money-search">Search opportunities</label><div className="money-actions"><input id="money-search" name="q" defaultValue={query} maxLength={100} placeholder="Customer, vehicle or work…"/><button className="btn secondary">Search</button></div>
+      <label htmlFor="money-search">Search opportunities</label><div className="money-actions"><input id="money-search" name="q" defaultValue={query} maxLength={100} placeholder="Customer, vehicle, property, equipment or work…"/><button className="btn secondary">Search</button></div>
     </form>
     <h2>{category?categoryLabels[category]:'Follow-up list'} <span className="muted">({data.total})</span></h2>
     {!data.items.length&&<div className="card"><h3>Nothing here right now</h3>
       <p>Lists fill from signed declines, unsigned estimates after 2 days, unpaid invoices after 3 days, paid visits 6–24 months ago, and entered service dates.</p>
-      <p>Add declined work or a next-service date from a <Link href="/app/customers">vehicle record</Link>. Missing history is never invented.</p>
+      <p>Add declined work or a next-service date from a <Link href="/app/customers">customer’s vehicle, property or equipment record</Link>. Missing history is never invented.</p>
     </div>}
     {data.items.map(item=><article className="card money-opportunity" key={`${item.category}:${item.subjectId}`}>
       <div className="money-opportunity-head"><div><span className="pill">{categoryLabels[item.category]}</span><h3><Link href={`/app/customers/${item.customerId}`}>{item.customerName}</Link></h3>
+        {item.serviceAssetId&&<Link href={`/app/customers/${item.customerId}#asset-${item.serviceAssetId}`}>{item.vehicleLabel||'Property / equipment'}</Link>}
         {item.vehicleId&&<Link href={`/app/customers/${item.customerId}/vehicles/${item.vehicleId}`}>{item.vehicleLabel||'Vehicle'}</Link>}</div>
         <strong>{item.category==='lapsed'?'Average visit (est.): ':''}{money(item.amountCents)}</strong></div>
       <p>{item.reason}</p><p className="muted">Recorded {date(item.occurredAt,data.timezone)} · {item.status.replaceAll('_',' ')}</p>

@@ -1,0 +1,10 @@
+ALTER TABLE app.asset ADD COLUMN next_service_on date;
+ALTER TABLE app.asset ADD COLUMN next_service_description text CHECK(next_service_description IS NULL OR length(btrim(next_service_description)) BETWEEN 1 AND 200);
+ALTER TABLE app.asset ADD COLUMN next_service_amount_cents integer CHECK(next_service_amount_cents BETWEEN 0 AND 99999999);
+ALTER TABLE app.asset ADD CONSTRAINT asset_service_plan_date_check CHECK(next_service_on IS NOT NULL OR (next_service_description IS NULL AND next_service_amount_cents IS NULL));
+GRANT UPDATE(next_service_on,next_service_description,next_service_amount_cents) ON app.asset TO app_user;
+CREATE INDEX asset_service_due_idx ON app.asset(business_id,next_service_on) WHERE status='active' AND type IN ('property','equipment') AND next_service_on IS NOT NULL;
+ALTER TABLE app.recovery_item ADD COLUMN service_asset_id uuid;
+ALTER TABLE app.recovery_item ADD CONSTRAINT recovery_service_asset_customer_fk FOREIGN KEY(business_id,customer_id,service_asset_id) REFERENCES app.asset(business_id,customer_id,id);
+ALTER TABLE app.recovery_item ADD CONSTRAINT recovery_work_target_check CHECK(vehicle_id IS NULL OR service_asset_id IS NULL);
+CREATE INDEX recovery_service_asset_idx ON app.recovery_item(business_id,customer_id,service_asset_id);

@@ -20,7 +20,7 @@ function AppointmentList({ rows, timezone }: { rows: Awaited<ReturnType<typeof l
             <Link href={`/app/customers/${a.customerId}`}><strong>{a.customerName}</strong></Link>
             <div>{a.reason || "Appointment"}</div>
             {(a.make || a.model || a.plate) && <div className="muted">{[a.year, a.make, a.model].filter(Boolean).join(" ")}{a.plate ? ` • ${a.plate}` : ""}</div>}
-            {a.serviceAssetName&&<div>{a.serviceAssetName} · {[a.serviceAssetDetails?.addressLine1,a.serviceAssetDetails?.city].filter(Boolean).join(", ")}</div>}
+            {a.serviceAssetName&&<div>{a.serviceAssetName} · {a.serviceAddress}</div>}
             <span className="pill">{a.status.replace("_", " ")}</span>
             {(a.vehicleId||a.serviceAssetId)&&a.status!=='cancelled'&&<Link href={`/app/jobs?${new URLSearchParams({sourceAppointmentId:a.id,customerId:a.customerId,...(a.vehicleId?{vehicleId:a.vehicleId}:{}),...(a.serviceAssetId?{serviceAssetId:a.serviceAssetId}:{})})}`}>Create job from appointment</Link>}
           </div>

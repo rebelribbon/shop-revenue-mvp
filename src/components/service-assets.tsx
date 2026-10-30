@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ActionForm } from "./action-form";
-import { saveServiceAssetAction, archiveServiceAssetAction } from "@/server/actions/service-assets";
+import { saveServiceAssetAction, archiveServiceAssetAction, setServiceAssetNextServiceAction } from "@/server/actions/service-assets";
 import type { listServiceAssets } from "@/domain/service-assets";
 
 type Asset = Awaited<ReturnType<typeof listServiceAssets>>[number];
@@ -18,9 +18,18 @@ export function ServiceAssets({customerId,assets,readOnly=false}:{customerId:str
   const properties=assets.filter(a=>a.type === "property");
   return <section><h2>Properties &amp; equipment</h2>
     {!assets.length&&<p className="muted">Add a service address or equipment item to start quoting work.</p>}
-    {assets.map(a=><article className="card" key={a.id}><h3>{a.displayName}</h3><p className="muted">{a.type === "property" ? [a.details.addressLine1,a.details.addressLine2,a.details.city,a.details.region,a.details.postalCode].filter(Boolean).join(", ") : [a.details.manufacturer,a.details.model,a.details.serialNumber,properties.find(p=>p.id===a.parentAssetId)?.displayName].filter(Boolean).join(" · ")}</p><p>{a.details.notes}</p>
+    {assets.map(a=><article className="card" id={`asset-${a.id}`} key={a.id}><h3>{a.displayName}</h3><p className="muted">{a.type === "property" ? [a.details.addressLine1,a.details.addressLine2,a.details.city,a.details.region,a.details.postalCode].filter(Boolean).join(", ") : [a.details.manufacturer,a.details.model,a.details.serialNumber,properties.find(p=>p.id===a.parentAssetId)?.displayName].filter(Boolean).join(" · ")}</p><p>{a.details.notes}</p>
+      {a.nextServiceOn&&<p>Next service: <strong>{a.nextServiceDescription||"Service"}</strong> · {a.nextServiceOn}{a.nextServiceAmountCents!==null?` · ${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(a.nextServiceAmountCents/100)}`:" · Price not set"}</p>}
       <Link className="btn secondary" href={`/app/jobs?${new URLSearchParams({customerId,serviceAssetId:a.id})}`}>Create job / estimate</Link>
-      {!readOnly&&<><details><summary>Edit {a.type}</summary><ActionForm action={saveServiceAssetAction} hidden={{customerId,assetId:a.id,type:a.type}} submitLabel="Save changes"><AssetFields type={a.type as "property"|"equipment"} properties={properties} asset={a}/></ActionForm></details><ActionForm action={archiveServiceAssetAction} hidden={{customerId,assetId:a.id}} submitLabel="Archive" variant="danger" confirm="Archive this item? Archiving a property also archives its equipment. Existing estimates and history remain."/></>}
+      {!readOnly&&<><details><summary>Plan next service</summary>
+        <p className="muted">Set the next maintenance or follow-up date. Money Finder highlights it from 14 days before through 90 days after it is due. Contact the customer yourself; no message is sent.</p>
+        <ActionForm action={setServiceAssetNextServiceAction} hidden={{customerId,assetId:a.id}} submitLabel="Save next service">
+          <label>Next service date<input name="on" type="date" defaultValue={a.nextServiceOn??""}/></label>
+          <label>Service description<input name="description" maxLength={200} defaultValue={a.nextServiceDescription??""} placeholder="Seasonal tune-up, water heater flush, property inspection"/></label>
+          <label>Expected selling price ($, optional)<input name="amount" type="number" min="0" max="999999.99" step="0.01" defaultValue={a.nextServiceAmountCents===null?"":a.nextServiceAmountCents/100}/></label>
+          <p className="muted">Clear the date and save to remove the service plan.</p>
+        </ActionForm>
+      </details><details><summary>Edit {a.type}</summary><ActionForm action={saveServiceAssetAction} hidden={{customerId,assetId:a.id,type:a.type}} submitLabel="Save changes"><AssetFields type={a.type as "property"|"equipment"} properties={properties} asset={a}/></ActionForm></details><ActionForm action={archiveServiceAssetAction} hidden={{customerId,assetId:a.id}} submitLabel="Archive" variant="danger" confirm="Archive this item? Archiving a property also archives its equipment. Existing estimates and history remain."/></>}
     </article>)}
     {!readOnly&&<div className="form-grid">{(["property","equipment"] as const).map(type=><div className="card" id={`new-${type}`} key={type}><h3>Add {type}</h3><ActionForm action={saveServiceAssetAction} hidden={{customerId,type}} submitLabel={`Add ${type}`}><AssetFields type={type} properties={properties}/></ActionForm></div>)}</div>}
   </section>;

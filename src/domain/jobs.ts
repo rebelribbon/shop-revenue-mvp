@@ -19,7 +19,7 @@ export async function createJob(tx:TenantTx,input:JobInput){
  if(Boolean(data.vehicleId)===Boolean(data.serviceAssetId)) throw new AppError("VALIDATION","Choose either a vehicle or a property/equipment item.");
  if(data.vehicleId) await getVehicle(tx,data.customerId,data.vehicleId);
  if(data.serviceAssetId) await serviceAssetLabel(tx,data.customerId,data.serviceAssetId);
- await validateRecoverySource(tx,data.sourceRecoveryItemId,data.customerId,data.vehicleId);
+ await validateRecoverySource(tx,data.sourceRecoveryItemId,data.customerId,data.vehicleId,data.serviceAssetId);
  await validateContactSource(tx,data.sourceContactActivityId,data.sourceRecoveryItemId);
  await validateAppointmentSource(tx,data.sourceAppointmentId,data.customerId,data.vehicleId,data.sourceRecoveryItemId,data.sourceContactActivityId,data.serviceAssetId);
  for(const line of [...data.parts,...data.labor])if(line.recommendationId){
