@@ -20,7 +20,7 @@ See the official [Auth configuration API](https://supabase.com/docs/reference/ap
 
 | Area | Concrete requirement | Verification |
 | --- | --- | --- |
-| Email | Postmark account/server and verified sender; server token and EMAIL_FROM in Vercel; EMAIL_PROVIDER=postmark; matching custom Supabase Auth SMTP | Delivered invite/reset and completed account setup |
+| Email | Resend sending-only production key scoped to shoprevenue.app; EMAIL_FROM_ADDRESS=no-reply@shoprevenue.app; EMAIL_PROVIDER=resend; separate production Supabase Auth SMTP | Production delivered invite/reset and completed account setup |
 | Production auth | Server-only Supabase admin credential, worker/admin DB roles, internal Google provider/domain allowlist, TOTP and compromised-password protection settings | Owner/admin MFA, reset/session revocation and recovery on candidate |
 | Payments | Live Stripe platform access and live server/webhook configuration, kept separate from sandbox | Connect onboarding per shop, authenticated webhook isolation and live-environment checks |
 | Monitoring | Actual error-monitoring project/destination and named on-call ownership | Staged alert received/acknowledged and recovery observed |
@@ -38,11 +38,16 @@ Production environment variables: BACKUP_S3_BUCKET, BACKUP_AWS_REGION, BACKUP_AW
 
 The off-site role needs permission to generate data keys/encrypt with the intended KMS key, write the intended bucket/prefix and list the prefix. A separate restore role needs read/decrypt. Never grant production application code the off-site delete/decrypt identity. Configure retention and run the actual recovery drill; CI application-schema restoration is a separate check.
 
-## Current confirmed limits
+## Configuration status — October 29, 2026
 
-- Main was unprotected when inspected; the new release/inspection guards will refuse production actions until this is corrected.
-- Vercel production does not yet have the required email, monitoring, worker/admin or live-payment configuration.
-- No external service account was created or paid add-on enabled by this preparation.
-- The workspace reconnected. Local lint/type checking and all six setup-inspector boundary tests passed. The merged application passed the 360 server/database tests and 27 browser checks, with one desktop-only skip. Superseded milestone PRs are closed; their commits are included in main.
-- Stripe CLI and its Projects plugin are installed. Current catalog searches found neither Postmark nor Sentry, so no substitute provider was selected or account created. Vercel service discovery is waiting on account authorization. The provider configuration inspection itself has not run; its credential-free validation is separate.
-- Unused preview pg_net cleanup and provider compromised-password protection remain in the dated M9 report.
+- Preview runs release candidate e82738af0a417c1bf016ddd11771ddf69283c88a. CI and browser checks passed.
+- shoprevenue.app is verified in Resend. Preview sender is no-reply@shoprevenue.app with a Preview-only secret. Brad confirmed password-reset completion after correcting preview Auth URL settings. This is preview evidence, not production verification.
+- shoprevenue.app redirects to www.shoprevenue.app; both are verified on the Vercel project. Production APP_BASE_URL is https://www.shoprevenue.app. EMAIL_PROVIDER and EMAIL_FROM_ADDRESS are prepared for production, but its separate Resend key is still absent.
+- Sentry configuration exists in Preview and Production. Actual error ingestion, alert receipt and on-call recovery remain unverified.
+- Temporary owner bootstrap environment values in Preview were cleared. Existing deployments retain their original environment until rebuilt.
+- Production still serves the historical foundation build (49b625acab865f935331387409d983df0ca5ef1d); the M9 candidate has not been released there.
+- main is unprotected. Production release requires protected main, the production environment reviewer and main-only deployment rule. Do not remove these guards to deploy.
+- Production worker/admin database URLs, server-side Auth administration credential, maintenance schedule, production email key, live Stripe settings and internal admin domain remain absent from the Vercel configuration inspected.
+- Production Auth SMTP, redirect URLs, MFA, compromised-password protection, backup retention and recovery evidence still need verification. Preview settings do not configure production.
+- Off-site recovery, independent security review, alert drill and design-partner approval must be real evidence for the exact candidate. Do not manufacture release evidence.
+- Customer-owned email-domain verification and onboarding are not implemented. Platform login/reset mail uses the Shop Revenue domain. Automated texting and imports remain excluded.
