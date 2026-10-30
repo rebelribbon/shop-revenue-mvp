@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { WorkNavigation } from "@/components/work-navigation";
 import { EstimateLink } from "@/components/estimate-publisher";
-import { AuthorizedTotal, EstimateDocument } from "@/components/estimate-document";
+import { AuthorizedTotal, EstimateDocument, formatMoney } from "@/components/estimate-document";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import { listEstimates } from "@/domain/estimates";
@@ -25,7 +25,7 @@ export default async function EstimatesPage({searchParams}:{searchParams:Promise
    const invoice=invoices.find(i=>i.quoteId===e.quoteId&&!i.voidedAt);
    return <article className="card" key={e.id}>
     <h2>{e.snapshot.title} · Version {e.version}</h2><p>{e.snapshot.customerName}</p>
-    <div className="record-meta"><span className="pill">{e.authorization?(e.authorization.approvedLineIds.length?'Authorized work':'All items declined'):'Awaiting customer decision'}</span><span className="muted">{!latest?'Earlier version':e.revokedAt?'Customer link revoked':new Date()>e.expiresAt?'Customer link expired':'Customer link active'}</span></div>
+    <div className="record-meta"><strong>Estimate: {formatMoney(e.snapshot.totalCents)}</strong><span className="pill">{e.authorization?(e.authorization.approvedLineIds.length?'Authorized work':'All items declined'):'Awaiting customer decision'}</span><span className="muted">{!latest?'Earlier version':e.revokedAt?'Customer link revoked':new Date()>e.expiresAt?'Customer link expired':'Customer link active'}</span></div>
     <div className="money-actions"><Link href={`/app/jobs?job=${e.quoteId}`}>Open job</Link>{latest&&invoice?<Link href={`/app/invoices?invoiceId=${invoice.id}`}>Open invoice</Link>:latest&&e.authorization&&e.authorization.approvedLineIds.length>0?<Link href={`/app/invoices?new=1&versionId=${e.id}`}>Continue to invoice</Link>:null}</div>
     <details className="record-details"><summary>View estimate &amp; authorization</summary>
      {e.supplementReason&&<p>Change: {e.supplementReason}</p>}<EstimateDocument snapshot={e.snapshot}/>

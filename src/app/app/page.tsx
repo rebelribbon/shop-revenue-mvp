@@ -46,6 +46,6 @@ export default async function HomePage({searchParams}:{searchParams:Promise<{den
     <div className="overview-row"><div><strong>Jobs and labor costs</strong><p>Open a saved job or record actual hours.</p></div><Link href="/app/jobs">Jobs</Link></div>
    </section>
   </div>
-  <section className="card"><h2>Start with a customer</h2><p>Find their contact details, vehicles or properties, work history and notes in one place.</p><Link href="/app/customers">Find a customer</Link><Link href="/app/customers/new">Add a customer</Link></section>
+  <section className="card"><h2>Start with a customer</h2><p>Find their contact details, vehicles or properties, work history and notes in one place.</p><div className="money-actions"><Link href="/app/customers">Find a customer</Link><Link href="/app/customers/new">Add a customer</Link></div></section>
  </main>;
 }

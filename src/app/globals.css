@@ -144,7 +144,7 @@ details { margin: 16px 0; }
 @media print { body { height: auto; overflow: visible; display: block; } main { overflow: visible; margin: 0; } button, nav, .topbar, .skip-link, [data-ux-primary] { display: none !important; } main { max-width: none; padding: 0; } .card { break-inside: avoid; } }
 .admin-mobile-nav { grid-template-columns: repeat(5,minmax(0,1fr)); }
 .admin-mobile-nav:has(> :last-child:nth-child(3)) { grid-template-columns: repeat(3,minmax(0,1fr)); }
-.record-shortcuts { display: grid; gap: 8px; }
+.record-shortcuts { display: grid; gap: 8px; margin-top: 8px; }
 .record-shortcuts a { margin: 0; }
 
 @supports (padding: round(up, 1px, 8px)) { body { --safe-bottom: round(up, env(safe-area-inset-bottom, 0px), 8px); } }
