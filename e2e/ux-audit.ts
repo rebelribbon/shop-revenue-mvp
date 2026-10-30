@@ -4,7 +4,10 @@ export async function auditUX(page:Page) {
  await expect(page.locator('[data-ux-primary]')).toHaveCount(1);
  const issues=await page.evaluate(()=>{
   const issues:string[]=[];
-  const shown=(e:Element)=>{const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=="none"&&s.visibility!=="hidden"&&r.width>0&&r.height>0;};
+  const shown=(e:Element)=>{
+   // Chromium can retain layout boxes for the skipped contents of closed details.
+   for(let parent=e.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS'&&!parent.hasAttribute('open')&&!parent.querySelector(':scope > summary')?.contains(e))return false;
+   const s=getComputedStyle(e),r=e.getBoundingClientRect();return s.display!=="none"&&s.visibility!=="hidden"&&r.width>0&&r.height>0;};
   const tag=(e:Element)=>`${e.tagName.toLowerCase()}${e.id?`#${e.id}`:""}`;
   const viewport=(e:Element)=>{
    const r=e.getBoundingClientRect();let top=0,left=0,right=innerWidth,bottom=innerHeight;

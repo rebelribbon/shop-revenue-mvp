@@ -18,6 +18,9 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  for(const path of ['/app','/app/work','/app/new','/app/customers','/app/jobs','/app/estimates','/app/invoices','/app/schedule','/app/revenue','/app/settings','/app/settings/business','/app/settings/team','/app/settings/support-access','/app/settings/payments','/app/settings/export']){
   await page.goto(path);await auditPage(page);
  }
+ await page.goto('/app');
+ const followup=page.locator('summary').filter({hasText:'Track follow-up'}).first();
+ if(await followup.count()){await followup.click();await auditPage(page);}
  await page.goto('/app/customers');
  const name=`UX ${info.project.name} ${Date.now()}`;
  await page.getByLabel('First name',{exact:true}).fill(name);
