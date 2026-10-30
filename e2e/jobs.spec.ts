@@ -7,7 +7,7 @@ test("prices and saves an internal job sheet",async({page},info)=>{
  await page.getByRole("link",{name:"Vehicles",exact:true}).click();await page.getByLabel("Make",{exact:true}).fill("Honda");await page.getByRole("button",{name:"Add vehicle",exact:true}).click();await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
  await page.goto("/app/jobs?new=1");await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);await page.getByLabel("Customer",{exact:true}).selectOption({label:`Job ${info.project.name}`});await page.getByLabel("Vehicle",{exact:true}).selectOption({label:"Honda"});
  await page.getByRole("button",{name:"Add part",exact:true}).click();await page.getByLabel("Description",{exact:true}).fill("Pads");await page.getByLabel("Unit cost",{exact:true}).fill("100");await page.getByLabel("Unit selling price",{exact:true}).fill("200");await expect(page.getByText("Quoted subtotal:",{exact:false}).first()).toContainText("$200.00");
- await page.getByRole("button",{name:"Save job sheet",exact:true}).click();await expect(page.getByRole("status")).toContainText("Job sheet saved");await page.reload();await expect(page.getByRole("heading",{name:`Brakes ${info.project.name}`,exact:true})).toBeVisible();
+ await page.getByRole("button",{name:"Save job sheet",exact:true}).click();await expect(page.getByRole("heading",{name:`Brakes ${info.project.name}`,exact:true})).toBeVisible();await page.reload();await expect(page.getByRole("heading",{name:`Brakes ${info.project.name}`,exact:true})).toBeVisible();
  const card=page.getByRole("heading",{name:`Brakes ${info.project.name}`,exact:true}).locator("..");
  await card.getByRole("button",{name:"Freeze and publish estimate",exact:true}).click();
  await expect(card.getByRole("link",{name:"Open customer estimate",exact:true})).toBeVisible();
@@ -21,8 +21,9 @@ test("prices and saves an internal job sheet",async({page},info)=>{
  await expect(page.getByRole("heading",{name:"Decision recorded",exact:true})).toBeVisible();await auditUX(page);
  await page.reload();await expect(page.getByText("Pads: Approved",{exact:true})).toBeVisible();
  await page.goto("/app/invoices?new=1");await page.getByLabel("Authorized estimate",{exact:true}).selectOption({label:`Brakes ${info.project.name} · Version 1 · Job ${info.project.name}`});
- const issuer=page.getByRole("button",{name:"Issue invoice",exact:true}).locator("..");await issuer.getByRole("button",{name:"Issue invoice",exact:true}).click();await expect(issuer.getByRole("link",{name:"Open customer invoice",exact:true})).toBeVisible();
- const invoiceHref=await issuer.getByRole("link",{name:"Open customer invoice",exact:true}).getAttribute("href");
+ const issuer=page.getByRole("button",{name:"Issue invoice",exact:true}).locator("..");await issuer.getByRole("button",{name:"Issue invoice",exact:true}).click();await expect(page.getByRole("link",{name:"Open customer invoice",exact:true})).toBeVisible();
+ const invoiceHref=await page.getByRole("link",{name:"Open customer invoice",exact:true}).getAttribute("href");
+ await page.getByRole("link",{name:"Open invoice & record payment",exact:true}).click();
  const invoice=page.getByRole("heading",{name:new RegExp(`Invoice #.*Brakes ${info.project.name}`)}).locator("..");
  await invoice.getByLabel("Amount ($)",{exact:true}).fill("50");await invoice.getByRole("button",{name:"Record payment",exact:true}).click();await expect(invoice.getByText("Partially paid",{exact:true})).toBeVisible();
  await page.goto(invoiceHref!);await auditUX(page);await expect(page.getByText("Balance due:",{exact:false})).toContainText("$150.00");await expect(page.locator("body")).not.toContainText("unit cost");

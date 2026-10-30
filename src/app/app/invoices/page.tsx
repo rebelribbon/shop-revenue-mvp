@@ -68,9 +68,9 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
       )}
       </details>
       {params.new==="1"&&<><p><Link href="/app/invoices">← All invoices</Link></p><InvoiceIssuer key={params.versionId??"new"} choices={choices} initialVersionId={choices.some(c=>c.id===params.versionId)?params.versionId:undefined} /></>}
-      <h2>Issued invoices</h2>
-      {!data.invoices.length && <p>No invoices issued yet.</p>}
-      {data.invoices.filter(i=>!params.invoiceId||i.id===params.invoiceId).map((i,index) => (
+      {params.new!=="1"&&<h2>{params.invoiceId?"Invoice details":"Issued invoices"}</h2>}
+      {params.new!=="1"&&!data.invoices.length && <p>No invoices issued yet.</p>}
+      {data.invoices.filter(i=>params.new!=="1"&&(!params.invoiceId||i.id===params.invoiceId)).map((i) => (
         <article className="card" key={i.id} id={`invoice-${i.id}`}>
           <h2>
             Invoice #{i.number} · {i.snapshot.title}
@@ -96,7 +96,7 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
           </p>
           {i.dueOn && <p>Due: {i.dueOn}</p>}
           {i.voidReason && <p>Void reason: {i.voidReason}</p>}
-          <details className="record-details" open={params.invoiceId===i.id||(params.new==="1"&&index===0)}><summary>View invoice &amp; payments</summary>
+          <details className="record-details" open={params.invoiceId===i.id}><summary>View invoice &amp; payments</summary>
           <InvoiceLink id={i.id} />
           {i.disputeOpen&&<p className="notice">Open dispute: {i.disputeOpen}. Money Finder follow-up is paused.</p>}
           {!i.voidedAt&&s.actor.type!=='support'&&<details><summary>Record or resolve a dispute</summary>
