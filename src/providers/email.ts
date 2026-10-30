@@ -1,4 +1,4 @@
-// EmailProvider (Section 11). Local: SMTP into Mailpit. Production: Postmark.
+// EmailProvider (Section 11). Local: SMTP into Mailpit. Hosted: Resend (or legacy Postmark).
 // Tests: in-memory capture. Adapters never report success the provider did not give.
 import nodemailer from "nodemailer";
 import { AppError } from "@/lib/errors";
@@ -21,7 +21,7 @@ export interface EmailProvider {
 }
 
 const from = (name?: string) => {
-  const address = process.env.EMAIL_FROM_ADDRESS;
+  const address = process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_FROM;
   if (!address) throw new AppError("PROVIDER_UNAVAILABLE", "Email is not configured.");
   return name ? `"${name.replace(/"/g, "")}" <${address}>` : address;
 };
@@ -71,6 +71,32 @@ export class PostmarkEmailProvider implements EmailProvider {
   }
 }
 
+export class ResendEmailProvider implements EmailProvider {
+  readonly name = "resend";
+  constructor(private token = process.env.RESEND_API_KEY) {}
+  async send(e: OutboundEmail) {
+    if (!this.token) throw new AppError("PROVIDER_UNAVAILABLE", "Email is not configured.");
+    // Resolve local configuration outside the transport catch; never forward raw provider errors.
+    const sender = from(e.fromName);
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+        redirect: "error",
+        body: JSON.stringify({ from: sender, to: [e.to], subject: e.subject, text: e.text, reply_to: e.replyTo }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      const body: unknown = await res.json();
+      if (!res.ok || !body || typeof body !== "object" || !("id" in body) || typeof body.id !== "string" || !body.id.trim()) {
+        throw new Error("Email provider did not acknowledge delivery request");
+      }
+      return { providerMessageId: body.id };
+    } catch {
+      throw new AppError("PROVIDER_UNAVAILABLE", "Email could not be sent right now.");
+    }
+  }
+}
+
 export class MemoryEmailProvider implements EmailProvider {
   readonly name = "memory";
   readonly sent: OutboundEmail[] = [];
@@ -85,12 +111,14 @@ export function emailProvider(): EmailProvider {
   if (instance) return instance;
   const env = process.env.APP_ENV ?? "local";
   const choice = process.env.EMAIL_PROVIDER ?? (env === "local" ? "smtp" : env === "test" ? "memory" : "postmark");
-  if (["production", "staging"].includes(env) && choice !== "postmark") {
+  if (["production", "staging"].includes(env) && !["postmark", "resend"].includes(choice)) {
     throw new Error(`EMAIL_PROVIDER=${choice} is not allowed in ${env}`);
   }
-  instance = choice === "smtp" ? new SmtpEmailProvider() : choice === "memory" ? new MemoryEmailProvider() : new PostmarkEmailProvider();
+  if (!["smtp", "memory", "postmark", "resend"].includes(choice)) throw new Error(`Unknown email provider: ${choice}`);
+  instance = choice === "resend" ? new ResendEmailProvider() : choice === "smtp" ? new SmtpEmailProvider() : choice === "memory" ? new MemoryEmailProvider() : new PostmarkEmailProvider();
   return instance;
 }
 export const setEmailProviderForTests = (p: EmailProvider | null) => {
   instance = p;
 };
+
