@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 
-export async function auditUX(page:Page) {
+export async function auditUX(page:Page, collect=false) {
  await expect(page.locator('[data-ux-primary]')).toHaveCount(1);
  const issues=await page.evaluate(()=>{
   const issues:string[]=[];
@@ -62,5 +62,5 @@ export async function auditUX(page:Page) {
   }
   return [...new Set(issues)].slice(0,30);
  });
- expect(issues,`UX measurements at ${new URL(page.url()).pathname}`).toEqual([]);
+ (collect?expect.soft:expect)(issues,`UX measurements at ${new URL(page.url()).pathname}`).toEqual([]);
 }

@@ -77,7 +77,7 @@ legend { padding: 0 8px; font-weight: 700; }
 .topbar form { margin: 0; }
 .topbar button { margin: 0; }
 .setup-notice { max-width: 1104px; margin: 16px auto; padding: 0 24px; }
-.settings-grid, .new-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.settings-grid, .new-grid { margin: 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .settings-link, .new-card { text-decoration: none; color: var(--text); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; margin: 0; min-height: 128px; }
 .settings-link:hover, .new-card:hover, .money-category:hover { border-color: var(--accent); background: var(--hover); box-shadow: 0 8px 16px #0001; }
 .settings-link span, .new-card span { max-width: var(--reading-width); }

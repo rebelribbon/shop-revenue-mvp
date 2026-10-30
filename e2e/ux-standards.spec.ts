@@ -3,9 +3,9 @@ import { signInWithPassword } from "./helpers";
 import { auditUX } from "./ux-audit";
 
 async function auditPage(page: import("@playwright/test").Page) {
- await auditUX(page);
+ await auditUX(page,true);
  await page.locator('main').evaluate(e=>e.scrollTo(0,e.scrollHeight));
- await auditUX(page);
+ await auditUX(page,true);
  await page.locator('main').evaluate(e=>e.scrollTo(0,0));
 }
 
@@ -48,6 +48,10 @@ test("UX standards across public, shop, detail and admin pages",async({page},inf
  for(const path of ['/admin','/admin/release','/admin/policies','/admin/webhooks','/admin/help']){await page.goto(path);await auditPage(page);}
  await page.goto('/admin');
  const tenant=page.locator('tbody a').first();await tenant.click();await auditPage(page);
+ if(info.project.name==='phone'){
+  await page.setViewportSize({width:320,height:740});await auditPage(page);
+  await page.screenshot({path:'test-results/ux-admin-narrow.png',fullPage:true});
+ }
 });
 
 test("core pages stay within three homepage clicks and primary actions follow the active form",async({page})=>{
