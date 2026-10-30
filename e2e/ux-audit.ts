@@ -43,6 +43,7 @@ export async function auditUX(page:Page) {
   }
   const primary=document.querySelector<HTMLElement>('[data-ux-primary]')!;
   if(!shown(primary)||!viewport(primary))issues.push("Primary action is outside the viewport");
+  if(main.getBoundingClientRect().bottom>primary.getBoundingClientRect().top-7.9)issues.push("Content scroll area needs an 8px gap above the primary action");
   if(primary.matches('.danger,[data-destructive="true"]'))issues.push("Destructive action entered the sticky primary area");
   if(innerWidth<900){
    const r=primary.getBoundingClientRect();if(r.top<innerHeight/2)issues.push("Primary action is outside the thumb zone");

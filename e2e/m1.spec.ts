@@ -93,7 +93,8 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, second staff s
   await owner.reload();
   await owner.getByRole("button", { name: "Remove" }).click();
   await owner.getByRole("button", { name: "Yes, continue" }).click();
-  await expect(owner.getByRole("status")).toContainText("Removed.");
+  // Removal unmounts the row and its form status; assert the durable result.
+  await expect(owner.getByRole("row").filter({ hasText: staffEmail })).toHaveCount(0);
   await staff.goto("/app");
   await expect(staff).toHaveURL(/\/no-access$/);
   await auditUX(staff);

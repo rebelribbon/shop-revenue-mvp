@@ -1,5 +1,5 @@
 :root {
-  --safe-bottom: 0px; --space-1: 8px; --space-2: 16px; --space-3: 24px; --space-4: 32px; --space-8: 64px;
+  --safe-bottom: 0px; --primary-space: 64px; --space-1: 8px; --space-2: 16px; --space-3: 24px; --space-4: 32px; --space-8: 64px;
   --bg: #f6f7f9; --surface: #ffffff; --text: #16181d; --muted: #5b6270;
   --line: #a8b0bd; --accent: #1d5fd1; --accent-text: #ffffff; --accent-hover: #174ca8;
   --hover: #edf2fa; --danger: #b42318; --ok: #067647; --warn-bg: #fff4d6; --warn-text: #6b4a00;
@@ -16,7 +16,7 @@
 html, body { margin: 0; padding: 0; }
 html { scroll-padding-block: 96px 160px; }
 body { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 16px/24px system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { flex: 1; min-height: 0; width: 100%; max-width: 1152px; margin: 0 auto 96px; padding: 32px 24px; overflow-y: auto; scroll-padding-block: 24px; overflow-wrap: anywhere; }
+main { flex: 1; min-height: 0; width: 100%; max-width: 1152px; margin: 0 auto calc(var(--primary-space) + 32px); padding: 32px 24px; overflow-y: auto; scroll-padding-block: 24px; overflow-wrap: anywhere; }
 h1, h2, h3, h4, p, ul, ol, dl, figure, blockquote { margin: 16px 0; }
 h1 { font-size: 32px; line-height: 40px; margin: 8px 0 24px; letter-spacing: -.025em; }
 h2 { font-size: 24px; line-height: 32px; margin: 24px 0 16px; }
@@ -122,8 +122,8 @@ details { margin: 16px 0; }
 .skip-link { position: fixed; z-index: 100; top: -128px; left: 16px; padding: 16px; background: var(--surface); color: var(--accent); min-height: 48px; }
 .skip-link:focus { top: 16px; }
 @media (max-width: 899px) {
-  main { margin-bottom: calc(144px + var(--safe-bottom)); padding: 24px 16px; }
-  body:not(:has(.mobile-nav)) main { margin-bottom: calc(80px + var(--safe-bottom)); }
+  main { margin-bottom: calc(var(--primary-space) + 80px + var(--safe-bottom)); padding: 24px 16px; }
+  body:not(:has(.mobile-nav)) main { margin-bottom: calc(var(--primary-space) + 16px + var(--safe-bottom)); }
   .desktop-nav { display: none !important; }
   .topbar { min-height: 80px; padding: 16px; gap: 8px; }
   .topbar > strong { flex: 1; min-width: 0; }

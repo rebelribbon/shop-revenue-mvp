@@ -33,6 +33,9 @@ export function PageActions() {
         candidates('form button[type="submit"],form button:not([type])')[0] ?? candidates('button')[0] ?? null;
       if (selected !== next) { selected?.removeAttribute("data-ux-primary"); selected = next; }
       selected?.setAttribute("data-ux-primary", "true");
+      // Reserve the measured button height, including wrapped labels at narrow widths.
+      if (selected) document.body.style.setProperty("--primary-space", `${Math.ceil(selected.getBoundingClientRect().height / 8) * 8 + 16}px`);
+      else document.body.style.removeProperty("--primary-space");
       setFallback(!selected);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(choose); };
@@ -47,7 +50,7 @@ export function PageActions() {
     document.addEventListener("focusin", onFocus);
     window.addEventListener("resize", schedule);
     choose();
-    return () => { observer.disconnect(); document.removeEventListener("focusin", onFocus); window.removeEventListener("resize", schedule); cancelAnimationFrame(frame); selected?.removeAttribute("data-ux-primary"); };
+    return () => { observer.disconnect(); document.removeEventListener("focusin", onFocus); window.removeEventListener("resize", schedule); cancelAnimationFrame(frame); selected?.removeAttribute("data-ux-primary"); document.body.style.removeProperty("--primary-space"); };
   }, [pathname]);
   if (!fallback) return null;
   const href = pathname === "/admin" ? "/admin/release" : pathname.startsWith("/admin/") ? "/admin" : pathname.startsWith("/app") ? "/app/work" : "/sign-in";
