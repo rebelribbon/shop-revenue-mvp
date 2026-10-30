@@ -16,7 +16,7 @@ export const categoryLabels: Record<MoneyCategory, string> = {
   lapsed: "Not back in 6+ months", service_due: "Service due",
 };
 export type MoneyItem = {
-  category: MoneyCategory; subjectId: string; customerId: string; vehicleId: string | null;
+  category: MoneyCategory; subjectId: string; customerId: string; vehicleId: string | null; serviceAssetId: string | null;
   customerName: string; vehicleLabel: string | null; phone: string | null; email: string | null;
   reason: string; amountCents: number | null; occurredAt: string; renewFirst: boolean;
   recoveryId: string | null; status: string; snoozedUntil: string | null; dismissedReason: string | null;
@@ -37,6 +37,13 @@ function candidates(tx: TenantTx, now: Date) {
   ), vehicles AS (
     SELECT *, concat_ws(' ',year,make,model,plate) AS label FROM app.vehicle
     WHERE business_id=${tx.businessId} AND status='active'
+  ), service_assets AS (
+    SELECT a.*,concat_ws(' · ',a.display_name,NULLIF(concat_ws(', ',
+      coalesce(NULLIF(a.details->>'addressLine1',''),parent.details->>'addressLine1'),
+      coalesce(NULLIF(a.details->>'city',''),parent.details->>'city')),'')) AS label
+    FROM app.asset a LEFT JOIN app.asset parent ON parent.business_id=a.business_id AND parent.customer_id=a.customer_id AND parent.id=a.parent_asset_id
+    WHERE a.business_id=${tx.businessId} AND a.status='active' AND a.type IN ('property','equipment')
+      AND (a.parent_asset_id IS NULL OR parent.status='active')
   ), balances AS (
     SELECT i.*,coalesce(p.paid,0) AS paid,p.paid_at FROM app.invoice i
     LEFT JOIN (SELECT invoice_id,sum(amount_cents) AS paid,
@@ -64,7 +71,7 @@ function candidates(tx: TenantTx, now: Date) {
     ORDER BY quote_id,version DESC
   ), open_estimates AS (
     SELECT 'open_estimate'::text AS category,e.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
-      c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,coalesce(v.label,e.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,c.email,
       'Unsigned estimate: ' || (e.snapshot->>'title') AS reason,(e.snapshot->>'subtotalCents')::numeric AS amount_cents,
       e.created_at AS occurred_at,e.expires_at<=s.as_of AS renew_first,0::numeric AS lifetime
     FROM latest_estimates e JOIN contacts c ON c.id=e.customer_id LEFT JOIN vehicles v ON v.id=e.vehicle_id CROSS JOIN settings s
@@ -72,7 +79,7 @@ function candidates(tx: TenantTx, now: Date) {
       AND NOT EXISTS(SELECT 1 FROM app.estimate_authorization a WHERE a.business_id=${tx.businessId} AND a.version_id=e.id)
   ), unpaid AS (
     SELECT 'unpaid_invoice'::text AS category,i.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
-      c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,coalesce(v.label,i.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,c.email,
       'Balance due on invoice #' || i.number::text AS reason,(i.total_cents-i.paid)::numeric AS amount_cents,
       i.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
     FROM balances i JOIN contacts c ON c.id=i.customer_id LEFT JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
@@ -105,11 +112,27 @@ function candidates(tx: TenantTx, now: Date) {
         AND a.status='scheduled' AND a.starts_at>=s.as_of)
       AND NOT EXISTS(SELECT 1 FROM visits p WHERE p.vehicle_id=v.id
         AND (p.visit_at AT TIME ZONE s.zone)::date>=v.next_service_on-30)
+  ), home_service_due AS (
+    SELECT 'service_due'::text AS category,a.id AS subject_id,c.id AS customer_id,NULL::uuid AS vehicle_id,
+      c.display_name AS customer_name,a.label AS vehicle_label,c.phone_e164 AS phone,c.email,
+      coalesce(a.next_service_description,'Next service') || ' due ' || to_char(a.next_service_on,'Mon DD, YYYY') AS reason,
+      a.next_service_amount_cents::numeric AS amount_cents,(a.next_service_on::timestamp AT TIME ZONE s.zone) AS occurred_at,
+      false AS renew_first,0::numeric AS lifetime
+    FROM service_assets a JOIN contacts c ON c.id=a.customer_id CROSS JOIN settings s
+    WHERE a.next_service_on BETWEEN s.today-90 AND s.today+14
+      AND NOT EXISTS(SELECT 1 FROM app.appointment ap WHERE ap.business_id=${tx.businessId} AND ap.service_asset_id=a.id
+        AND ap.status='scheduled' AND ap.starts_at>=s.as_of)
+      AND NOT EXISTS(SELECT 1 FROM visits p WHERE p.service_asset_id=a.id
+        AND (p.visit_at AT TIME ZONE s.zone)::date>=a.next_service_on-30)
   ), sources AS (
     SELECT * FROM declines UNION ALL SELECT * FROM open_estimates UNION ALL SELECT * FROM unpaid
-    UNION ALL SELECT * FROM lapsed UNION ALL SELECT * FROM service_due
+    UNION ALL SELECT * FROM lapsed UNION ALL SELECT * FROM service_due UNION ALL SELECT * FROM home_service_due
   ), items AS (
-    SELECT src.*,r.id AS recovery_id,coalesce(r.status,'open') AS status,r.snoozed_until,r.dismissed_reason,
+    SELECT src.*,CASE
+      WHEN src.category='service_due' AND src.vehicle_id IS NULL THEN src.subject_id
+      WHEN src.category='open_estimate' THEN (SELECT e.service_asset_id FROM app.estimate_version e WHERE e.business_id=${tx.businessId} AND e.id=src.subject_id)
+      WHEN src.category='unpaid_invoice' THEN (SELECT i.service_asset_id FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.id=src.subject_id)
+      ELSE NULL::uuid END AS service_asset_id,r.id AS recovery_id,coalesce(r.status,'open') AS status,r.snoozed_until,r.dismissed_reason,
       r.last_contact_at,r.last_contact_method FROM sources src
     LEFT JOIN app.recovery_item r ON r.business_id=${tx.businessId} AND r.category=src.category AND r.subject_id=src.subject_id
   ) `;
@@ -117,7 +140,7 @@ function candidates(tx: TenantTx, now: Date) {
 
 function itemJson() {
   return sql`jsonb_build_object('category',category,'subjectId',subject_id,'customerId',customer_id,'vehicleId',vehicle_id,
-    'customerName',customer_name,'vehicleLabel',vehicle_label,'phone',phone,'email',email,'reason',reason,
+    'serviceAssetId',service_asset_id,'customerName',customer_name,'vehicleLabel',vehicle_label,'phone',phone,'email',email,'reason',reason,
     'amountCents',amount_cents::text,'occurredAt',occurred_at,'renewFirst',renew_first,'recoveryId',recovery_id,
     'status',status,'snoozedUntil',snoozed_until,'dismissedReason',dismissed_reason,'lastContactAt',last_contact_at,
     'lastContactMethod',last_contact_method)`;
@@ -147,7 +170,7 @@ export async function getMoneyFinder(tx: TenantTx, options: {
     LIMIT 50 OFFSET ${(page-1)*50}
   ) SELECT jsonb_build_object(
     'timezone',(SELECT zone FROM settings),'today',(SELECT today FROM settings),
-    'hasServiceDates',EXISTS(SELECT 1 FROM vehicles WHERE next_service_on IS NOT NULL),
+    'hasServiceDates',(EXISTS(SELECT 1 FROM vehicles WHERE next_service_on IS NOT NULL) OR EXISTS(SELECT 1 FROM service_assets WHERE next_service_on IS NOT NULL)),
     'total',(SELECT count(*) FROM filtered),
     'knownCents',(SELECT coalesce(sum(amount_cents) FILTER(WHERE category<>'lapsed'),0)::text FROM active),
     'cards',coalesce((SELECT jsonb_agg(to_jsonb(card)) FROM (
@@ -165,13 +188,15 @@ async function findCandidate(tx:TenantTx,category:MoneyCategory,subjectId:string
   const rows=await tx.execute(sql`${candidates(tx,new Date())} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`);
   let item=rows.rows[0]?.data as unknown as MoneyItem|undefined;
   if(!item&&allowRecorded){
-   const recorded=await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,
-    'customerName',c.display_name,'vehicleLabel',concat_ws(' ',v.year,v.make,v.model,v.plate),'phone',c.phone_e164,'email',c.email,'reason','Recorded manual follow-up','amountCents',NULL,'occurredAt',r.created_at,'renewFirst',false,
+   const recorded=await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,'serviceAssetId',r.service_asset_id,
+    'customerName',c.display_name,'vehicleLabel',coalesce(NULLIF(concat_ws(' ',v.year,v.make,v.model,v.plate),''),sa.display_name),'phone',c.phone_e164,'email',c.email,'reason','Recorded manual follow-up','amountCents',NULL,'occurredAt',r.created_at,'renewFirst',false,
     'recoveryId',r.id,'status',r.status,'snoozedUntil',r.snoozed_until,'dismissedReason',r.dismissed_reason,'lastContactAt',r.last_contact_at,'lastContactMethod',r.last_contact_method) AS data
     FROM app.recovery_item r JOIN app.customer c ON c.business_id=r.business_id AND c.id=r.customer_id
     LEFT JOIN app.vehicle v ON v.business_id=r.business_id AND v.id=r.vehicle_id
+    LEFT JOIN app.asset sa ON sa.business_id=r.business_id AND sa.id=r.service_asset_id
     WHERE r.business_id=${tx.businessId} AND r.category=${category} AND r.subject_id=${subjectId}::uuid
      AND c.status='active' AND NOT c.do_not_contact AND (r.vehicle_id IS NULL OR v.status='active')
+     AND (r.service_asset_id IS NULL OR sa.status='active')
      AND EXISTS(SELECT 1 FROM app.activity a WHERE a.business_id=r.business_id AND a.kind='recovery.contact' AND a.data->>'recoveryItemId'=r.id::text)`);
    item=recorded.rows[0]?.data as unknown as MoneyItem|undefined;
   }
@@ -187,7 +212,7 @@ export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
   const source=await findCandidate(tx,input.category,input.subjectId,input.action==='responded'||input.action==='booked');
   await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,
-    category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId})
+    category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId,serviceAssetId:source.serviceAssetId})
     .onConflictDoNothing();
   const [row]=await tx.select().from(recoveryItem).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.category,input.category),eq(recoveryItem.subjectId,input.subjectId))).for('update');
   if(row.status==='dismissed' && input.action!=='restore') throw new AppError("INVALID_TRANSITION","Restore this opportunity first.");
@@ -266,13 +291,13 @@ export async function startRecoveryWork(tx:TenantTx,meta:RequestMeta,input:{cate
  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
  const source=await findCandidate(tx,input.category,input.subjectId,true);
  if(source.status==='dismissed') throw new AppError('INVALID_TRANSITION','Restore this opportunity first.');
- await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId}).onConflictDoNothing();
+ await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId,serviceAssetId:source.serviceAssetId}).onConflictDoNothing();
  const [row]=await tx.select().from(recoveryItem).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.category,input.category),eq(recoveryItem.subjectId,input.subjectId)));
  await audit(tx,meta,{action:'recovery.work_started',targetType:'recovery_item',targetId:row.id,after:{destination:input.destination}});
  const contacts=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.contact'),sql`${activity.data}->>'recoveryItemId'=${row.id}`)).orderBy(desc(activity.occurredAt),desc(activity.id));
  const responses=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.responded'),sql`${activity.data}->>'recoveryItemId'=${row.id} AND ${activity.data}->>'ownerConfirmed'='true'`)).orderBy(desc(activity.occurredAt),desc(activity.id));
  const response=responses.find(r=>contacts.some(c=>c.id===(r.data as Record<string,unknown>).contactActivityId&&r.occurredAt>=c.occurredAt&&r.occurredAt.getTime()-c.occurredAt.getTime()<=30*86400000));
  const contactId=(response?.data as Record<string,unknown>|undefined)?.contactActivityId as string|undefined??contacts[0]?.id;
- const params=new URLSearchParams({sourceRecoveryItemId:row.id,...(contactId?{sourceContactActivityId:contactId}:{}),customerId:source.customerId,...(source.vehicleId?{vehicleId:source.vehicleId}:{})});
+ const params=new URLSearchParams({sourceRecoveryItemId:row.id,...(contactId?{sourceContactActivityId:contactId}:{}),customerId:source.customerId,...(source.vehicleId?{vehicleId:source.vehicleId}:{}),...(source.serviceAssetId?{serviceAssetId:source.serviceAssetId}:{})});
  return {id:row.id,redirectTo:`/app/${input.destination==='job'?'jobs':'schedule'}?${params}${input.destination==='appointment'?'#new-appointment':''}`};
 }

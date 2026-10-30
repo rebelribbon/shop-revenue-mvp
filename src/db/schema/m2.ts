@@ -36,6 +36,7 @@ export const asset = app.table("asset", {
   ...tenantColumns(), customerId: uuid("customer_id").notNull(),
   type: text("type").notNull().default("vehicle"), displayName: text("display_name").notNull(),
   status: text("status").notNull().default("active"),
+  nextServiceOn: date("next_service_on"), nextServiceDescription: text("next_service_description"), nextServiceAmountCents: integer("next_service_amount_cents"),
   parentAssetId: uuid("parent_asset_id"), details: jsonb("details").$type<Record<string,string>>().notNull().default({}),
 }, t => [unique("asset_business_id_id_key").on(t.businessId,t.id),
   unique("asset_business_customer_id_key").on(t.businessId,t.customerId,t.id),

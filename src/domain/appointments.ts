@@ -1,4 +1,5 @@
-import { and, asc, eq, gte, lt, inArray } from "drizzle-orm";
+import { and, asc, eq, gte, lt, inArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { appointment, asset, business, customer, recoveryItem, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { validateRecoverySource, validateContactSource } from "./recovery-source";
@@ -49,7 +50,7 @@ export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: 
     ));
     if (!v) throw notFound("That vehicle");
   }
-  await validateRecoverySource(tx,input.sourceRecoveryItemId,input.customerId,input.vehicleId);
+  await validateRecoverySource(tx,input.sourceRecoveryItemId,input.customerId,input.vehicleId,input.serviceAssetId);
   await validateContactSource(tx,input.sourceContactActivityId,input.sourceRecoveryItemId);
   const timezone = await shopTimezone(tx);
   const startsAt = localDateTimeToUtc(input.localStartsAt, timezone);
@@ -88,6 +89,7 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
   const afterTomorrow = addLocalDays(today, 2);
   const start = localMidnightToUtc(today, timezone);
   const end = localMidnightToUtc(afterTomorrow, timezone);
+  const property = alias(asset,"appointment_service_property");
   const rows = await tx.select({
     id: appointment.id,
     customerId: appointment.customerId,
@@ -96,7 +98,12 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
     vehicleId: appointment.vehicleId,
     serviceAssetId:appointment.serviceAssetId,
     serviceAssetName:asset.displayName,
-    serviceAssetDetails:asset.details,
+    serviceAddress:sql<string>`concat_ws(', ',
+      coalesce(NULLIF(${asset.details}->>'addressLine1',''),${property.details}->>'addressLine1'),
+      coalesce(NULLIF(${asset.details}->>'addressLine2',''),${property.details}->>'addressLine2'),
+      coalesce(NULLIF(${asset.details}->>'city',''),${property.details}->>'city'),
+      coalesce(NULLIF(${asset.details}->>'region',''),${property.details}->>'region'),
+      coalesce(NULLIF(${asset.details}->>'postalCode',''),${property.details}->>'postalCode'))`,
     startsAt: appointment.startsAt,
     reason: appointment.reason,
     notes: appointment.notes,
@@ -108,6 +115,7 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
   }).from(appointment)
     .innerJoin(customer, and(eq(customer.businessId, appointment.businessId), eq(customer.id, appointment.customerId)))
     .leftJoin(asset,and(eq(asset.businessId,appointment.businessId),eq(asset.id,appointment.serviceAssetId)))
+    .leftJoin(property,and(eq(property.businessId,asset.businessId),eq(property.customerId,asset.customerId),eq(property.id,asset.parentAssetId)))
     .leftJoin(vehicle, and(eq(vehicle.businessId, appointment.businessId), eq(vehicle.id, appointment.vehicleId)))
     .where(and(eq(appointment.businessId, tx.businessId), gte(appointment.startsAt, start), lt(appointment.startsAt, end)))
     .orderBy(asc(appointment.startsAt));

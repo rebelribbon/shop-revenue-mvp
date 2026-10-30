@@ -56,3 +56,18 @@ export async function archiveServiceAsset(tx: TenantTx, meta: RequestMeta, custo
   await recordActivity(tx,{kind:"asset.archived",subjectType:"customer",subjectId:customerId,summary:`Archived: ${row.displayName}`});
   return {id};
 }
+
+
+export const servicePlanInput = z.object({
+  customerId:z.uuid(), assetId:z.uuid(), on:z.iso.date().nullable(),
+  description:z.string().trim().max(200).nullable(), amountCents:z.number().int().min(0).max(99999999).nullable(),
+});
+export async function setServiceAssetNextService(tx:TenantTx, meta:RequestMeta, input:z.infer<typeof servicePlanInput>) {
+  const d=servicePlanInput.parse(input);
+  const before=await getServiceAsset(tx,d.customerId,d.assetId);
+  const values={nextServiceOn:d.on,nextServiceDescription:d.on?(d.description||null):null,nextServiceAmountCents:d.on?d.amountCents:null};
+  await tx.update(asset).set(values).where(and(eq(asset.businessId,tx.businessId),eq(asset.customerId,d.customerId),eq(asset.id,d.assetId)));
+  await audit(tx,meta,{action:"asset.service_planned",targetType:"asset",targetId:d.assetId,before:{on:before.nextServiceOn,description:before.nextServiceDescription,amountCents:before.nextServiceAmountCents},after:values});
+  await recordActivity(tx,{kind:"asset.service_planned",subjectType:"customer",subjectId:d.customerId,summary:d.on?`${before.displayName}: ${d.description||"Service"} due ${d.on}`:`Next service cleared: ${before.displayName}`});
+  return {id:d.assetId};
+}
