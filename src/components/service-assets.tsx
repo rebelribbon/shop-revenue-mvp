@@ -5,10 +5,11 @@ import type { listServiceAssets } from "@/domain/service-assets";
 
 type Asset = Awaited<ReturnType<typeof listServiceAssets>>[number];
 function AssetFields({type,properties,asset}:{type:"property"|"equipment";properties:Asset[];asset?:Asset}) {
+  const propertySelectId = `asset-${asset?.id??"new-equipment"}-property`;
   const fields = type === "property" ? [["addressLine1","Street address"],["addressLine2","Suite / unit"],["city","City"],["region","State / region"],["postalCode","ZIP / postal code"]] : [["manufacturer","Manufacturer"],["model","Model"],["serialNumber","Serial number"],["installedOn","Installation date"]];
   return <>
     <label> {type === "property" ? "Property name" : "Equipment name"}<input name="displayName" required maxLength={200} defaultValue={asset?.displayName} placeholder={type === "property" ? "Home, rental unit, office" : "Upstairs AC, water heater"}/></label>
-    {type === "equipment" && <label>Property<select name="parentAssetId" defaultValue={asset?.parentAssetId??""}><option value="">No property selected</option>{properties.map(p=><option key={p.id} value={p.id}>{p.displayName}</option>)}</select></label>}
+    {type === "equipment" && <><label htmlFor={propertySelectId}>Property</label><select id={propertySelectId} name="parentAssetId" defaultValue={asset?.parentAssetId??""}><option value="">No property selected</option>{properties.map(p=><option key={p.id} value={p.id}>{p.displayName}</option>)}</select></>}
     {fields.map(([name,label])=><label key={name}>{label}<input name={name} type={name === "installedOn"?"date":"text"} required={name === "addressLine1"} maxLength={200} defaultValue={asset?.details[name]??""}/></label>)}
     <label>Service / access notes<textarea name="notes" rows={3} maxLength={5000} defaultValue={asset?.details.notes??""}/></label>
   </>;

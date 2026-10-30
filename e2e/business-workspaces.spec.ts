@@ -1,14 +1,16 @@
 import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 
+test.use({ actionTimeout: 10_000 });
+
 test("home-service setup creates a real property and equipment job without vehicle fields",async({page},info)=>{
  test.setTimeout(60_000);
  await signInWithPassword(page,"owner.a@shop-a.test");
+ try {
  await page.goto("/app/settings/business");
  await page.getByLabel("What line of business are you in?").selectOption("hvac");
  await page.getByRole("button",{name:"Save business profile",exact:true}).click();
  await expect(page.getByRole("status")).toContainText("Business profile updated");
- try {
   const name=`HVAC ${info.project.name} ${Date.now()}`;
   await page.goto("/app/customers#new-customer");
   await page.getByLabel("First name",{exact:true}).fill(name);
@@ -48,9 +50,11 @@ test("home-service setup creates a real property and equipment job without vehic
   await expect(page.getByText(/Upstairs AC, Main residence, 456 Service Lane/)).toBeVisible();
   await expect(page.locator("body")).not.toContainText("Unit cost");
  } finally {
+  if (!page.isClosed()) {
   await page.goto("/app/settings/business");
   await page.getByLabel("What line of business are you in?").selectOption("automotive");
   await page.getByRole("button",{name:"Save business profile",exact:true}).click();
   await expect(page.getByRole("status")).toContainText("Business profile updated");
+  }
  }
 });

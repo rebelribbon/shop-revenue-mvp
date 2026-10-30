@@ -21,9 +21,9 @@ export default async function BusinessSettingsPage() {
       </div>
       <div className="card">
         {s.role === "owner" ? (
-          <ActionForm key={profile.businessType} action={updateBusinessProfileAction} submitLabel="Save business profile" successText="Business profile updated.">
+          <ActionForm action={updateBusinessProfileAction} submitLabel="Save business profile" successText="Business profile updated.">
             <label htmlFor="businessType">What line of business are you in?</label>
-            <select id="businessType" name="businessType" defaultValue={profile.businessType}>{businessTypes.map(type=><option key={type} value={type}>{businessTypeLabels[type]}</option>)}</select>
+            <select key={profile.businessType} id="businessType" name="businessType" defaultValue={profile.businessType}>{businessTypes.map(type=><option key={type} value={type}>{businessTypeLabels[type]}</option>)}</select>
             <p className="muted">Automotive uses vehicles. Home services use properties and equipment. Customers, costs, estimates, invoices and payments stay together. Changing this choice keeps existing records.</p>
             <label htmlFor="legalName">Legal business name</label><input id="legalName" name="legalName" required maxLength={200} defaultValue={profile.legalName} />
             <label htmlFor="dba">Business name / DBA</label><input id="dba" name="dba" maxLength={200} defaultValue={profile.dba ?? ""} />
