@@ -4,7 +4,7 @@ import { customer, vehicle } from "./m2";
 import { estimateVersion } from "./m3";
 
 export const recommendation = app.table("recommendation", {
-  ...tenantColumns(), customerId: uuid("customer_id").notNull(), vehicleId: uuid("vehicle_id").notNull(),
+  ...tenantColumns(), customerId: uuid("customer_id").notNull(), vehicleId: uuid("vehicle_id"),
   description: text("description").notNull(), amountCents: bigint("amount_cents", { mode: "number" }),
   declinedAt: timestamp("declined_at", { withTimezone: true }).notNull().defaultNow(),
   status: text("status").notNull().default("open"),

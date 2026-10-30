@@ -1,3 +1,6 @@
+import { assertOwner } from "./membership";
+import { z } from "zod";
+import { businessTypes, type BusinessType } from "@/lib/business-types";
 import { eq } from "drizzle-orm";
 import { business } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
@@ -11,6 +14,7 @@ export async function getBusinessProfile(tx: TenantTx) {
 
 export async function updateBusinessProfile(tx: TenantTx, meta: RequestMeta, input: {
   legalName: string;
+  businessType?: BusinessType;
   dba?: string | null;
   phoneE164?: string | null;
   addressLine1?: string | null;
@@ -20,8 +24,10 @@ export async function updateBusinessProfile(tx: TenantTx, meta: RequestMeta, inp
   postalCode?: string | null;
   timezone: string;
 }) {
+  await assertOwner(tx);
   const [before] = await tx.select().from(business).where(eq(business.id, tx.businessId));
   const [row] = await tx.update(business).set({
+    ...(input.businessType ? { businessType: z.enum(businessTypes).parse(input.businessType), businessTypeSelected: true } : {}),
     legalName: input.legalName,
     dba: input.dba || null,
     phoneE164: input.phoneE164 || null,
@@ -36,9 +42,10 @@ export async function updateBusinessProfile(tx: TenantTx, meta: RequestMeta, inp
     action: "business.profile_updated",
     targetType: "business",
     targetId: tx.businessId,
-    before: before ? { legalName: before.legalName, dba: before.dba, timezone: before.timezone } : null,
-    after: { legalName: row.legalName, dba: row.dba, timezone: row.timezone },
+    before: before ? { legalName: before.legalName, dba: before.dba, timezone: before.timezone, businessType: before.businessType } : null,
+    after: { legalName: row.legalName, dba: row.dba, timezone: row.timezone, businessType: row.businessType },
   });
   await recordActivity(tx, { kind: "business.updated", subjectType: "business", subjectId: tx.businessId, summary: "Business profile updated" });
   return row;
 }
+

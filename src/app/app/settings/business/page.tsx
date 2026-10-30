@@ -1,3 +1,4 @@
+import { businessTypes, businessTypeLabels } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
@@ -16,14 +17,17 @@ export default async function BusinessSettingsPage() {
     <main>
       <h1>Business profile</h1><p><Link href="/app/settings/payments">Set up online payments</Link></p>
       <div className={`notice ${complete ? "ok" : ""}`}>
-        {complete ? "Shop setup is complete." : "Finish the basics below so appointments and future documents use the right shop information."}
+        {complete ? "Business setup is complete." : "Finish the basics below so appointments and future documents use the right business information."}
       </div>
       <div className="card">
         {s.role === "owner" ? (
-          <ActionForm action={updateBusinessProfileAction} submitLabel="Save business profile" successText="Business profile updated.">
+          <ActionForm key={profile.businessType} action={updateBusinessProfileAction} submitLabel="Save business profile" successText="Business profile updated.">
+            <label htmlFor="businessType">What line of business are you in?</label>
+            <select id="businessType" name="businessType" defaultValue={profile.businessType}>{businessTypes.map(type=><option key={type} value={type}>{businessTypeLabels[type]}</option>)}</select>
+            <p className="muted">Automotive uses vehicles. Home services use properties and equipment. Customers, costs, estimates, invoices and payments stay together. Changing this choice keeps existing records.</p>
             <label htmlFor="legalName">Legal business name</label><input id="legalName" name="legalName" required maxLength={200} defaultValue={profile.legalName} />
-            <label htmlFor="dba">Shop name / DBA</label><input id="dba" name="dba" maxLength={200} defaultValue={profile.dba ?? ""} />
-            <label htmlFor="phone">Shop phone</label><input id="phone" name="phone" type="tel" defaultValue={profile.phoneE164 ?? ""} />
+            <label htmlFor="dba">Business name / DBA</label><input id="dba" name="dba" maxLength={200} defaultValue={profile.dba ?? ""} />
+            <label htmlFor="phone">Business phone</label><input id="phone" name="phone" type="tel" defaultValue={profile.phoneE164 ?? ""} />
             <label htmlFor="addressLine1">Street address</label><input id="addressLine1" name="addressLine1" maxLength={200} defaultValue={profile.addressLine1 ?? ""} />
             <label htmlFor="addressLine2">Suite / unit</label><input id="addressLine2" name="addressLine2" maxLength={200} defaultValue={profile.addressLine2 ?? ""} />
             <div className="form-grid">

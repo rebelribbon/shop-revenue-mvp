@@ -141,6 +141,13 @@
       "when": 1793293915125,
       "tag": "0019_m9_security_and_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793326386734,
+      "tag": "0020_business_type_workspaces",
+      "breakpoints": true
     }
   ]
 }

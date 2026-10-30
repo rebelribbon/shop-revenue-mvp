@@ -1,8 +1,9 @@
-import { and, asc, eq, gte, lt } from "drizzle-orm";
-import { appointment, business, customer, recoveryItem, vehicle } from "@/db/schema";
+import { and, asc, eq, gte, lt, inArray } from "drizzle-orm";
+import { appointment, asset, business, customer, recoveryItem, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { validateRecoverySource, validateContactSource } from "./recovery-source";
-import { notFound } from "@/lib/errors";
+import { getServiceAsset } from "./service-assets";
+import { AppError, notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localDateTimeToUtc, localMidnightToUtc } from "@/lib/timezone";
 import type { RequestMeta } from "./records";
 import { audit, recordActivity } from "./records";
@@ -23,7 +24,8 @@ export async function listAppointmentChoices(tx: TenantTx) {
     model: vehicle.model,
     plate: vehicle.plate,
   }).from(vehicle).where(and(eq(vehicle.businessId, tx.businessId), eq(vehicle.status, "active")));
-  return { customers, vehicles };
+  const serviceAssets = await tx.select({id:asset.id,customerId:asset.customerId,displayName:asset.displayName}).from(asset).where(and(eq(asset.businessId,tx.businessId),eq(asset.status,"active"),inArray(asset.type,["property","equipment"])));
+  return { customers, vehicles, serviceAssets };
 }
 
 export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: {
@@ -31,6 +33,7 @@ export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: 
   sourceRecoveryItemId?: string;
   sourceContactActivityId?: string;
   vehicleId?: string | null;
+  serviceAssetId?: string | null;
   localStartsAt: string;
   reason?: string | null;
   notes?: string | null;
@@ -38,6 +41,8 @@ export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: 
   const [c] = await tx.select({ id: customer.id, name: customer.displayName }).from(customer)
     .where(and(eq(customer.businessId, tx.businessId), eq(customer.id, input.customerId), eq(customer.status, "active")));
   if (!c) throw notFound("That customer");
+  if(input.vehicleId&&input.serviceAssetId) throw new AppError("VALIDATION","Choose a vehicle or service asset, not both.");
+  if(input.serviceAssetId) await getServiceAsset(tx,input.customerId,input.serviceAssetId);
   if (input.vehicleId) {
     const [v] = await tx.select({ id: vehicle.id }).from(vehicle).where(and(
       eq(vehicle.businessId, tx.businessId), eq(vehicle.customerId, input.customerId), eq(vehicle.id, input.vehicleId), eq(vehicle.status, "active"),
@@ -55,6 +60,7 @@ export async function createAppointment(tx: TenantTx, meta: RequestMeta, input: 
     sourceRecoveryItemId: input.sourceRecoveryItemId??null,
     sourceContactActivityId:input.sourceContactActivityId??null,
     vehicleId: input.vehicleId || null,
+    serviceAssetId:input.serviceAssetId||null,
     startsAt,
     reason: input.reason || null,
     notes: input.notes || null,
@@ -88,6 +94,9 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
     customerName: customer.displayName,
     sourceRecoveryItemId:appointment.sourceRecoveryItemId,sourceContactActivityId:appointment.sourceContactActivityId,
     vehicleId: appointment.vehicleId,
+    serviceAssetId:appointment.serviceAssetId,
+    serviceAssetName:asset.displayName,
+    serviceAssetDetails:asset.details,
     startsAt: appointment.startsAt,
     reason: appointment.reason,
     notes: appointment.notes,
@@ -98,6 +107,7 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
     plate: vehicle.plate,
   }).from(appointment)
     .innerJoin(customer, and(eq(customer.businessId, appointment.businessId), eq(customer.id, appointment.customerId)))
+    .leftJoin(asset,and(eq(asset.businessId,appointment.businessId),eq(asset.id,appointment.serviceAssetId)))
     .leftJoin(vehicle, and(eq(vehicle.businessId, appointment.businessId), eq(vehicle.id, appointment.vehicleId)))
     .where(and(eq(appointment.businessId, tx.businessId), gte(appointment.startsAt, start), lt(appointment.startsAt, end)))
     .orderBy(asc(appointment.startsAt));

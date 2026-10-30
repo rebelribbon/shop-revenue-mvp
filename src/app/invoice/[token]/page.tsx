@@ -25,7 +25,7 @@ export default async function InvoicePage({
         <p>{s.shopAddress}</p>
         <p>{s.shopPhone}</p>
         <p>
-          {s.customerName} · {s.vehicleLabel}
+          {s.customerName} · {s.serviceLabel || s.vehicleLabel}
         </p>
         <h3>{s.title}</h3>
         <p>

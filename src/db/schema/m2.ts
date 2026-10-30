@@ -36,7 +36,10 @@ export const asset = app.table("asset", {
   ...tenantColumns(), customerId: uuid("customer_id").notNull(),
   type: text("type").notNull().default("vehicle"), displayName: text("display_name").notNull(),
   status: text("status").notNull().default("active"),
+  parentAssetId: uuid("parent_asset_id"), details: jsonb("details").$type<Record<string,string>>().notNull().default({}),
 }, t => [unique("asset_business_id_id_key").on(t.businessId,t.id),
+  unique("asset_business_customer_id_key").on(t.businessId,t.customerId,t.id),
+  foreignKey({columns:[t.businessId,t.customerId,t.parentAssetId],foreignColumns:[t.businessId,t.customerId,t.id]}),
   foreignKey({columns:[t.businessId,t.customerId],foreignColumns:[customer.businessId,customer.id]}),
   index("asset_customer_idx").on(t.businessId,t.customerId)]);
 
@@ -87,6 +90,7 @@ export const appointment = app.table(
     ...tenantColumns(),
     customerId: uuid("customer_id").notNull(),
     vehicleId: uuid("vehicle_id"),
+    serviceAssetId: uuid("service_asset_id"),
     sourceRecoveryItemId: uuid("source_recovery_item_id"),
     sourceContactActivityId: uuid("source_contact_activity_id"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -97,6 +101,7 @@ export const appointment = app.table(
   },
   (t) => [
     unique("appointment_business_id_id_key").on(t.businessId, t.id),
+    foreignKey({columns:[t.businessId,t.customerId,t.serviceAssetId],foreignColumns:[asset.businessId,asset.customerId,asset.id]}),
     index("appointment_business_starts_idx").on(t.businessId, t.startsAt),
     index("appointment_business_customer_starts_idx").on(t.businessId, t.customerId, t.startsAt),
     check("appointment_status_check", sql`${t.status} IN ('scheduled', 'completed', 'cancelled', 'no_show')`),

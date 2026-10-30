@@ -7,7 +7,7 @@ import { requireShopSession } from "@/server/views/shop";
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   const s = await requireShopSession("/app");
   const [b] = await withTenant(s.businessId, s.actor, (tx) =>
-    tx.select({ legalName: business.legalName, dba: business.dba }).from(business).where(eq(business.id, s.businessId)),
+    tx.select({ legalName: business.legalName, dba: business.dba, businessTypeSelected: business.businessTypeSelected }).from(business).where(eq(business.id, s.businessId)),
   );
   return (
     <>
@@ -41,6 +41,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
           )}
         </nav>
       </header>
+      {!b?.businessTypeSelected && s.role === "owner" && <div className="notice"><Link href="/app/settings/business">Choose your line of business to personalize your workspace →</Link></div>}
       {children}
       <nav className="mobile-nav" aria-label="Mobile navigation">
         <Link href="/app"><span aria-hidden>◉</span><small>Money</small></Link>

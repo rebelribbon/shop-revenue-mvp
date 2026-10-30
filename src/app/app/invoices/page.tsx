@@ -76,7 +76,7 @@ export default async function InvoicesPage() {
             Invoice #{i.number} · {i.snapshot.title}
           </h2>
           <p>
-            {i.snapshot.customerName} · {i.snapshot.vehicleLabel}
+            {i.snapshot.customerName} · {i.snapshot.serviceLabel || i.snapshot.vehicleLabel}
           </p>
           <p>
             <strong>

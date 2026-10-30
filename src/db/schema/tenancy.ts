@@ -19,6 +19,8 @@ export const business = app.table(
   {
     id: id(),
     legalName: text("legal_name").notNull(),
+    businessType: text("business_type").notNull().default("automotive"),
+    businessTypeSelected: boolean("business_type_selected").notNull().default(false),
     dba: text("dba"),
     phoneE164: text("phone_e164"),
     addressLine1: text("address_line1"),
@@ -185,3 +187,4 @@ export const supportSession = app.table(
     foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "support_session_business_fk" }),
   ],
 );
+

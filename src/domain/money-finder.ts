@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { activity, customer, recommendation, recoveryItem, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
@@ -47,15 +47,15 @@ function candidates(tx: TenantTx, now: Date) {
     SELECT *,created_at AS visit_at,row_number() OVER(PARTITION BY customer_id ORDER BY created_at DESC,id DESC) AS visit_rank
     FROM balances CROSS JOIN settings s WHERE total_cents>0 AND paid>=total_cents AND paid_at IS NOT NULL AND paid_at<=s.as_of AND created_at<=s.as_of
   ), declines AS (
-    SELECT 'declined'::text AS category,v.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
+    SELECT 'declined'::text AS category,coalesce(v.id,c.id) AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
       c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
       'Declined work: ' || left(string_agg(r.description,'; ' ORDER BY r.declined_at DESC,r.id),500) AS reason,
       CASE WHEN bool_and(r.amount_cents IS NOT NULL) THEN sum(r.amount_cents) END AS amount_cents,
       max(r.declined_at) AS occurred_at,false AS renew_first,0::numeric AS lifetime
-    FROM app.recommendation r JOIN vehicles v ON v.id=r.vehicle_id JOIN contacts c ON c.id=r.customer_id
+    FROM app.recommendation r LEFT JOIN vehicles v ON v.id=r.vehicle_id JOIN contacts c ON c.id=r.customer_id
     CROSS JOIN settings s LEFT JOIN app.recovery_item state ON state.business_id=${tx.businessId}
-      AND state.category='declined' AND state.subject_id=v.id
-    WHERE r.business_id=${tx.businessId} AND r.declined_at BETWEEN s.as_of-interval '18 months' AND s.as_of
+      AND state.category='declined' AND state.subject_id=coalesce(v.id,c.id)
+    WHERE r.business_id=${tx.businessId} AND (r.vehicle_id IS NULL OR v.id IS NOT NULL) AND r.declined_at BETWEEN s.as_of-interval '18 months' AND s.as_of
       AND (r.status='open' OR (r.status='dismissed' AND state.status='dismissed'
         AND state.dismissed_recommendation_ids ? r.id::text))
     GROUP BY v.id,c.id,c.display_name,v.label,c.phone_e164,c.email
@@ -67,16 +67,16 @@ function candidates(tx: TenantTx, now: Date) {
       c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
       'Unsigned estimate: ' || (e.snapshot->>'title') AS reason,(e.snapshot->>'subtotalCents')::numeric AS amount_cents,
       e.created_at AS occurred_at,e.expires_at<=s.as_of AS renew_first,0::numeric AS lifetime
-    FROM latest_estimates e JOIN contacts c ON c.id=e.customer_id JOIN vehicles v ON v.id=e.vehicle_id CROSS JOIN settings s
-    WHERE e.revoked_at IS NULL AND e.created_at<=s.as_of-interval '2 days' AND e.expires_at>=s.as_of-interval '60 days'
+    FROM latest_estimates e JOIN contacts c ON c.id=e.customer_id LEFT JOIN vehicles v ON v.id=e.vehicle_id CROSS JOIN settings s
+    WHERE (e.vehicle_id IS NULL OR v.id IS NOT NULL) AND e.revoked_at IS NULL AND e.created_at<=s.as_of-interval '2 days' AND e.expires_at>=s.as_of-interval '60 days'
       AND NOT EXISTS(SELECT 1 FROM app.estimate_authorization a WHERE a.business_id=${tx.businessId} AND a.version_id=e.id)
   ), unpaid AS (
     SELECT 'unpaid_invoice'::text AS category,i.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
       c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
       'Balance due on invoice #' || i.number::text AS reason,(i.total_cents-i.paid)::numeric AS amount_cents,
       i.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
-    FROM balances i JOIN contacts c ON c.id=i.customer_id JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
-    WHERE i.dispute_open IS NULL AND i.total_cents>i.paid AND i.created_at<=s.as_of-interval '3 days'
+    FROM balances i JOIN contacts c ON c.id=i.customer_id LEFT JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
+    WHERE (i.vehicle_id IS NULL OR v.id IS NOT NULL) AND i.dispute_open IS NULL AND i.total_cents>i.paid AND i.created_at<=s.as_of-interval '3 days'
   ), priority_customers AS (
     SELECT customer_id FROM declines UNION SELECT customer_id FROM open_estimates UNION SELECT customer_id FROM unpaid
   ), lapsed AS (
@@ -204,7 +204,7 @@ export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
     if(!input.reason?.trim()) throw new AppError("VALIDATION","Enter a dismissal reason.");
     change.status='dismissed';change.dismissedReason=input.reason;change.snoozedUntil=null;
     if(input.category==='declined') {
-      const rows=await tx.update(recommendation).set({status:'dismissed'}).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.vehicleId,input.subjectId),eq(recommendation.status,'open'))).returning({id:recommendation.id});
+      const rows=await tx.update(recommendation).set({status:'dismissed'}).where(and(eq(recommendation.businessId,tx.businessId),or(eq(recommendation.vehicleId,input.subjectId),and(sql`${recommendation.vehicleId} IS NULL`,eq(recommendation.customerId,input.subjectId))),eq(recommendation.status,'open'))).returning({id:recommendation.id});
       change.dismissedRecommendationIds=rows.map(r=>r.id);
     }
   } else if(input.action==='restore') {
@@ -218,7 +218,7 @@ export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
   await audit(tx,meta,{action:`recovery.${input.action}`,targetType:'recovery_item',targetId:row.id,after:{...change,note:input.note??null}});
   const priorContact=input.action==='responded'?(await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.contact'),sql`${activity.data}->>'recoveryItemId'=${row.id}`)).orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1))[0]:undefined;
   if(input.action==='responded'&&!priorContact)throw new AppError('VALIDATION','Log the manual contact before recording a response.');
-  const recommendationIds=input.action==='contact'&&input.category==='declined'?(await tx.select({id:recommendation.id}).from(recommendation).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.vehicleId,input.subjectId),eq(recommendation.status,'open')))).map(r=>r.id):[];
+  const recommendationIds=input.action==='contact'&&input.category==='declined'?(await tx.select({id:recommendation.id}).from(recommendation).where(and(eq(recommendation.businessId,tx.businessId),or(eq(recommendation.vehicleId,input.subjectId),and(sql`${recommendation.vehicleId} IS NULL`,eq(recommendation.customerId,input.subjectId))),eq(recommendation.status,'open')))).map(r=>r.id):[];
   const event=await recordActivity(tx,{kind:`recovery.${input.action}`,subjectType:'customer',subjectId:source.customerId,
     summary:`${categoryLabels[input.category]}: ${input.action==='contact'?'manual contact recorded':input.action}`,
     data:{recoveryItemId:row.id,category:input.category,subjectId:input.subjectId,amountCents:source.amountCents,method:input.method??null,note:input.note??null,deliveryConfirmed:input.action==='contact'&&input.deliveryConfirmed===true,recommendationIds,contactActivityId:priorContact?.id??null,ownerConfirmed:input.action==='responded'&&(await currentMemberRole(tx))==='owner'}});
@@ -243,7 +243,7 @@ export async function setRecommendationStatus(tx:TenantTx,meta:RequestMeta,id:st
   const [row]=await tx.update(recommendation).set({status}).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.id,id))).returning();
   if(!row) throw notFound('That recommendation');
   await audit(tx,meta,{action:'recommendation.status_changed',targetType:'recommendation',targetId:id,after:{status}});
-  await recordActivity(tx,{kind:'recommendation.updated',subjectType:'vehicle',subjectId:row.vehicleId,summary:`Recommendation marked ${status}`,data:{recommendationId:id}});
+  await recordActivity(tx,{kind:'recommendation.updated',subjectType:row.vehicleId?'vehicle':'customer',subjectId:row.vehicleId??row.customerId,summary:`Recommendation marked ${status}`,data:{recommendationId:id}});
   return {id};
 }
 export async function setNextService(tx:TenantTx,meta:RequestMeta,input:{customerId:string;vehicleId:string;on:string|null;description:string|null;amountCents:number|null}) {

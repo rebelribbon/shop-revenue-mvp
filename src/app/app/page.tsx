@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, eq, sql } from "drizzle-orm";
-import { business, customer, vehicle } from "@/db/schema";
+import { asset, business, customer, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { requireShopSession } from "@/server/views/shop";
 import { getMoneyFinder, moneyCategories, type MoneyCategory } from "@/domain/money-finder";
@@ -21,6 +21,8 @@ export default async function MoneyHome({ searchParams }: { searchParams: Promis
     const [c] = await tx.select({ n: sql<number>`count(*)::int` }).from(customer).where(and(eq(customer.businessId, s.businessId), eq(customer.status, "active")));
     const [v] = await tx.select({ n: sql<number>`count(*)::int` }).from(vehicle).where(and(eq(vehicle.businessId, s.businessId), eq(vehicle.status, "active")));
     return {
+      businessType:b?.businessType??"automotive",
+      serviceAssetCount:(await tx.select({n:sql<number>`count(*)::int`}).from(asset).where(and(eq(asset.businessId,s.businessId),eq(asset.status,"active"),sql`${asset.type} IN ('property','equipment')`)))[0].n,
       profileComplete: Boolean(b?.phoneE164 && b?.addressLine1 && b?.city && b?.region && b?.postalCode),
       customerCount: c.n,
       vehicleCount: v.n,
@@ -37,7 +39,7 @@ export default async function MoneyHome({ searchParams }: { searchParams: Promis
           <div className="checklist">
             <Link href="/app/settings/business">{setup.profileComplete ? "✓" : "○"} Business profile</Link>
             <Link href="/app/customers#new-customer">{setup.customerCount > 0 ? "✓" : "○"} Add your first customer</Link>
-            <Link href="/app/customers">{setup.vehicleCount > 0 ? "✓" : "○"} Add a vehicle</Link>
+            <Link href="/app/customers">{(setup.businessType==="automotive"?setup.vehicleCount:setup.serviceAssetCount) > 0 ? "✓" : "○"} {setup.businessType==="automotive"?"Add a vehicle":"Add a property or equipment"}</Link>
           </div>
         </div>
       )}
