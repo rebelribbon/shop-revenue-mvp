@@ -43,7 +43,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
 
   await page.goto("/app/schedule#new-appointment");
-  await page.getByLabel("Customer").selectOption({ label: `${first} ${last}` });
+  await page.getByLabel("Customer", { exact: true }).selectOption({ label: `${first} ${last}` });
   await page.getByLabel("Date and time").fill(chicagoTomorrow());
   await page.getByLabel("Reason").fill("Brake inspection");
   await page.getByRole("button", { name: "Schedule appointment" }).click();
