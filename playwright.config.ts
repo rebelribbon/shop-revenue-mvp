@@ -10,6 +10,8 @@ export default defineConfig({
   expect: { timeout: 20_000 },
   fullyParallel: false,
   workers: 1,
+  // A failed setup can affect later shared-stack tests; surface that failure first.
+  maxFailures: process.env.CI ? 1 : undefined,
   reporter: [["list"]],
   use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000", trace: "retain-on-failure" },
   projects: [
@@ -18,3 +20,4 @@ export default defineConfig({
   ],
   webServer: { command: "pnpm dev", url: "http://localhost:3000/sign-in", reuseExistingServer: true, timeout: 120_000 },
 });
+

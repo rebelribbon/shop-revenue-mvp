@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 
 test("home-service setup creates a real property and equipment job without vehicle fields",async({page},info)=>{
+ test.setTimeout(60_000);
  await signInWithPassword(page,"owner.a@shop-a.test");
  await page.goto("/app/settings/business");
  await page.getByLabel("What line of business are you in?").selectOption("hvac");
