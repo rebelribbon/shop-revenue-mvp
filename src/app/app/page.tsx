@@ -30,9 +30,11 @@ export default async function MoneyHome({ searchParams }: { searchParams: Promis
   });
   const ready = setup.profileComplete && setup.customerCount > 0;
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       {denied && <p role="status" className="notice error">Only the owner can open that page.</p>}
       <h1>Money</h1>
+      <Link className="btn primary" data-page-primary href="/app/new">New work</Link>
+      <div className="money-actions" aria-label="Work shortcuts"><Link href="/app/jobs">Jobs</Link><Link href="/app/estimates">Estimates</Link><Link href="/app/invoices">Invoices</Link><Link href="/app/revenue">Revenue</Link></div>
       {!ready && (
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Finish setup</h2>

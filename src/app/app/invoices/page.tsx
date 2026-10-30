@@ -53,7 +53,7 @@ export default async function InvoicesPage() {
       label: `${e.snapshot.title} · Version ${e.version} · ${e.snapshot.customerName}`,
     }));
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Invoices &amp; payments</h1>
       <p>
         <Link href="/app/estimates">Estimates and authorization</Link>

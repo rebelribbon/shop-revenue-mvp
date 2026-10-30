@@ -9,7 +9,7 @@ export default async function Policies() {
   const me = await requireInternal("admin");
   const policies = await listPolicies();
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Legal policies</h1>
       {policies.length === 0 && <p className="muted">No policies yet. Production refuses to render documents whose policy is not approved.</p>}
       {policies.map((p) => (
@@ -22,7 +22,8 @@ export default async function Policies() {
           {p.status === "draft" ? (
             <>
               <ActionForm action={updatePolicyDraftAction} hidden={{ policyId: p.id }} submitLabel="Save draft" variant="secondary">
-                <textarea name="body" defaultValue={p.body} required aria-label="Policy text" />
+                <label htmlFor={`policy-body-${p.id}`}>Policy text</label>
+                <textarea id={`policy-body-${p.id}`} name="body" defaultValue={p.body} required />
               </ActionForm>
               {p.createdByInternalUserId === me.id ? (
                 <p className="muted">A second admin must approve this draft.</p>
@@ -58,3 +59,4 @@ export default async function Policies() {
     </main>
   );
 }
+

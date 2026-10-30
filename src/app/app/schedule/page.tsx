@@ -46,7 +46,7 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
   const selectedCustomer=choices.customers.some(c=>c.id===params.customerId)?params.customerId:'';
   const selectedVehicle=choices.vehicles.some(v=>v.id===params.vehicleId&&v.customerId===selectedCustomer)?params.vehicleId:'';
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Schedule</h1>
       <p className="muted">Today and tomorrow in your business timezone.</p>
 
@@ -62,7 +62,7 @@ export default async function SchedulePage({searchParams}:{searchParams:Promise<
       <section className="card" id="new-appointment">
         <h2 style={{ marginTop: 0 }}>New appointment</h2>
         {choices.customers.length ? (
-          <ActionForm action={createAppointmentAction} hidden={params.sourceRecoveryItemId?{sourceRecoveryItemId:params.sourceRecoveryItemId,...(params.sourceContactActivityId?{sourceContactActivityId:params.sourceContactActivityId}:{})}:{}} submitLabel="Schedule appointment" successText="Appointment scheduled.">
+          <ActionForm variant="primary" action={createAppointmentAction} hidden={params.sourceRecoveryItemId?{sourceRecoveryItemId:params.sourceRecoveryItemId,...(params.sourceContactActivityId?{sourceContactActivityId:params.sourceContactActivityId}:{})}:{}} submitLabel="Schedule appointment" successText="Appointment scheduled.">
             <label htmlFor="customerId">Customer</label>
             <select id="customerId" name="customerId" required defaultValue={selectedCustomer}>
               <option value="" disabled>Select customer</option>

@@ -11,7 +11,7 @@ export default async function WebhookDetail({ params }: { params: Promise<{ id: 
   const e = await getWebhookEvent(id);
   if (!e) notFound();
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>{e.provider} · {e.eventType}</h1>
       <div className="card">
         <p>Status <span className="pill">{e.status}</span> · attempts {e.attempts} · provider event {e.providerEventId}</p>
@@ -28,3 +28,4 @@ export default async function WebhookDetail({ params }: { params: Promise<{ id: 
     </main>
   );
 }
+

@@ -8,7 +8,7 @@ export default async function AdminSignIn({ searchParams }: { searchParams: Prom
   const { error } = await searchParams;
   const local = ["local", "test"].includes(process.env.APP_ENV ?? "local");
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Admin sign-in</h1>
       {error && <p className="notice error">Sign-in failed. Only allowlisted team accounts can use the admin console.</p>}
       <form action={signInWithGoogle} className="card">
@@ -24,3 +24,4 @@ export default async function AdminSignIn({ searchParams }: { searchParams: Prom
     </main>
   );
 }
+

@@ -21,11 +21,11 @@ export default async function VehicleDetailPage(props: { params: Promise<{ custo
   const label = [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ") || "Vehicle";
   const extra=await withTenant(s.businessId,s.actor,async tx=>({rows:await listRecommendations(tx,vehicleId),zone:(await tx.select().from(business).where(eq(business.id,s.businessId)))[0].timezone}));
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <p><Link href={`/app/customers/${customerId}`}>← Customer</Link></p>
       <h1>{label}</h1>
       <div className="card">
-        <ActionForm action={updateVehicleAction} hidden={{ customerId, vehicleId }} submitLabel="Save vehicle" successText="Vehicle updated.">
+        <ActionForm variant="primary" action={updateVehicleAction} hidden={{ customerId, vehicleId }} submitLabel="Save vehicle" successText="Vehicle updated.">
           <VehicleFields initial={v} />
         </ActionForm>
         <ActionForm action={archiveVehicleAction} hidden={{ customerId, vehicleId }} submitLabel="Archive vehicle" variant="danger" confirm="Archive this vehicle? Its history stays attached to the customer." />

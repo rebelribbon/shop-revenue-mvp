@@ -21,7 +21,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
   );
   const c = data.customer;
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <p><Link href="/app/customers">← Customers</Link></p>
       <h1>{c.displayName}</h1>
       <div className="card"><h2>Contact preference</h2><p>{c.doNotContact?'Do not contact — excluded from Money Finder.':'Manual follow-up allowed.'}</p>
@@ -29,7 +29,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
       </div>
       <div className="card">
         <h2 style={{ marginTop: 0 }}>Customer details</h2>
-        <ActionForm action={updateCustomerAction} hidden={{ customerId }} submitLabel="Save customer" successText="Customer updated.">
+        <ActionForm variant="primary" action={updateCustomerAction} hidden={{ customerId }} submitLabel="Save customer" successText="Customer updated.">
           <label htmlFor="firstName">First name</label><input id="firstName" name="firstName" defaultValue={c.firstName} maxLength={100} />
           <label htmlFor="lastName">Last name</label><input id="lastName" name="lastName" defaultValue={c.lastName} maxLength={100} />
           <label htmlFor="phone">Mobile number</label><input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={c.phoneE164 ?? ""} />

@@ -7,7 +7,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
   const invite = await peekInvite(token);
   if (!invite) {
     return (
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <h1>Invite unavailable</h1>
         <p>This invite link is no longer valid. Ask the shop owner to send a new one.</p>
       </main>
@@ -19,7 +19,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     ((!!invite.inviteEmail && identity.email === invite.inviteEmail) ||
       (!!invite.invitePhoneE164 && identity.phoneE164 === invite.invitePhoneE164));
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Join {invite.businessName}</h1>
       <p className="muted">You were invited as {invite.role === "owner" ? "the owner" : "staff"}.</p>
       {matches ? <AcceptInvite token={token} suggestedName="" /> : <InviteSignIn token={token} />}
@@ -27,3 +27,4 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     </main>
   );
 }
+

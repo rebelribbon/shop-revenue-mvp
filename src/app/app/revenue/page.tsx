@@ -12,7 +12,7 @@ export default async function RevenuePage({searchParams}:{searchParams:Promise<R
  const month=typeof params.month==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(params.month)?params.month:undefined;
  const page=Math.max(1,Math.min(Number.parseInt(typeof params.page==='string'?params.page:'1',10)||1,10000));
  const [data,followups]=await withTenant(s.businessId,s.actor,tx=>Promise.all([listRevenue(tx,month,page),recentRecoveryFollowups(tx)]));
- return <main><p><Link href="/app">← Money Finder</Link></p><h1>Recovered revenue</h1><RevenueSummary {...data}/>
+ return <main id="main-content" tabIndex={-1}><p><Link href="/app">← Money Finder</Link></p><h1>Recovered revenue</h1><RevenueSummary {...data}/>
   <form action="/app/revenue" className="card"><label htmlFor="revenue-month">Reporting month</label><input id="revenue-month" type="month" name="month" defaultValue={data.month} required/><button className="btn secondary">View month</button><p className="muted">{data.timezone} · Each invoice has one attribution. Direct and influenced are never added together.</p></form>
   {s.actor.type!=='support'&&<ActionForm action={refreshRevenueAction} submitLabel="Refresh recorded evidence" variant="secondary"/>}
   <section id="follow-ups"><h2>Recent manual follow-ups</h2><p className="muted">Continue here after an item leaves Money Finder, including lapsed contacts in their 90-day cooldown.</p>

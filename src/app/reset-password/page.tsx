@@ -8,10 +8,11 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   if (!(await hasPasswordResetGrant(identity))) redirect("/sign-in?error=recovery");
   const sp = await searchParams;
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Choose a new password</h1>
       <p className="muted">Use at least 8 characters.</p>
       <ResetPasswordForm next={safeNext(sp.next)} />
     </main>
   );
 }
+

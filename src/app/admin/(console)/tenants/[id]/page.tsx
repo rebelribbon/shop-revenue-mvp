@@ -16,7 +16,7 @@ export default async function TenantDetail({ params }: { params: Promise<{ id: s
   const team = await withAdminTenant(b.id, { internalUserId: me.id }, (tx) => listTeam(tx));
   const name = b.dba || b.legalName;
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>{name}</h1>
       <div className="card">
         <p>Status: <span className="pill">{b.status}</span> · Timezone {b.timezone} · Jurisdiction {b.jurisdictionCode}</p>
@@ -47,7 +47,7 @@ export default async function TenantDetail({ params }: { params: Promise<{ id: s
       <div className="card">
         <h2>View as this shop (read-only, 60 minutes)</h2>
         <p className="muted">The owner sees this session, with your name and reason, in their support access log.</p>
-        <ActionForm action={startViewAsAction} hidden={{ businessId: b.id }} submitLabel="Start view-as">
+        <ActionForm variant="primary" action={startViewAsAction} hidden={{ businessId: b.id }} submitLabel="Start view-as">
           <label htmlFor="reason">Reason (required)</label>
           <textarea id="reason" name="reason" required minLength={10} maxLength={500} />
         </ActionForm>
@@ -55,3 +55,4 @@ export default async function TenantDetail({ params }: { params: Promise<{ id: s
     </main>
   );
 }
+

@@ -15,7 +15,7 @@ export default async function PaymentsSettings() {
     process.env.PAYMENTS_BASE_URL,
   );
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Online payments</h1>
       <p>
         Accept customer invoice payments into your shop’s Stripe account. Stripe

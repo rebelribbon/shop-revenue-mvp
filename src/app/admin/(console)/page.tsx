@@ -19,7 +19,7 @@ export default async function Tenants({ searchParams }: { searchParams: Promise<
     ),
   );
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       {denied && <p className="notice error">That page is for admins only.</p>}
       <h1>Tenants</h1>
       <div className="card table-wrap">
@@ -45,7 +45,7 @@ export default async function Tenants({ searchParams }: { searchParams: Promise<
       {me.role === "admin" && (
         <div className="card">
           <h2>Create business (F1)</h2>
-          <ActionForm action={createBusinessAction} submitLabel="Create and invite owner">
+          <ActionForm variant="primary" action={createBusinessAction} submitLabel="Create and invite owner">
             <label htmlFor="legalName">Legal name</label>
             <input id="legalName" name="legalName" required />
             <label htmlFor="dba">DBA</label>
@@ -62,3 +62,4 @@ export default async function Tenants({ searchParams }: { searchParams: Promise<
     </main>
   );
 }
+

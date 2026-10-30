@@ -14,14 +14,14 @@ export default async function BusinessSettingsPage() {
   if (!profile) return null;
   const complete = Boolean(profile.legalName && profile.phoneE164 && profile.addressLine1 && profile.city && profile.region && profile.postalCode && profile.timezone);
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Business profile</h1><p><Link href="/app/settings/payments">Set up online payments</Link></p>
       <div className={`notice ${complete ? "ok" : ""}`}>
         {complete ? "Business setup is complete." : "Finish the basics below so appointments and future documents use the right business information."}
       </div>
       <div className="card">
         {s.role === "owner" ? (
-          <ActionForm action={updateBusinessProfileAction} submitLabel="Save business profile" successText="Business profile updated.">
+          <ActionForm variant="primary" action={updateBusinessProfileAction} submitLabel="Save business profile" successText="Business profile updated.">
             <label htmlFor="businessType">What line of business are you in?</label>
             <select key={profile.businessType} id="businessType" name="businessType" defaultValue={profile.businessType}>{businessTypes.map(type=><option key={type} value={type}>{businessTypeLabels[type]}</option>)}</select>
             <p className="muted">Automotive uses vehicles. Home services use properties and equipment. Customers, costs, estimates, invoices and payments stay together. Changing this choice keeps existing records.</p>

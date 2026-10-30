@@ -18,7 +18,7 @@ export default async function InvoicePage({
   if (!i) notFound();
   const s = i.snapshot;
   return (
-    <main>
+    <main id="main-content" tabIndex={-1}>
       <h1>Invoice #{i.number}</h1>
       <section className="card">
         <h2>{s.shopName}</h2>
