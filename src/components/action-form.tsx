@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 // Calls a shop server action with a clientRequestId generated when the form opens
 // (Section 10 idempotency). Shows typed errors with the reference ID; keeps input.
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ export function ActionForm(props: {
   variant?: "primary" | "danger" | "secondary";
   children?: ReactNode;
 }) {
+  const ready = useActionHydration();
   const router = useRouter();
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
@@ -67,6 +69,7 @@ export function ActionForm(props: {
 
   return (
     <form
+      data-ux-ready={ready}
       className="action-form"
       onSubmit={(e) => {
         e.preventDefault();

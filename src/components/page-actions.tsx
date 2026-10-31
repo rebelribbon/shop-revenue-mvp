@@ -11,7 +11,9 @@ function eligible(element: HTMLElement) {
   return (
     element.isConnected &&
     element.getClientRects().length > 0 &&
-    !element.closest("[hidden], [inert], details:not([open])") &&
+    !element.closest(
+      '[hidden], [inert], details:not([open]), [data-ux-ready="false"]',
+    ) &&
     !element.matches('.danger, [data-destructive="true"]') &&
     !destructive.test(element.textContent?.trim() ?? "")
   );
@@ -97,7 +99,7 @@ export function PageActions() {
       subtree: true,
       characterData: true,
       attributes: true,
-      attributeFilter: ["class", "disabled", "hidden", "open"],
+      attributeFilter: ["class", "disabled", "hidden", "open", "data-ux-ready"],
     });
     document.addEventListener("focusin", onFocus);
     window.addEventListener("resize", schedule);

@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import Link from "next/link";
 import { DocumentShare } from "./document-share";
 import { useState } from "react";
@@ -27,10 +28,11 @@ export function EstimatePublisher({
   >();
   const [pending, setPending] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const ready = useActionHydration();
   const router = useRouter();
   if (path || publishedId)
     return (
-      <section>
+      <section data-ux-ready={ready}>
         <h4>Estimate ready</h4>
         {publishedId && (
           <DocumentShare
@@ -50,6 +52,7 @@ export function EstimatePublisher({
     );
   const form = (
     <form
+      data-ux-ready={ready}
       onSubmit={async (e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
@@ -151,11 +154,12 @@ export function EstimatePublisher({
 }
 
 export function EstimateLink({ id }: { id: string }) {
+  const ready = useActionHydration();
   const [path, setPath] = useState("");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   return (
-    <div>
+    <div data-ux-ready={ready}>
       <DocumentShare id={id} kind="estimate" />
       <details>
         <summary>Older link options</summary>

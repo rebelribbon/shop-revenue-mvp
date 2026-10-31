@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CustomerPicker } from "./customer-picker";
@@ -26,9 +27,11 @@ export function VisitEditor({
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const ready = useActionHydration();
   const router = useRouter();
   return (
     <form
+      data-ux-ready={ready}
       className="card"
       onSubmit={async (e) => {
         e.preventDefault();

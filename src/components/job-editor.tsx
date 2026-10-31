@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -58,6 +59,7 @@ export function JobEditor({
   commonJobs?: CommonJobChoice[];
   canSaveCommon?: boolean;
 }) {
+  const ready = useActionHydration();
   const router = useRouter();
   const [customerId, setCustomer] = useState(initial?.customerId ?? ""),
     [vehicleId, setVehicle] = useState(initial?.vehicleId ?? ""),
@@ -143,6 +145,7 @@ export function JobEditor({
     ) : null;
   return (
     <form
+      data-ux-ready={ready}
       className="card"
       onSubmit={async (e) => {
         e.preventDefault();

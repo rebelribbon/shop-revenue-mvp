@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
 import { useState } from "react";
@@ -21,6 +22,7 @@ export function DocumentShare({
     email: string | null;
   };
 }) {
+  const ready = useActionHydration();
   const [data, setData] = useState<{
       path: string;
       name: string;
@@ -38,7 +40,7 @@ export function DocumentShare({
     (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
   return (
-    <div className="document-sharing">
+    <div className="document-sharing" data-ux-ready={ready}>
       {!data ? (
         <button
           type="button"

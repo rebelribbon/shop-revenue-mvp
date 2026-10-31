@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { enrollAuthenticator, verifyAuthenticator } from "@/server/actions/mfa";
@@ -16,9 +17,10 @@ export function Authenticator({
     [secret, setSecret] = useState(""),
     [message, setMessage] = useState("");
   const [pending, start] = useTransition();
+  const ready = useActionHydration();
   const router = useRouter();
   return (
-    <section className="card">
+    <section className="card" data-ux-ready={ready}>
       <h1>{verified ? "Authenticator verified" : "Verify your sign-in"}</h1>
       <p>
         Use an authenticator app you control. Keep access to that app; contact
@@ -83,6 +85,7 @@ export function Authenticator({
           )}
           {factorId && (
             <form
+              data-ux-ready={ready}
               onSubmit={(e) => {
                 e.preventDefault();
                 const code = String(

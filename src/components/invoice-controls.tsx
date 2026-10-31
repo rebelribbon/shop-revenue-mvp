@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import Link from "next/link";
 import { DocumentShare } from "./document-share";
 import { useState } from "react";
@@ -17,6 +18,7 @@ export function InvoiceIssuer({
   initialVersionId?: string;
   today: string;
 }) {
+  const ready = useActionHydration();
   const router = useRouter();
   const [issuedId, setIssuedId] = useState("");
   const [share, setShare] = useState<
@@ -31,7 +33,7 @@ export function InvoiceIssuer({
   const [dueOn, setDueOn] = useState(today);
   if (issuedId)
     return (
-      <section className="card">
+      <section className="card" data-ux-ready={ready}>
         <h2>Invoice ready</h2>
         <DocumentShare id={issuedId} kind="invoice" primary initial={share} />
         <p role="status">
@@ -57,7 +59,7 @@ export function InvoiceIssuer({
     );
   if (!choices.length)
     return (
-      <section className="card">
+      <section className="card" data-ux-ready={ready}>
         <h2>No authorized work ready to invoice</h2>
         <p>
           Review the latest customer decision first. Each job can have one
@@ -70,6 +72,7 @@ export function InvoiceIssuer({
     );
   return (
     <form
+      data-ux-ready={ready}
       className="card"
       onSubmit={async (e) => {
         e.preventDefault();
@@ -180,11 +183,12 @@ function ShareLink({ path }: { path: string }) {
   );
 }
 export function InvoiceLink({ id }: { id: string }) {
+  const ready = useActionHydration();
   const [path, setPath] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   return (
-    <div>
+    <div data-ux-ready={ready}>
       <DocumentShare id={id} kind="invoice" />
       <details>
         <summary>Older link options</summary>
@@ -235,12 +239,14 @@ export function InvoicePaymentForm({
   id: string;
   balanceCents: number;
 }) {
+  const ready = useActionHydration();
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   return (
     <form
+      data-ux-ready={ready}
       onSubmit={async (e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget);
@@ -298,15 +304,25 @@ export function InvoicePaymentForm({
   );
 }
 export function PrintDocument({ label }: { label: string }) {
+  const ready = useActionHydration();
   return (
-    <button className="btn secondary" onClick={() => window.print()}>
+    <button
+      data-ux-ready={ready}
+      className="btn secondary"
+      onClick={() => window.print()}
+    >
       {label}
     </button>
   );
 }
 export function PrintInvoice() {
+  const ready = useActionHydration();
   return (
-    <button className="btn secondary" onClick={() => window.print()}>
+    <button
+      data-ux-ready={ready}
+      className="btn secondary"
+      onClick={() => window.print()}
+    >
       Print invoice / Save PDF
     </button>
   );

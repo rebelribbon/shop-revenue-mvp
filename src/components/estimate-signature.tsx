@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signEstimateAction } from "@/server/actions/estimates";
@@ -22,6 +23,7 @@ export function EstimateSignature({
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const signatureRef = useRef<SignatureStrokes>([]);
+  const ready = useActionHydration();
   const router = useRouter();
   const approved = s.lines.filter((l) => choices[l.id] === "approve");
   const totals = estimateTotals(approved, s.taxBps);
@@ -43,6 +45,7 @@ export function EstimateSignature({
   };
   return (
     <form
+      data-ux-ready={ready}
       className="card"
       onSubmit={async (e) => {
         e.preventDefault();

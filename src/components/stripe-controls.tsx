@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -20,9 +21,10 @@ export function StripeButton({
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
+  const ready = useActionHydration();
   const router = useRouter();
   return (
-    <div>
+    <div data-ux-ready={ready}>
       <button
         className={`btn ${kind === "cancel" || kind === "retry-refund" ? "danger" : kind === "pay" || kind === "connect" ? "primary" : "secondary"}`}
         disabled={busy}
@@ -94,9 +96,11 @@ export function StripeRefundForm({
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const ready = useActionHydration();
   const router = useRouter();
   return (
     <form
+      data-ux-ready={ready}
       onSubmit={(e) => {
         e.preventDefault();
         if (!confirming) {
