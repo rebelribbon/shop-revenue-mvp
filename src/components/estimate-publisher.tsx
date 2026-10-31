@@ -43,22 +43,6 @@ export function EstimatePublisher({
         <p role="status">
           Choose Text or Email to send this estimate from your own app.
         </p>
-        <details>
-          <summary>Preview or copy estimate</summary>
-          <p>
-            <a href={path} target="_blank" rel="noreferrer">
-              Open customer estimate
-            </a>
-          </p>
-          <label>
-            Customer link
-            <input
-              readOnly
-              value={`${window.location.origin}${path}`}
-              onFocus={(e) => e.currentTarget.select()}
-            />
-          </label>
-        </details>
         <Link href={`/app/jobs?job=${jobId}`}>
           Job timeline &amp; next step
         </Link>

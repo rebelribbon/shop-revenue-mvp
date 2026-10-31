@@ -168,7 +168,7 @@ export async function createAppointment(
     kind: "appointment.created",
     subjectType: "customer",
     subjectId: row.customerId,
-    summary: `Appointment scheduled for ${c.name}`,
+    summary: `Visit booked for ${c.name}`,
     data: {
       appointmentId: row.id,
       sourceRecoveryItemId: row.sourceRecoveryItemId,
@@ -214,7 +214,7 @@ export async function setAppointmentStatus(
     kind: "appointment.updated",
     subjectType: "customer",
     subjectId: row.customerId,
-    summary: `Appointment marked ${status.replace("_", " ")}`,
+    summary: `Visit marked ${status.replace("_", " ")}`,
     data: { appointmentId: row.id },
   });
   return row;

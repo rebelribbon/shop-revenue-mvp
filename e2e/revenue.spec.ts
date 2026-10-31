@@ -43,7 +43,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByLabel("Contact notes")
     .fill("Discussed the postponed brakes at the counter");
   await opportunity
-    .getByRole("button", { name: "Log manual contact", exact: true })
+    .getByRole("button", { name: "Save follow-up", exact: true })
     .click();
   await expect(opportunity).toContainText("contacted");
   await opportunity
@@ -91,7 +91,6 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByRole("heading", { name: title, exact: true })
     .locator("..");
   await job.getByRole("button", { name: "Send estimate", exact: true }).click();
-  await job.getByText("Preview or copy estimate", { exact: true }).click();
   await expect(
     job.getByRole("link", { name: "Open customer estimate", exact: true }),
   ).toBeVisible();

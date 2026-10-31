@@ -88,7 +88,7 @@ export function DocumentShare({
               <a
                 className={`btn ${primary && !data.phone ? "primary" : "secondary"}`}
                 data-page-primary={primary && !data.phone ? true : undefined}
-                href={`mailto:${data.email}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(body)}`}
+                href={`mailto:${encodeURIComponent(data.email).replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(body)}`}
               >
                 Email to customer
               </a>

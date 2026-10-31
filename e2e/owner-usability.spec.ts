@@ -94,11 +94,13 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await page
     .getByLabel("Date and time", { exact: true })
     .fill("2026-11-05T09:00");
-  await page.getByLabel("Reason", { exact: true }).fill("Thursday brake visit");
+  await page
+    .getByLabel("Reason", { exact: true })
+    .fill(`Thursday brake visit ${name}`);
   await page.getByRole("button", { name: "Book visit", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Visit booked");
   await expect(
-    page.getByText("Thursday brake visit", { exact: false }),
+    page.getByText(`Thursday brake visit ${name}`, { exact: false }),
   ).toBeVisible();
   await auditUX(page);
   await page.goto("/app/schedule?new=1");

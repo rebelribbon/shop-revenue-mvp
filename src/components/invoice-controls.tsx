@@ -18,7 +18,6 @@ export function InvoiceIssuer({
   today: string;
 }) {
   const router = useRouter();
-  const [path, setPath] = useState("");
   const [issuedId, setIssuedId] = useState("");
   const [share, setShare] = useState<
     | { path: string; name: string; phone: string | null; email: string | null }
@@ -42,7 +41,6 @@ export function InvoiceIssuer({
           Share the customer link yourself. Work progress, authorization and
           money stay linked to the job timeline.
         </p>
-        {path && <ShareLink path={path} />}
         <Link
           className="btn primary"
           data-page-primary
@@ -91,7 +89,6 @@ export function InvoiceIssuer({
             clientRequestId: requestId,
           });
           if (result.ok) {
-            setPath((result.data as { path?: string }).path ?? "");
             setIssuedId((result.data as { id: string }).id);
             setShare((result.data as { share?: typeof share }).share);
             setIssuedJobId(

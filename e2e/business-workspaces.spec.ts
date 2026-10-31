@@ -130,7 +130,6 @@ test("home-service setup creates a real property and equipment job without vehic
     await saved
       .getByRole("button", { name: "Send estimate", exact: true })
       .click();
-    await saved.getByText("Preview or copy estimate", { exact: true }).click();
     const link = saved.getByRole("link", {
       name: "Open customer estimate",
       exact: true,

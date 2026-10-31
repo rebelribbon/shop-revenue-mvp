@@ -58,7 +58,7 @@ export function VisitEditor({
         }
       }}
     >
-      <h2>Book a visit</h2>
+      <h2>Visit details</h2>
       <CustomerPicker
         options={options.customers}
         value={customer}

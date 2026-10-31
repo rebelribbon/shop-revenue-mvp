@@ -9,6 +9,10 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await signInWithPassword(page, "owner.a@shop-a.test");
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill(`Job ${info.project.name}`);
+  await page.getByLabel("Mobile number", { exact: true }).fill("+15125550123");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill(`job-${info.project.name}@example.test`);
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
@@ -61,7 +65,17 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await card
     .getByRole("button", { name: "Send estimate", exact: true })
     .click();
-  await card.getByText("Preview or copy estimate", { exact: true }).click();
+  await expect(
+    card.getByRole("link", { name: "Text to customer", exact: true }),
+  ).toHaveAttribute("href", /^sms:\+15125550123[?&]body=.*%2Festimate%2F/);
+  await expect(
+    card.getByRole("link", { name: "Email to customer", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    new RegExp(
+      `^mailto:job-${info.project.name}@example\\.test\\?subject=.*&body=.*%2Festimate%2F`,
+    ),
+  );
   await expect(
     card.getByRole("link", { name: "Open customer estimate", exact: true }),
   ).toBeVisible();
@@ -170,6 +184,9 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
       name: new RegExp(`Invoice #.*Brakes ${info.project.name}`),
     })
     .locator("..");
+  await expect(invoice.getByLabel("Amount ($)", { exact: true })).toHaveValue(
+    "200.00",
+  );
   await invoice.getByLabel("Amount ($)", { exact: true }).fill("50");
   await invoice
     .getByRole("button", { name: "Record payment", exact: true })
