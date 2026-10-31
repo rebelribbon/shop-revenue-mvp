@@ -74,11 +74,17 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
       { type: "support", id: null },
       (tx) =>
         tx.execute(
-          sql`select app.authorize_estimate(${hashToken(token)},'Support','[]'::jsonb,null,'blocked-support')`,
+          sql`select app.authorize_estimate(${hashToken(token)},'Support','[]'::jsonb,null,'blocked-support','Support browser','[[{"x":0.1,"y":0.2},{"x":0.4,"y":0.6}]]'::jsonb,${visible!.estimateSha256},now(),'JVBERi0=')`,
         ),
       { supportAudit: true },
     ),
-  ).rejects.toThrow();
+  ).rejects.toMatchObject({
+    cause: {
+      message: expect.stringContaining(
+        "customer authorization context required",
+      ),
+    },
+  });
   await signEstimate(token, "Customer One", ["part-0"], meta());
   const signed = await readPublicEstimate(token);
   expect(signed?.authorization?.approvedLineIds).toEqual(["part-0"]);
