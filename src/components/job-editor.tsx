@@ -173,7 +173,7 @@ export function JobEditor({
         }
       }}
     >
-      <h2>{initial?.jobId ? "Edit job" : "New job"}</h2>
+      <h2>Job details</h2>
       {commonJobs.length > 0 && (
         <section>
           <label htmlFor="common-job">Start from a common job</label>

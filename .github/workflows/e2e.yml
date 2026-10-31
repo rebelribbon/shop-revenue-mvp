@@ -50,7 +50,7 @@ jobs:
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
       - run: timeout 180 pnpm exec playwright install chromium
       - name: Playwright (phone 390x844 and desktop)
-        run: pnpm e2e
+        run: pnpm e2e --max-failures=0
       - name: Job form development-mode smoke
         run: |
           PORT=3001 nohup pnpm dev > dev-web.log 2>&1 &
