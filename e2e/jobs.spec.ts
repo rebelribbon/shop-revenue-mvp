@@ -43,6 +43,7 @@ test("tracks authorization, work completion, invoicing and payment in one job",a
  const issuer=page.getByRole("button",{name:"Issue invoice",exact:true}).locator("..");await issuer.getByRole("button",{name:"Issue invoice",exact:true}).click();await expect(page.getByRole("link",{name:"Open customer invoice",exact:true})).toBeVisible();
  const invoiceHref=await page.getByRole("link",{name:"Open customer invoice",exact:true}).getAttribute("href");
  await page.getByRole("link",{name:"Open invoice & record payment",exact:true}).click();
+ await expect(page).toHaveURL(/\/app\/invoices\?invoiceId=/);
  const invoiceUrl=page.url();
  const invoice=page.getByRole("heading",{name:new RegExp(`Invoice #.*Brakes ${info.project.name}`)}).locator("..");
  await invoice.getByLabel("Amount ($)",{exact:true}).fill("50");await invoice.getByRole("button",{name:"Record payment",exact:true}).click();await expect(invoice.getByText("Partially paid",{exact:true})).toBeVisible();
@@ -51,6 +52,8 @@ test("tracks authorization, work completion, invoicing and payment in one job",a
  await expect(page.getByRole('region',{name:'Job workflow'})).toContainText('Complete');
  await expect(page.getByRole('region',{name:'Job workflow'})).toContainText('Work completed');
  await auditUX(page);await page.screenshot({path:`test-results/ux-job-workflow-${info.project.name}.png`,fullPage:true});
+ await page.locator('main').evaluate(e=>e.scrollTo(0,e.scrollHeight));await auditUX(page);
+ await page.screenshot({path:`test-results/ux-job-timeline-${info.project.name}.png`,fullPage:true});
  await page.goto('/app/jobs');
  await expect(page.getByRole('link',{name:new RegExp(`^Open job: Brakes ${info.project.name}`)})).toContainText('Partially paid');
  await page.goto(invoiceUrl);
