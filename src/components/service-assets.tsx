@@ -154,7 +154,7 @@ export function ServiceAssets({
               <details>
                 <summary>Plan next service</summary>
                 <p className="muted">
-                  Set the next maintenance or follow-up date. Money Finder
+                  Set the next maintenance or follow-up date. Follow-ups
                   highlights it from 14 days before through 90 days after it is
                   due. Contact the customer yourself; no message is sent.
                 </p>

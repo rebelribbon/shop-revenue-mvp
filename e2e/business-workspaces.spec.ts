@@ -1,3 +1,4 @@
+import { revealField } from "./helpers";
 import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 
@@ -11,7 +12,7 @@ test("home-service setup creates a real property and equipment job without vehic
   try {
     await page.goto("/app/jobs?new=1");
     await expect(
-      page.getByRole("heading", { name: "New repair / estimate", exact: true }),
+      page.getByRole("heading", { name: "New job", exact: true }),
     ).toBeVisible();
     await expect(page.locator("main")).not.toContainText(
       /property|equipment|materials/i,
@@ -29,7 +30,7 @@ test("home-service setup creates a real property and equipment job without vehic
     await page.getByRole("link", { name: "Home", exact: true }).click();
     await expect(page.locator("main")).toContainText("HVAC");
     await expect(
-      page.getByRole("link", { name: "New job / estimate", exact: true }),
+      page.getByRole("link", { name: "New job", exact: true }),
     ).toBeVisible();
     const name = `HVAC ${info.project.name} ${Date.now()}`;
     await page.goto("/app/customers/new");
@@ -101,9 +102,7 @@ test("home-service setup creates a real property and equipment job without vehic
     await expect(due).toHaveCount(1);
     await expect(due).toContainText("Seasonal AC tune-up");
     await expect(due).toContainText("456 Service Lane");
-    await due
-      .getByRole("button", { name: "New job / re-quote", exact: true })
-      .click();
+    await due.getByRole("button", { name: "Start job", exact: true }).click();
     await expect(
       page.getByLabel("Property / equipment", { exact: true }),
     ).toHaveValue(/^[a-f0-9-]{36}$/);
@@ -115,6 +114,7 @@ test("home-service setup creates a real property and equipment job without vehic
       .getByRole("button", { name: "Add material", exact: true })
       .click();
     await page.getByLabel("Description", { exact: true }).fill("Capacitor");
+    await revealField(page, "Unit cost");
     await page.getByLabel("Unit cost", { exact: true }).fill("20");
     await page.getByLabel("Unit selling price", { exact: true }).fill("100");
     await page
@@ -128,8 +128,9 @@ test("home-service setup creates a real property and equipment job without vehic
       .locator("..");
     await expect(saved).toBeVisible();
     await saved
-      .getByRole("button", { name: "Freeze and publish estimate", exact: true })
+      .getByRole("button", { name: "Send estimate", exact: true })
       .click();
+    await saved.getByText("Preview or copy estimate", { exact: true }).click();
     const link = saved.getByRole("link", {
       name: "Open customer estimate",
       exact: true,
@@ -161,12 +162,10 @@ test("home-service setup creates a real property and equipment job without vehic
       await expect(page.locator("main")).not.toContainText(
         /properties|equipment/i,
       );
-      await page
-        .getByRole("link", { name: "New repair / estimate", exact: true })
-        .click();
+      await page.getByRole("link", { name: "New job", exact: true }).click();
       await expect(
         page.getByRole("heading", {
-          name: "New repair / estimate",
+          name: "New job",
           exact: true,
         }),
       ).toBeVisible();

@@ -73,11 +73,9 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
     .selectOption({ label: `${first} ${last}` });
   await page.getByLabel("Date and time").fill(chicagoTomorrow());
   await page.getByLabel("Reason").fill("Brake inspection");
-  await page.getByRole("button", { name: "Schedule appointment" }).click();
-  await expect(page.getByRole("status")).toContainText("Appointment scheduled");
-  await page
-    .getByRole("link", { name: "← All appointments", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Book visit" }).click();
+  await expect(page.getByRole("status")).toContainText("Visit booked");
+
   const tomorrow = page
     .getByRole("heading", { name: "Tomorrow" })
     .locator("..", { hasText: `${first} ${last}` });
@@ -87,7 +85,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page
     .getByRole("link", { name: `${first} ${last}`, exact: true })
     .click();
-  await expect(page.getByText(/Appointment scheduled/)).toBeVisible();
+  await expect(page.getByText(/Visit booked/)).toBeVisible();
 });
 
 test("M2 business settings are Owner editable", async ({ page }) => {
@@ -114,16 +112,14 @@ test("M2 mobile navigation reaches focused job and customer creation without ove
   await page.goto("/app/customers");
   const nav = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(nav).toBeVisible();
-  await expect(nav.getByRole("link")).toHaveCount(4);
-  await nav.getByRole("link", { name: "Work", exact: true }).click();
+  await expect(nav.getByRole("link")).toHaveCount(5);
+  await nav.getByRole("link", { name: "Jobs", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Repair jobs", exact: true }),
+    page.getByRole("heading", { name: "Jobs", exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("link", { name: "New repair / estimate", exact: true })
-    .click();
+  await page.getByRole("link", { name: "New job", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "New repair / estimate", exact: true }),
+    page.getByRole("heading", { name: "New job", exact: true }),
   ).toBeVisible();
   await nav.getByRole("link", { name: "Customers", exact: true }).click();
   await page.getByRole("link", { name: "Add customer", exact: true }).click();

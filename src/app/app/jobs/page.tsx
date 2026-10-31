@@ -1,3 +1,4 @@
+import { listCommonJobs } from "@/domain/common-jobs";
 import { loadJobWorkflows, stageLabels } from "@/domain/job-workflow";
 import { JobWorkflow, WorkflowBadges } from "@/components/job-workflow";
 import { isAutomotive, workspaceLabels } from "@/lib/business-types";
@@ -53,6 +54,7 @@ export default async function JobsPage({
     const page = {
       selected: edit || job ? await getJob(tx, (edit ?? job)!) : null,
       profile: await getBusinessProfile(tx),
+      commonJobs: await listCommonJobs(tx),
       options: await listAppointmentChoices(tx),
       jobs: await listJobs(tx, q ?? ""),
       recommendations: await tx
@@ -160,9 +162,9 @@ export default async function JobsPage({
       <WorkNavigation current="jobs" businessType={type} />
       <p className="muted">
         {editing
-          ? "Add the work, then save to review and publish an estimate."
+          ? "Add the work and save. Send the estimate next."
           : selected
-            ? "Job pricing and customer estimate."
+            ? ""
             : "Open a job to review pricing, labor hours and costs."}
       </p>
       {editing ? (
@@ -175,6 +177,10 @@ export default async function JobsPage({
             </Link>
           </p>
           <JobEditor
+            commonJobs={data.commonJobs}
+            canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
+            laborSellRateCents={data.profile?.laborSellRateCents}
+            laborCostRateCents={data.profile?.laborCostRateCents}
             partsTaxableDefault={data.profile?.partsTaxableDefault}
             laborTaxableDefault={data.profile?.laborTaxableDefault}
             businessType={data.profile?.businessType}
@@ -205,8 +211,7 @@ export default async function JobsPage({
               </p>
               {saved === "1" && (
                 <p role="status" className="notice ok">
-                  Job sheet saved. Follow the next step below; authorizations
-                  and payments stay linked here.
+                  Job saved.
                 </p>
               )}
               <article className="card">
@@ -218,17 +223,6 @@ export default async function JobsPage({
                     )?.name
                   }
                 </p>
-                <div className="money-actions">
-                  <Link href={`/app/customers/${input.customerId}`}>
-                    Customer overview
-                  </Link>
-                  <Link href={`/app/jobs?edit=${selected.id}`}>
-                    Edit costs / record actual hours
-                  </Link>
-                  <Link href={`/app/estimates?jobId=${selected.id}`}>
-                    Estimate history
-                  </Link>
-                </div>
                 {flow && (
                   <JobWorkflow
                     flow={flow}
@@ -237,20 +231,24 @@ export default async function JobsPage({
                     readOnly={s.actor.type === "support"}
                   />
                 )}
-                <div className="record-meta">
-                  <strong>
-                    Internal quoted subtotal: {money(t.subtotalCents)}
-                  </strong>
-                  <span>
-                    Estimated gross profit: {money(t.estimatedGrossProfitCents)}
-                  </span>
-                  <span>
-                    Actual gross profit:{" "}
-                    {t.actualGrossProfitCents === null
-                      ? "Awaiting actual hours"
-                      : money(t.actualGrossProfitCents)}
-                  </span>
-                </div>
+                <details>
+                  <summary>Change job or view costs</summary>
+                  <div className="money-actions">
+                    <Link href={`/app/jobs?edit=${selected.id}`}>
+                      Edit job / actual hours
+                    </Link>
+                    <Link href={`/app/customers/${input.customerId}`}>
+                      Customer details
+                    </Link>
+                    <Link href={`/app/estimates?jobId=${selected.id}`}>
+                      Estimate history
+                    </Link>
+                  </div>
+                  <p>
+                    Quoted: {money(t.subtotalCents)} · Estimated job profit:{" "}
+                    {money(t.estimatedGrossProfitCents)}
+                  </p>
+                </details>
                 <details>
                   <summary>View parts, labor and costs</summary>
                   <ul>

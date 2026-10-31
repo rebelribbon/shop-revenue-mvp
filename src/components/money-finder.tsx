@@ -34,7 +34,7 @@ function Controls({ item, readOnly }: { item: MoneyItem; readOnly: boolean }) {
         action={updateRecoveryAction}
         hidden={{ ...hidden, action: "restore" }}
         submitLabel={
-          item.status === "dismissed" ? "Restore opportunity" : "Unsnooze"
+          item.status === "dismissed" ? "Restore follow-up" : "Show again"
         }
         variant="secondary"
       />
@@ -50,7 +50,7 @@ function Controls({ item, readOnly }: { item: MoneyItem; readOnly: boolean }) {
       <ActionForm
         action={updateRecoveryAction}
         hidden={{ ...hidden, action: "contact" }}
-        submitLabel="Log manual contact"
+        submitLabel="Save follow-up"
       >
         <label htmlFor={`${key}-method`}>Contact method</label>
         <select
@@ -147,10 +147,10 @@ export function MoneyFinder({
     `/app/opportunities?${new URLSearchParams({ ...(cat ? { category: cat } : {}), view: v, ...(query ? { q: query } : {}), page: String(p) })}`;
   const counts = Object.fromEntries(data.cards.map((c) => [c.category, c]));
   return (
-    <section aria-label="Money Finder">
+    <section aria-label="Follow-ups">
       <div className="money-hero">
         <div>
-          <p className="eyebrow">Money Finder</p>
+          <p className="eyebrow">Follow-ups</p>
           <h2>{money(data.knownCents)} in recorded opportunities</h2>
           <p>
             Known amounts from declined work, estimates, balances and entered
@@ -335,9 +335,7 @@ export function MoneyFinder({
                       subjectId: item.subjectId,
                       destination: "job",
                     }}
-                    submitLabel={
-                      auto ? "New repair / re-quote" : "New job / re-quote"
-                    }
+                    submitLabel={auto ? "Start job" : "Start job"}
                     variant="secondary"
                   />
                 </>

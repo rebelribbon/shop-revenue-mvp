@@ -17,6 +17,12 @@ export default async function SettingsPage() {
         <button className="btn secondary">Sign out</button>
       </form>
       <div className="settings-grid">
+        {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/common-jobs">
+            <strong>Common jobs</strong>
+            <span className="muted">Saved parts, prices and labor</span>
+          </Link>
+        )}
         <Link className="card settings-link" href="/verify?next=/app/settings">
           <strong>Authenticator security</strong>
           <span className="muted">Set up or verify your authenticator</span>

@@ -162,6 +162,13 @@
       "when": 1793462050741,
       "tag": "0022_authorization_evidence_and_line_tax",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793465128693,
+      "tag": "0023_owner_money_expenses_common_jobs",
+      "breakpoints": true
     }
   ]
 }

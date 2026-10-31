@@ -133,6 +133,30 @@ export default async function BusinessSettingsPage() {
                 />
               </div>
             </div>
+            <h2>Hourly labor rates</h2>
+            <label htmlFor="laborSellRate">Customer labor rate ($/hour)</label>
+            <input
+              id="laborSellRate"
+              name="laborSellRate"
+              type="number"
+              min="0"
+              max="1000000"
+              step="0.01"
+              defaultValue={profile.laborSellRateCents / 100}
+            />
+            <label htmlFor="laborCostRate">Your labor cost ($/hour)</label>
+            <input
+              id="laborCostRate"
+              name="laborCostRate"
+              type="number"
+              min="0"
+              max="1000000"
+              step="0.01"
+              defaultValue={profile.laborCostRateCents / 100}
+            />
+            <p className="muted">
+              New jobs start with these rates. Existing jobs keep their prices.
+            </p>
             <h2>Tax defaults</h2>
             <label htmlFor="taxPercent">Default tax rate (%)</label>
             <input

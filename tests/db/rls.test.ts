@@ -1,3 +1,5 @@
+import { addExpense } from "@/domain/owner-money";
+import { saveCommonJob } from "@/domain/common-jobs";
 import { testPolicySnapshot } from "../helpers/policy";
 import { signTestEstimate as signEstimate } from "../helpers/authorization";
 // RLS suite (Section 22): generated for every table with a business_id column,
@@ -113,6 +115,41 @@ async function invoiceFixture(t: SeededTenant) {
   );
 }
 const builders: Record<string, Builder> = {
+  "app.expense": async (t) =>
+    withTenant(
+      t.businessId,
+      t.owner.actor,
+      async (tx) =>
+        (
+          await addExpense(tx, meta(), {
+            spentOn: "2026-10-31",
+            description: "RLS rent",
+            category: "rent",
+            amountCents: 10000,
+            includedInJobCost: false,
+          })
+        ).id,
+    ),
+  "app.common_job": async (t) =>
+    withTenant(
+      t.businessId,
+      t.owner.actor,
+      async (tx) =>
+        (
+          await saveCommonJob(tx, meta(), {
+            name: "RLS brakes",
+            parts: [
+              {
+                description: "Pads",
+                quantity: 1,
+                unitCostCents: 100,
+                unitPriceCents: 200,
+              },
+            ],
+            labor: [],
+          })
+        ).id,
+    ),
   "app.estimate_recommendation_line": async (t) => {
     const e = await estimateFixture(t);
     return withTenant(t.businessId, t.owner.actor, async (tx) => {

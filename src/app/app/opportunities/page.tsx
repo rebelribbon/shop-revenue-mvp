@@ -1,3 +1,4 @@
+import { MoneyNavigation } from "@/components/money-navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
@@ -50,7 +51,8 @@ export default async function OpportunitiesPage({
       <p>
         <Link href="/app">← Home</Link>
       </p>
-      <h1>Money Finder</h1>
+      <h1>Follow-ups</h1>
+      <MoneyNavigation current="followups" />
       <p className="muted">
         Choose a recorded opportunity, contact the customer yourself, then track
         the result.

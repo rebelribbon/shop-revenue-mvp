@@ -1,6 +1,6 @@
 // Local seed: two tenants, A and B, each with an active owner and staff login,
 // plus internal users. Uses real domain functions and local Supabase Auth only.
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { withAdmin } from "@/db/admin";
 import { business, internalUser } from "@/db/schema";
 import { closePools, resolveMemberships, withTenant } from "@/db/tenant";
@@ -127,6 +127,13 @@ await (
 ).seedTestAuthorizationPolicy();
 const a = await tenant("A", admin1);
 const b = await tenant("B", admin1);
+if (process.env.E2E_LARGE_CUSTOMER_FIXTURE === "true") {
+  await withTenant(b, { type: "system", id: null }, (tx) =>
+    tx.execute(
+      sql`INSERT INTO app.customer(business_id,first_name,last_name,display_name) SELECT ${b},'Search Fixture',lpad(n::text,4,'0'),'Search Fixture '||lpad(n::text,4,'0') FROM generate_series(1,500) n WHERE NOT EXISTS(SELECT 1 FROM app.customer WHERE business_id=${b} AND first_name='Search Fixture')`,
+    ),
+  );
+}
 await closePools();
 console.log(
   [

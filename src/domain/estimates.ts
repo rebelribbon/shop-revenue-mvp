@@ -1,3 +1,4 @@
+import { sealShareToken } from "@/lib/share-token";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   activity,
@@ -221,6 +222,7 @@ export async function freezeEstimate(
       snapshot,
       supplementReason: input.supplementReason || null,
       tokenHash: token.hash,
+      shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 30 * 86400000),
     })
     .returning();
@@ -261,7 +263,17 @@ export async function freezeEstimate(
     summary: `Estimate version ${row.version} published`,
     data: { versionId: row.id },
   });
-  return { id: row.id, version: row.version, path: `/estimate/${token.token}` };
+  return {
+    id: row.id,
+    version: row.version,
+    path: `/estimate/${token.token}`,
+    share: {
+      path: `/estimate/${token.token}`,
+      name: c.customer.displayName,
+      phone: c.customer.phoneE164,
+      email: c.customer.email,
+    },
+  };
 }
 export async function listEstimates(tx: TenantTx, jobId?: string) {
   return tx
@@ -406,6 +418,7 @@ export async function rotateEstimateLink(
     .update(estimateVersion)
     .set({
       tokenHash: token.hash,
+      shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 30 * 86400000),
     })
     .where(

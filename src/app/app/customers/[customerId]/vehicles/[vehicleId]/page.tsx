@@ -78,7 +78,7 @@ export default async function VehicleDetailPage(props: {
             data-page-primary
             href={`/app/jobs?customerId=${customerId}&vehicleId=${vehicleId}`}
           >
-            New repair / estimate
+            New job
           </Link>
           <section className="card">
             <h2>Vehicle details</h2>
@@ -99,7 +99,7 @@ export default async function VehicleDetailPage(props: {
               <Link
                 href={`/app/schedule?new=1&customerId=${customerId}&vehicleId=${vehicleId}`}
               >
-                Schedule a visit
+                Book visit
               </Link>
               <Link href={`${base}?view=edit`}>Update vehicle details</Link>
             </div>

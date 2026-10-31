@@ -28,15 +28,15 @@ export function workspaceLabels(type: string) {
     ? {
         assets: "Vehicles",
         materials: "Parts",
-        jobs: "Repair jobs",
-        newJob: "New repair / estimate",
+        jobs: "Jobs",
+        newJob: "New job",
         example: "Brakes, diagnosis, scheduled service",
       }
     : {
         assets: "Properties & equipment",
         materials: "Materials",
         jobs: "Jobs",
-        newJob: "New job / estimate",
+        newJob: "New job",
         example:
           type === "hvac"
             ? "AC repair, seasonal tune-up, system installation"

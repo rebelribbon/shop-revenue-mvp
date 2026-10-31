@@ -42,7 +42,7 @@ jobs:
           pnpm db:bootstrap
           pnpm db:migrate
           pnpm db:check-rls
-          pnpm seed
+          E2E_LARGE_CUSTOMER_FIXTURE=true pnpm seed
       - name: Build and start the app
         run: |
           pnpm build
@@ -51,8 +51,15 @@ jobs:
       - run: timeout 180 pnpm exec playwright install chromium
       - name: Playwright (phone 390x844 and desktop)
         run: pnpm e2e
+      - name: Job form development-mode smoke
+        run: |
+          PORT=3001 nohup pnpm dev > dev-web.log 2>&1 &
+          for i in $(seq 1 45); do curl -fsS -o /dev/null http://localhost:3001/sign-in && break; sleep 2; done
+          E2E_BASE_URL=http://localhost:3001 pnpm exec playwright test e2e/owner-usability.spec.ts --project=phone
       - if: failure()
-        run: tail -100 web.log
+        run: |
+          tail -100 web.log
+          test ! -f dev-web.log || tail -100 dev-web.log
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -119,3 +126,4 @@ jobs:
             npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"
           fi
           echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"
+

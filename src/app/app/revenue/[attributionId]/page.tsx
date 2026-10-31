@@ -26,15 +26,15 @@ export default async function AttributionPage({
   return (
     <main id="main-content" tabIndex={-1}>
       <p>
-        <Link href="/app/revenue">← Recovered revenue</Link>
+        <Link href="/app/revenue">← Follow-up sales</Link>
       </p>
-      <h1>Invoice #{data.invoice.number} · attribution</h1>
+      <h1>Invoice #{data.invoice.number} · why this sale counts</h1>
       <section className="card">
         <h2>
           {data.row.classification === "direct"
-            ? "Directly recovered"
+            ? "Confirmed follow-up sale"
             : data.row.classification === "influenced"
-              ? "Influenced — not recovered"
+              ? "Sale after a follow-up"
               : "No current credit"}
           : {revenueMoney(data.row.amountCents)}
         </h2>
@@ -65,7 +65,7 @@ export default async function AttributionPage({
               : "Not from this follow-up"}
           </summary>
           <p>
-            Correct the attribution without changing the invoice or moving
+            Correct the follow-up link without changing the invoice or moving
             money. Every correction remains in the audit history.
           </p>
           <ActionForm
@@ -76,8 +76,8 @@ export default async function AttributionPage({
             }}
             submitLabel={
               data.row.excluded
-                ? "Restore attribution evaluation"
-                : "Exclude this attribution"
+                ? "Recheck this sale"
+                : "Remove from follow-up totals"
             }
             variant="secondary"
           >

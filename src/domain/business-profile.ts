@@ -30,6 +30,8 @@ export async function updateBusinessProfile(
     postalCode?: string | null;
     timezone: string;
     taxRateBps?: number;
+    laborSellRateCents?: number;
+    laborCostRateCents?: number;
     partsTaxableDefault?: boolean;
     laborTaxableDefault?: boolean;
   },
@@ -58,6 +60,8 @@ export async function updateBusinessProfile(
       postalCode: input.postalCode || null,
       timezone: input.timezone,
       taxRateBps: input.taxRateBps,
+      laborSellRateCents: input.laborSellRateCents,
+      laborCostRateCents: input.laborCostRateCents,
       partsTaxableDefault: input.partsTaxableDefault,
       laborTaxableDefault: input.laborTaxableDefault,
     })
@@ -74,6 +78,8 @@ export async function updateBusinessProfile(
           timezone: before.timezone,
           businessType: before.businessType,
           taxRateBps: before.taxRateBps,
+          laborSellRateCents: before.laborSellRateCents,
+          laborCostRateCents: before.laborCostRateCents,
           partsTaxableDefault: before.partsTaxableDefault,
           laborTaxableDefault: before.laborTaxableDefault,
         }
@@ -84,6 +90,8 @@ export async function updateBusinessProfile(
       timezone: row.timezone,
       businessType: row.businessType,
       taxRateBps: row.taxRateBps,
+      laborSellRateCents: row.laborSellRateCents,
+      laborCostRateCents: row.laborCostRateCents,
       partsTaxableDefault: row.partsTaxableDefault,
       laborTaxableDefault: row.laborTaxableDefault,
     },

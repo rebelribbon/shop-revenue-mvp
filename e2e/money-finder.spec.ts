@@ -54,9 +54,7 @@ test("Money Finder records real work, manual follow-up and source-linked jobs", 
     path: `test-results/money-finder-${info.project.name}.png`,
     fullPage: true,
   });
-  await item
-    .getByRole("button", { name: "New repair / re-quote", exact: true })
-    .click();
+  await item.getByRole("button", { name: "Start job", exact: true }).click();
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
   await expect(page.getByLabel("Customer", { exact: true })).not.toHaveValue(
     "",

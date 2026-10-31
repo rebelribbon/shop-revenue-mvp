@@ -65,8 +65,8 @@ export default async function CustomerDetailPage(props: {
         >
           {assetCount
             ? auto
-              ? "New repair / estimate"
-              : "New job / estimate"
+              ? "New job"
+              : "New job"
             : auto
               ? "Add vehicle"
               : "Add property / equipment"}
@@ -108,7 +108,7 @@ export default async function CustomerDetailPage(props: {
             </div>
             <p>
               {c.doNotContact
-                ? "Do not contact — excluded from Money Finder."
+                ? "Do not contact — excluded from Follow-ups."
                 : "Manual follow-up allowed."}
             </p>
             {c.notes && <p>{c.notes}</p>}
@@ -163,7 +163,7 @@ export default async function CustomerDetailPage(props: {
             <h2>Contact preference</h2>
             <p>
               {c.doNotContact
-                ? "Do not contact — excluded from Money Finder."
+                ? "Do not contact — excluded from Follow-ups."
                 : "Manual follow-up allowed."}
             </p>
             {s.actor.type !== "support" && (

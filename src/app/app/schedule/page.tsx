@@ -1,87 +1,15 @@
-import { getBusinessProfile } from "@/domain/business-profile";
-import { isAutomotive, workspaceLabels } from "@/lib/business-types";
 import Link from "next/link";
-import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
-import {
-  listAppointmentChoices,
-  listTodayTomorrow,
-} from "@/domain/appointments";
-import {
-  createAppointmentAction,
-  setAppointmentStatusAction,
-} from "@/server/actions/appointments";
 import { requireShopSession } from "@/server/views/shop";
-
-const time = (date: Date, zone: string) =>
-  date.toLocaleTimeString("en-US", {
-    timeZone: zone,
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-function AppointmentList({
-  rows,
-  timezone,
-}: {
-  rows: Awaited<ReturnType<typeof listTodayTomorrow>>["today"];
-  timezone: string;
-}) {
-  if (!rows.length) return <p className="muted">Nothing scheduled.</p>;
-  return (
-    <div className="appointment-list">
-      {rows.map((a) => (
-        <div className="appointment-row" key={a.id}>
-          <div className="appointment-time">{time(a.startsAt, timezone)}</div>
-          <div className="appointment-body">
-            <Link href={`/app/customers/${a.customerId}`}>
-              <strong>{a.customerName}</strong>
-            </Link>
-            <div>{a.reason || "Appointment"}</div>
-            {(a.make || a.model || a.plate) && (
-              <div className="muted">
-                {[a.year, a.make, a.model].filter(Boolean).join(" ")}
-                {a.plate ? ` • ${a.plate}` : ""}
-              </div>
-            )}
-            {a.serviceAssetName && (
-              <div>
-                {a.serviceAssetName} · {a.serviceAddress}
-              </div>
-            )}
-            <span className="pill">{a.status.replace("_", " ")}</span>
-            {(a.vehicleId || a.serviceAssetId) && a.status !== "cancelled" && (
-              <Link
-                href={`/app/jobs?${new URLSearchParams({ sourceAppointmentId: a.id, customerId: a.customerId, ...(a.vehicleId ? { vehicleId: a.vehicleId } : {}), ...(a.serviceAssetId ? { serviceAssetId: a.serviceAssetId } : {}) })}`}
-              >
-                Create job from appointment
-              </Link>
-            )}
-          </div>
-          {a.status === "scheduled" && (
-            <div className="appointment-actions">
-              <ActionForm
-                action={setAppointmentStatusAction}
-                hidden={{ appointmentId: a.id, status: "completed" }}
-                submitLabel="Complete"
-                variant="secondary"
-              />
-              <ActionForm
-                action={setAppointmentStatusAction}
-                hidden={{ appointmentId: a.id, status: "cancelled" }}
-                submitLabel="Cancel"
-                variant="danger"
-                confirm="Cancel this appointment?"
-              />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export default async function SchedulePage({
+import { listVisitsRange, listAppointmentChoices } from "@/domain/appointments";
+import { getBusinessProfile } from "@/domain/business-profile";
+import { calendarDate } from "@/domain/owner-money";
+import { addLocalDays, localDateKey } from "@/lib/timezone";
+import { isAutomotive } from "@/lib/business-types";
+import { VisitEditor } from "@/components/visit-editor";
+import { ActionForm } from "@/components/action-form";
+import { setAppointmentStatusAction } from "@/server/actions/appointments";
+export default async function VisitsPage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -91,165 +19,177 @@ export default async function SchedulePage({
     serviceAssetId?: string;
     sourceRecoveryItemId?: string;
     sourceContactActivityId?: string;
+    week?: string;
+    booked?: string;
   }>;
 }) {
-  const params = await searchParams;
-  const creating =
-    params.new === "1" || !!params.customerId || !!params.sourceRecoveryItemId;
-  const s = await requireShopSession("/app/schedule");
-  const [days, choices, profile] = await withTenant(
-    s.businessId,
-    s.actor,
-    async (tx) =>
-      Promise.all([
-        listTodayTomorrow(tx),
-        listAppointmentChoices(tx),
-        getBusinessProfile(tx),
-      ]),
-  );
-  const auto = isAutomotive(profile?.businessType ?? "automotive");
-  const selectedCustomer = choices.customers.some(
-    (c) => c.id === params.customerId,
-  )
-    ? params.customerId
-    : "";
-  const selectedVehicle = choices.vehicles.some(
-    (v) => v.id === params.vehicleId && v.customerId === selectedCustomer,
-  )
-    ? params.vehicleId
-    : "";
+  const p = await searchParams,
+    s = await requireShopSession("/app/schedule");
+  const creating = p.new === "1" || !!p.customerId || !!p.sourceRecoveryItemId;
+  const data = await withTenant(s.businessId, s.actor, async (tx) => {
+    const profile = await getBusinessProfile(tx),
+      timezone = profile?.timezone ?? "America/Chicago",
+      today = localDateKey(new Date(), timezone);
+    const anchor = calendarDate.safeParse(p.week).success ? p.week! : today;
+    const weekday = new Date(anchor + "T12:00:00Z").getUTCDay();
+    const start = addLocalDays(anchor, -((weekday + 6) % 7));
+    return {
+      profile,
+      today,
+      start,
+      anchor,
+      options: creating ? await listAppointmentChoices(tx) : null,
+      visits: await listVisitsRange(tx, start, addLocalDays(start, 7)),
+    };
+  });
+  const dateLabel = (day: string) =>
+    new Date(day + "T12:00:00Z").toLocaleDateString("en-US", {
+      timeZone: "UTC",
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    });
   return (
     <main id="main-content" tabIndex={-1}>
-      <h1>{creating ? "New appointment" : "Schedule"}</h1>
-      {creating ? (
-        <p>
-          <Link href="/app/schedule">← All appointments</Link>
+      <h1>{creating ? "Book a visit" : "Visits"}</h1>
+      {p.booked === "1" && (
+        <p className="notice ok" role="status">
+          Visit booked.
         </p>
-      ) : (
-        <Link
-          className="btn primary"
-          data-page-primary
-          href="/app/schedule?new=1"
-        >
-          Schedule a visit
-        </Link>
       )}
-      <p className="muted">Today and tomorrow in your business timezone.</p>
-
-      {!creating && (
+      {creating ? (
         <>
-          <section className="card">
-            <h2 style={{ marginTop: 0 }}>Today</h2>
-            <AppointmentList rows={days.today} timezone={days.timezone} />
-          </section>
-          <section className="card">
-            <h2 style={{ marginTop: 0 }}>Tomorrow</h2>
-            <AppointmentList rows={days.tomorrow} timezone={days.timezone} />
-          </section>
+          <Link href="/app/schedule">← All visits</Link>
+          <VisitEditor
+            options={data.options!}
+            auto={isAutomotive(data.profile?.businessType ?? "automotive")}
+            initial={{
+              customerId: p.customerId,
+              vehicleId: p.vehicleId,
+              serviceAssetId: p.serviceAssetId,
+              day: data.anchor,
+            }}
+            source={{
+              sourceRecoveryItemId: p.sourceRecoveryItemId,
+              sourceContactActivityId: p.sourceContactActivityId,
+            }}
+          />
         </>
-      )}
-      {creating && (
-        <section className="card" id="new-appointment">
-          <h2 style={{ marginTop: 0 }}>New appointment</h2>
-          {choices.customers.length ? (
-            <ActionForm
-              variant="primary"
-              action={createAppointmentAction}
-              hidden={
-                params.sourceRecoveryItemId
-                  ? {
-                      sourceRecoveryItemId: params.sourceRecoveryItemId,
-                      ...(params.sourceContactActivityId
-                        ? {
-                            sourceContactActivityId:
-                              params.sourceContactActivityId,
-                          }
-                        : {}),
-                    }
-                  : {}
-              }
-              submitLabel="Schedule appointment"
-              successText="Appointment scheduled."
-            >
-              <label htmlFor="customerId">Customer</label>
-              <select
-                id="customerId"
-                name="customerId"
-                required
-                defaultValue={selectedCustomer}
-              >
-                <option value="" disabled>
-                  Select customer
-                </option>
-                {choices.customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {auto ? (
-                <>
-                  <label htmlFor="vehicleId">Vehicle (optional)</label>
-                  <select
-                    id="vehicleId"
-                    name="vehicleId"
-                    defaultValue={selectedVehicle}
-                  >
-                    <option value="">No vehicle selected</option>
-                    {choices.vehicles.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
-                          "Vehicle"}
-                        {v.plate ? ` • ${v.plate}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <>
-                  <label htmlFor="serviceAssetId">
-                    Property / equipment (optional)
-                  </label>
-                  <select
-                    name="serviceAssetId"
-                    id="serviceAssetId"
-                    defaultValue={params.serviceAssetId ?? ""}
-                  >
-                    <option value="">No property / equipment selected</option>
-                    {choices.serviceAssets.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-              <label htmlFor="startsAt">Date and time</label>
-              <input
-                id="startsAt"
-                name="startsAt"
-                type="datetime-local"
-                required
-              />
-              <label htmlFor="reason">Reason</label>
-              <input
-                id="reason"
-                name="reason"
-                maxLength={200}
-                placeholder={
-                  workspaceLabels(profile?.businessType ?? "automotive").example
-                }
-              />
-              <label htmlFor="notes">Notes</label>
-              <textarea id="notes" name="notes" rows={3} maxLength={5000} />
-            </ActionForm>
-          ) : (
-            <p>
-              Add a <Link href="/app/customers/new">customer</Link> before
-              scheduling an appointment.
-            </p>
+      ) : (
+        <>
+          <Link
+            href={`/app/schedule?new=1&week=${data.anchor}`}
+            className="btn primary"
+            data-page-primary
+          >
+            Book visit
+          </Link>
+          <div className="money-actions">
+            <Link href={`/app/schedule?week=${addLocalDays(data.start, -7)}`}>
+              Previous week
+            </Link>
+            <Link href="/app/schedule">This week</Link>
+            <Link href={`/app/schedule?week=${addLocalDays(data.start, 7)}`}>
+              Next week
+            </Link>
+          </div>
+          <form method="get" className="card">
+            <label htmlFor="visit-week">Go to a date</label>
+            <input
+              id="visit-week"
+              name="week"
+              type="date"
+              defaultValue={data.anchor}
+              required
+            />
+            <button className="btn secondary">Show week</button>
+          </form>
+          <p className="muted">
+            {dateLabel(data.start)} – {dateLabel(addLocalDays(data.start, 6))} ·{" "}
+            {data.visits.timezone}
+          </p>
+          {Array.from({ length: 7 }, (_, i) => addLocalDays(data.start, i)).map(
+            (day) => (
+              <section className="card" key={day}>
+                <h2>
+                  {day === data.today
+                    ? "Today"
+                    : day === addLocalDays(data.today, 1)
+                      ? "Tomorrow"
+                      : dateLabel(day)}
+                </h2>
+                {!data.visits.rows.some(
+                  (a) => localDateKey(a.startsAt, data.visits.timezone) === day,
+                ) && <p className="muted">No visits.</p>}
+                {data.visits.rows
+                  .filter(
+                    (a) =>
+                      localDateKey(a.startsAt, data.visits.timezone) === day,
+                  )
+                  .map((a) => (
+                    <article className="appointment-row" key={a.id}>
+                      <strong>
+                        {a.startsAt.toLocaleTimeString("en-US", {
+                          timeZone: data.visits.timezone,
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </strong>
+                      <div>
+                        <Link href={`/app/customers/${a.customerId}`}>
+                          {a.customerName}
+                        </Link>
+                        <p>
+                          {a.reason || "Visit"} ·{" "}
+                          {a.status === "scheduled"
+                            ? "Booked"
+                            : a.status.replace("_", " ")}
+                        </p>
+                        {a.serviceAssetName && (
+                          <p>
+                            {a.serviceAssetName} · {a.serviceAddress}
+                          </p>
+                        )}
+                        {(a.vehicleId || a.serviceAssetId) &&
+                          a.status !== "cancelled" && (
+                            <Link
+                              href={`/app/jobs?${new URLSearchParams({ sourceAppointmentId: a.id, customerId: a.customerId, ...(a.vehicleId ? { vehicleId: a.vehicleId } : {}), ...(a.serviceAssetId ? { serviceAssetId: a.serviceAssetId } : {}) })}`}
+                            >
+                              Start job from visit
+                            </Link>
+                          )}
+                      </div>
+                      {a.status === "scheduled" &&
+                        s.actor.type !== "support" && (
+                          <details>
+                            <summary>Update visit</summary>
+                            <ActionForm
+                              action={setAppointmentStatusAction}
+                              hidden={{
+                                appointmentId: a.id,
+                                status: "completed",
+                              }}
+                              submitLabel="Mark visit complete"
+                              variant="secondary"
+                            />
+                            <ActionForm
+                              action={setAppointmentStatusAction}
+                              hidden={{
+                                appointmentId: a.id,
+                                status: "cancelled",
+                              }}
+                              submitLabel="Cancel visit"
+                              variant="danger"
+                              confirm="Cancel this visit?"
+                            />
+                          </details>
+                        )}
+                    </article>
+                  ))}
+              </section>
+            ),
           )}
-        </section>
+        </>
       )}
     </main>
   );

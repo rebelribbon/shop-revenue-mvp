@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { DocumentShare } from "./document-share";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -19,6 +20,10 @@ export function InvoiceIssuer({
   const router = useRouter();
   const [path, setPath] = useState("");
   const [issuedId, setIssuedId] = useState("");
+  const [share, setShare] = useState<
+    | { path: string; name: string; phone: string | null; email: string | null }
+    | undefined
+  >();
   const [issuedJobId, setIssuedJobId] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
@@ -29,6 +34,7 @@ export function InvoiceIssuer({
     return (
       <section className="card">
         <h2>Invoice ready</h2>
+        <DocumentShare id={issuedId} kind="invoice" primary initial={share} />
         <p role="status">
           Invoice issued. No payment was collected by creating this invoice.
         </p>
@@ -87,6 +93,7 @@ export function InvoiceIssuer({
           if (result.ok) {
             setPath((result.data as { path?: string }).path ?? "");
             setIssuedId((result.data as { id: string }).id);
+            setShare((result.data as { share?: typeof share }).share);
             setIssuedJobId(
               choices.find((c) => c.id === versionId)?.jobId ?? "",
             );
@@ -100,7 +107,7 @@ export function InvoiceIssuer({
         }
       }}
     >
-      <h2>Issue invoice</h2>
+      <h2>Create invoice</h2>
       <p>
         This bills authorized work. It does not mark work complete, send a
         message or charge a card.
@@ -152,7 +159,7 @@ export function InvoiceIssuer({
         maxLength={dueMode === "receipt" ? 4980 : 5000}
       />
       <button className="btn primary" disabled={pending}>
-        {pending ? "Issuing…" : "Issue invoice"}
+        {pending ? "Preparing…" : "Create invoice"}
       </button>
       <p role="status">{message}</p>
     </form>
@@ -181,36 +188,46 @@ export function InvoiceLink({ id }: { id: string }) {
   const [pending, setPending] = useState(false);
   return (
     <div>
-      <button
-        className="btn secondary"
-        disabled={pending}
-        onClick={async () => {
-          setPending(true);
-          try {
-            const r = await rotateInvoiceLinkAction({
-              id,
-              clientRequestId: crypto.randomUUID(),
-            });
-            if (r.ok) {
-              setPath((r.data as { path?: string }).path ?? "");
-              setMessage(
-                "Replacement link created. Previous link is no longer active.",
-              );
-            } else setMessage(r.error.message);
-          } catch {
-            setMessage("Unable to create link. Please try again.");
-          } finally {
-            setPending(false);
-          }
-        }}
-      >
-        Create replacement invoice link
-      </button>
-      <p className="muted">
-        Replacing the link disables the previous customer link.
-      </p>
-      <p role="status">{message}</p>
-      {path && <ShareLink path={path} />}
+      <DocumentShare id={id} kind="invoice" />
+      <details>
+        <summary>Older link options</summary>
+        <button
+          className="btn secondary"
+          disabled={pending}
+          onClick={async () => {
+            if (
+              !window.confirm(
+                "Replace this link? The previous customer link will stop working.",
+              )
+            )
+              return;
+            setPending(true);
+            try {
+              const r = await rotateInvoiceLinkAction({
+                id,
+                clientRequestId: crypto.randomUUID(),
+              });
+              if (r.ok) {
+                setPath((r.data as { path?: string }).path ?? "");
+                setMessage(
+                  "Replacement link created. Previous link is no longer active.",
+                );
+              } else setMessage(r.error.message);
+            } catch {
+              setMessage("Unable to create link. Please try again.");
+            } finally {
+              setPending(false);
+            }
+          }}
+        >
+          Replace older link
+        </button>
+        <p className="muted">
+          Replacing the link disables the previous customer link.
+        </p>
+        <p role="status">{message}</p>
+        {path && <ShareLink path={path} />}
+      </details>
     </div>
   );
 }
@@ -252,10 +269,7 @@ export function InvoicePaymentForm({
       }}
     >
       <h3>Record payment received</h3>
-      <p className="muted">
-        Record money already received outside Shop Revenue. This does not charge
-        a card or move money.
-      </p>
+      <p className="muted">Enter a payment you already received.</p>
       <label htmlFor={`payment-${id}`}>Amount ($)</label>
       <input
         id={`payment-${id}`}
@@ -264,6 +278,8 @@ export function InvoicePaymentForm({
         step="0.01"
         min="0.01"
         max={balanceCents / 100}
+        key={balanceCents}
+        defaultValue={(balanceCents / 100).toFixed(2)}
         required
       />
       <label htmlFor={`method-${id}`}>Payment method</label>

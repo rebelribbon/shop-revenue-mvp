@@ -54,7 +54,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .click();
   await expect(opportunity).toContainText("responded");
   await opportunity
-    .getByRole("button", { name: "New repair / re-quote", exact: true })
+    .getByRole("button", { name: "Start job", exact: true })
     .click();
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
   await page.getByLabel("Job name").fill(title);
@@ -90,9 +90,8 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   const job = page
     .getByRole("heading", { name: title, exact: true })
     .locator("..");
-  await job
-    .getByRole("button", { name: "Freeze and publish estimate", exact: true })
-    .click();
+  await job.getByRole("button", { name: "Send estimate", exact: true }).click();
+  await job.getByText("Preview or copy estimate", { exact: true }).click();
   await expect(
     job.getByRole("link", { name: "Open customer estimate", exact: true }),
   ).toBeVisible();
@@ -118,9 +117,9 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   await page.goto("/app/invoices?new=1");
   await page
     .getByLabel("Authorized estimate", { exact: true })
-    .selectOption({ label: `${title} · Version 1 · ${name}` });
+    .selectOption({ label: `${title} · ${name}` });
   await page
-    .getByRole("button", { name: "Issue invoice", exact: true })
+    .getByRole("button", { name: "Create invoice", exact: true })
     .click();
   await page
     .getByRole("link", { name: "Open invoice & record payment", exact: true })
@@ -136,7 +135,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   await expect(inv.getByText("Paid", { exact: true })).toBeVisible();
   await page.goto("/app/revenue");
   const record = page.locator("article.card").filter({ hasText: title });
-  await expect(record).toContainText("Directly recovered: $640.00");
+  await expect(record).toContainText("Confirmed follow-up sale: $640.00");
   await record
     .getByRole("link", { name: "Explanation and history", exact: true })
     .click();

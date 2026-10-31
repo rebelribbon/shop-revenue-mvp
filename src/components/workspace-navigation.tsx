@@ -10,22 +10,28 @@ const shopItems = [
     mobile: "Customers",
     icon: "customers",
   },
-  { href: "/app/work", label: "Work", mobile: "Work", icon: "work" },
+  { href: "/app/work", label: "Jobs", mobile: "Jobs", icon: "work" },
   {
     href: "/app/schedule",
-    label: "Schedule",
+    label: "Visits",
     mobile: "Visits",
     icon: "schedule",
   },
   {
-    href: "/app/settings",
-    label: "Settings",
-    mobile: "Setup",
-    icon: "settings",
+    href: "/app/money",
+    label: "Money",
+    mobile: "Money",
+    icon: "money",
   },
 ] as const;
 const workPaths = ["/app/jobs", "/app/estimates", "/app/invoices"];
-export function WorkspaceNavigation({ mobile = false }: { mobile?: boolean }) {
+export function WorkspaceNavigation({
+  mobile = false,
+  canSeeMoney = true,
+}: {
+  mobile?: boolean;
+  canSeeMoney?: boolean;
+}) {
   const path = usePathname();
   return (
     <nav
@@ -34,29 +40,32 @@ export function WorkspaceNavigation({ mobile = false }: { mobile?: boolean }) {
       }
       aria-label={mobile ? "Mobile navigation" : "Main"}
     >
-      {(mobile ? shopItems.slice(0, 4) : shopItems).map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          aria-label={item.label}
-          aria-current={
-            (
-              item.href === "/app"
-                ? path === item.href ||
-                  path.startsWith("/app/opportunities") ||
-                  path.startsWith("/app/revenue")
-                : path.startsWith(item.href) ||
-                  (item.href === "/app/work" &&
-                    workPaths.some((p) => path.startsWith(p)))
-            )
-              ? "page"
-              : undefined
-          }
-        >
-          {!mobile && <WorkspaceIcon name={item.icon} />}
-          <span>{mobile ? item.mobile : item.label}</span>
-        </Link>
-      ))}
+      {shopItems
+        .filter((item) => canSeeMoney || item.href !== "/app/money")
+        .map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-label={item.label}
+            aria-current={
+              (
+                item.href === "/app"
+                  ? path === item.href
+                  : path.startsWith(item.href) ||
+                    (item.href === "/app/money" &&
+                      (path.startsWith("/app/opportunities") ||
+                        path.startsWith("/app/revenue"))) ||
+                    (item.href === "/app/work" &&
+                      workPaths.some((p) => path.startsWith(p)))
+              )
+                ? "page"
+                : undefined
+            }
+          >
+            {!mobile && <WorkspaceIcon name={item.icon} />}
+            <span>{mobile ? item.mobile : item.label}</span>
+          </Link>
+        ))}
     </nav>
   );
 }

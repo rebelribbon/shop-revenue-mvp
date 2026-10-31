@@ -33,6 +33,8 @@ export const business = app.table(
     timezone: text("timezone").notNull().default("America/Chicago"),
     jurisdictionCode: text("jurisdiction_code").notNull().default("US-TX"),
     taxRateBps: integer("tax_rate_bps").notNull().default(0),
+    laborSellRateCents: integer("labor_sell_rate_cents").notNull().default(0),
+    laborCostRateCents: integer("labor_cost_rate_cents").notNull().default(0),
     partsTaxableDefault: boolean("parts_taxable_default")
       .notNull()
       .default(true),

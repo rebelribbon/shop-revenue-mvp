@@ -32,8 +32,8 @@ export function Recommendations({
       <div className="card">
         <h3>Next service</h3>
         <p>
-          Enter the service date you agreed with the customer. Money Finder
-          shows it from 90 days overdue to 14 days ahead.
+          Enter the service date you agreed with the customer. Follow-ups shows
+          it from 90 days overdue to 14 days ahead.
         </p>
         {readOnly ? (
           <p>{vehicle.nextServiceOn ?? "No service date entered"}</p>

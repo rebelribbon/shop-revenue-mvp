@@ -18,19 +18,19 @@ export function RevenueSummary({
   month: string;
 }) {
   return (
-    <section className="card revenue-summary" aria-label="Recovered revenue">
-      <p className="eyebrow">Recovered revenue · {month}</p>
-      <h2>{revenueMoney(direct)} directly recovered</h2>
+    <section className="card revenue-summary" aria-label="Follow-up sales">
+      <p className="eyebrow">Follow-up sales · {month}</p>
+      <h2>{revenueMoney(direct)} confirmed follow-up sales</h2>
       <p className="muted">
-        Influenced: {revenueMoney(influenced)} — separate, not counted as
-        recovered.
+        Other sales after follow-up: {revenueMoney(influenced)} — separate, not
+        counted as recovered.
       </p>
       <p className="muted">
         Before tax. Net recorded payment shares and corrections posted this
         month in your shop timezone; refunds and reversals can reduce this
         amount.
       </p>
-      <Link href="/app/revenue">View attribution and evidence</Link>
+      <Link href="/app/revenue">See follow-up sales</Link>
     </section>
   );
 }

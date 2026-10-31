@@ -21,6 +21,8 @@ const saveBusinessProfile = defineShopAction({
     postalCode: z.string().max(20).optional().or(z.literal("")),
     timezone: z.string().min(1).max(100),
     taxPercent: z.coerce.number().min(0).max(20).optional(),
+    laborSellRate: z.coerce.number().min(0).max(1000000).optional(),
+    laborCostRate: z.coerce.number().min(0).max(1000000).optional(),
     partsTaxableDefault: z.enum(["true", "false"]).optional(),
     laborTaxableDefault: z.enum(["true", "false"]).optional(),
   }),
@@ -36,6 +38,14 @@ const saveBusinessProfile = defineShopAction({
       region: input.region || null,
       postalCode: input.postalCode || null,
       timezone: input.timezone,
+      laborSellRateCents:
+        input.laborSellRate === undefined
+          ? undefined
+          : Math.round(input.laborSellRate * 100),
+      laborCostRateCents:
+        input.laborCostRate === undefined
+          ? undefined
+          : Math.round(input.laborCostRate * 100),
       taxRateBps:
         input.taxPercent === undefined
           ? undefined
