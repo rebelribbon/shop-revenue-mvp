@@ -6,27 +6,485 @@ import { useRouter } from "next/navigation";
 import { createJobAction } from "@/server/actions/jobs";
 import { calculateJob } from "@/domain/job-costing";
 import type { JobInput } from "@/domain/jobs";
-type Options={serviceAssets:{id:string;customerId:string;displayName:string}[];customers:{id:string;name:string}[];vehicles:{id:string;customerId:string;year:number|null;make:string|null;model:string|null}[]};
-export const money=(c:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(c/100);
-export function JobEditor({options,initial,recommendations=[],businessType="automotive"}:{businessType?:string;options:Options;initial?:JobInput;recommendations?:{id:string;description:string;vehicleId:string|null;customerId:string;serviceAssetId:string|null}[]}){
- const router=useRouter();const [customerId,setCustomer]=useState(initial?.customerId??"");const [vehicleId,setVehicle]=useState(initial?.vehicleId??"");const [title,setTitle]=useState(initial?.title??"");
- const [parts,setParts]=useState<JobInput["parts"]>(initial?.parts??[]);const [labor,setLabor]=useState<JobInput["labor"]>(initial?.labor??[]);const [message,setMessage]=useState("");const [pending,setPending]=useState(false);const [requestId,setRequestId]=useState(()=>crypto.randomUUID());
- const [serviceAssetId,setServiceAsset]=useState(initial?.serviceAssetId??"");
- const auto = !!initial?.vehicleId || (!initial?.serviceAssetId && isAutomotive(businessType));
- const matches=recommendations.filter(r=>r.customerId===customerId&&(vehicleId?r.vehicleId===vehicleId:!!serviceAssetId&&r.serviceAssetId===serviceAssetId));
- const clearRecommendationLinks=()=>{setParts(ps=>ps.map(p=>({...p,recommendationId:undefined})));setLabor(ls=>ls.map(l=>({...l,recommendationId:undefined})));};
- const totals=calculateJob(parts,labor);
- const numberField=(label:string,value:number|null,change:(n:number|null)=>void,scale=1,optional=false)=><label>{label}<input type="number" min="0" max={scale===100?1000000:10000} step={scale===100?"0.01":"1"} required={!optional} value={value===null?"":value/scale} onChange={e=>change(e.target.value===""?null:Math.round(Number(e.target.value)*scale))}/></label>;
- if(!options.customers.length)return <section className="card"><h2>Add your first customer</h2><p>{auto?'A repair job needs a customer and their vehicle.':'A service job needs a customer and their property or equipment.'} Create the customer first, then start their job from the record.</p><Link className="btn primary" href="/app/customers/new">Add customer</Link></section>;
- return <form className="card" onSubmit={async e=>{e.preventDefault();setPending(true);try{const r=await createJobAction({...initial,customerId,vehicleId:vehicleId||undefined,serviceAssetId:serviceAssetId||undefined,title,parts,labor,clientRequestId:requestId});if(r.ok){setMessage("Job sheet saved.");setRequestId(crypto.randomUUID());router.push(`/app/jobs?job=${encodeURIComponent((r.data as {id:string}).id)}&saved=1`);router.refresh();}else setMessage(r.error.message);}catch{setMessage("Unable to save. Your entries were kept.");}finally{setPending(false);}}}>
- <h2>{initial?.jobId?"Revise job sheet":"New job sheet"}</h2><label>Job name<input required maxLength={200} value={title} onChange={e=>setTitle(e.target.value)}/></label>
- <label htmlFor="job-customer">Customer</label><select id="job-customer" required value={customerId} onChange={e=>{clearRecommendationLinks();setCustomer(e.target.value);setVehicle("");setServiceAsset("");}}><option value="">Choose customer</option>{options.customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
- {auto ? <><label htmlFor="job-vehicle">Vehicle</label><select id="job-vehicle" required value={vehicleId} onChange={e=>{clearRecommendationLinks();setVehicle(e.target.value);}}><option value="">Choose vehicle</option>{options.vehicles.filter(v=>v.customerId===customerId).map(v=><option key={v.id} value={v.id}>{[v.year,v.make,v.model].filter(Boolean).join(" ")||"Vehicle"}</option>)}</select></> : <><label htmlFor="job-service-asset">Property / equipment</label><select id="job-service-asset" required value={serviceAssetId} onChange={e=>{clearRecommendationLinks();setServiceAsset(e.target.value);}}><option value="">Choose property or equipment</option>{options.serviceAssets.filter(a=>a.customerId===customerId).map(a=><option key={a.id} value={a.id}>{a.displayName}</option>)}</select></>}
- {customerId&&<p><Link href={`/app/customers/${customerId}?view=assets`}>Manage this customer’s {auto?'vehicles':'properties & equipment'}</Link></p>}
- {initial?.sourceRecoveryItemId&&<p className="notice">Linked to a Money Finder opportunity. For declined work, link each recovered part or labor line below; additional work stays uncounted.</p>}
- <h3>{auto?"Parts":"Materials"}</h3>{parts.map((p,i)=><fieldset key={i}><legend>{auto?"Part":"Material"} {i+1}</legend>{matches.length>0&&<label>Declined-work link<select value={p.recommendationId??''} onChange={e=>setParts(parts.map((x,n)=>n===i?{...x,recommendationId:e.target.value||undefined}:x))}><option value="">Additional work / no recommendation link</option>{matches.map(r=><option key={r.id} value={r.id}>{r.description}</option>)}</select></label>}<label>Description<input required value={p.description} onChange={e=>setParts(parts.map((x,n)=>n===i?{...x,description:e.target.value}:x))}/></label>{([['Quantity','quantity',1],['Unit cost','unitCostCents',100],['Unit selling price','unitPriceCents',100]] as const).map(([label,key,scale])=><div key={key}>{numberField(label,p[key],v=>setParts(parts.map((x,n)=>n===i?{...x,[key]:v??0}:x)),scale)}</div>)}<button type="button" className="btn secondary" onClick={()=>setParts(parts.filter((_,n)=>n!==i))}>Remove {auto?"part":"material"}</button></fieldset>)}
- <button type="button" className="btn secondary" onClick={()=>setParts([...parts,{description:"",quantity:1,unitCostCents:0,unitPriceCents:0}])}>Add {auto?"part":"material"}</button>
- <h3>Labor</h3>{labor.map((p,i)=><fieldset key={i}><legend>Labor {i+1}</legend>{matches.length>0&&<label>Declined-work link<select value={p.recommendationId??''} onChange={e=>setLabor(labor.map((x,n)=>n===i?{...x,recommendationId:e.target.value||undefined}:x))}><option value="">Additional work / no recommendation link</option>{matches.map(r=><option key={r.id} value={r.id}>{r.description}</option>)}</select></label>}<label>Description<input required value={p.description} onChange={e=>setLabor(labor.map((x,n)=>n===i?{...x,description:e.target.value}:x))}/></label>{([['Quoted hours','estimatedHoursHundredths'],['Actual hours','actualHoursHundredths'],['Hourly selling rate','sellRateCents'],['Hourly internal cost','costRateCents']] as const).map(([label,key])=><div key={key}>{numberField(label,p[key],v=>setLabor(labor.map((x,n)=>n===i?{...x,[key]:key==='actualHoursHundredths'?v:(v??0)}:x)),100,key==='actualHoursHundredths')}</div>)}<button type="button" className="btn secondary" onClick={()=>setLabor(labor.filter((_,n)=>n!==i))}>Remove labor</button></fieldset>)}
- <button type="button" className="btn secondary" onClick={()=>setLabor([...labor,{description:"",estimatedHoursHundredths:0,actualHoursHundredths:null,sellRateCents:0,costRateCents:0}])}>Add labor</button>
- <h3>Job totals</h3><p>Quoted subtotal: <strong>{money(totals.subtotalCents)}</strong></p><p>Estimated cost: {money(totals.estimatedCostCents)} · Gross profit: {money(totals.estimatedGrossProfitCents)}</p><p>Actual cost: {totals.actualCostCents===null?"Awaiting actual hours":money(totals.actualCostCents)} · Actual gross profit: {totals.actualGrossProfitCents===null?"Unknown":money(totals.actualGrossProfitCents)}</p><button className="btn primary" disabled={pending||(!parts.length&&!labor.length)}>{pending?"Saving…":"Save job sheet"}</button><p role="status">{message}</p></form>;
+type Options = {
+  serviceAssets: { id: string; customerId: string; displayName: string }[];
+  customers: { id: string; name: string }[];
+  vehicles: {
+    id: string;
+    customerId: string;
+    year: number | null;
+    make: string | null;
+    model: string | null;
+  }[];
+};
+export const money = (c: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+    c / 100,
+  );
+export function JobEditor({
+  options,
+  initial,
+  recommendations = [],
+  businessType = "automotive",
+  partsTaxableDefault = true,
+  laborTaxableDefault = false,
+}: {
+  partsTaxableDefault?: boolean;
+  laborTaxableDefault?: boolean;
+  businessType?: string;
+  options: Options;
+  initial?: JobInput;
+  recommendations?: {
+    id: string;
+    description: string;
+    vehicleId: string | null;
+    customerId: string;
+    serviceAssetId: string | null;
+  }[];
+}) {
+  const router = useRouter();
+  const [customerId, setCustomer] = useState(initial?.customerId ?? "");
+  const [vehicleId, setVehicle] = useState(initial?.vehicleId ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [parts, setParts] = useState<JobInput["parts"]>(initial?.parts ?? []);
+  const [labor, setLabor] = useState<JobInput["labor"]>(initial?.labor ?? []);
+  const [message, setMessage] = useState("");
+  const [pending, setPending] = useState(false);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [serviceAssetId, setServiceAsset] = useState(
+    initial?.serviceAssetId ?? "",
+  );
+  const auto =
+    !!initial?.vehicleId ||
+    (!initial?.serviceAssetId && isAutomotive(businessType));
+  const matches = recommendations.filter(
+    (r) =>
+      r.customerId === customerId &&
+      (vehicleId
+        ? r.vehicleId === vehicleId
+        : !!serviceAssetId && r.serviceAssetId === serviceAssetId),
+  );
+  const clearRecommendationLinks = () => {
+    setParts((ps) => ps.map((p) => ({ ...p, recommendationId: undefined })));
+    setLabor((ls) => ls.map((l) => ({ ...l, recommendationId: undefined })));
+  };
+  const totals = calculateJob(parts, labor);
+  const numberField = (
+    label: string,
+    value: number | null,
+    change: (n: number | null) => void,
+    scale = 1,
+    optional = false,
+  ) => (
+    <label>
+      {label}
+      <input
+        type="number"
+        min="0"
+        max={scale === 100 ? 1000000 : 10000}
+        step={scale === 100 ? "0.01" : "1"}
+        required={!optional}
+        value={value === null ? "" : value / scale}
+        onChange={(e) =>
+          change(
+            e.target.value === ""
+              ? null
+              : Math.round(Number(e.target.value) * scale),
+          )
+        }
+      />
+    </label>
+  );
+  if (!options.customers.length)
+    return (
+      <section className="card">
+        <h2>Add your first customer</h2>
+        <p>
+          {auto
+            ? "A repair job needs a customer and their vehicle."
+            : "A service job needs a customer and their property or equipment."}{" "}
+          Create the customer first, then start their job from the record.
+        </p>
+        <Link className="btn primary" href="/app/customers/new">
+          Add customer
+        </Link>
+      </section>
+    );
+  return (
+    <form
+      className="card"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setPending(true);
+        try {
+          const r = await createJobAction({
+            ...initial,
+            customerId,
+            vehicleId: vehicleId || undefined,
+            serviceAssetId: serviceAssetId || undefined,
+            title,
+            parts,
+            labor,
+            clientRequestId: requestId,
+          });
+          if (r.ok) {
+            setMessage("Job sheet saved.");
+            setRequestId(crypto.randomUUID());
+            router.push(
+              `/app/jobs?job=${encodeURIComponent((r.data as { id: string }).id)}&saved=1`,
+            );
+            router.refresh();
+          } else setMessage(r.error.message);
+        } catch {
+          setMessage("Unable to save. Your entries were kept.");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h2>{initial?.jobId ? "Revise job sheet" : "New job sheet"}</h2>
+      <label>
+        Job name
+        <input
+          required
+          maxLength={200}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </label>
+      <label htmlFor="job-customer">Customer</label>
+      <select
+        id="job-customer"
+        required
+        value={customerId}
+        onChange={(e) => {
+          clearRecommendationLinks();
+          setCustomer(e.target.value);
+          setVehicle("");
+          setServiceAsset("");
+        }}
+      >
+        <option value="">Choose customer</option>
+        {options.customers.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      {auto ? (
+        <>
+          <label htmlFor="job-vehicle">Vehicle</label>
+          <select
+            id="job-vehicle"
+            required
+            value={vehicleId}
+            onChange={(e) => {
+              clearRecommendationLinks();
+              setVehicle(e.target.value);
+            }}
+          >
+            <option value="">Choose vehicle</option>
+            {options.vehicles
+              .filter((v) => v.customerId === customerId)
+              .map((v) => (
+                <option key={v.id} value={v.id}>
+                  {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
+                    "Vehicle"}
+                </option>
+              ))}
+          </select>
+        </>
+      ) : (
+        <>
+          <label htmlFor="job-service-asset">Property / equipment</label>
+          <select
+            id="job-service-asset"
+            required
+            value={serviceAssetId}
+            onChange={(e) => {
+              clearRecommendationLinks();
+              setServiceAsset(e.target.value);
+            }}
+          >
+            <option value="">Choose property or equipment</option>
+            {options.serviceAssets
+              .filter((a) => a.customerId === customerId)
+              .map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.displayName}
+                </option>
+              ))}
+          </select>
+        </>
+      )}
+      {customerId && (
+        <p>
+          <Link href={`/app/customers/${customerId}?view=assets`}>
+            Manage this customer’s{" "}
+            {auto ? "vehicles" : "properties & equipment"}
+          </Link>
+        </p>
+      )}
+      {initial?.sourceRecoveryItemId && (
+        <p className="notice">
+          Linked to a Money Finder opportunity. For declined work, link each
+          recovered part or labor line below; additional work stays uncounted.
+        </p>
+      )}
+      <h3>{auto ? "Parts" : "Materials"}</h3>
+      {parts.map((p, i) => (
+        <fieldset key={i}>
+          <legend>
+            {auto ? "Part" : "Material"} {i + 1}
+          </legend>
+          {matches.length > 0 && (
+            <label>
+              Declined-work link
+              <select
+                value={p.recommendationId ?? ""}
+                onChange={(e) =>
+                  setParts(
+                    parts.map((x, n) =>
+                      n === i
+                        ? {
+                            ...x,
+                            recommendationId: e.target.value || undefined,
+                          }
+                        : x,
+                    ),
+                  )
+                }
+              >
+                <option value="">
+                  Additional work / no recommendation link
+                </option>
+                {matches.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            Description
+            <input
+              required
+              value={p.description}
+              onChange={(e) =>
+                setParts(
+                  parts.map((x, n) =>
+                    n === i ? { ...x, description: e.target.value } : x,
+                  ),
+                )
+              }
+            />
+          </label>
+          {(
+            [
+              ["Quantity", "quantity", 1],
+              ["Unit cost", "unitCostCents", 100],
+              ["Unit selling price", "unitPriceCents", 100],
+            ] as const
+          ).map(([label, key, scale]) => (
+            <div key={key}>
+              {numberField(
+                label,
+                p[key],
+                (v) =>
+                  setParts(
+                    parts.map((x, n) =>
+                      n === i ? { ...x, [key]: v ?? 0 } : x,
+                    ),
+                  ),
+                scale,
+              )}
+            </div>
+          ))}
+          <label>
+            <input
+              type="checkbox"
+              checked={p.taxable ?? partsTaxableDefault}
+              onChange={(e) =>
+                setParts(
+                  parts.map((x, n) =>
+                    n === i ? { ...x, taxable: e.target.checked } : x,
+                  ),
+                )
+              }
+            />
+            Taxable item
+          </label>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => setParts(parts.filter((_, n) => n !== i))}
+          >
+            Remove {auto ? "part" : "material"}
+          </button>
+        </fieldset>
+      ))}
+      <button
+        type="button"
+        className="btn secondary"
+        onClick={() =>
+          setParts([
+            ...parts,
+            {
+              description: "",
+              taxable: partsTaxableDefault,
+              quantity: 1,
+              unitCostCents: 0,
+              unitPriceCents: 0,
+            },
+          ])
+        }
+      >
+        Add {auto ? "part" : "material"}
+      </button>
+      <h3>Labor</h3>
+      {labor.map((p, i) => (
+        <fieldset key={i}>
+          <legend>Labor {i + 1}</legend>
+          {matches.length > 0 && (
+            <label>
+              Declined-work link
+              <select
+                value={p.recommendationId ?? ""}
+                onChange={(e) =>
+                  setLabor(
+                    labor.map((x, n) =>
+                      n === i
+                        ? {
+                            ...x,
+                            recommendationId: e.target.value || undefined,
+                          }
+                        : x,
+                    ),
+                  )
+                }
+              >
+                <option value="">
+                  Additional work / no recommendation link
+                </option>
+                {matches.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label>
+            Description
+            <input
+              required
+              value={p.description}
+              onChange={(e) =>
+                setLabor(
+                  labor.map((x, n) =>
+                    n === i ? { ...x, description: e.target.value } : x,
+                  ),
+                )
+              }
+            />
+          </label>
+          {(
+            [
+              ["Quoted hours", "estimatedHoursHundredths"],
+              ["Actual hours", "actualHoursHundredths"],
+              ["Hourly selling rate", "sellRateCents"],
+              ["Hourly internal cost", "costRateCents"],
+            ] as const
+          ).map(([label, key]) => (
+            <div key={key}>
+              {numberField(
+                label,
+                p[key],
+                (v) =>
+                  setLabor(
+                    labor.map((x, n) =>
+                      n === i
+                        ? {
+                            ...x,
+                            [key]:
+                              key === "actualHoursHundredths" ? v : (v ?? 0),
+                          }
+                        : x,
+                    ),
+                  ),
+                100,
+                key === "actualHoursHundredths",
+              )}
+            </div>
+          ))}
+          <label>
+            <input
+              type="checkbox"
+              checked={p.taxable ?? laborTaxableDefault}
+              onChange={(e) =>
+                setLabor(
+                  labor.map((x, n) =>
+                    n === i ? { ...x, taxable: e.target.checked } : x,
+                  ),
+                )
+              }
+            />
+            Taxable labor
+          </label>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => setLabor(labor.filter((_, n) => n !== i))}
+          >
+            Remove labor
+          </button>
+        </fieldset>
+      ))}
+      <button
+        type="button"
+        className="btn secondary"
+        onClick={() =>
+          setLabor([
+            ...labor,
+            {
+              description: "",
+              taxable: laborTaxableDefault,
+              estimatedHoursHundredths: 0,
+              actualHoursHundredths: null,
+              sellRateCents: 0,
+              costRateCents: 0,
+            },
+          ])
+        }
+      >
+        Add labor
+      </button>
+      <h3>Job totals</h3>
+      <p>
+        Quoted subtotal: <strong>{money(totals.subtotalCents)}</strong>
+      </p>
+      <p>
+        Estimated cost: {money(totals.estimatedCostCents)} · Gross profit:{" "}
+        {money(totals.estimatedGrossProfitCents)}
+      </p>
+      <p>
+        Actual cost:{" "}
+        {totals.actualCostCents === null
+          ? "Awaiting actual hours"
+          : money(totals.actualCostCents)}{" "}
+        · Actual gross profit:{" "}
+        {totals.actualGrossProfitCents === null
+          ? "Unknown"
+          : money(totals.actualGrossProfitCents)}
+      </p>
+      <button
+        className="btn primary"
+        disabled={pending || (!parts.length && !labor.length)}
+      >
+        {pending ? "Saving…" : "Save job sheet"}
+      </button>
+      <p role="status">{message}</p>
+    </form>
+  );
 }

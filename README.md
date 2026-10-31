@@ -25,8 +25,8 @@ Signing in locally:
 
 | Who | How |
 | --- | --- |
-| Owners | `owner.a@shop-a.test`, `owner.b@shop-b.test`: email link, read it in Mailpit at http://127.0.0.1:54324 |
-| Staff | `(512) 555-0101` (A), `(512) 555-0202` (B): SMS code, read it at http://localhost:3000/dev/inbox |
+| Owners | `owner.a@shop-a.test`, `owner.b@shop-b.test`: email and password; local seed uses `E2E_TEST_PASSWORD` or `ShopRevenueLocal123!` |
+| Staff | `staff.a@shop-a.test`, `staff.b@shop-b.test`: email and password, same local seed password |
 | Admin console | `admin.one@example.test`, `admin.two@example.test` (admin), `support.one@example.test` (support) at `/admin/sign-in` |
 
 Sign-up is closed: people get access only through invites (`createBusiness` for owners, Team settings for staff).
@@ -48,3 +48,4 @@ CI (`.github/workflows/ci.yml`) applies the full migration chain to an empty Pos
 - Only `src/db/tenant.ts` and `src/db/admin.ts` may import `pg` or `drizzle-orm/node-postgres` (ESLint rule).
 - New tenant tables call `SELECT app.apply_tenant_rls('app.<table>')` in their migration and get a builder in `tests/db/rls.test.ts`; CI fails otherwise.
 - Never `source` the `.env*` files in a shell: connection URLs contain `&`. Use `ENV_FILE=... pnpm <script>`.
+

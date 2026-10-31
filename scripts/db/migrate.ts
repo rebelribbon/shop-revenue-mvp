@@ -12,20 +12,33 @@ import { Logger, runMigrations } from "graphile-worker";
 import pg from "pg";
 import { loadEnv, requireEnv } from "../lib/env";
 
-export async function migrateDatabase(migrationUrl: string, opts: { quiet?: boolean } = {}) {
+export async function migrateDatabase(
+  migrationUrl: string,
+  opts: { quiet?: boolean } = {},
+) {
   const pool = new pg.Pool({ connectionString: migrationUrl, max: 1 });
   pool.on("error", (err) => console.error("migration pool error", err.message));
-  pool.on("connect", (client) => client.on("error", (err) => console.error("migration client error", err.message)));
+  pool.on("connect", (client) =>
+    client.on("error", (err) =>
+      console.error("migration client error", err.message),
+    ),
+  );
   try {
     const { rows } = await pool.query("SELECT current_user AS u");
-    if (rows[0].u !== "migration_owner") throw new Error(`migrations must run as migration_owner, not ${rows[0].u}`);
+    if (rows[0].u !== "migration_owner")
+      throw new Error(
+        `migrations must run as migration_owner, not ${rows[0].u}`,
+      );
 
     await runMigrations({
       pgPool: pool,
       schema: "graphile_worker",
       logger: opts.quiet ? silentLogger : undefined,
     });
-    await migrate(drizzle(pool), { migrationsFolder: "db/migrations", migrationsSchema: "drizzle" });
+    await migrate(drizzle(pool), {
+      migrationsFolder: "db/migrations",
+      migrationsSchema: "drizzle",
+    });
     await pool.query(`
       REVOKE ALL ON SCHEMA graphile_worker FROM PUBLIC;
       GRANT USAGE ON SCHEMA graphile_worker TO worker_user;
@@ -40,7 +53,9 @@ export async function migrateDatabase(migrationUrl: string, opts: { quiet?: bool
     for (const { relname } of queueTables) {
       const table = `graphile_worker.${pg.escapeIdentifier(relname)}`;
       await pool.query(`DROP POLICY IF EXISTS worker_user_all ON ${table}`);
-      await pool.query(`CREATE POLICY worker_user_all ON ${table} FOR ALL TO worker_user USING (true) WITH CHECK (true)`);
+      await pool.query(
+        `CREATE POLICY worker_user_all ON ${table} FOR ALL TO worker_user USING (true) WITH CHECK (true)`,
+      );
     }
   } finally {
     await pool.end();

@@ -43,7 +43,10 @@ export const invoice = app.table(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [
-    foreignKey({columns:[t.businessId,t.customerId,t.serviceAssetId],foreignColumns:[asset.businessId,asset.customerId,asset.id]}),
+    foreignKey({
+      columns: [t.businessId, t.customerId, t.serviceAssetId],
+      foreignColumns: [asset.businessId, asset.customerId, asset.id],
+    }),
     unique().on(t.businessId, t.id),
     unique().on(t.businessId, t.number),
     foreignKey({

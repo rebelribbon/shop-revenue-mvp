@@ -1,12 +1,202 @@
 "use client";
-import {useState} from "react";
-import {useRouter} from "next/navigation";
-import {signEstimateAction} from "@/server/actions/estimates";
-import type {EstimateSnapshot} from "@/db/schema/m3";
-const CONSENT="I have reviewed this estimate version. I authorize only the selected items at the displayed prices and decline all unselected items. My typed name is my electronic signature.";
-export function EstimateSignature({token,snapshot:s}:{token:string;snapshot:EstimateSnapshot}){
- const [ids,setIds]=useState<string[]>(s.lines.map(l=>l.id));const [pending,setPending]=useState(false);const [message,setMessage]=useState("");const router=useRouter();const subtotal=s.lines.filter(l=>ids.includes(l.id)).reduce((a,l)=>a+l.totalCents,0);const total=subtotal+Math.round(subtotal*s.taxBps/10000);
- return <form className="card" onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);setPending(true);try{const r=await signEstimateAction({token,name:f.get("name"),ids,consent:f.get("consent")==="on"});if(r.ok){setMessage("Your decision was recorded.");router.refresh();}else setMessage(r.message??"Unable to record decision.");}finally{setPending(false);}}}>
- <h2>Authorize work</h2><p>Select the items you approve. Unselected items will be declined. Clear all items to decline the entire estimate.</p>{s.lines.map(l=><label key={l.id} style={{display:"block"}}><input type="checkbox" checked={ids.includes(l.id)} onChange={e=>setIds(e.target.checked?[...ids,l.id]:ids.filter(id=>id!==l.id))}/> Approve {l.description}</label>)}<p>Authorized total including tax: <strong>{new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(total/100)}</strong></p>
- <label>Your full name<input name="name" required maxLength={200} autoComplete="name"/></label><label><input name="consent" type="checkbox" required/> {CONSENT}</label><button className={ids.length?"btn primary":"btn danger"} disabled={pending}>{pending?"Recording…":ids.length?"Sign authorization":"Sign decline"}</button><p role="status">{message}</p></form>;
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { signEstimateAction } from "@/server/actions/estimates";
+import type { EstimateSnapshot } from "@/db/schema/m3";
+import type { LineDecision, SignatureStrokes } from "@/lib/estimate-decisions";
+import { estimateTotals } from "@/lib/estimate-tax";
+
+export function EstimateSignature({
+  token,
+  snapshot: s,
+}: {
+  token: string;
+  snapshot: EstimateSnapshot;
+}) {
+  const [choices, setChoices] = useState<
+    Record<string, LineDecision["decision"]>
+  >({});
+  const [signature, setSignature] = useState<SignatureStrokes>([]);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const router = useRouter();
+  const approved = s.lines.filter((l) => choices[l.id] === "approve");
+  const totals = estimateTotals(approved, s.taxBps);
+  const complete = s.lines.every((l) => choices[l.id] !== undefined);
+  const validSignature = signature.some((stroke) => stroke.length >= 2);
+  if (!s.authorizationPolicy)
+    return (
+      <p className="notice">
+        This estimate needs to be reissued with an approved authorization
+        policy. Contact the shop.
+      </p>
+    );
+  const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return {
+      x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)),
+      y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)),
+    };
+  };
+  return (
+    <form
+      className="card"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!complete || !validSignature || pending) return;
+        const f = new FormData(e.currentTarget);
+        setPending(true);
+        try {
+          const r = await signEstimateAction({
+            token,
+            name: f.get("name"),
+            decisions: s.lines.map((l) => ({
+              id: l.id,
+              decision: choices[l.id],
+            })),
+            signature,
+            consent: f.get("consent") === "on",
+          });
+          if (r.ok) {
+            setMessage("Your decision was recorded.");
+            router.refresh();
+          } else setMessage(r.message ?? "Unable to record decision.");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h2>Authorize work</h2>
+      <p>
+        Choose Approve or Decline for every item. Nothing is selected for you.
+      </p>
+      {s.lines.map((l) => (
+        <fieldset key={l.id}>
+          <legend>{l.description}</legend>
+          <label>
+            <input
+              type="radio"
+              name={`decision-${l.id}`}
+              value="approve"
+              required
+              checked={choices[l.id] === "approve"}
+              onChange={() => setChoices({ ...choices, [l.id]: "approve" })}
+            />
+            Approve {l.description}
+          </label>
+          <label>
+            <input
+              type="radio"
+              name={`decision-${l.id}`}
+              value="decline"
+              required
+              checked={choices[l.id] === "decline"}
+              onChange={() => setChoices({ ...choices, [l.id]: "decline" })}
+            />
+            Decline {l.description}
+          </label>
+        </fieldset>
+      ))}
+      <p>
+        Authorized total including tax:{" "}
+        <strong>
+          {new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+          }).format(totals.totalCents / 100)}
+        </strong>
+      </p>
+      <label>
+        Your full name
+        <input name="name" required maxLength={200} autoComplete="name" />
+      </label>
+      <p id="signature-help">
+        Draw your signature below using your finger, pen, or mouse. Contact the
+        shop if you need assistance signing.
+      </p>
+      <canvas
+        ref={canvas}
+        width={640}
+        height={240}
+        role="img"
+        aria-label="Drawn signature"
+        aria-describedby="signature-help"
+        style={{
+          width: "100%",
+          height: 240,
+          border: "1px solid currentColor",
+          background: "white",
+          touchAction: "none",
+        }}
+        onPointerDown={(e) => {
+          if (pending || signature.length >= 20) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          drawing.current = true;
+          setSignature((strokes) => [...strokes, [point(e)]]);
+        }}
+        onPointerMove={(e) => {
+          if (!drawing.current) return;
+          const p = point(e);
+          setSignature((strokes) => {
+            const last = strokes.at(-1);
+            if (
+              !last ||
+              last.length >= 500 ||
+              strokes.reduce((n, s) => n + s.length, 0) >= 5000
+            )
+              return strokes;
+            const previous = last.at(-1)!;
+            const ctx = canvas.current?.getContext("2d");
+            if (ctx) {
+              ctx.strokeStyle = "#111111";
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(previous.x * 640, previous.y * 240);
+              ctx.lineTo(p.x * 640, p.y * 240);
+              ctx.stroke();
+            }
+            return [...strokes.slice(0, -1), [...last, p]];
+          });
+        }}
+        onPointerUp={() => {
+          drawing.current = false;
+        }}
+        onPointerCancel={() => {
+          drawing.current = false;
+        }}
+      />
+      <button
+        type="button"
+        className="btn secondary"
+        disabled={pending}
+        onClick={() => {
+          setSignature([]);
+          canvas.current?.getContext("2d")?.clearRect(0, 0, 640, 240);
+        }}
+      >
+        Clear signature
+      </button>
+      <p className="muted">
+        Authorization policy version {s.authorizationPolicy.version}
+      </p>
+      <label>
+        <input name="consent" type="checkbox" required />
+        {s.authorizationPolicy.body}
+      </label>
+      <button
+        className="btn primary"
+        disabled={pending || !complete || !validSignature}
+      >
+        {pending
+          ? "Recording…"
+          : approved.length
+            ? "Sign authorization"
+            : "Sign decline"}
+      </button>
+      {!complete && <p>Decide every item to continue.</p>}
+      <p role="status">{message}</p>
+    </form>
+  );
 }

@@ -8,7 +8,9 @@ import { loadEnv, requireEnv } from "../lib/env";
 
 export type RlsViolation = { table: string; problems: string[] };
 
-export async function findRlsViolations(client: pg.ClientBase): Promise<RlsViolation[]> {
+export async function findRlsViolations(
+  client: pg.ClientBase,
+): Promise<RlsViolation[]> {
   const { rows } = await client.query(`
     SELECT n.nspname || '.' || c.relname AS table,
            c.relrowsecurity AS enabled,
@@ -32,7 +34,8 @@ export async function findRlsViolations(client: pg.ClientBase): Promise<RlsViola
       const problems: string[] = [];
       if (!r.enabled) problems.push("RLS not enabled");
       if (!r.forced) problems.push("RLS not forced");
-      if (r.has_business_id && r.permissive_policies === 0) problems.push("no permissive policy");
+      if (r.has_business_id && r.permissive_policies === 0)
+        problems.push("no permissive policy");
       return { table: r.table as string, problems };
     })
     .filter((v) => v.problems.length > 0);
@@ -42,9 +45,15 @@ export async function findRlsViolations(client: pg.ClientBase): Promise<RlsViola
 // table to another tenant table must include business_id on both sides, so a
 // row of tenant A can never point at a row of tenant B. A single-column FK is
 // allowed only when a composite FK covering the same columns also exists.
-export type TenantFkViolation = { constraint: string; table: string; references: string };
+export type TenantFkViolation = {
+  constraint: string;
+  table: string;
+  references: string;
+};
 
-export async function findTenantFkViolations(client: pg.ClientBase): Promise<TenantFkViolation[]> {
+export async function findTenantFkViolations(
+  client: pg.ClientBase,
+): Promise<TenantFkViolation[]> {
   const { rows } = await client.query(`
     WITH tenant_tables AS (
       SELECT c.oid, a.attnum AS biz FROM pg_class c
@@ -71,20 +80,29 @@ export async function findTenantFkViolations(client: pg.ClientBase): Promise<Ten
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   loadEnv();
-  const client = new pg.Client({ connectionString: requireEnv("DATABASE_URL_MIGRATION") });
+  const client = new pg.Client({
+    connectionString: requireEnv("DATABASE_URL_MIGRATION"),
+  });
   await client.connect();
   try {
     const violations = await findRlsViolations(client);
     const fkViolations = await findTenantFkViolations(client);
-    for (const v of violations) console.error(`RLS check FAILED: ${v.table}: ${v.problems.join(", ")}`);
+    for (const v of violations)
+      console.error(`RLS check FAILED: ${v.table}: ${v.problems.join(", ")}`);
     for (const v of fkViolations) {
-      console.error(`Tenant FK check FAILED: ${v.table} ${v.constraint} references tenant table ${v.references} without business_id`);
+      console.error(
+        `Tenant FK check FAILED: ${v.table} ${v.constraint} references tenant table ${v.references} without business_id`,
+      );
     }
     if (violations.length || fkViolations.length) {
       process.exitCode = 1;
     } else {
-      console.log("RLS check passed: every business_id table has RLS enabled, forced and a policy");
-      console.log("Tenant FK check passed: every tenant-to-tenant reference includes business_id");
+      console.log(
+        "RLS check passed: every business_id table has RLS enabled, forced and a policy",
+      );
+      console.log(
+        "Tenant FK check passed: every tenant-to-tenant reference includes business_id",
+      );
     }
   } finally {
     await client.end();

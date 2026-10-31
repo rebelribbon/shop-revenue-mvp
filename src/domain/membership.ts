@@ -11,19 +11,26 @@ import { audit, recordActivity, type RequestMeta } from "./records";
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // The caller's role, read inside the transaction (never trusted from input).
-export async function currentMemberRole(tx: TenantTx): Promise<"owner" | "staff" | null> {
+export async function currentMemberRole(
+  tx: TenantTx,
+): Promise<"owner" | "staff" | null> {
   if (tx.actor.type !== "user" || !tx.actor.id) return null;
   const [m] = await tx
     .select({ role: membership.role })
     .from(membership)
     .where(
-      and(eq(membership.businessId, tx.businessId), eq(membership.userId, tx.actor.id), eq(membership.status, "active")),
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.userId, tx.actor.id),
+        eq(membership.status, "active"),
+      ),
     );
   return (m?.role as "owner" | "staff") ?? null;
 }
 
 export async function assertOwner(tx: TenantTx) {
-  if ((await currentMemberRole(tx)) !== "owner") throw forbidden("Only the owner can do that.");
+  if ((await currentMemberRole(tx)) !== "owner")
+    throw forbidden("Only the owner can do that.");
 }
 
 export async function listTeam(tx: TenantTx) {
@@ -44,7 +51,12 @@ export async function listTeam(tx: TenantTx) {
     })
     .from(membership)
     .leftJoin(user, eq(user.id, membership.userId))
-    .where(and(eq(membership.businessId, tx.businessId), inArray(membership.status, ["invited", "active"])))
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        inArray(membership.status, ["invited", "active"]),
+      ),
+    )
     .orderBy(membership.createdAt);
 }
 
@@ -62,7 +74,8 @@ export async function inviteStaff(
   input: { name: string; email?: string | null; phoneE164?: string | null },
 ): Promise<InviteDelivery> {
   await assertOwner(tx);
-  if (!input.email && !input.phoneE164) throw new AppError("VALIDATION", "Add an email or a mobile number.");
+  if (!input.email && !input.phoneE164)
+    throw new AppError("VALIDATION", "Add an email or a mobile number.");
   const [{ seats }] = await tx
     .select({ seats: sql<number>`count(*)::int` })
     .from(membership)
@@ -74,7 +87,10 @@ export async function inviteStaff(
       ),
     );
   if (seats > 0) {
-    throw new AppError("CONFLICT", "Your plan includes one staff login. Remove the current one to invite someone else.");
+    throw new AppError(
+      "CONFLICT",
+      "Your plan includes one staff login. Remove the current one to invite someone else.",
+    );
   }
   const invite = newToken();
   const [m] = await tx
@@ -91,46 +107,96 @@ export async function inviteStaff(
       inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS),
     })
     .returning({ id: membership.id });
-  await audit(tx, meta, { action: "membership.invited", targetType: "membership", targetId: m.id, after: { role: "staff" } });
+  await audit(tx, meta, {
+    action: "membership.invited",
+    targetType: "membership",
+    targetId: m.id,
+    after: { role: "staff" },
+  });
   await recordActivity(tx, {
     kind: "team.invited",
     subjectType: "membership",
     subjectId: m.id,
     summary: "Staff login invited",
   });
-  return { membershipId: m.id, token: invite.token, name: input.name, email: input.email ?? null, phoneE164: input.phoneE164 ?? null };
+  return {
+    membershipId: m.id,
+    token: invite.token,
+    name: input.name,
+    email: input.email ?? null,
+    phoneE164: input.phoneE164 ?? null,
+  };
 }
 
 // Rotates the token (the old link stops working) and extends the expiry.
-export async function resendInvite(tx: TenantTx, meta: RequestMeta, membershipId: string): Promise<InviteDelivery> {
+export async function resendInvite(
+  tx: TenantTx,
+  meta: RequestMeta,
+  membershipId: string,
+): Promise<InviteDelivery> {
   const [m] = await tx
     .select()
     .from(membership)
-    .where(and(eq(membership.businessId, tx.businessId), eq(membership.id, membershipId)));
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.id, membershipId),
+      ),
+    );
   if (!m) throw notFound("That invite");
   if (m.role === "staff") await assertOwner(tx);
   else if (tx.actor.type !== "internal") throw forbidden();
-  if (m.status !== "invited") throw new AppError("INVALID_TRANSITION", "That invite was already used or removed.");
+  if (m.status !== "invited")
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "That invite was already used or removed.",
+    );
   const invite = newToken();
   await tx
     .update(membership)
-    .set({ inviteTokenHash: invite.hash, inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS) })
+    .set({
+      inviteTokenHash: invite.hash,
+      inviteExpiresAt: new Date(Date.now() + INVITE_TTL_MS),
+    })
     .where(eq(membership.id, m.id));
-  await audit(tx, meta, { action: "membership.invite_resent", targetType: "membership", targetId: m.id });
-  return { membershipId: m.id, token: invite.token, name: m.inviteName ?? "", email: m.inviteEmail, phoneE164: m.invitePhoneE164 };
+  await audit(tx, meta, {
+    action: "membership.invite_resent",
+    targetType: "membership",
+    targetId: m.id,
+  });
+  return {
+    membershipId: m.id,
+    token: invite.token,
+    name: m.inviteName ?? "",
+    email: m.inviteEmail,
+    phoneE164: m.invitePhoneE164,
+  };
 }
 
-export async function removeStaff(tx: TenantTx, meta: RequestMeta, membershipId: string) {
+export async function removeStaff(
+  tx: TenantTx,
+  meta: RequestMeta,
+  membershipId: string,
+) {
   // Owner request, or our support/admin resetting the Staff login on the owner's behalf.
   if (tx.actor.type !== "internal") await assertOwner(tx);
   const [m] = await tx
     .select()
     .from(membership)
-    .where(and(eq(membership.businessId, tx.businessId), eq(membership.id, membershipId)));
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.id, membershipId),
+      ),
+    );
   if (!m) throw notFound("That team member");
-  if (m.role === "owner") throw new AppError("FORBIDDEN", "The owner can't be removed.");
+  if (m.role === "owner")
+    throw new AppError("FORBIDDEN", "The owner can't be removed.");
   if (m.status === "removed") return;
-  await tx.update(membership).set({ status: "removed" }).where(eq(membership.id, m.id));
+  await tx
+    .update(membership)
+    .set({ status: "removed" })
+    .where(eq(membership.id, m.id));
   await audit(tx, meta, {
     action: "membership.removed",
     targetType: "membership",
@@ -138,7 +204,12 @@ export async function removeStaff(tx: TenantTx, meta: RequestMeta, membershipId:
     before: { status: m.status },
     after: { status: "removed" },
   });
-  await recordActivity(tx, { kind: "team.removed", subjectType: "membership", subjectId: m.id, summary: "Staff login removed" });
+  await recordActivity(tx, {
+    kind: "team.removed",
+    subjectType: "membership",
+    subjectId: m.id,
+    summary: "Staff login removed",
+  });
 }
 
 export type VerifiedIdentity = {
@@ -150,63 +221,93 @@ export type VerifiedIdentity = {
 
 // Same response for unknown, used, removed and expired tokens.
 const INVITE_UNAVAILABLE = () =>
-  new AppError("NOT_FOUND", "This invite link is no longer valid. Ask the shop owner to send a new one.");
+  new AppError(
+    "NOT_FOUND",
+    "This invite link is no longer valid. Ask the shop owner to send a new one.",
+  );
 
 export async function peekInvite(token: string) {
   if (!isWellFormedToken(token)) return null;
   const inv = await resolveInvite(hashToken(token));
-  if (!inv || (inv.inviteExpiresAt && inv.inviteExpiresAt.getTime() < Date.now())) return null;
+  if (
+    !inv ||
+    (inv.inviteExpiresAt && inv.inviteExpiresAt.getTime() < Date.now())
+  )
+    return null;
   return inv;
 }
 
-export async function acceptInvite(meta: RequestMeta, token: string, who: VerifiedIdentity) {
+export async function acceptInvite(
+  meta: RequestMeta,
+  token: string,
+  who: VerifiedIdentity,
+) {
   const inv = await peekInvite(token);
   if (!inv) throw INVITE_UNAVAILABLE();
-  const emailMatches = !!inv.inviteEmail && !!who.email && inv.inviteEmail === who.email;
-  const phoneMatches = !!inv.invitePhoneE164 && !!who.phoneE164 && inv.invitePhoneE164 === who.phoneE164;
+  const emailMatches =
+    !!inv.inviteEmail && !!who.email && inv.inviteEmail === who.email;
+  const phoneMatches =
+    !!inv.invitePhoneE164 &&
+    !!who.phoneE164 &&
+    inv.invitePhoneE164 === who.phoneE164;
   if (!emailMatches && !phoneMatches) {
-    throw new AppError("FORBIDDEN", "Sign in with the email or mobile number this invite was sent to.");
+    throw new AppError(
+      "FORBIDDEN",
+      "Sign in with the email or mobile number this invite was sent to.",
+    );
   }
-  return withTenant(inv.businessId, { type: "user", id: null, authSubject: who.authSubject }, async (tx) => {
-    let [u] = await tx.select().from(user).where(eq(user.authProviderId, who.authSubject));
-    if (!u) {
-      [u] = await tx
-        .insert(user)
-        .values({
-          authProviderId: who.authSubject,
-          email: who.email,
-          phoneE164: who.phoneE164,
-          displayName: who.displayName,
-        })
-        .returning();
-    }
-    if (u.status !== "active") throw forbidden("This login is deactivated.");
-    const updated = await tx
-      .update(membership)
-      .set({ userId: u.id, status: "active" })
-      .where(
-        and(
-          eq(membership.id, inv.membershipId),
-          eq(membership.businessId, inv.businessId),
-          eq(membership.status, "invited"),
-          eq(membership.inviteTokenHash, hashToken(token)),
-        ),
-      )
-      .returning({ id: membership.id });
-    if (!updated.length) throw INVITE_UNAVAILABLE();
-    const acting = Object.assign(Object.create(tx), { actor: { type: "user", id: u.id, authSubject: who.authSubject } }) as TenantTx;
-    await audit(acting, meta, {
-      action: "membership.activated",
-      targetType: "membership",
-      targetId: inv.membershipId,
-      after: { role: inv.role, userId: u.id },
-    });
-    await recordActivity(acting, {
-      kind: "team.joined",
-      subjectType: "membership",
-      subjectId: inv.membershipId,
-      summary: inv.role === "owner" ? "Owner signed in for the first time" : "Staff login accepted",
-    });
-    return { businessId: inv.businessId, userId: u.id, role: inv.role };
-  });
+  return withTenant(
+    inv.businessId,
+    { type: "user", id: null, authSubject: who.authSubject },
+    async (tx) => {
+      let [u] = await tx
+        .select()
+        .from(user)
+        .where(eq(user.authProviderId, who.authSubject));
+      if (!u) {
+        [u] = await tx
+          .insert(user)
+          .values({
+            authProviderId: who.authSubject,
+            email: who.email,
+            phoneE164: who.phoneE164,
+            displayName: who.displayName,
+          })
+          .returning();
+      }
+      if (u.status !== "active") throw forbidden("This login is deactivated.");
+      const updated = await tx
+        .update(membership)
+        .set({ userId: u.id, status: "active" })
+        .where(
+          and(
+            eq(membership.id, inv.membershipId),
+            eq(membership.businessId, inv.businessId),
+            eq(membership.status, "invited"),
+            eq(membership.inviteTokenHash, hashToken(token)),
+          ),
+        )
+        .returning({ id: membership.id });
+      if (!updated.length) throw INVITE_UNAVAILABLE();
+      const acting = Object.assign(Object.create(tx), {
+        actor: { type: "user", id: u.id, authSubject: who.authSubject },
+      }) as TenantTx;
+      await audit(acting, meta, {
+        action: "membership.activated",
+        targetType: "membership",
+        targetId: inv.membershipId,
+        after: { role: inv.role, userId: u.id },
+      });
+      await recordActivity(acting, {
+        kind: "team.joined",
+        subjectType: "membership",
+        subjectId: inv.membershipId,
+        summary:
+          inv.role === "owner"
+            ? "Owner signed in for the first time"
+            : "Staff login accepted",
+      });
+      return { businessId: inv.businessId, userId: u.id, role: inv.role };
+    },
+  );
 }

@@ -1,7 +1,11 @@
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import { listTeam } from "@/domain/membership";
-import { inviteStaffAction, removeStaffAction, resendInviteAction } from "@/server/actions/team";
+import {
+  inviteStaffAction,
+  removeStaffAction,
+  resendInviteAction,
+} from "@/server/actions/team";
 import { requireShopSession } from "@/server/views/shop";
 
 export default async function TeamPage() {
@@ -15,22 +19,50 @@ export default async function TeamPage() {
       <div className="card table-wrap">
         <table>
           <thead>
-            <tr><th>Name</th><th>Role</th><th>Status</th>{isOwner && <th />}</tr>
+            <tr>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Status</th>
+              {isOwner && <th />}
+            </tr>
           </thead>
           <tbody>
             {team.map((m) => (
               <tr key={m.id}>
-                <td>{m.displayName ?? m.inviteName ?? "—"}<br /><span className="muted">{m.email ?? m.inviteEmail ?? m.phoneE164 ?? m.invitePhoneE164}</span></td>
+                <td>
+                  {m.displayName ?? m.inviteName ?? "—"}
+                  <br />
+                  <span className="muted">
+                    {m.email ??
+                      m.inviteEmail ??
+                      m.phoneE164 ??
+                      m.invitePhoneE164}
+                  </span>
+                </td>
                 <td>{m.role === "owner" ? "Owner" : "Staff"}</td>
-                <td><span className="pill">{m.status === "invited" ? "Invite sent" : "Active"}</span></td>
+                <td>
+                  <span className="pill">
+                    {m.status === "invited" ? "Invite sent" : "Active"}
+                  </span>
+                </td>
                 {isOwner && (
                   <td>
                     {m.role === "staff" && m.status === "invited" && (
-                      <ActionForm action={resendInviteAction} hidden={{ membershipId: m.id }} submitLabel="Resend invite" variant="secondary" />
+                      <ActionForm
+                        action={resendInviteAction}
+                        hidden={{ membershipId: m.id }}
+                        submitLabel="Resend invite"
+                        variant="secondary"
+                      />
                     )}
                     {m.role === "staff" && (
-                      <ActionForm action={removeStaffAction} hidden={{ membershipId: m.id }} submitLabel="Remove" variant="danger"
-                        confirm="Remove this login? They lose access on their next click." />
+                      <ActionForm
+                        action={removeStaffAction}
+                        hidden={{ membershipId: m.id }}
+                        submitLabel="Remove"
+                        variant="danger"
+                        confirm="Remove this login? They lose access on their next click."
+                      />
                     )}
                   </td>
                 )}
@@ -52,8 +84,12 @@ export default async function TeamPage() {
           </ActionForm>
         </div>
       )}
-      {isOwner && staffSeatUsed && <p className="muted">Your plan includes one staff login. Remove the current one to invite someone else.</p>}
+      {isOwner && staffSeatUsed && (
+        <p className="muted">
+          Your plan includes one staff login. Remove the current one to invite
+          someone else.
+        </p>
+      )}
     </main>
   );
 }
-

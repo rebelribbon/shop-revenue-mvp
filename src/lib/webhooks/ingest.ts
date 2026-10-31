@@ -1,9 +1,17 @@
 import { ingestWebhookEvent } from "@/db/tenant";
 import { logger } from "../logger";
 
-export async function storeWebhook(input: Parameters<typeof ingestWebhookEvent>[0]) {
+export async function storeWebhook(
+  input: Parameters<typeof ingestWebhookEvent>[0],
+) {
   const r = await ingestWebhookEvent(input);
-  logger.info({ event: "webhook.received", provider: input.provider, eventType: input.eventType, webhookEventId: r.eventId, duplicate: r.duplicate });
+  logger.info({
+    event: "webhook.received",
+    provider: input.provider,
+    eventType: input.eventType,
+    webhookEventId: r.eventId,
+    duplicate: r.duplicate,
+  });
   return r;
 }
 

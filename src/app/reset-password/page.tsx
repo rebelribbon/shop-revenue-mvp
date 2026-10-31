@@ -3,9 +3,14 @@ import { safeNext } from "@/lib/safe-next";
 import { getIdentity, hasPasswordResetGrant } from "@/server/auth/session";
 import { ResetPasswordForm } from "./reset-password-form";
 
-export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
   const identity = await getIdentity();
-  if (!(await hasPasswordResetGrant(identity))) redirect("/sign-in?error=recovery");
+  if (!(await hasPasswordResetGrant(identity)))
+    redirect("/sign-in?error=recovery");
   const sp = await searchParams;
   return (
     <main id="main-content" tabIndex={-1}>
@@ -15,4 +20,3 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
     </main>
   );
 }
-

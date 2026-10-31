@@ -16,23 +16,32 @@ import { audit, auditPlatform, type RequestMeta } from "./records";
 
 export const MAX_WEBHOOK_ATTEMPTS = 8;
 // Delay before attempt n+1, after n failures: 1 min × 2.5^(n-1) → 1, 2.5, 6, 16, 39, 98, 244 min.
-export const retryDelayMs = (failures: number) => Math.round(60_000 * 2.5 ** (failures - 1));
+export const retryDelayMs = (failures: number) =>
+  Math.round(60_000 * 2.5 ** (failures - 1));
 
 export type WebhookEventRow = typeof webhookEvent.$inferSelect;
 export type WebhookOutcome = "applied" | "ignored";
-export type WebhookHandler = (event: WebhookEventRow) => Promise<WebhookOutcome>;
+export type WebhookHandler = (
+  event: WebhookEventRow,
+) => Promise<WebhookOutcome>;
 
 const handlers = new Map<string, WebhookHandler>();
 const key = (provider: string, eventType: string) => `${provider}:${eventType}`;
 
-export function registerWebhookHandler(provider: string, eventType: string, handler: WebhookHandler) {
+export function registerWebhookHandler(
+  provider: string,
+  eventType: string,
+  handler: WebhookHandler,
+) {
   handlers.set(key(provider, eventType), handler);
   return () => handlers.delete(key(provider, eventType));
 }
 
 const STALE_PROCESSING = sql`now() - interval '15 minutes'`;
 
-export async function processWebhookEvent(eventId: string): Promise<"applied" | "ignored" | "failed" | "dead" | "skipped"> {
+export async function processWebhookEvent(
+  eventId: string,
+): Promise<"applied" | "ignored" | "failed" | "dead" | "skipped"> {
   // Claim: only received/failed rows (or a processing row abandoned by a crashed worker).
   const claimed = await withGlobalWorker(async (tx) => {
     const [row] = await tx
@@ -48,7 +57,11 @@ export async function processWebhookEvent(eventId: string): Promise<"applied" | 
     if (!claimable) return null;
     const [updated] = await tx
       .update(webhookEvent)
-      .set({ status: "processing", attempts: sql`${webhookEvent.attempts} + 1`, nextAttemptAt: null })
+      .set({
+        status: "processing",
+        attempts: sql`${webhookEvent.attempts} + 1`,
+        nextAttemptAt: null,
+      })
       .where(eq(webhookEvent.id, row.id))
       .returning();
     return updated;
@@ -57,31 +70,65 @@ export async function processWebhookEvent(eventId: string): Promise<"applied" | 
 
   const handler = handlers.get(key(claimed.provider, claimed.eventType));
   try {
-    const outcome: WebhookOutcome = handler ? await handler(claimed) : "ignored";
+    const outcome: WebhookOutcome = handler
+      ? await handler(claimed)
+      : "ignored";
     await withGlobalWorker((tx) =>
       tx
         .update(webhookEvent)
-        .set({ status: outcome, appliedAt: outcome === "applied" ? sql`now()` : null, lastError: null })
-        .where(and(eq(webhookEvent.id, claimed.id), eq(webhookEvent.status, "processing"))),
+        .set({
+          status: outcome,
+          appliedAt: outcome === "applied" ? sql`now()` : null,
+          lastError: null,
+        })
+        .where(
+          and(
+            eq(webhookEvent.id, claimed.id),
+            eq(webhookEvent.status, "processing"),
+          ),
+        ),
     );
-    logger.info({ event: "webhook.processed", webhookEventId: claimed.id, provider: claimed.provider, outcome, businessId: claimed.businessId });
+    logger.info({
+      event: "webhook.processed",
+      webhookEventId: claimed.id,
+      provider: claimed.provider,
+      outcome,
+      businessId: claimed.businessId,
+    });
     return outcome;
   } catch (err) {
-    const message = err instanceof Error ? err.message.slice(0, 500) : "unknown error";
+    const message =
+      err instanceof Error ? err.message.slice(0, 500) : "unknown error";
     const dead = claimed.attempts >= MAX_WEBHOOK_ATTEMPTS;
     const runAt = new Date(Date.now() + retryDelayMs(claimed.attempts));
     await withGlobalWorker(async (tx) => {
       await tx
         .update(webhookEvent)
-        .set({ status: dead ? "dead" : "failed", lastError: message, nextAttemptAt: dead ? null : runAt })
+        .set({
+          status: dead ? "dead" : "failed",
+          lastError: message,
+          nextAttemptAt: dead ? null : runAt,
+        })
         .where(eq(webhookEvent.id, claimed.id));
       if (!dead) await enqueueProcessing(tx, claimed.id, runAt);
     });
     if (dead) {
       // Section 20 alert: "Webhook dead — Any".
-      logger.error({ event: "alert.webhook_dead", alert: true, webhookEventId: claimed.id, provider: claimed.provider, eventType: claimed.eventType, attempts: claimed.attempts });
+      logger.error({
+        event: "alert.webhook_dead",
+        alert: true,
+        webhookEventId: claimed.id,
+        provider: claimed.provider,
+        eventType: claimed.eventType,
+        attempts: claimed.attempts,
+      });
     } else {
-      logger.warn({ event: "webhook.failed", webhookEventId: claimed.id, attempts: claimed.attempts, nextAttemptAt: runAt.toISOString() });
+      logger.warn({
+        event: "webhook.failed",
+        webhookEventId: claimed.id,
+        attempts: claimed.attempts,
+        nextAttemptAt: runAt.toISOString(),
+      });
     }
     return dead ? "dead" : "failed";
   }
@@ -91,7 +138,12 @@ async function isStale(tx: Tx, id: string) {
   const r = await tx
     .select({ id: webhookEvent.id })
     .from(webhookEvent)
-    .where(and(eq(webhookEvent.id, id), lt(webhookEvent.updatedAt, STALE_PROCESSING)));
+    .where(
+      and(
+        eq(webhookEvent.id, id),
+        lt(webhookEvent.updatedAt, STALE_PROCESSING),
+      ),
+    );
   return r.length > 0;
 }
 
@@ -111,14 +163,29 @@ async function enqueueProcessing(tx: Tx, eventId: string, runAt: Date | null) {
 // A tenant-resolved event is audited in that shop's log: the transaction-local
 // business context is set before the audit insert, under admin_user's normal
 // tenant RLS (no bypass). A platform-level event gets a platform audit row.
-export type ReplayResult = { status: string; requeued: boolean; message: string };
+export type ReplayResult = {
+  status: string;
+  requeued: boolean;
+  message: string;
+};
 
-export async function replayWebhookEvent(actor: InternalActor, meta: RequestMeta, eventId: string): Promise<ReplayResult> {
+export async function replayWebhookEvent(
+  actor: InternalActor,
+  meta: RequestMeta,
+  eventId: string,
+): Promise<ReplayResult> {
   return withAdmin(actor, async (tx) => {
-    const [row] = await tx.select().from(webhookEvent).where(eq(webhookEvent.id, eventId)).for("update");
+    const [row] = await tx
+      .select()
+      .from(webhookEvent)
+      .where(eq(webhookEvent.id, eventId))
+      .for("update");
     if (!row) throw notFound("That webhook event");
     if (row.status === "processing" || row.status === "received") {
-      throw new AppError("CONFLICT", "This event is already queued for processing.");
+      throw new AppError(
+        "CONFLICT",
+        "This event is already queued for processing.",
+      );
     }
     const requeued = ["failed", "dead", "ignored"].includes(row.status);
     if (requeued) {
@@ -133,26 +200,49 @@ export async function replayWebhookEvent(actor: InternalActor, meta: RequestMeta
       action: requeued ? "webhook_event.replayed" : "webhook_event.replay_noop",
       targetType: "webhook_event",
       targetId: row.id,
-      before: { status: row.status, attempts: row.attempts, lastError: row.lastError },
+      before: {
+        status: row.status,
+        attempts: row.attempts,
+        lastError: row.lastError,
+      },
       after: { status: requeued ? "received" : row.status, requeued },
     };
     if (row.businessId) {
-      await tx.execute(sql`SELECT set_config('app.business_id', ${row.businessId}, true)`);
+      await tx.execute(
+        sql`SELECT set_config('app.business_id', ${row.businessId}, true)`,
+      );
       const tenantTx = Object.assign(Object.create(tx), {
         businessId: row.businessId,
         actor: { type: "internal", id: actor.internalUserId },
       }) as TenantTx;
       await audit(tenantTx, meta, entry);
     } else {
-      await auditPlatform(tx, meta, { type: "internal", id: actor.internalUserId }, entry);
+      await auditPlatform(
+        tx,
+        meta,
+        { type: "internal", id: actor.internalUserId },
+        entry,
+      );
     }
     return requeued
-      ? { status: "received", requeued: true, message: "Queued for processing. Refresh to see the result." }
-      : { status: row.status, requeued: false, message: "Already applied; nothing was re-queued." };
+      ? {
+          status: "received",
+          requeued: true,
+          message: "Queued for processing. Refresh to see the result.",
+        }
+      : {
+          status: row.status,
+          requeued: false,
+          message: "Already applied; nothing was re-queued.",
+        };
   });
 }
 
-export async function listWebhookEvents(filter: { provider?: string; status?: string; limit?: number }) {
+export async function listWebhookEvents(filter: {
+  provider?: string;
+  status?: string;
+  limit?: number;
+}) {
   return withAdmin(null, (tx) =>
     tx
       .select({
@@ -171,7 +261,9 @@ export async function listWebhookEvents(filter: { provider?: string; status?: st
       .from(webhookEvent)
       .where(
         and(
-          filter.provider ? eq(webhookEvent.provider, filter.provider) : undefined,
+          filter.provider
+            ? eq(webhookEvent.provider, filter.provider)
+            : undefined,
           filter.status ? eq(webhookEvent.status, filter.status) : undefined,
         ),
       )
@@ -181,7 +273,8 @@ export async function listWebhookEvents(filter: { provider?: string; status?: st
 }
 
 export async function getWebhookEvent(eventId: string) {
-  const [row] = await withAdmin(null, (tx) => tx.select().from(webhookEvent).where(eq(webhookEvent.id, eventId)));
+  const [row] = await withAdmin(null, (tx) =>
+    tx.select().from(webhookEvent).where(eq(webhookEvent.id, eventId)),
+  );
   return row ?? null;
 }
-

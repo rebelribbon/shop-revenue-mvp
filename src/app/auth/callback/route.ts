@@ -10,9 +10,12 @@ export async function GET(req: NextRequest) {
     const supabase = await supabaseServer();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error && data.user) {
-      if (next.startsWith("/reset-password")) await grantPasswordReset(data.user.id);
+      if (next.startsWith("/reset-password"))
+        await grantPasswordReset(data.user.id);
       return NextResponse.redirect(new URL(next, req.nextUrl.origin));
     }
   }
-  return NextResponse.redirect(new URL("/sign-in?error=recovery", req.nextUrl.origin));
+  return NextResponse.redirect(
+    new URL("/sign-in?error=recovery", req.nextUrl.origin),
+  );
 }

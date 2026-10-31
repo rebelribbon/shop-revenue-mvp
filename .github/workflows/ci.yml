@@ -80,6 +80,9 @@ jobs:
       - name: Lint (includes the raw database client import rule)
         run: pnpm lint
 
+      - name: Source formatting
+        run: pnpm format:check
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -104,3 +107,4 @@ jobs:
           path: restore-drill-result.json
           if-no-files-found: ignore
           retention-days: 30
+

@@ -11,24 +11,47 @@ export async function POST(req: Request) {
   const body = await req.text();
   if (
     !secret ||
-    !verifyStandardWebhook(secret, {
-      id: req.headers.get("webhook-id"),
-      timestamp: req.headers.get("webhook-timestamp"),
-      signature: req.headers.get("webhook-signature"),
-    }, body)
+    !verifyStandardWebhook(
+      secret,
+      {
+        id: req.headers.get("webhook-id"),
+        timestamp: req.headers.get("webhook-timestamp"),
+        signature: req.headers.get("webhook-signature"),
+      },
+      body,
+    )
   ) {
-    return Response.json({ error: { http_code: 401, message: "invalid signature" } }, { status: 401 });
+    return Response.json(
+      { error: { http_code: 401, message: "invalid signature" } },
+      { status: 401 },
+    );
   }
-  const payload = JSON.parse(body) as { user?: { phone?: string }; sms?: { otp?: string } };
-  const phone = payload.user?.phone ? `+${payload.user.phone.replace(/^\+/, "")}` : null;
+  const payload = JSON.parse(body) as {
+    user?: { phone?: string };
+    sms?: { otp?: string };
+  };
+  const phone = payload.user?.phone
+    ? `+${payload.user.phone.replace(/^\+/, "")}`
+    : null;
   const otp = payload.sms?.otp;
-  if (!phone || !otp) return Response.json({ error: { http_code: 400, message: "missing phone or code" } }, { status: 400 });
+  if (!phone || !otp)
+    return Response.json(
+      { error: { http_code: 400, message: "missing phone or code" } },
+      { status: 400 },
+    );
   try {
-    await messagingProvider().sendSystemSms({ to: phone, body: `Your sign-in code is ${otp}. It expires in 10 minutes.`, purpose: "system" });
+    await messagingProvider().sendSystemSms({
+      to: phone,
+      body: `Your sign-in code is ${otp}. It expires in 10 minutes.`,
+      purpose: "system",
+    });
     logger.info({ event: "auth.sms_code_sent", to: maskPhone(phone) });
     return Response.json({});
   } catch {
     // Tell Supabase Auth the send failed; the user sees an error, never a fake success.
-    return Response.json({ error: { http_code: 503, message: "SMS provider unavailable" } }, { status: 503 });
+    return Response.json(
+      { error: { http_code: 503, message: "SMS provider unavailable" } },
+      { status: 503 },
+    );
   }
 }

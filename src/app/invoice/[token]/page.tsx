@@ -34,7 +34,11 @@ export default async function InvoicePage({
           {new Date(i.issuedAt).toLocaleDateString("en-US", {
             timeZone: "America/Chicago",
           })}
-          {i.dueOn ? ` · Due: ${formatDateOnly(i.dueOn)}` : i.terms.startsWith("Due on receipt.")?" · Due on receipt":" · Due date not specified"}
+          {i.dueOn
+            ? ` · Due: ${formatDateOnly(i.dueOn)}`
+            : i.terms.startsWith("Due on receipt.")
+              ? " · Due on receipt"
+              : " · Due date not specified"}
         </p>
         <ul>
           {s.lines.map((l) => (

@@ -22,9 +22,12 @@
     "backup:restore-drill": "tsx scripts/backup/restore-drill.ts",
     "db:interleave-pooler": "tsx scripts/db/interleave-pooler.ts",
     "security:secrets": "tsx scripts/ci/secret-scan.ts",
-    "release:check": "tsx scripts/ci/release-check.ts"
+    "release:check": "tsx scripts/ci/release-check.ts",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"scripts/**/*.{ts,mjs}\" \"e2e/**/*.ts\" next.config.ts",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" \"scripts/**/*.{ts,mjs}\" \"e2e/**/*.ts\" next.config.ts"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "1.1.1",
     "@sentry/nextjs": "^11.6.0",
     "@sentry/node": "^11.6.0",
     "@stripe/connect-js": "3.4.6",
@@ -35,6 +38,7 @@
     "libphonenumber-js": "^1.13.15",
     "next": "16.4.2",
     "nodemailer": "^10.1.4",
+    "pdf-lib": "1.17.1",
     "pg": "^8.23.1",
     "pino": "^10.4.0",
     "react": "19.3.0",
@@ -55,6 +59,7 @@
     "drizzle-kit": "0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "prettier": "3.9.10",
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"

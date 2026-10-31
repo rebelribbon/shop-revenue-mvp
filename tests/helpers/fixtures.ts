@@ -8,10 +8,15 @@ import { acceptInvite, inviteStaff } from "@/domain/membership";
 import type { RequestMeta } from "@/domain/records";
 import { withTenant } from "@/db/tenant";
 
-export const meta = (): RequestMeta => ({ requestId: `test-${randomUUID()}`, ip: "127.0.0.1" });
+export const meta = (): RequestMeta => ({
+  requestId: `test-${randomUUID()}`,
+  ip: "127.0.0.1",
+});
 
 // A raw connection as one role, for attacks that bypass the data access layer.
-export async function rawClient(role: "app" | "worker" | "admin" | "migration") {
+export async function rawClient(
+  role: "app" | "worker" | "admin" | "migration",
+) {
   const url = {
     app: process.env.DATABASE_URL_APP,
     worker: process.env.DATABASE_URL_WORKER,
@@ -26,11 +31,18 @@ export async function rawClient(role: "app" | "worker" | "admin" | "migration") 
 let seq = 0;
 const uniq = () => `${Date.now().toString(36)}${(seq++).toString(36)}`;
 
-export async function createInternalUser(role: "admin" | "support", name = `Agent ${uniq()}`) {
+export async function createInternalUser(
+  role: "admin" | "support",
+  name = `Agent ${uniq()}`,
+) {
   const [u] = await withAdmin(null, (tx) =>
     tx
       .insert(internalUser)
-      .values({ email: `${uniq()}@internal.example.test`, displayName: name, role })
+      .values({
+        email: `${uniq()}@internal.example.test`,
+        displayName: name,
+        role,
+      })
       .returning(),
   );
   return u;
@@ -42,7 +54,10 @@ export type SeededTenant = {
   staff?: { userId: string; authSubject: string; email: string; actor: Actor };
 };
 
-export async function seedTenant(label: string, opts: { withStaff?: boolean } = {}): Promise<SeededTenant> {
+export async function seedTenant(
+  label: string,
+  opts: { withStaff?: boolean } = {},
+): Promise<SeededTenant> {
   const admin = await createInternalUser("admin");
   const ownerEmail = `owner-${uniq()}@shop.example.test`;
   const created = await createBusiness({ internalUserId: admin.id }, meta(), {
@@ -57,10 +72,19 @@ export async function seedTenant(label: string, opts: { withStaff?: boolean } = 
     phoneE164: null,
     displayName: `${label} Owner`,
   });
-  const ownerActor: Actor = { type: "user", id: owner.userId, authSubject: ownerAuth };
+  const ownerActor: Actor = {
+    type: "user",
+    id: owner.userId,
+    authSubject: ownerAuth,
+  };
   const tenant: SeededTenant = {
     businessId: created.businessId,
-    owner: { userId: owner.userId, authSubject: ownerAuth, email: ownerEmail, actor: ownerActor },
+    owner: {
+      userId: owner.userId,
+      authSubject: ownerAuth,
+      email: ownerEmail,
+      actor: ownerActor,
+    },
   };
   if (opts.withStaff) {
     const staffEmail = `staff-${uniq()}@shop.example.test`;
@@ -85,4 +109,5 @@ export async function seedTenant(label: string, opts: { withStaff?: boolean } = 
 }
 
 // The pg client behind a drizzle transaction, for raw SQL attacks inside a tenant context.
-export const clientOf = (tx: unknown) => (tx as { session: { client: pg.PoolClient } }).session.client;
+export const clientOf = (tx: unknown) =>
+  (tx as { session: { client: pg.PoolClient } }).session.client;

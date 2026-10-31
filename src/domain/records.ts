@@ -4,7 +4,11 @@ import { sql } from "drizzle-orm";
 import { auditEvent, activity } from "@/db/schema";
 import type { Tx, TenantTx } from "@/db/tenant";
 
-export type RequestMeta = { requestId: string; ip?: string | null };
+export type RequestMeta = {
+  requestId: string;
+  ip?: string | null;
+  userAgent?: string | null;
+};
 
 type AuditInput = {
   action: string;
@@ -57,22 +61,31 @@ export async function auditPlatform(
 
 export async function recordActivity(
   tx: TenantTx,
-  e: { kind: string; subjectType: string; subjectId: string; summary: string; data?: Record<string, unknown>; recordedAtNow?: boolean },
+  e: {
+    kind: string;
+    subjectType: string;
+    subjectId: string;
+    summary: string;
+    data?: Record<string, unknown>;
+    recordedAtNow?: boolean;
+  },
 ) {
   const a = tx.actor;
-  const [row] = await tx.insert(activity).values({
-    businessId: tx.businessId,
-    kind: e.kind,
-    subjectType: e.subjectType,
-    subjectId: e.subjectId,
-    actorType: a.type === "internal" ? "support" : a.type,
-    actorId: a.id,
-    createdByUserId: a.type === "user" ? a.id : null,
-    summary: e.summary,
-    data: e.data ?? {},
-    // Locked workflow commands are ordered by write time, not transaction start.
-    occurredAt: e.recordedAtNow ? sql`clock_timestamp()` : undefined,
-  }).returning();
+  const [row] = await tx
+    .insert(activity)
+    .values({
+      businessId: tx.businessId,
+      kind: e.kind,
+      subjectType: e.subjectType,
+      subjectId: e.subjectId,
+      actorType: a.type === "internal" ? "support" : a.type,
+      actorId: a.id,
+      createdByUserId: a.type === "user" ? a.id : null,
+      summary: e.summary,
+      data: e.data ?? {},
+      // Locked workflow commands are ordered by write time, not transaction start.
+      occurredAt: e.recordedAtNow ? sql`clock_timestamp()` : undefined,
+    })
+    .returning();
   return row;
 }
-

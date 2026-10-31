@@ -23,8 +23,11 @@ const status = Object.fromEntries(
 
 const secret = () => randomBytes(32).toString("base64url");
 const keep = (name: string, make: () => string) => current.get(name) || make();
-const hookSecret = readFileSync("supabase/.env", "utf8").match(/SUPABASE_AUTH_HOOK_SECRET="([^"]+)"/)?.[1];
-if (!hookSecret) throw new Error("supabase/.env is missing SUPABASE_AUTH_HOOK_SECRET");
+const hookSecret = readFileSync("supabase/.env", "utf8").match(
+  /SUPABASE_AUTH_HOOK_SECRET="([^"]+)"/,
+)?.[1];
+if (!hookSecret)
+  throw new Error("supabase/.env is missing SUPABASE_AUTH_HOOK_SECRET");
 
 const pw = {
   MIGRATION_OWNER_PASSWORD: keep("MIGRATION_OWNER_PASSWORD", secret),
@@ -32,7 +35,8 @@ const pw = {
   WORKER_USER_PASSWORD: keep("WORKER_USER_PASSWORD", secret),
   ADMIN_USER_PASSWORD: keep("ADMIN_USER_PASSWORD", secret),
 };
-const db = (role: string, password: string) => `postgresql://${role}:${password}@127.0.0.1:54322/postgres`;
+const db = (role: string, password: string) =>
+  `postgresql://${role}:${password}@127.0.0.1:54322/postgres`;
 
 const values: Record<string, string> = {
   APP_ENV: "local",
@@ -50,7 +54,10 @@ const values: Record<string, string> = {
   SUPABASE_AUTH_HOOK_SECRET: hookSecret,
   SESSION_SIGNING_SECRET: keep("SESSION_SIGNING_SECRET", secret),
   DATA_ENCRYPTION_KEY: keep("DATA_ENCRYPTION_KEY", secret),
-  ADMIN_ALLOWED_EMAIL_DOMAIN: keep("ADMIN_ALLOWED_EMAIL_DOMAIN", () => "example.test"),
+  ADMIN_ALLOWED_EMAIL_DOMAIN: keep(
+    "ADMIN_ALLOWED_EMAIL_DOMAIN",
+    () => "example.test",
+  ),
   EMAIL_FROM_ADDRESS: "notifications@example.test",
   SMTP_HOST: "127.0.0.1",
   SMTP_PORT: "54325",

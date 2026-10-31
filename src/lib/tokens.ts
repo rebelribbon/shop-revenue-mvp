@@ -7,9 +7,11 @@ export function newToken(): { token: string; hash: string } {
   return { token, hash: hashToken(token) };
 }
 
-export const hashToken = (token: string) => createHash("sha256").update(token, "utf8").digest("hex");
+export const hashToken = (token: string) =>
+  createHash("sha256").update(token, "utf8").digest("hex");
 
-export const isWellFormedToken = (token: string) => /^[A-Za-z0-9_-]{43}$/.test(token);
+export const isWellFormedToken = (token: string) =>
+  /^[A-Za-z0-9_-]{43}$/.test(token);
 
 export function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a);

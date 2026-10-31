@@ -1,16 +1,194 @@
 "use client";
 import Link from "next/link";
-import {useState} from "react";
-import {useRouter} from "next/navigation";
-import {rotateEstimateLinkAction,freezeEstimateAction} from "@/server/actions/estimates";
-export function EstimatePublisher({jobId,version,existingVersion}:{jobId:string;version:string;existingVersion?:number}){
- const [message,setMessage]=useState("");const [path,setPath]=useState("");const [pending,setPending]=useState(false);const [requestId,setRequestId]=useState(()=>crypto.randomUUID());const router=useRouter();
- if(path)return <section><h4>Estimate link ready</h4><p role="status">Share this link yourself. Publishing did not send a message or charge the customer.</p><p><a href={path} target="_blank" rel="noreferrer">Open customer estimate</a></p><label>Customer link<input readOnly value={`${window.location.origin}${path}`} onFocus={e=>e.currentTarget.select()}/></label><Link href={`/app/jobs?job=${jobId}`}>Job timeline &amp; next step</Link></section>;
- const form=<form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);setPending(true);try{const result=await freezeEstimateAction({jobId,expectedJobVersion:version,taxBps:Math.round(Number(f.get("taxPercent"))*100),terms:String(f.get("terms")??""),supplementReason:String(f.get("supplementReason")??""),clientRequestId:requestId});if(result.ok){const data=result.data as {path?:string};setPath(data.path??"");setMessage("Frozen estimate published. Copy the customer link before leaving this page.");setRequestId(crypto.randomUUID());router.refresh();}else setMessage(result.error.message);}catch{setMessage("Unable to create the link. Please try again.");}finally{setPending(false);}}}>
- <h4>Publish customer estimate</h4><label>Tax rate (%)<input name="taxPercent" type="number" min="0" max="100" step="0.01" defaultValue="0" required/></label><p className="muted">Applied to the selected work subtotal. Enter the rate appropriate for this estimate.</p>
- <label>Customer terms<textarea name="terms" maxLength={5000} rows={3}/></label><label>Change / supplement reason<textarea name="supplementReason" maxLength={2000} rows={2}/></label><p className="muted">A new version replaces the prior link and requires fresh authorization. Earlier signatures remain in history.</p>
- <button className="btn secondary" data-page-primary={!existingVersion?"true":undefined} disabled={pending}>{pending?"Publishing…":"Freeze and publish estimate"}</button><p role="status">{message}</p>{path&&<p><a href={path} target="_blank" rel="noreferrer">Open customer estimate</a><br/><label>Customer link<input readOnly value={`${window.location.origin}${path}`} onFocus={e=>e.currentTarget.select()}/></label></p>}</form>;
- return existingVersion?<details><summary>Revise estimate / create supplement</summary>{form}</details>:form;
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  rotateEstimateLinkAction,
+  freezeEstimateAction,
+} from "@/server/actions/estimates";
+export function EstimatePublisher({
+  jobId,
+  version,
+  existingVersion,
+  taxRateBps = 0,
+}: {
+  jobId: string;
+  version: string;
+  existingVersion?: number;
+  taxRateBps?: number;
+}) {
+  const [message, setMessage] = useState("");
+  const [path, setPath] = useState("");
+  const [pending, setPending] = useState(false);
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const router = useRouter();
+  if (path)
+    return (
+      <section>
+        <h4>Estimate link ready</h4>
+        <p role="status">
+          Share this link yourself. Publishing did not send a message or charge
+          the customer.
+        </p>
+        <p>
+          <a href={path} target="_blank" rel="noreferrer">
+            Open customer estimate
+          </a>
+        </p>
+        <label>
+          Customer link
+          <input
+            readOnly
+            value={`${window.location.origin}${path}`}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+        </label>
+        <Link href={`/app/jobs?job=${jobId}`}>
+          Job timeline &amp; next step
+        </Link>
+      </section>
+    );
+  const form = (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const f = new FormData(e.currentTarget);
+        setPending(true);
+        try {
+          const result = await freezeEstimateAction({
+            jobId,
+            expectedJobVersion: version,
+            taxBps: Math.round(Number(f.get("taxPercent")) * 100),
+            terms: String(f.get("terms") ?? ""),
+            supplementReason: String(f.get("supplementReason") ?? ""),
+            clientRequestId: requestId,
+          });
+          if (result.ok) {
+            const data = result.data as { path?: string };
+            setPath(data.path ?? "");
+            setMessage(
+              "Frozen estimate published. Copy the customer link before leaving this page.",
+            );
+            setRequestId(crypto.randomUUID());
+            router.refresh();
+          } else setMessage(result.error.message);
+        } catch {
+          setMessage("Unable to create the link. Please try again.");
+        } finally {
+          setPending(false);
+        }
+      }}
+    >
+      <h4>Publish customer estimate</h4>
+      <label>
+        Tax rate (%)
+        <input
+          name="taxPercent"
+          type="number"
+          min="0"
+          max="20"
+          step="0.01"
+          defaultValue={taxRateBps / 100}
+          required
+        />
+      </label>
+      <p className="muted">
+        Applied only to lines marked taxable on the job sheet. Starts from your
+        business default; confirm the rate and line flags before publishing.
+      </p>
+      <label>
+        Customer terms
+        <textarea name="terms" maxLength={5000} rows={3} />
+      </label>
+      <label>
+        Change / supplement reason
+        <textarea name="supplementReason" maxLength={2000} rows={2} />
+      </label>
+      <p className="muted">
+        A new version replaces the prior link and requires fresh authorization.
+        Earlier signatures remain in history.
+      </p>
+      <button
+        className="btn secondary"
+        data-page-primary={!existingVersion ? "true" : undefined}
+        disabled={pending}
+      >
+        {pending ? "Publishing…" : "Freeze and publish estimate"}
+      </button>
+      <p role="status">{message}</p>
+      {path && (
+        <p>
+          <a href={path} target="_blank" rel="noreferrer">
+            Open customer estimate
+          </a>
+          <br />
+          <label>
+            Customer link
+            <input
+              readOnly
+              value={`${window.location.origin}${path}`}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          </label>
+        </p>
+      )}
+    </form>
+  );
+  return existingVersion ? (
+    <details>
+      <summary>Revise estimate / create supplement</summary>
+      {form}
+    </details>
+  ) : (
+    form
+  );
 }
 
-export function EstimateLink({id}:{id:string}){const [path,setPath]=useState("");const [message,setMessage]=useState("");const [pending,setPending]=useState(false);return <div><button className="btn secondary" disabled={pending} onClick={async()=>{setPending(true);try{const r=await rotateEstimateLinkAction({id,clientRequestId:crypto.randomUUID()});if(r.ok){setPath((r.data as {path?:string}).path??"");setMessage("New link created. The previous link no longer works.");}else setMessage(r.error.message);}catch{setMessage("Unable to create the link. Please try again.");}finally{setPending(false);}}}>Create replacement customer link</button><p role="status">{message}</p>{path&&<p><a href={path}>Open customer estimate</a><label>Customer link<input readOnly value={`${window.location.origin}${path}`} onFocus={e=>e.currentTarget.select()}/></label></p>}</div>;}
+export function EstimateLink({ id }: { id: string }) {
+  const [path, setPath] = useState("");
+  const [message, setMessage] = useState("");
+  const [pending, setPending] = useState(false);
+  return (
+    <div>
+      <button
+        className="btn secondary"
+        disabled={pending}
+        onClick={async () => {
+          setPending(true);
+          try {
+            const r = await rotateEstimateLinkAction({
+              id,
+              clientRequestId: crypto.randomUUID(),
+            });
+            if (r.ok) {
+              setPath((r.data as { path?: string }).path ?? "");
+              setMessage(
+                "New link created. The previous link no longer works.",
+              );
+            } else setMessage(r.error.message);
+          } catch {
+            setMessage("Unable to create the link. Please try again.");
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        Create replacement customer link
+      </button>
+      <p role="status">{message}</p>
+      {path && (
+        <p>
+          <a href={path}>Open customer estimate</a>
+          <label>
+            Customer link
+            <input
+              readOnly
+              value={`${window.location.origin}${path}`}
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          </label>
+        </p>
+      )}
+    </div>
+  );
+}

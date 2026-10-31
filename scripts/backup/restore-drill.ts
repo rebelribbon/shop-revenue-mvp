@@ -18,7 +18,13 @@
 // non-secret JSON result.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseEnv } from "node:util";
@@ -26,18 +32,21 @@ import pg from "pg";
 import { bootstrapRoles } from "../db/bootstrap";
 import { findRlsViolations } from "../db/check-rls";
 
-const PG_IMAGE = process.env.PG_TOOLS_IMAGE ?? "public.ecr.aws/supabase/postgres:17.11.0.004";
+const PG_IMAGE =
+  process.env.PG_TOOLS_IMAGE ?? "public.ecr.aws/supabase/postgres:17.11.0.004";
 const SCHEMAS = ["app", "graphile_worker", "drizzle"];
 const TENANT_GUC = "app.business_id";
 const keep = process.argv.includes("--keep");
 
-const readEnv = (file: string) => parseEnv(readFileSync(file, "utf8")) as Record<string, string>;
+const readEnv = (file: string) =>
+  parseEnv(readFileSync(file, "utf8")) as Record<string, string>;
 const source = readEnv(process.env.SOURCE_ENV ?? ".env.dev-hosted");
 const target = readEnv(process.env.TARGET_ENV ?? ".env.local");
 const sourceUrl = source.DATABASE_URL_BOOTSTRAP; // backup role: must bypass RLS
 const targetAdminUrl = target.DATABASE_URL_BOOTSTRAP;
 const name = `restore_drill_${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}`;
-const withDb = (url: string, db: string) => Object.assign(new URL(url), { pathname: `/${db}` }).toString();
+const withDb = (url: string, db: string) =>
+  Object.assign(new URL(url), { pathname: `/${db}` }).toString();
 const targetUrl = withDb(targetAdminUrl, name);
 
 // libpq (pg_dump/pg_restore) rejects node-postgres-only URL options.
@@ -48,15 +57,32 @@ const libpq = (url: string) => {
 };
 
 function docker(args: string[], env: Record<string, string>) {
-  const r = spawnSync("docker", ["run", "--rm", "--network", "host", ...Object.keys(env).flatMap((k) => ["-e", k]), ...args], {
-    env: { ...process.env, ...env },
-    encoding: "utf8",
-  });
-  if (r.status !== 0) throw new Error(`docker ${args[args.length - 1].slice(0, 40)}… failed: ${(r.stderr || "").replace(/postgres(ql)?:\/\/[^\s"]+/g, "[url]").slice(0, 500)}`);
+  const r = spawnSync(
+    "docker",
+    [
+      "run",
+      "--rm",
+      "--network",
+      "host",
+      ...Object.keys(env).flatMap((k) => ["-e", k]),
+      ...args,
+    ],
+    {
+      env: { ...process.env, ...env },
+      encoding: "utf8",
+    },
+  );
+  if (r.status !== 0)
+    throw new Error(
+      `docker ${args[args.length - 1].slice(0, 40)}… failed: ${(r.stderr || "").replace(/postgres(ql)?:\/\/[^\s"]+/g, "[url]").slice(0, 500)}`,
+    );
   return r.stdout;
 }
 
-async function withClient<T>(url: string, fn: (c: pg.Client) => Promise<T>): Promise<T> {
+async function withClient<T>(
+  url: string,
+  fn: (c: pg.Client) => Promise<T>,
+): Promise<T> {
   const c = new pg.Client({ connectionString: url });
   await c.connect();
   try {
@@ -76,7 +102,13 @@ async function counts(url: string) {
     const out: Record<string, number> = {};
     for (const { t } of rows) {
       const [s, r] = String(t).split(".");
-      out[t] = Number((await c.query(`SELECT count(*) AS n FROM ${c.escapeIdentifier(s)}.${c.escapeIdentifier(r)}`)).rows[0].n);
+      out[t] = Number(
+        (
+          await c.query(
+            `SELECT count(*) AS n FROM ${c.escapeIdentifier(s)}.${c.escapeIdentifier(r)}`,
+          )
+        ).rows[0].n,
+      );
     }
     return out;
   });
@@ -121,8 +153,12 @@ async function securitySnapshot(url: string) {
          FROM pg_policies WHERE schemaname = ANY($1)`,
       [SCHEMAS],
     );
-    const journal = Number((await c.query("SELECT count(*) AS n FROM drizzle.__drizzle_migrations")).rows[0].n);
-    const toMap = (rows: { k: string; v: string | null }[]) => Object.fromEntries(rows.map((r) => [r.k, r.v ?? ""]));
+    const journal = Number(
+      (await c.query("SELECT count(*) AS n FROM drizzle.__drizzle_migrations"))
+        .rows[0].n,
+    );
+    const toMap = (rows: { k: string; v: string | null }[]) =>
+      Object.fromEntries(rows.map((r) => [r.k, r.v ?? ""]));
     return {
       acl: toMap(acl.rows),
       rls: toMap(rls.rows),
@@ -136,7 +172,10 @@ const diff = (a: Record<string, string>, b: Record<string, string>) =>
   Object.keys({ ...a, ...b })
     .filter((k) => a[k] !== b[k])
     .sort()
-    .map((k) => `${k}: source=[${a[k] ?? "missing"}] restored=[${b[k] ?? "missing"}]`);
+    .map(
+      (k) =>
+        `${k}: source=[${a[k] ?? "missing"}] restored=[${b[k] ?? "missing"}]`,
+    );
 
 // Tenant tables: app schema tables with a business_id column, plus app.business.
 async function tenantTables(adminUrl: string) {
@@ -171,13 +210,18 @@ async function visibleCount(c: pg.Client, sql: string, params: unknown[] = []) {
 async function tenantChecks(appUrl: string, adminUrl: string) {
   const tables = await tenantTables(adminUrl);
   const businessIds = await withClient(adminUrl, async (c) =>
-    (await c.query("SELECT id::text AS id FROM app.business ORDER BY 1")).rows.map((r) => String(r.id)),
+    (
+      await c.query("SELECT id::text AS id FROM app.business ORDER BY 1")
+    ).rows.map((r) => String(r.id)),
   );
   return withClient(appUrl, async (c) => {
     const withoutContext: Record<string, number> = {};
     await c.query("BEGIN");
     for (const { t } of tables) {
-      withoutContext[`app.${t}`] = await visibleCount(c, `SELECT count(*) AS n FROM app.${c.escapeIdentifier(t)}`);
+      withoutContext[`app.${t}`] = await visibleCount(
+        c,
+        `SELECT count(*) AS n FROM app.${c.escapeIdentifier(t)}`,
+      );
     }
     await c.query("ROLLBACK");
 
@@ -187,22 +231,35 @@ async function tenantChecks(appUrl: string, adminUrl: string) {
       await c.query("SELECT set_config($1, $2, true)", [TENANT_GUC, id]);
       for (const { t, is_business } of tables) {
         const col = is_business ? "id" : "business_id";
-        const n = await visibleCount(c, `SELECT count(*) AS n FROM app.${c.escapeIdentifier(t)} WHERE ${col}::text <> $1`, [id]);
+        const n = await visibleCount(
+          c,
+          `SELECT count(*) AS n FROM app.${c.escapeIdentifier(t)} WHERE ${col}::text <> $1`,
+          [id],
+        );
         if (n > 0) crossTenant[`${id} app.${t}`] = n;
       }
       await c.query("ROLLBACK");
     }
     return {
       tenantTables: tables.map(({ t }) => `app.${t}`),
-      rowsVisibleWithoutContext: Object.values(withoutContext).reduce((a, b) => a + b, 0),
-      tablesVisibleWithoutContext: Object.keys(withoutContext).filter((k) => withoutContext[k] > 0),
+      rowsVisibleWithoutContext: Object.values(withoutContext).reduce(
+        (a, b) => a + b,
+        0,
+      ),
+      tablesVisibleWithoutContext: Object.keys(withoutContext).filter(
+        (k) => withoutContext[k] > 0,
+      ),
       businessesChecked: businessIds.length,
       crossTenantRowsVisible: crossTenant,
     };
   });
 }
 
-const repoMigrations = (JSON.parse(readFileSync("db/migrations/meta/_journal.json", "utf8")) as { entries: unknown[] }).entries.length;
+const repoMigrations = (
+  JSON.parse(readFileSync("db/migrations/meta/_journal.json", "utf8")) as {
+    entries: unknown[];
+  }
+).entries.length;
 
 const dir = mkdtempSync(join(tmpdir(), "restore-drill-"));
 const timings: Record<string, number> = {};
@@ -213,7 +270,17 @@ const lap = (k: string) => {
 };
 try {
   // 1. Backup: custom-format dump of our schemas (what the nightly job ships off-site).
-  docker(["-v", `${dir}:/out`, PG_IMAGE, "sh", "-c", `pg_dump "$PGSRC" -Fc ${SCHEMAS.map((s) => `-n ${s}`).join(" ")} -f /out/backup.pgc`], { PGSRC: libpq(sourceUrl) });
+  docker(
+    [
+      "-v",
+      `${dir}:/out`,
+      PG_IMAGE,
+      "sh",
+      "-c",
+      `pg_dump "$PGSRC" -Fc ${SCHEMAS.map((s) => `-n ${s}`).join(" ")} -f /out/backup.pgc`,
+    ],
+    { PGSRC: libpq(sourceUrl) },
+  );
   const dump = readFileSync(join(dir, "backup.pgc"));
   const sha256 = createHash("sha256").update(dump).digest("hex");
   const sourceCounts = await counts(sourceUrl);
@@ -221,7 +288,9 @@ try {
   lap("dumpMs");
 
   // 2. Restore into a fresh scratch database with the production roles.
-  await withClient(targetAdminUrl, (c) => c.query(`CREATE DATABASE ${c.escapeIdentifier(name)}`));
+  await withClient(targetAdminUrl, (c) =>
+    c.query(`CREATE DATABASE ${c.escapeIdentifier(name)}`),
+  );
   await bootstrapRoles({
     bootstrapUrl: targetUrl,
     databaseName: name,
@@ -234,28 +303,57 @@ try {
   });
   // Restore as migration_owner, the role that owns every object in production;
   // pg_dump places RLS enablement, policies and triggers after the data.
-  docker(["-v", `${dir}:/out`, PG_IMAGE, "sh", "-c", 'pg_restore --exit-on-error -d "$PGDST" /out/backup.pgc'], {
-    PGDST: libpq(withDb(target.DATABASE_URL_MIGRATION, name)),
-  });
+  docker(
+    [
+      "-v",
+      `${dir}:/out`,
+      PG_IMAGE,
+      "sh",
+      "-c",
+      'pg_restore --exit-on-error -d "$PGDST" /out/backup.pgc',
+    ],
+    {
+      PGDST: libpq(withDb(target.DATABASE_URL_MIGRATION, name)),
+    },
+  );
   lap("restoreMs");
 
   // 3. Verify.
   const restoredCounts = await counts(targetUrl);
-  const mismatched = Object.keys({ ...sourceCounts, ...restoredCounts }).filter((k) => sourceCounts[k] !== restoredCounts[k]);
-  const restoredSecurity = await securitySnapshot(targetUrl);
-  const rlsViolations = await withClient(withDb(target.DATABASE_URL_MIGRATION, name), (c) => findRlsViolations(c));
-  const visibleWithoutTenant = await withClient(withDb(target.DATABASE_URL_APP, name), async (c) =>
-    Number((await c.query("SELECT count(*) n FROM app.business")).rows[0].n),
+  const mismatched = Object.keys({ ...sourceCounts, ...restoredCounts }).filter(
+    (k) => sourceCounts[k] !== restoredCounts[k],
   );
-  const tenant = await tenantChecks(withDb(target.DATABASE_URL_APP, name), targetUrl);
+  const restoredSecurity = await securitySnapshot(targetUrl);
+  const rlsViolations = await withClient(
+    withDb(target.DATABASE_URL_MIGRATION, name),
+    (c) => findRlsViolations(c),
+  );
+  const visibleWithoutTenant = await withClient(
+    withDb(target.DATABASE_URL_APP, name),
+    async (c) =>
+      Number((await c.query("SELECT count(*) n FROM app.business")).rows[0].n),
+  );
+  const tenant = await tenantChecks(
+    withDb(target.DATABASE_URL_APP, name),
+    targetUrl,
+  );
   lap("verifyMs");
 
   const grantsMismatched = diff(sourceSecurity.acl, restoredSecurity.acl);
   const rlsFlagsMismatched = diff(sourceSecurity.rls, restoredSecurity.rls);
   // Every tenant table must have RLS enabled and forced after the restore.
-  const rlsNotEnabledAndForced = tenant.tenantTables.filter((k) => restoredSecurity.rls[k] !== "true/true");
-  const policiesMismatched = diff(sourceSecurity.policies, restoredSecurity.policies);
-  const migrations = { repo: repoMigrations, source: sourceSecurity.journal, restored: restoredSecurity.journal };
+  const rlsNotEnabledAndForced = tenant.tenantTables.filter(
+    (k) => restoredSecurity.rls[k] !== "true/true",
+  );
+  const policiesMismatched = diff(
+    sourceSecurity.policies,
+    restoredSecurity.policies,
+  );
+  const migrations = {
+    repo: repoMigrations,
+    source: sourceSecurity.journal,
+    restored: restoredSecurity.journal,
+  };
 
   const ok =
     mismatched.length === 0 &&
@@ -297,11 +395,16 @@ try {
   };
   const json = JSON.stringify(result, null, 2);
   console.log(json);
-  if (process.env.DRILL_RESULT_FILE) writeFileSync(process.env.DRILL_RESULT_FILE, json + "\n");
+  if (process.env.DRILL_RESULT_FILE)
+    writeFileSync(process.env.DRILL_RESULT_FILE, json + "\n");
   if (!ok) process.exitCode = 1;
 } finally {
   rmSync(dir, { recursive: true, force: true });
   if (!keep) {
-    await withClient(targetAdminUrl, (c) => c.query(`DROP DATABASE IF EXISTS ${c.escapeIdentifier(name)} WITH (FORCE)`));
+    await withClient(targetAdminUrl, (c) =>
+      c.query(
+        `DROP DATABASE IF EXISTS ${c.escapeIdentifier(name)} WITH (FORCE)`,
+      ),
+    );
   }
 }

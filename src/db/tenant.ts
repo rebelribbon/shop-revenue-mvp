@@ -24,7 +24,10 @@ export type Actor = {
 type Db = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-export type TenantTx = Tx & { readonly businessId: string; readonly actor: Actor };
+export type TenantTx = Tx & {
+  readonly businessId: string;
+  readonly actor: Actor;
+};
 
 export type RuntimeRole = "app" | "worker";
 
@@ -36,7 +39,8 @@ function connectionFor(role: RuntimeRole | "admin") {
     worker: process.env.DATABASE_URL_WORKER,
     admin: process.env.DATABASE_URL_ADMIN,
   }[role];
-  if (!url) throw new Error(`Database URL for the ${role} role is not configured`);
+  if (!url)
+    throw new Error(`Database URL for the ${role} role is not configured`);
   let entry = pools.get(url);
   if (!entry) {
     const pool = new pg.Pool({
@@ -61,7 +65,8 @@ export function dbForRole(role: RuntimeRole | "admin"): Db {
 export const maintenancePool = () => connectionFor("worker").pool;
 
 // Tests only: the shared pool itself, to probe for context leaking across requests.
-export const poolForRole = (role: RuntimeRole | "admin") => connectionFor(role).pool;
+export const poolForRole = (role: RuntimeRole | "admin") =>
+  connectionFor(role).pool;
 
 export async function closePools() {
   const all = [...pools.values()];
@@ -69,7 +74,8 @@ export async function closePools() {
   await Promise.all(all.map((p) => p.pool.end()));
 }
 
-const defaultRole = (): RuntimeRole => (process.env.DB_RUNTIME_ROLE === "worker" ? "worker" : "app");
+const defaultRole = (): RuntimeRole =>
+  process.env.DB_RUNTIME_ROLE === "worker" ? "worker" : "app";
 
 export type TxOptions = {
   role?: RuntimeRole | "admin";
@@ -107,7 +113,10 @@ export async function runInContext<T>(
     } catch (err) {
       if (attempt < maxRetries && isRetryableDatabaseError(err)) continue;
       if (attempt >= maxRetries && isRetryableDatabaseError(err)) {
-        throw new AppError("CONFLICT", "Someone else changed this at the same time. Please try again.");
+        throw new AppError(
+          "CONFLICT",
+          "Someone else changed this at the same time. Please try again.",
+        );
       }
       throw err;
     }
@@ -124,15 +133,20 @@ export async function withTenant<T>(
   return runInContext(
     businessId,
     actor,
-    (tx) => fn(Object.assign(Object.create(tx), { businessId, actor }) as TenantTx),
+    (tx) =>
+      fn(Object.assign(Object.create(tx), { businessId, actor }) as TenantTx),
     opts,
   );
 }
 
 // Worker-only: global work with no tenant (webhook routing, cache). RLS still
 // applies; tenant tables return nothing here.
-export async function withGlobalWorker<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
-  return runInContext(null, { type: "system", id: null }, fn, { role: "worker" });
+export async function withGlobalWorker<T>(
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return runInContext(null, { type: "system", id: null }, fn, {
+    role: "worker",
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -149,7 +163,9 @@ export type MembershipRow = {
   businessStatus: string;
 };
 
-export async function resolveMemberships(authSubject: string): Promise<MembershipRow[]> {
+export async function resolveMemberships(
+  authSubject: string,
+): Promise<MembershipRow[]> {
   const { rows } = await connectionFor("app").pool.query(
     `SELECT user_id AS "userId", user_status AS "userStatus", membership_id AS "membershipId",
             business_id AS "businessId", role, status, business_status AS "businessStatus"
@@ -169,7 +185,9 @@ export type InviteRow = {
   businessName: string;
 };
 
-export async function resolveInvite(tokenHash: string): Promise<InviteRow | null> {
+export async function resolveInvite(
+  tokenHash: string,
+): Promise<InviteRow | null> {
   const { rows } = await connectionFor("app").pool.query(
     `SELECT membership_id AS "membershipId", business_id AS "businessId", role, invite_email AS "inviteEmail",
             invite_phone_e164 AS "invitePhoneE164", invite_expires_at AS "inviteExpiresAt",
@@ -188,7 +206,12 @@ export async function ingestWebhookEvent(input: {
 }): Promise<{ eventId: string; duplicate: boolean }> {
   const { rows } = await connectionFor("app").pool.query(
     `SELECT event_id AS "eventId", duplicate FROM app.ingest_webhook_event($1, $2, $3, $4)`,
-    [input.provider, input.providerEventId, input.eventType, JSON.stringify(input.payload)],
+    [
+      input.provider,
+      input.providerEventId,
+      input.eventType,
+      JSON.stringify(input.payload),
+    ],
   );
   return rows[0];
 }
@@ -197,4 +220,3 @@ export async function ingestWebhookEvent(input: {
 export async function pingDatabase(): Promise<void> {
   await connectionFor("app").pool.query("SELECT 1");
 }
-
