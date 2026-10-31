@@ -71,6 +71,9 @@ export async function setInvitePassword(
 }
 
 export async function drawEstimateSignature(page: Page) {
+  await page
+    .getByRole("img", { name: "Drawn signature", exact: true })
+    .scrollIntoViewIfNeeded();
   const bounds = await page
     .getByRole("img", { name: "Drawn signature", exact: true })
     .boundingBox();

@@ -1,6 +1,6 @@
 # Scope revision: business-type workspaces
 
-Decision date: October 30, 2026. Recorded October 31, 2026 after the independent review identified the missing dated revision.
+Founder approval: October 29, 2026 (America/Chicago; October 30 UTC). Recorded October 31, 2026 after the independent review identified the missing dated revision.
 
 The founder explicitly requested support beyond automotive for home improvement, HVAC, plumbing and handyman work, first as a separate branch and then as one product configured by business type. PR #12 implemented Automotive, HVAC, Plumbing, Home Improvement, Handyman and Other Home Services. This intentionally supersedes the frozen v1.1 exclusion of other trades for the shared customer/workflow model.
 
