@@ -37,8 +37,8 @@ export async function freezeEstimate(tx:TenantTx,meta:RequestMeta,input:{jobId:s
  await recordActivity(tx,{kind:"estimate.published",subjectType:data.vehicleId?"vehicle":"customer",subjectId:data.vehicleId??data.customerId,summary:`Estimate version ${row.version} published`,data:{versionId:row.id}});
  return {id:row.id,version:row.version,path:`/estimate/${token.token}`};
 }
-export async function listEstimates(tx:TenantTx){
- return tx.select({id:estimateVersion.id,quoteId:estimateVersion.quoteId,version:estimateVersion.version,snapshot:estimateVersion.snapshot,revokedAt:estimateVersion.revokedAt,expiresAt:estimateVersion.expiresAt,supplementReason:estimateVersion.supplementReason,authorization:estimateAuthorization}).from(estimateVersion).leftJoin(estimateAuthorization,and(eq(estimateAuthorization.businessId,estimateVersion.businessId),eq(estimateAuthorization.versionId,estimateVersion.id))).where(eq(estimateVersion.businessId,tx.businessId)).orderBy(desc(estimateVersion.createdAt),desc(estimateVersion.version)).limit(100);
+export async function listEstimates(tx:TenantTx,jobId?:string){
+ return tx.select({id:estimateVersion.id,quoteId:estimateVersion.quoteId,version:estimateVersion.version,snapshot:estimateVersion.snapshot,revokedAt:estimateVersion.revokedAt,expiresAt:estimateVersion.expiresAt,supplementReason:estimateVersion.supplementReason,authorization:estimateAuthorization}).from(estimateVersion).leftJoin(estimateAuthorization,and(eq(estimateAuthorization.businessId,estimateVersion.businessId),eq(estimateAuthorization.versionId,estimateVersion.id))).where(and(eq(estimateVersion.businessId,tx.businessId),jobId?eq(estimateVersion.quoteId,jobId):undefined)).orderBy(desc(estimateVersion.createdAt),desc(estimateVersion.version)).limit(100);
 }
 export async function revokeEstimate(tx:TenantTx,meta:RequestMeta,id:string){
  const [row]=await tx.update(estimateVersion).set({revokedAt:new Date()}).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.id,id))).returning();if(!row)throw notFound("That estimate");

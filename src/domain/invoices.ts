@@ -1,4 +1,4 @@
-import {and,desc,eq,sql} from "drizzle-orm";
+import {and,desc,eq,inArray,sql} from "drizzle-orm";
 import {business,estimateAuthorization,estimateVersion,invoice,invoicePayment,type InvoiceSnapshot} from "@/db/schema";
 import {runInContext,type TenantTx} from "@/db/tenant";
 import {AppError,notFound} from "@/lib/errors";
@@ -26,9 +26,10 @@ export async function issueInvoice(tx:TenantTx,meta:RequestMeta,input:{versionId
  await recordActivity(tx,{kind:"invoice.issued",subjectType:v.vehicleId?"vehicle":"customer",subjectId:v.vehicleId??v.customerId,summary:`Invoice #${row.number} issued`,data:{invoiceId:row.id}});
  return {id:row.id,path:`/invoice/${token.token}`};
 }
-export async function listInvoices(tx:TenantTx){
- const invoices=await tx.select().from(invoice).where(eq(invoice.businessId,tx.businessId)).orderBy(desc(invoice.createdAt)).limit(100);
- const payments=await tx.select().from(invoicePayment).where(eq(invoicePayment.businessId,tx.businessId)).orderBy(desc(invoicePayment.createdAt));
+export async function listInvoices(tx:TenantTx,id?:string,jobId?:string){
+ const invoices=await tx.select().from(invoice).where(and(eq(invoice.businessId,tx.businessId),id?eq(invoice.id,id):undefined,jobId?eq(invoice.quoteId,jobId):undefined)).orderBy(desc(invoice.createdAt)).limit(100);
+ const ids=invoices.map(i=>i.id);
+ const payments=ids.length?await tx.select().from(invoicePayment).where(and(eq(invoicePayment.businessId,tx.businessId),inArray(invoicePayment.invoiceId,ids))).orderBy(desc(invoicePayment.createdAt)):[];
  return invoices.map(i=>{const entries=payments.filter(p=>p.invoiceId===i.id);const paidCents=entries.reduce((n,p)=>n+p.amountCents,0);return {...i,entries,paidCents,balanceCents:i.totalCents-paidCents};});
 }
 async function requireInvoice(tx:TenantTx,id:string){await lockRevenue(tx);const [row]=await tx.select().from(invoice).where(and(eq(invoice.businessId,tx.businessId),eq(invoice.id,id))).for("update");if(!row)throw notFound("That invoice");return row;}

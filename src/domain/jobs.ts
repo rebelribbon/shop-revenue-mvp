@@ -1,7 +1,7 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { AppError } from "@/lib/errors";
 import { z } from "zod";
-import { activity, estimateVersion, recommendation } from "@/db/schema";
+import { activity, customer, estimateVersion, recommendation } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { validateRecoverySource, validateContactSource, validateAppointmentSource } from "./recovery-source";
 import { recordActivity } from "./records";
@@ -39,8 +39,15 @@ export async function createJob(tx:TenantTx,input:JobInput){
  await recordActivity(tx,{kind:"job.created",subjectType:data.vehicleId?"vehicle":"customer",subjectId:data.vehicleId??data.customerId,summary:`Job costed: ${data.title}`,data:{jobId:id}});
  return {id};
 }
-export async function listJobs(tx:TenantTx){
- const rows=await tx.select({version:activity.id,id:activity.subjectId,title:activity.summary,data:activity.data,createdAt:activity.occurredAt}).from(activity)
- .where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,"job.costed"),eq(activity.subjectType,"job"))).orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1000);
- return rows.filter((r,i)=>rows.findIndex(x=>x.id===r.id)===i).slice(0,100);
+export async function getJob(tx:TenantTx,id:string){
+ if(!z.uuid().safeParse(id).success)return null;
+ const [job]=await tx.select({version:activity.id,id:activity.subjectId,title:activity.summary,data:activity.data,createdAt:activity.occurredAt}).from(activity)
+ .where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,"job.costed"),eq(activity.subjectType,"job"),eq(activity.subjectId,id))).orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1);
+ return job??null;
+}
+export async function listJobs(tx:TenantTx,query=""){
+ const latest=tx.selectDistinctOn([activity.subjectId],{version:activity.id,id:activity.subjectId,title:activity.summary,data:activity.data,createdAt:activity.occurredAt}).from(activity)
+ .where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,"job.costed"),eq(activity.subjectType,"job"))).orderBy(activity.subjectId,desc(activity.occurredAt),desc(activity.id)).as("latest_jobs");
+ const pattern=`%${query.trim().slice(0,100).replace(/[\\%_]/g,"\\$&")}%`;
+ return tx.select().from(latest).where(query.trim()?or(ilike(latest.title,pattern),sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}::text=${latest.data}->>'customerId' and ${customer.displayName} ilike ${pattern})`):undefined).orderBy(desc(latest.createdAt),desc(latest.version)).limit(100);
 }

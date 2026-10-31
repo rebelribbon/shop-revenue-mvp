@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { notFound } from "next/navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { workspaceLabels } from "@/lib/business-types";
 import Link from "next/link";
@@ -14,7 +16,8 @@ import { revokeEstimateAction } from "@/server/actions/estimates";
 export default async function EstimatesPage({searchParams}:{searchParams:Promise<{jobId?:string}>}) {
  const s=await requireShopSession('/app/estimates');
  const {jobId}=await searchParams;
- const [all,invoices,profile]=await withTenant(s.businessId,s.actor,tx=>Promise.all([listEstimates(tx),listInvoices(tx),getBusinessProfile(tx)]));
+ if(jobId&&!z.uuid().safeParse(jobId).success)notFound();
+ const [all,invoices,profile]=await withTenant(s.businessId,s.actor,tx=>Promise.all([listEstimates(tx,jobId),listInvoices(tx,undefined,jobId),getBusinessProfile(tx)]));
  const rows=jobId?all.filter(e=>e.quoteId===jobId):all;
  return <main id="main-content" tabIndex={-1}>
   <h1>Estimates</h1><WorkNavigation current="estimates" businessType={profile?.businessType}/>
@@ -28,7 +31,7 @@ export default async function EstimatesPage({searchParams}:{searchParams:Promise
    return <article className="card" key={e.id}>
     <h2>{e.snapshot.title} · Version {e.version}</h2><p>{e.snapshot.customerName}</p>
     <div className="record-meta"><strong>Estimate: {formatMoney(e.snapshot.totalCents)}</strong><span className="pill">{e.authorization?(e.authorization.approvedLineIds.length?'Authorized work':'All items declined'):'Awaiting customer decision'}</span><span className="muted">{!latest?'Earlier version':e.revokedAt?'Customer link revoked':new Date()>e.expiresAt?'Customer link expired':'Customer link active'}</span></div>
-    <div className="money-actions"><Link href={`/app/jobs?job=${e.quoteId}`}>Open job</Link>{latest&&invoice?<Link href={`/app/invoices?invoiceId=${invoice.id}`}>Open invoice</Link>:latest&&e.authorization&&e.authorization.approvedLineIds.length>0?<Link href={`/app/invoices?new=1&versionId=${e.id}`}>Continue to invoice</Link>:null}</div>
+    <div className="money-actions"><Link href={`/app/jobs?job=${e.quoteId}`}>Job timeline &amp; work status</Link>{latest&&invoice?<Link href={`/app/invoices?invoiceId=${invoice.id}`}>Open invoice</Link>:latest&&e.authorization&&e.authorization.approvedLineIds.length>0?<Link href={`/app/invoices?new=1&versionId=${e.id}`}>Continue to invoice</Link>:null}</div>
     <details className="record-details"><summary>View estimate &amp; authorization</summary>
      {e.supplementReason&&<p>Change: {e.supplementReason}</p>}<EstimateDocument snapshot={e.snapshot}/>
      {e.authorization?<section><h3>Authorization history</h3><AuthorizedTotal snapshot={e.snapshot} ids={e.authorization.approvedLineIds}/><p>Signed by {e.authorization.signerName} · {e.authorization.createdAt.toLocaleString('en-US',{timeZone:'America/Chicago'})}</p><ul>{e.snapshot.lines.map(line=><li key={line.id}>{line.description}: {e.authorization!.approvedLineIds.includes(line.id)?'Approved':'Declined'}</li>)}</ul><p>{e.authorization.consentText}</p></section>:<p>Awaiting customer decision</p>}
