@@ -49,6 +49,7 @@ export default async function MoneyPage({
         {[
           ["Collected this month", m.collectedCents],
           ["Customers owe you", m.owedCents],
+          ["Sales tax collected (set aside for the state)", m.salesTaxCents],
           ["Expenses this month", m.expenseCents],
           ["Cash left this month", m.cashLeftCents],
         ].map(([label, value]) => (
@@ -59,9 +60,10 @@ export default async function MoneyPage({
         ))}
       </div>
       <p className="muted">
-        Collections include tax and subtract recorded refunds and corrections.
+        Collected includes sales tax and subtracts refunds and corrections.
+        Sales tax collected is not your money; set it aside to pay the state.
         Owed includes every unpaid invoice, not just this month. Cash left is
-        collections minus logged expenses.
+        collected minus sales tax minus expenses.
       </p>
       <section className="card">
         <h2>Estimated profit</h2>

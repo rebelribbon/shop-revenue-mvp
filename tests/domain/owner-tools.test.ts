@@ -245,7 +245,9 @@ it("shows sales, net collections, all unpaid money, quote-based profit and expen
     collectedCents: 10000,
     owedCents: 21650,
     expenseCents: 15000,
-    cashLeftCents: -5000,
+    // $100 paid on a $316.50 invoice carrying $16.50 tax: round(10000*1650/31650)=521.
+    salesTaxCents: 521,
+    cashLeftCents: -5521,
     costCents: 15000,
     estimatedProfitCents: 10000,
   });
@@ -259,6 +261,10 @@ it("shows sales, net collections, all unpaid money, quote-based profit and expen
     reverseInvoicePayment(tx, meta(), payment.id, "Incorrect receipt"),
   );
   expect((await f.run((tx) => getOwnerMoney(tx, month))).collectedCents).toBe(
+    0,
+  );
+  // Reversing the payment also reverses its sales-tax share.
+  expect((await f.run((tx) => getOwnerMoney(tx, month))).salesTaxCents).toBe(
     0,
   );
   expect((await f.run((tx) => getOwnerMoney(tx, month))).owedCents).toBe(31650);
