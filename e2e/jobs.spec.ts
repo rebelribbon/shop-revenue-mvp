@@ -31,6 +31,13 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(
     page.getByText("Quoted subtotal:", { exact: false }).first(),
   ).toContainText("$200.00");
+  await page.getByRole("button", { name: "Add labor", exact: true }).click();
+  await page
+    .getByLabel("Description", { exact: true })
+    .nth(1)
+    .fill("Optional diagnostic");
+  await page.getByLabel("Quoted hours", { exact: true }).fill("1");
+  await page.getByLabel("Hourly selling rate", { exact: true }).fill("100");
   await page
     .getByRole("button", { name: "Save job sheet", exact: true })
     .click();
@@ -78,6 +85,9 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(
     page.getByRole("button", { name: "Sign authorization", exact: true }),
   ).toBeDisabled();
+  await page
+    .getByRole("radio", { name: "Decline Optional diagnostic", exact: true })
+    .check();
   await drawEstimateSignature(page);
   await page
     .getByRole("button", { name: "Sign authorization", exact: true })

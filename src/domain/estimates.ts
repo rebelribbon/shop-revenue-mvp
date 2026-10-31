@@ -6,6 +6,7 @@ import {
   invoice,
   estimateRecommendationLine,
   estimateAuthorization,
+  authorizationSummaryColumns,
   estimateVersion,
   recommendation,
   type EstimateSnapshot,
@@ -272,7 +273,7 @@ export async function listEstimates(tx: TenantTx, jobId?: string) {
       revokedAt: estimateVersion.revokedAt,
       expiresAt: estimateVersion.expiresAt,
       supplementReason: estimateVersion.supplementReason,
-      authorization: estimateAuthorization,
+      authorization: authorizationSummaryColumns,
     })
     .from(estimateVersion)
     .leftJoin(

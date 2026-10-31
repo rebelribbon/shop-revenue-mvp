@@ -15,6 +15,9 @@ ALTER TABLE app.estimate_authorization
 CREATE INDEX authorization_policy_idx ON app.estimate_authorization(policy_id);
 -- Capability functions may inspect published policy status; drafts stay hidden.
 CREATE POLICY capability_policy_read ON app.legal_policy FOR SELECT TO migration_owner USING(status IN ('approved','retired'));
+-- PostgreSQL applies UPDATE USING policies to SELECT FOR SHARE as well. Permit
+-- locking approved versions without permitting any actual policy mutation.
+CREATE POLICY capability_policy_lock ON app.legal_policy FOR UPDATE TO migration_owner USING(status='approved') WITH CHECK(false);
 
 -- Publishing through another code path must enforce the same policy gate.
 CREATE FUNCTION app.guard_estimate_policy() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog,app AS $$

@@ -82,7 +82,7 @@ export async function authorizationPdf(input: {
   text(`Browser/device: ${meta.userAgent ?? "unavailable"}`);
   text(`Request: ${meta.requestId}`);
   text(`Estimate SHA-256: ${e.estimateSha256}`);
-  if (y < 160) {
+  if (y < 240) {
     page = doc.addPage([612, 792]);
     y = 744;
   }
@@ -90,8 +90,8 @@ export async function authorizationPdf(input: {
   for (const stroke of signature)
     for (let i = 1; i < stroke.length; i++)
       page.drawLine({
-        start: { x: 48 + stroke[i - 1].x * 480, y: y - stroke[i - 1].y * 120 },
-        end: { x: 48 + stroke[i].x * 480, y: y - stroke[i].y * 120 },
+        start: { x: 48 + stroke[i - 1].x * 480, y: y - stroke[i - 1].y * 180 },
+        end: { x: 48 + stroke[i].x * 480, y: y - stroke[i].y * 180 },
         thickness: 1,
         color: rgb(0, 0, 0),
       });

@@ -2,6 +2,8 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   activity,
   estimateAuthorization,
+  authorizationSummaryColumns,
+  type AuthorizationSummary,
   estimateVersion,
   invoice,
   invoicePayment,
@@ -31,7 +33,10 @@ export const stageLabels = {
 export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
   if (!jobIds.length) return new Map<string, JobWorkflow>();
   const versions = await tx
-    .select({ estimate: estimateVersion, authorization: estimateAuthorization })
+    .select({
+      estimate: estimateVersion,
+      authorization: authorizationSummaryColumns,
+    })
     .from(estimateVersion)
     .leftJoin(
       estimateAuthorization,
@@ -280,11 +285,11 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
 type Projection = {
   latest: {
     estimate: typeof estimateVersion.$inferSelect;
-    authorization: typeof estimateAuthorization.$inferSelect | null;
+    authorization: AuthorizationSummary | null;
   } | null;
   estimates: {
     estimate: typeof estimateVersion.$inferSelect;
-    authorization: typeof estimateAuthorization.$inferSelect | null;
+    authorization: AuthorizationSummary | null;
   }[];
   approved: typeof estimateVersion.$inferSelect.snapshot.lines;
   declined: typeof estimateVersion.$inferSelect.snapshot.lines;

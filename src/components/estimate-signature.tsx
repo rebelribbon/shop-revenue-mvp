@@ -21,6 +21,7 @@ export function EstimateSignature({
   const [message, setMessage] = useState("");
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const signatureRef = useRef<SignatureStrokes>([]);
   const router = useRouter();
   const approved = s.lines.filter((l) => choices[l.id] === "approve");
   const totals = estimateTotals(approved, s.taxBps);
@@ -131,40 +132,50 @@ export function EstimateSignature({
           touchAction: "none",
         }}
         onPointerDown={(e) => {
-          if (pending || signature.length >= 20) return;
+          if (pending || signatureRef.current.length >= 20) return;
+          const p = point(e);
           e.currentTarget.setPointerCapture(e.pointerId);
           drawing.current = true;
-          setSignature((strokes) => [...strokes, [point(e)]]);
+          signatureRef.current = [...signatureRef.current, [p]];
+          setSignature(signatureRef.current);
         }}
         onPointerMove={(e) => {
           if (!drawing.current) return;
-          const p = point(e);
-          setSignature((strokes) => {
-            const last = strokes.at(-1);
-            if (
-              !last ||
-              last.length >= 500 ||
-              strokes.reduce((n, s) => n + s.length, 0) >= 5000
-            )
-              return strokes;
-            const previous = last.at(-1)!;
-            const ctx = canvas.current?.getContext("2d");
-            if (ctx) {
-              ctx.strokeStyle = "#111111";
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.moveTo(previous.x * 640, previous.y * 240);
-              ctx.lineTo(p.x * 640, p.y * 240);
-              ctx.stroke();
-            }
-            return [...strokes.slice(0, -1), [...last, p]];
-          });
+          const p = point(e),
+            strokes = signatureRef.current,
+            last = strokes.at(-1);
+          if (
+            !last ||
+            last.length >= 500 ||
+            strokes.reduce((n, s) => n + s.length, 0) >= 5000
+          )
+            return;
+          const previous = last.at(-1)!,
+            ctx = canvas.current?.getContext("2d");
+          if (ctx) {
+            ctx.strokeStyle = "#111111";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(previous.x * 640, previous.y * 240);
+            ctx.lineTo(p.x * 640, p.y * 240);
+            ctx.stroke();
+          }
+          signatureRef.current = [...strokes.slice(0, -1), [...last, p]];
+          setSignature(signatureRef.current);
         }}
         onPointerUp={() => {
           drawing.current = false;
+          signatureRef.current = signatureRef.current.filter(
+            (stroke) => stroke.length >= 2,
+          );
+          setSignature(signatureRef.current);
         }}
         onPointerCancel={() => {
           drawing.current = false;
+          signatureRef.current = signatureRef.current.filter(
+            (stroke) => stroke.length >= 2,
+          );
+          setSignature(signatureRef.current);
         }}
       />
       <button
@@ -172,6 +183,7 @@ export function EstimateSignature({
         className="btn secondary"
         disabled={pending}
         onClick={() => {
+          signatureRef.current = [];
           setSignature([]);
           canvas.current?.getContext("2d")?.clearRect(0, 0, 640, 240);
         }}

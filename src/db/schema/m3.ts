@@ -106,3 +106,16 @@ export const estimateAuthorization = app.table(
     unique().on(t.businessId, t.versionId, t.id),
   ],
 );
+
+export const authorizationSummaryColumns = {
+  id: estimateAuthorization.id,
+  signerName: estimateAuthorization.signerName,
+  approvedLineIds: estimateAuthorization.approvedLineIds,
+  consentText: estimateAuthorization.consentText,
+  createdAt: estimateAuthorization.createdAt,
+  evidencePdfSha256: estimateAuthorization.evidencePdfSha256,
+};
+export type AuthorizationSummary = Pick<
+  typeof estimateAuthorization.$inferSelect,
+  keyof typeof authorizationSummaryColumns
+>;
