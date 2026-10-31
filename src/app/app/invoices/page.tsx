@@ -1,3 +1,4 @@
+import { getBusinessProfile } from "@/domain/business-profile";
 import { WorkNavigation } from "@/components/work-navigation";
 import Link from "next/link";
 import { StripeButton, StripeRefundForm } from "@/components/stripe-controls";
@@ -24,6 +25,7 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
   const params=await searchParams;
   const s = await requireShopSession("/app/invoices");
   const data = await withTenant(s.businessId, s.actor, async (tx) => ({
+    profile: await getBusinessProfile(tx),
     invoices: await listInvoices(tx),
     estimates: await listEstimates(tx),
     checkouts: await tx
@@ -56,7 +58,7 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
     }));
   return (
     <main id="main-content" tabIndex={-1}>
-      <h1>Invoices</h1><WorkNavigation current="invoices"/>{params.new!=="1"&&!params.invoiceId&&<Link className="btn primary" data-page-primary href="/app/invoices?new=1">Create invoice</Link>}
+      <h1>Invoices</h1><WorkNavigation current="invoices" businessType={data.profile?.businessType}/>{params.new!=="1"&&!params.invoiceId&&<Link className="btn primary" data-page-primary href="/app/invoices?new=1">Create invoice</Link>}
       <p className="muted">
         Record cash, checks, transfers, and verified online payments.
       </p>

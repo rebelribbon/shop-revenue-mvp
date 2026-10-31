@@ -1,3 +1,4 @@
+import { businessTypeLabel, isAutomotive } from "@/lib/business-types";
 import { QuickFind } from "@/components/quick-find";
 import { WorkspaceIcon } from "@/components/workspace-icon";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
@@ -27,10 +28,10 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
         </div>
       )}
       <div className="workspace-shell">
-        <aside className="workspace-sidebar"><div className="workspace-brand"><p>Shop Revenue</p><strong>{b?.dba || b?.legalName}</strong></div><WorkspaceNavigation/></aside>
+        <aside className="workspace-sidebar"><div className="workspace-brand"><p>Shop Revenue</p><strong>{b?.dba || b?.legalName}</strong><p className="muted workspace-industry">{businessTypeLabel(b?.businessType)}</p></div><WorkspaceNavigation/></aside>
         <header className="workspace-header">
           <strong className="workspace-mobile-brand">{b?.dba || b?.legalName}</strong>
-          <QuickFind automotive={b?.businessType==='automotive'}/>
+          <QuickFind automotive={isAutomotive(b?.businessType??'automotive')}/>
           <Link className="btn secondary icon-button workspace-mobile-settings" href="/app/settings" aria-label="Settings" title="Settings"><WorkspaceIcon name="settings"/></Link>
         </header>
         <div className="workspace-body">

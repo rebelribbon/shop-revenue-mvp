@@ -254,3 +254,5 @@ body:has(.workspace-shell) [data-ux-primary] { inset-inline-end: max(24px,calc((
 }
 
 .customer-row-title { margin: 0; font-size: 20px; line-height: 24px; }
+
+.workspace-brand .workspace-industry { margin: 8px 0 0; color: var(--muted); font-weight: 400; }

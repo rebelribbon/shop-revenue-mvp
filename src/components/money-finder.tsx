@@ -1,3 +1,4 @@
+import { isAutomotive } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "./action-form";
 import { categoryLabels, moneyCategories, type MoneyCategory, type MoneyDashboard, type MoneyItem } from "@/domain/money-finder";
@@ -32,12 +33,13 @@ function Controls({item,readOnly}:{item:MoneyItem;readOnly:boolean}) {
     </div>
     <ActionForm action={updateRecoveryAction} hidden={{...hidden,action:'dismiss'}} submitLabel="Dismiss" variant="danger" confirm="Dismiss this opportunity? You can restore it later.">
       <label htmlFor={`${key}-reason`}>Dismissal reason</label>
-      <input id={`${key}-reason`} name="reason" maxLength={1000} required placeholder="Moved, equipment replaced, work done elsewhere…"/>
+      <input id={`${key}-reason`} name="reason" maxLength={1000} required placeholder="Moved, work already completed, no longer needed…"/>
     </ActionForm>
   </details>;
 }
 
-export function MoneyFinder({data,category,view,query,page,readOnly}:{data:MoneyDashboard;category?:MoneyCategory;view:'active'|'snoozed'|'dismissed';query:string;page:number;readOnly:boolean}) {
+export function MoneyFinder({data,category,view,query,page,readOnly,businessType="automotive"}:{businessType?:string;data:MoneyDashboard;category?:MoneyCategory;view:'active'|'snoozed'|'dismissed';query:string;page:number;readOnly:boolean}) {
+  const auto=isAutomotive(businessType);
   const url=(cat?:MoneyCategory,p=1,v=view)=>`/app/opportunities?${new URLSearchParams({...(cat?{category:cat}:{}),view:v,...(query?{q:query}:{}),page:String(p)})}`;
   const counts=Object.fromEntries(data.cards.map(c=>[c.category,c]));
   return <section aria-label="Money Finder">
@@ -60,12 +62,12 @@ export function MoneyFinder({data,category,view,query,page,readOnly}:{data:Money
     </div>
     <form className="money-search" action="/app/opportunities">
       {category&&<input type="hidden" name="category" value={category}/>}<input type="hidden" name="view" value={view}/>
-      <label htmlFor="money-search">Search opportunities</label><div className="money-actions"><input id="money-search" name="q" defaultValue={query} maxLength={100} placeholder="Customer, vehicle, property, equipment or work…"/><button className="btn secondary">Search</button></div>
+      <label htmlFor="money-search">Search opportunities</label><div className="money-actions"><input id="money-search" name="q" defaultValue={query} maxLength={100} placeholder={auto?"Customer, vehicle or repair…":"Customer, property, equipment or work…"}/><button className="btn secondary">Search</button></div>
     </form>
     <h2 id="follow-up-list">{category?categoryLabels[category]:'Follow-up list'} <span className="muted">({data.total})</span></h2>
     {!data.items.length&&<div className="card"><h3>Nothing here right now</h3>
       <p>Lists fill from signed declines, unsigned estimates after 2 days, unpaid invoices after 3 days, paid visits 6–24 months ago, and entered service dates.</p>
-      <p>Add declined work or a next-service date from a <Link href="/app/customers">customer’s vehicle, property or equipment record</Link>. Missing history is never invented.</p>
+      <p>Add declined work or a next-service date from a <Link href="/app/customers">{auto?'customer’s vehicle record':'customer’s property or equipment record'}</Link>. Missing history is never invented.</p>
     </div>}
     {data.items.map(item=><article className="card money-opportunity" key={`${item.category}:${item.subjectId}`}>
       <div className="money-opportunity-head"><div><span className="pill">{categoryLabels[item.category]}</span><h3><Link href={`/app/customers/${item.customerId}`}>{item.customerName}</Link></h3>
@@ -80,7 +82,7 @@ export function MoneyFinder({data,category,view,query,page,readOnly}:{data:Money
         {item.category==='unpaid_invoice'&&<Link href="/app/invoices">Invoice history</Link>}
         {!readOnly&&item.status!=='dismissed'&&(!item.snoozedUntil||item.snoozedUntil<=data.today)&&<>
           <ActionForm action={startRecoveryWorkAction} hidden={{category:item.category,subjectId:item.subjectId,destination:'appointment'}} submitLabel="Book appointment" variant="secondary"/>
-          <ActionForm action={startRecoveryWorkAction} hidden={{category:item.category,subjectId:item.subjectId,destination:'job'}} submitLabel="New job / re-quote" variant="secondary"/>
+          <ActionForm action={startRecoveryWorkAction} hidden={{category:item.category,subjectId:item.subjectId,destination:'job'}} submitLabel={auto?"New repair / re-quote":"New job / re-quote"} variant="secondary"/>
         </>}
       </div>
       <p>Last manual contact: {item.lastContactAt?`${date(item.lastContactAt,data.timezone)} (${item.lastContactMethod?.replaceAll('_',' ')})`:'None recorded'}</p>

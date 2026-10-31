@@ -1,11 +1,12 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { businessTypes } from "@/lib/business-types";
 import { z } from "zod";
 import { updateBusinessProfile } from "@/domain/business-profile";
 import { normalizePhone } from "@/lib/normalize";
 import { defineShopAction } from "./define";
 
-export const updateBusinessProfileAction = defineShopAction({
+const saveBusinessProfile = defineShopAction({
   name: "updateBusinessProfile",
   ownerOnly: true,
   input: z.object({
@@ -35,3 +36,11 @@ export const updateBusinessProfileAction = defineShopAction({
   persist: () => ({ message: "Business profile updated." }),
 });
 
+
+// Invalidate after the tenant transaction commits, including successful retries.
+// Every previously visited workspace page must use the newly saved industry.
+export async function updateBusinessProfileAction(input: unknown) {
+  const result = await saveBusinessProfile(input);
+  if (result.ok) revalidatePath("/app", "layout");
+  return result;
+}
