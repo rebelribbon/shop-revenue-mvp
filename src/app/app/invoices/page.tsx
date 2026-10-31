@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { z } from "zod";
 import { notFound } from "next/navigation";
 import { localDateKey, formatDateOnly } from "@/lib/timezone";
@@ -88,7 +89,7 @@ export default async function InvoicesPage({
       label: `${e.snapshot.title} · ${e.snapshot.customerName}`,
     }));
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Invoices</h1>
       <WorkNavigation
         current="invoices"
@@ -350,6 +351,6 @@ export default async function InvoicesPage({
             </details>
           </article>
         ))}
-    </main>
+    </HydratedMain>
   );
 }

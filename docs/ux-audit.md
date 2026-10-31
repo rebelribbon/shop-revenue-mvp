@@ -103,3 +103,5 @@ Main owner destinations are Home, Customers, Jobs, Visits and Money, with Settin
 The development-mode scenario exposed the thumb-bar enhancer selecting streamed client form buttons before those forms hydrated. Client action scopes now expose a React-owned hydration-ready flag; the enhancer waits for that flag and observes its transition before selecting their controls. This preserves a single real form button and its validation without mutating pending server markup, adding timing delays or suppressing hydration warnings. The scenario continues to fail on React hydration/form warnings.
 
 Client form controls are natively disabled by a layout-free fieldset until the same readiness flag is true. This also prevents a select or typed value from being accepted before its React handler is attached, then lost when hydration installs the controlled state.
+
+Each resolved server page also renders through HydratedMain. Its readiness boundary protects native GET filters and links while the page hydrates; a layout-level boundary could become ready before its streamed page. Server children remain server-rendered.

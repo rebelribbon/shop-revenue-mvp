@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { desc } from "drizzle-orm";
 import { ActionForm } from "@/components/action-form";
@@ -27,7 +28,7 @@ export default async function Tenants({
     ),
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       {denied && <p className="notice error">That page is for admins only.</p>}
       <h1>Tenants</h1>
       <div className="card table-wrap">
@@ -88,6 +89,6 @@ export default async function Tenants({
           </ActionForm>
         </div>
       )}
-    </main>
+    </HydratedMain>
   );
 }

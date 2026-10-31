@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { businessTypes, businessTypeLabels } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
@@ -30,7 +31,7 @@ export default async function BusinessSettingsPage() {
     profile.timezone,
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Business profile</h1>
       <p>
         <Link href="/app/settings/payments">Set up online payments</Link>
@@ -232,6 +233,6 @@ export default async function BusinessSettingsPage() {
           </div>
         )}
       </div>
-    </main>
+    </HydratedMain>
   );
 }

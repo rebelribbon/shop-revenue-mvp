@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { requireOwnerView } from "@/server/views/shop";
 import { withTenant } from "@/db/tenant";
@@ -21,7 +22,7 @@ export default async function MoneyPage({
   );
   const readOnly = s.actor.type === "support";
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Money</h1>
       <MoneyNavigation current="overview" />
       {!readOnly && p.new !== "1" && (
@@ -188,6 +189,6 @@ export default async function MoneyPage({
           </article>
         ))}
       </section>
-    </main>
+    </HydratedMain>
   );
 }

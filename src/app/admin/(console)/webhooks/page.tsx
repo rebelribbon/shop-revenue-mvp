@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { listWebhookEvents } from "@/domain/webhooks";
 import { requireInternal } from "@/server/views/admin";
@@ -25,7 +26,7 @@ export default async function Webhooks({
   const status = STATUSES.includes(sp.status ?? "") ? sp.status : undefined;
   const events = await listWebhookEvents({ provider, status });
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Webhook events</h1>
       <form className="row card" method="get">
         <label htmlFor="webhook-provider">Provider</label>
@@ -82,6 +83,6 @@ export default async function Webhooks({
           </table>
         )}
       </div>
-    </main>
+    </HydratedMain>
   );
 }

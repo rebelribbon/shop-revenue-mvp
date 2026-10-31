@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { MoneyNavigation } from "@/components/money-navigation";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
@@ -37,7 +38,7 @@ export default async function RevenuePage({
     Promise.all([listRevenue(tx, month, page), recentRecoveryFollowups(tx)]),
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <p>
         <Link href="/app">← Follow-ups</Link>
       </p>
@@ -197,6 +198,6 @@ export default async function RevenuePage({
           </Link>
         )}
       </div>
-    </main>
+    </HydratedMain>
   );
 }

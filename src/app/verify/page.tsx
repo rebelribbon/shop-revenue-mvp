@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { redirect } from "next/navigation";
 import { getIdentity } from "@/server/auth/session";
 import { supabaseServer } from "@/server/auth/supabase";
@@ -19,13 +20,13 @@ export default async function VerifyPage({
     ]);
   if (error)
     return (
-      <main id="main-content" tabIndex={-1}>
+      <HydratedMain id="main-content" tabIndex={-1}>
         <h1>Security verification is unavailable</h1>
         <p>Try signing in again.</p>
-      </main>
+      </HydratedMain>
     );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <Authenticator
         factors={factors.totp.map((f) => ({
           id: f.id,
@@ -34,6 +35,6 @@ export default async function VerifyPage({
         next={next === "/verify" ? "/app" : next}
         verified={assurance?.currentLevel === "aal2"}
       />
-    </main>
+    </HydratedMain>
   );
 }

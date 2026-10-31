@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { z } from "zod";
 import { notFound } from "next/navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
@@ -37,7 +38,7 @@ export default async function EstimatesPage({
   );
   const rows = jobId ? all.filter((e) => e.quoteId === jobId) : all;
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Estimates</h1>
       <WorkNavigation
         current="estimates"
@@ -169,6 +170,6 @@ export default async function EstimatesPage({
           </article>
         );
       })}
-    </main>
+    </HydratedMain>
   );
 }

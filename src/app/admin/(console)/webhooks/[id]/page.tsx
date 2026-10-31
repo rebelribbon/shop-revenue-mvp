@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { getWebhookEvent } from "@/domain/webhooks";
@@ -15,7 +16,7 @@ export default async function WebhookDetail({
   const e = await getWebhookEvent(id);
   if (!e) notFound();
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>
         {e.provider} · {e.eventType}
       </h1>
@@ -46,6 +47,6 @@ export default async function WebhookDetail({
       </div>
       <h2>Payload</h2>
       <pre>{JSON.stringify(e.payload, null, 2)}</pre>
-    </main>
+    </HydratedMain>
   );
 }

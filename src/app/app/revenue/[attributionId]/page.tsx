@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
 import { revenueDetail } from "@/domain/revenue";
@@ -24,7 +25,7 @@ export default async function AttributionPage({
       timeStyle: "short",
     });
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <p>
         <Link href="/app/revenue">← Follow-up sales</Link>
       </p>
@@ -144,6 +145,6 @@ export default async function AttributionPage({
           </article>
         );
       })}
-    </main>
+    </HydratedMain>
   );
 }

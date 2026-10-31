@@ -1,7 +1,8 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 export default function AdminHelp() {
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Admin help</h1>
       <p>Use tenant records to review access and help a business owner.</p>
       <Link href="/admin" className="btn primary" data-page-primary>
@@ -34,6 +35,6 @@ export default function AdminHelp() {
         </p>
         <Link href="/admin/release">Open release readiness</Link>
       </section>
-    </main>
+    </HydratedMain>
   );
 }

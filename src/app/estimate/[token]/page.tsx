@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { PrintDocument } from "@/components/invoice-controls";
 import { notFound } from "next/navigation";
 import { readPublicEstimate } from "@/domain/estimates";
@@ -20,7 +21,7 @@ export default async function PublicEstimatePage({
   const e = await readPublicEstimate(token);
   if (!e) notFound();
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Estimate · Version {e.version}</h1>
       <PrintDocument label="Print estimate / Save PDF" />
       {e.supplementReason && (
@@ -72,6 +73,6 @@ export default async function PublicEstimatePage({
       ) : (
         <EstimateSignature token={token} snapshot={e.snapshot} />
       )}
-    </main>
+    </HydratedMain>
   );
 }

@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import {
   isAutomotive,
   workspaceLabels,
@@ -70,7 +71,7 @@ export default async function HomePage({
     day: "numeric",
   });
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       {params.denied && (
         <p role="status" className="notice error">
           Only the owner can open that page.
@@ -200,6 +201,6 @@ export default async function HomePage({
           <Link href="/app/customers/new">Add a customer</Link>
         </div>
       </section>
-    </main>
+    </HydratedMain>
   );
 }

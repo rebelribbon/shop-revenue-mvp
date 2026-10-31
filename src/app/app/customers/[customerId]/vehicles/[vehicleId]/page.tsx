@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { Notes, Readings } from "@/components/memory";
 import { listNotes, listReadings } from "@/domain/memory";
 import { recordMileageAction } from "@/server/actions/memory";
@@ -47,7 +48,7 @@ export default async function VehicleDetailPage(props: {
     )[0].timezone,
   }));
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <p>
         <Link href={`/app/customers/${customerId}?view=assets`}>
           ← Customer
@@ -160,6 +161,6 @@ export default async function VehicleDetailPage(props: {
           <Notes customerId={customerId} vehicleId={vehicleId} notes={notes} />
         </>
       )}
-    </main>
+    </HydratedMain>
   );
 }

@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { peekInvite } from "@/domain/membership";
 import { getIdentity } from "@/server/auth/session";
 import { AcceptInvite, InviteSignIn } from "./invite-forms";
@@ -11,13 +12,13 @@ export default async function InvitePage({
   const invite = await peekInvite(token);
   if (!invite) {
     return (
-      <main id="main-content" tabIndex={-1}>
+      <HydratedMain id="main-content" tabIndex={-1}>
         <h1>Invite unavailable</h1>
         <p>
           This invite link is no longer valid. Ask the shop owner to send a new
           one.
         </p>
-      </main>
+      </HydratedMain>
     );
   }
   const identity = await getIdentity();
@@ -27,7 +28,7 @@ export default async function InvitePage({
       (!!invite.invitePhoneE164 &&
         identity.phoneE164 === invite.invitePhoneE164));
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Join {invite.businessName}</h1>
       <p className="muted">
         You were invited as {invite.role === "owner" ? "the owner" : "staff"}.
@@ -43,6 +44,6 @@ export default async function InvitePage({
           sent to.
         </p>
       )}
-    </main>
+    </HydratedMain>
   );
 }

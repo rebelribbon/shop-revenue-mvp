@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { listCommonJobs } from "@/domain/common-jobs";
 import { loadJobWorkflows, stageLabels } from "@/domain/job-workflow";
 import { JobWorkflow, WorkflowBadges } from "@/components/job-workflow";
@@ -157,7 +158,7 @@ export default async function JobsPage({
       currency: "USD",
     }).format(c / 100);
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>{editing ? (selected ? "Edit job" : labels.newJob) : labels.jobs}</h1>
       <WorkNavigation current="jobs" businessType={type} />
       <p className="muted">
@@ -387,6 +388,6 @@ export default async function JobsPage({
           </div>
         </>
       )}
-    </main>
+    </HydratedMain>
   );
 }

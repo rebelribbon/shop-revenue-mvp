@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { withTenant } from "@/db/tenant";
 import { isAutomotive } from "@/lib/business-types";
@@ -12,7 +13,7 @@ export default async function NewCustomerPage() {
   );
   const auto = isAutomotive(profile?.businessType ?? "automotive");
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <p>
         <Link href="/app/customers">← Customers</Link>
       </p>
@@ -41,6 +42,6 @@ export default async function NewCustomerPage() {
           <textarea id="notes" name="notes" rows={4} maxLength={5000} />
         </ActionForm>
       </div>
-    </main>
+    </HydratedMain>
   );
 }

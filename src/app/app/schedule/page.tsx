@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
 import { requireShopSession } from "@/server/views/shop";
@@ -50,7 +51,7 @@ export default async function VisitsPage({
       day: "numeric",
     });
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>{creating ? "Book a visit" : "Visits"}</h1>
       {p.booked === "1" && (
         <p className="notice ok" role="status">
@@ -191,6 +192,6 @@ export default async function VisitsPage({
           )}
         </>
       )}
-    </main>
+    </HydratedMain>
   );
 }

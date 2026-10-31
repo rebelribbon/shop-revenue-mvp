@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { MoneyNavigation } from "@/components/money-navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import Link from "next/link";
@@ -47,7 +48,7 @@ export default async function OpportunitiesPage({
       ]),
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <p>
         <Link href="/app">← Home</Link>
       </p>
@@ -70,6 +71,6 @@ export default async function OpportunitiesPage({
         readOnly={s.actor.type === "support"}
       />
       <RevenueSummary {...revenue} />
-    </main>
+    </HydratedMain>
   );
 }

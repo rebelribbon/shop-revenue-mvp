@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { requireOwnerView } from "@/server/views/shop";
 import { withTenant } from "@/db/tenant";
@@ -10,7 +11,7 @@ export default async function CommonJobsPage() {
     listCommonJobs(tx),
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Common jobs</h1>
       <p>
         Save common work from the job editor, then use it on your next job.{" "}
@@ -36,6 +37,6 @@ export default async function CommonJobsPage() {
           )}
         </section>
       ))}
-    </main>
+    </HydratedMain>
   );
 }

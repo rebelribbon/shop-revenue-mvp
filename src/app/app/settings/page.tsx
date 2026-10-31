@@ -1,10 +1,11 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { requireShopSession } from "@/server/views/shop";
 
 export default async function SettingsPage() {
   const s = await requireShopSession("/app/settings");
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Settings</h1>
       <Link
         href="/app/settings/business"
@@ -55,6 +56,6 @@ export default async function SettingsPage() {
           </Link>
         )}
       </div>
-    </main>
+    </HydratedMain>
   );
 }

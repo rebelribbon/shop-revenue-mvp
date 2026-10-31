@@ -1,6 +1,7 @@
+import { HydratedMain } from "@/components/hydrated-main";
 export default function NoAccess() {
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>No shop access</h1>
       <p>
         You’re signed in, but this login isn’t connected to an active shop. If
@@ -10,6 +11,6 @@ export default function NoAccess() {
       <form action="/auth/sign-out" method="post">
         <button className="btn secondary">Sign out</button>
       </form>
-    </main>
+    </HydratedMain>
   );
 }

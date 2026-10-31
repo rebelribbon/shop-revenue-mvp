@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
 import { and, eq, inArray } from "drizzle-orm";
@@ -52,7 +53,7 @@ export default async function CustomersPage(props: {
     else byCustomer.set(item.customerId, [item]);
   }
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Customers</h1>
       <Link
         id="new-customer"
@@ -166,6 +167,6 @@ export default async function CustomersPage(props: {
           </div>
         )}
       </section>
-    </main>
+    </HydratedMain>
   );
 }

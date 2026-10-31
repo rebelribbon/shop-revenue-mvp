@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
@@ -28,7 +29,7 @@ export default async function TenantDetail({
   );
   const name = b.dba || b.legalName;
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>{name}</h1>
       <div className="card">
         <p>
@@ -100,6 +101,6 @@ export default async function TenantDetail({
           />
         </ActionForm>
       </div>
-    </main>
+    </HydratedMain>
   );
 }

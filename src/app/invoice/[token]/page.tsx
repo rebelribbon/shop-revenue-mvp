@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { formatDateOnly } from "@/lib/timezone";
 import { StripeButton } from "@/components/stripe-controls";
 import { notFound } from "next/navigation";
@@ -19,7 +20,7 @@ export default async function InvoicePage({
   if (!i) notFound();
   const s = i.snapshot;
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Invoice #{i.number}</h1>
       <section className="card">
         <h2>{s.shopName}</h2>
@@ -94,6 +95,6 @@ export default async function InvoicePage({
         )}
       </section>
       <PrintInvoice />
-    </main>
+    </HydratedMain>
   );
 }

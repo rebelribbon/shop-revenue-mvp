@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { redirect } from "next/navigation";
 import { safeNext } from "@/lib/safe-next";
 import { getIdentity, hasPasswordResetGrant } from "@/server/auth/session";
@@ -13,10 +14,10 @@ export default async function ResetPasswordPage({
     redirect("/sign-in?error=recovery");
   const sp = await searchParams;
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Choose a new password</h1>
       <p className="muted">Use at least 8 characters.</p>
       <ResetPasswordForm next={safeNext(sp.next)} />
-    </main>
+    </HydratedMain>
   );
 }
