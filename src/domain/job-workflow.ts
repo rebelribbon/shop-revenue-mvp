@@ -80,7 +80,7 @@ export async function recordJobProgress(tx: TenantTx, meta: RequestMeta, input: 
   if (input.status === "in_progress" && flow.work === "in_progress") throw new AppError("INVALID_TRANSITION", "Work is already in progress.");
   if (flow.work === "completed" && !input.note.trim()) throw new AppError("VALIDATION", "Explain why the work is being reopened.");
   const summary = `${input.status === "completed" ? "Work completed" : flow.work === "completed" ? "Work reopened" : "Work started"} · estimate v${flow.latest.estimate.version}`;
-  await recordActivity(tx, { kind: "job.progress", subjectType: "job", subjectId: job.id, summary, data: { versionId: input.versionId, status: input.status, approvedLineIds: flow.latest.authorization.approvedLineIds, note: input.note } });
+  await recordActivity(tx, { kind: "job.progress", recordedAtNow: true, subjectType: "job", subjectId: job.id, summary, data: { versionId: input.versionId, status: input.status, approvedLineIds: flow.latest.authorization.approvedLineIds, note: input.note } });
   await recordActivity(tx, { kind: "work.updated", subjectType: flow.latest.estimate.vehicleId ? "vehicle" : "customer", subjectId: flow.latest.estimate.vehicleId ?? flow.latest.estimate.customerId, summary: `${summary}: ${job.title}`.slice(0, 280), data: { jobId: job.id, status: input.status } });
   await audit(tx, meta, { action: "job.progress_recorded", targetType: "job", targetId: job.id, before: { status: flow.work }, after: { status: input.status, versionId: input.versionId, note: input.note } });
   return { id: job.id, message: input.status === "completed" ? "Authorized work marked complete. Payment status is unchanged." : "Work marked in progress. Payment status is unchanged." };
@@ -95,7 +95,7 @@ export async function recordJobSharing(tx: TenantTx, meta: RequestMeta, input: {
   const document = input.kind === "estimate" ? flow.latest?.estimate : flow.currentInvoice;
   if (!document || document.id !== input.documentId) throw new AppError("CONFLICT", "Refresh and use the current document.");
   if (input.kind === "estimate" && flow.latest && (flow.latest.estimate.revokedAt || flow.latest.estimate.expiresAt <= new Date())) throw new AppError("CONFLICT", "Renew this customer link before sharing it.");
-  await recordActivity(tx, { kind: "job.shared", subjectType: "job", subjectId: job.id, summary: `${input.kind === "estimate" ? "Estimate" : "Invoice"} link shared — recorded by shop`, data: { documentId: input.documentId, kind: input.kind, linkHash: document.tokenHash } });
+  await recordActivity(tx, { kind: "job.shared", recordedAtNow: true, subjectType: "job", subjectId: job.id, summary: `${input.kind === "estimate" ? "Estimate" : "Invoice"} link shared — recorded by shop`, data: { documentId: input.documentId, kind: input.kind, linkHash: document.tokenHash } });
   await audit(tx, meta, { action: "job.sharing_recorded", targetType: "job", targetId: job.id, after: input });
   return { id: job.id, message: "Sharing recorded. This is your confirmation, not a delivery receipt." };
 }

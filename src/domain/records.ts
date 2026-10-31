@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 // Activity (timeline) and audit (security and money) writers. Every flow ends
 // with an activity row, and an audit row where money, consent or access changes.
 import { auditEvent, activity } from "@/db/schema";
@@ -56,7 +57,7 @@ export async function auditPlatform(
 
 export async function recordActivity(
   tx: TenantTx,
-  e: { kind: string; subjectType: string; subjectId: string; summary: string; data?: Record<string, unknown> },
+  e: { kind: string; subjectType: string; subjectId: string; summary: string; data?: Record<string, unknown>; recordedAtNow?: boolean },
 ) {
   const a = tx.actor;
   const [row] = await tx.insert(activity).values({
@@ -69,6 +70,8 @@ export async function recordActivity(
     createdByUserId: a.type === "user" ? a.id : null,
     summary: e.summary,
     data: e.data ?? {},
+    // Locked workflow commands are ordered by write time, not transaction start.
+    occurredAt: e.recordedAtNow ? sql`clock_timestamp()` : undefined,
   }).returning();
   return row;
 }

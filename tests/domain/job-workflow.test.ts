@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { stripeConnection } from "@/db/schema";
 import { reserveCheckout, withPaymentTenant } from "@/domain/payments";
 import { expect, it } from "vitest";
@@ -92,4 +93,21 @@ it("does not count an open online checkout as collected money",async()=>{
  await f.run(tx=>tx.insert(stripeConnection).values({businessId:f.shop.businessId,accountId:`acct_${crypto.randomUUID()}`,cardPaymentsStatus:"active",livemode:false}));
  await withPaymentTenant(f.shop.businessId,tx=>reserveCheckout(tx,issued.id));
  expect(await f.flow()).toMatchObject({processing:true,paidCents:0,balanceCents:2000,work:"not_recorded"});
+});
+
+it("orders work transitions by their locked write, even when a transaction began earlier",async()=>{
+ const f=await fixture("Work ordering");
+ await signEstimate(f.estimate.path.split('/').pop()!,"Customer",["part-0"],meta());
+ let ready!:()=>void;let proceed!:()=>void;
+ const waiting=new Promise<void>(resolve=>{ready=resolve;});
+ const resume=new Promise<void>(resolve=>{proceed=resolve;});
+ const completion=f.run(async tx=>{
+  await tx.execute(sql`select 1`);ready();await resume;
+  return recordJobProgress(tx,meta(),{jobId:f.job.id,versionId:f.estimate.id,expectedStatus:"in_progress",status:"completed",note:""});
+ });
+ await waiting;
+ try {await f.run(tx=>recordJobProgress(tx,meta(),{jobId:f.job.id,versionId:f.estimate.id,expectedStatus:"not_recorded",status:"in_progress",note:""}));}
+ finally {proceed();}
+ await completion;
+ expect((await f.flow()).work).toBe("completed");
 });
