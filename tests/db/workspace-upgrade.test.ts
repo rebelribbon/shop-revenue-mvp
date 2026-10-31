@@ -18,7 +18,7 @@ it("validates customer references on populated shops and removes migration-only 
     });
   }
   const migration = readFileSync("db/migrations/0020_business_type_workspaces.sql", "utf8");
-  const statements = migration.split(";").map(s => s.trim()).filter(s => /^(?:ALTER TABLE app\.(?:estimate_version|invoice|recommendation) ADD CONSTRAINT \w+_customer_fk|DROP POLICY workspace_migration_customer_validation)/.test(s));
+  const statements = migration.split(";").map(s => s.trim()).filter(s => /^ALTER TABLE app\.(estimate_version|invoice|recommendation) ADD CONSTRAINT \1_customer_fk\b/.test(s) || s.startsWith("DROP POLICY workspace_migration_customer_validation"));
   const policy = migration.match(/CREATE POLICY workspace_migration_customer_validation[^;]+;/)?.[0];
   expect(policy).toBeDefined();
   expect(statements).toHaveLength(4);
