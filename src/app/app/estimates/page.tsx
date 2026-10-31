@@ -1,3 +1,5 @@
+import { getBusinessProfile } from "@/domain/business-profile";
+import { workspaceLabels } from "@/lib/business-types";
 import Link from "next/link";
 import { WorkNavigation } from "@/components/work-navigation";
 import { EstimateLink } from "@/components/estimate-publisher";
@@ -12,12 +14,12 @@ import { revokeEstimateAction } from "@/server/actions/estimates";
 export default async function EstimatesPage({searchParams}:{searchParams:Promise<{jobId?:string}>}) {
  const s=await requireShopSession('/app/estimates');
  const {jobId}=await searchParams;
- const [all,invoices]=await withTenant(s.businessId,s.actor,tx=>Promise.all([listEstimates(tx),listInvoices(tx)]));
+ const [all,invoices,profile]=await withTenant(s.businessId,s.actor,tx=>Promise.all([listEstimates(tx),listInvoices(tx),getBusinessProfile(tx)]));
  const rows=jobId?all.filter(e=>e.quoteId===jobId):all;
  return <main id="main-content" tabIndex={-1}>
-  <h1>Estimates</h1><WorkNavigation current="estimates"/>
+  <h1>Estimates</h1><WorkNavigation current="estimates" businessType={profile?.businessType}/>
   <p className="muted">Review customer decisions. Open an estimate to see its fixed prices and authorization history.</p>
-  <Link href="/app/jobs?new=1" className="btn primary" data-page-primary>New job / estimate</Link>
+  <Link href="/app/jobs?new=1" className="btn primary" data-page-primary>{workspaceLabels(profile?.businessType??"automotive").newJob}</Link>
   {jobId&&<p><Link href="/app/estimates">Show all estimates</Link></p>}
   {!rows.length&&<div className="card"><h2>No estimates published yet</h2><p>Start a job, price the work, then publish its customer estimate.</p></div>}
   {rows.map(e=>{

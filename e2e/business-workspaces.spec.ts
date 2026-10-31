@@ -7,10 +7,16 @@ test("home-service setup creates a real property and equipment job without vehic
  test.setTimeout(60_000);
  await signInWithPassword(page,"owner.a@shop-a.test");
  try {
+ await page.goto("/app/jobs?new=1");
+ await expect(page.getByRole("heading",{name:"New repair / estimate",exact:true})).toBeVisible();
+ await expect(page.locator("main")).not.toContainText(/property|equipment|materials/i);
  await page.goto("/app/settings/business");
  await page.getByLabel("What line of business are you in?").selectOption("hvac");
  await page.getByRole("button",{name:"Save business profile",exact:true}).click();
  await expect(page.getByRole("status")).toContainText("Business profile updated");
+  await page.goto("/app");
+  await expect(page.locator("main")).toContainText("HVAC");
+  await expect(page.getByRole("link",{name:"New job / estimate",exact:true})).toBeVisible();
   const name=`HVAC ${info.project.name} ${Date.now()}`;
   await page.goto("/app/customers/new");
   await page.getByLabel("First name",{exact:true}).fill(name);
@@ -68,6 +74,20 @@ test("home-service setup creates a real property and equipment job without vehic
   await page.getByLabel("What line of business are you in?").selectOption("automotive");
   await page.getByRole("button",{name:"Save business profile",exact:true}).click();
   await expect(page.getByRole("status")).toContainText("Business profile updated");
+  await page.goto("/app/jobs?new=1");
+  await expect(page.getByRole("heading",{name:"New repair / estimate",exact:true})).toBeVisible();
+  await expect(page.getByLabel("Vehicle",{exact:true})).toBeVisible();
+  await expect(page.getByLabel("Property / equipment",{exact:true})).toHaveCount(0);
+  await expect(page.getByRole("button",{name:"Add part",exact:true})).toBeVisible();
+  await page.goto("/app/customers/new");
+  await expect(page.locator("main")).not.toContainText(/property|equipment/i);
+  await page.goto("/app");
+  await expect(page.locator("main")).toContainText("Automotive repair");
+  await expect(page.locator("main")).not.toContainText(/properties|equipment/i);
+  await expect(page.getByRole("link",{name:"New repair / estimate",exact:true})).toBeVisible();
+  await page.getByRole("button",{name:"Quick find",exact:true}).click();
+  await expect(page.getByRole("dialog").getByRole("textbox")).toHaveAttribute("placeholder",/VIN/);
+  await page.keyboard.press("Escape");
   }
  }
 });

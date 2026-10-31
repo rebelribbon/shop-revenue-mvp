@@ -17,7 +17,7 @@ test('Money Finder records real work, manual follow-up and source-linked jobs',a
  await item.getByText('Track follow-up',{exact:true}).click();await item.getByLabel('Contact method').selectOption('in_person');await item.getByLabel('Contact notes').fill('Discussed at the counter');
  await item.getByRole('button',{name:'Log manual contact',exact:true}).click();await expect(item).toContainText('contacted');await expect(item).toContainText('(in person)');
  await page.screenshot({path:`test-results/money-finder-${info.project.name}.png`,fullPage:true});
- await item.getByRole('button',{name:'New job / re-quote',exact:true}).click();await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
+ await item.getByRole('button',{name:'New repair / re-quote',exact:true}).click();await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
  await expect(page.getByLabel('Customer',{exact:true})).not.toHaveValue('');await expect(page.getByLabel('Vehicle',{exact:true})).not.toHaveValue('');
  await page.getByLabel('Job name').fill(`Source-linked brakes ${info.project.name}`);await page.getByRole('button',{name:'Add part',exact:true}).click();await page.getByLabel('Description',{exact:true}).fill('Brake pads');await page.getByLabel('Unit selling price',{exact:true}).fill('250');await page.getByRole('button',{name:'Save job sheet',exact:true}).click();
  await expect(page.getByRole('heading',{name:`Source-linked brakes ${info.project.name}`,exact:true})).toBeVisible();

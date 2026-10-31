@@ -30,13 +30,13 @@ export default async function CustomerDetailPage(props: { params: Promise<{ cust
     <main id="main-content" tabIndex={-1}>
       <p><Link href="/app/customers">← Customers</Link></p>
       <h1>{c.displayName}</h1>
-      {view==='overview'&&<Link className="btn primary" data-page-primary href={assetCount?`/app/jobs?customerId=${customerId}`:`${base}?view=assets`}>{assetCount?'New job / estimate':auto?'Add vehicle':'Add property / equipment'}</Link>}
+      {view==='overview'&&<Link className="btn primary" data-page-primary href={assetCount?`/app/jobs?customerId=${customerId}`:`${base}?view=assets`}>{assetCount?(auto?'New repair / estimate':'New job / estimate'):auto?'Add vehicle':'Add property / equipment'}</Link>}
       <nav className="section-tabs" aria-label="Customer sections">
         {([['overview','Overview'],['assets',auto?'Vehicles':'Properties & equipment'],['history','History'],['details','Details']] as const).map(([key,label])=><Link key={key} href={`${base}?view=${key}`} aria-current={view===key?'page':undefined}>{label}</Link>)}
       </nav>
       {view==='overview'&&<>
         <section className="card"><h2>Contact</h2><div className="money-actions">{c.phoneE164?<a href={`tel:${c.phoneE164}`}>{c.phoneE164}</a>:<span className="muted">No phone recorded</span>}{c.email?<a href={`mailto:${c.email}`}>{c.email}</a>:<span className="muted">No email recorded</span>}</div><p>{c.doNotContact?'Do not contact — excluded from Money Finder.':'Manual follow-up allowed.'}</p>{c.notes&&<p>{c.notes}</p>}<Link href={`${base}?view=details`}>Edit contact details</Link></section>
-        <section className="card"><h2>{auto?'Vehicles':'Properties & equipment'}</h2>{!assetCount&&<p className="muted">Add a vehicle or service address before quoting work.</p>}
+        <section className="card"><h2>{auto?'Vehicles':'Properties & equipment'}</h2>{!assetCount&&<p className="muted">{auto?'Add a vehicle before quoting repairs.':'Add a property or equipment item before quoting work.'}</p>}
           <div className="record-shortcuts">{data.vehicles.map(v=><Link key={v.id} href={`${base}/vehicles/${v.id}`}>{[v.year,v.make,v.model].filter(Boolean).join(' ')||'Vehicle'}</Link>)}{assets.map(a=><Link key={a.id} href={`${base}?view=assets#asset-${a.id}`}>{a.displayName}</Link>)}</div>
         </section>
         <section className="card"><h2>Recent history</h2><Link href={`/app/jobs?q=${encodeURIComponent(c.displayName)}`}>Find this customer’s jobs</Link>{timeline.slice(0,5).map(event=><div className="overview-row" key={event.id}><strong>{event.summary}</strong><span className="muted">{event.occurredAt.toLocaleDateString('en-US',{timeZone:profile?.timezone||'America/Chicago'})}</span></div>)}{!timeline.length&&<p className="muted">No history yet.</p>}<Link href={`${base}?view=history`}>View full history & notes</Link></section>
