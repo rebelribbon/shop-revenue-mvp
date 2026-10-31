@@ -61,63 +61,65 @@ export function VisitEditor({
         }
       }}
     >
-      <h2>Visit details</h2>
-      <CustomerPicker
-        options={options.customers}
-        value={customer}
-        onChange={(id) => {
-          setCustomer(id);
-          setVehicle("");
-          setAsset("");
-        }}
-      />
-      <label htmlFor="visit-target">
-        {auto ? "Vehicle (optional)" : "Property / equipment (optional)"}
-      </label>
-      <select
-        id="visit-target"
-        value={auto ? vehicle : asset}
-        onChange={(e) => {
-          if (auto) setVehicle(e.target.value);
-          else setAsset(e.target.value);
-        }}
-      >
-        <option value="">
-          {auto ? "No vehicle selected" : "No property / equipment selected"}
-        </option>
-        {auto
-          ? options.vehicles
-              .filter((v) => v.customerId === customer)
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
-                    "Vehicle"}
-                </option>
-              ))
-          : options.serviceAssets
-              .filter((a) => a.customerId === customer)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.displayName}
-                </option>
-              ))}
-      </select>
-      <label htmlFor="startsAt">Date and time</label>
-      <input
-        id="startsAt"
-        name="startsAt"
-        type="datetime-local"
-        defaultValue={`${initial.day}T09:00`}
-        required
-      />
-      <label htmlFor="reason">Reason</label>
-      <input id="reason" name="reason" maxLength={200} />
-      <label htmlFor="notes">Notes</label>
-      <textarea id="notes" name="notes" maxLength={5000} rows={3} />
-      <button className="btn primary" disabled={busy}>
-        {busy ? "Booking…" : "Book visit"}
-      </button>
-      <p role="status">{message}</p>
+      <fieldset className="hydration-fields" disabled={!ready}>
+        <h2>Visit details</h2>
+        <CustomerPicker
+          options={options.customers}
+          value={customer}
+          onChange={(id) => {
+            setCustomer(id);
+            setVehicle("");
+            setAsset("");
+          }}
+        />
+        <label htmlFor="visit-target">
+          {auto ? "Vehicle (optional)" : "Property / equipment (optional)"}
+        </label>
+        <select
+          id="visit-target"
+          value={auto ? vehicle : asset}
+          onChange={(e) => {
+            if (auto) setVehicle(e.target.value);
+            else setAsset(e.target.value);
+          }}
+        >
+          <option value="">
+            {auto ? "No vehicle selected" : "No property / equipment selected"}
+          </option>
+          {auto
+            ? options.vehicles
+                .filter((v) => v.customerId === customer)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
+                      "Vehicle"}
+                  </option>
+                ))
+            : options.serviceAssets
+                .filter((a) => a.customerId === customer)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.displayName}
+                  </option>
+                ))}
+        </select>
+        <label htmlFor="startsAt">Date and time</label>
+        <input
+          id="startsAt"
+          name="startsAt"
+          type="datetime-local"
+          defaultValue={`${initial.day}T09:00`}
+          required
+        />
+        <label htmlFor="reason">Reason</label>
+        <input id="reason" name="reason" maxLength={200} />
+        <label htmlFor="notes">Notes</label>
+        <textarea id="notes" name="notes" maxLength={5000} rows={3} />
+        <button className="btn primary" disabled={busy}>
+          {busy ? "Booking…" : "Book visit"}
+        </button>
+        <p role="status">{message}</p>
+      </fieldset>
     </form>
   );
 }

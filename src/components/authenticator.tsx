@@ -109,41 +109,45 @@ export function Authenticator({
                 });
               }}
             >
-              {factors.length > 1 && (
-                <label>
-                  Authenticator
-                  <select
-                    value={factorId}
-                    onChange={(e) => setFactor(e.target.value)}
-                  >
-                    {factors.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label htmlFor="mfa-code">Authenticator code</label>
-              <input
-                id="mfa-code"
-                name="code"
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                required
-              />
-              <button className="btn primary" disabled={pending}>
-                {pending ? "Verifying…" : "Verify authenticator"}
-              </button>
+              <fieldset className="hydration-fields" disabled={!ready}>
+                {factors.length > 1 && (
+                  <label>
+                    Authenticator
+                    <select
+                      value={factorId}
+                      onChange={(e) => setFactor(e.target.value)}
+                    >
+                      {factors.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label htmlFor="mfa-code">Authenticator code</label>
+                <input
+                  id="mfa-code"
+                  name="code"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                />
+                <button className="btn primary" disabled={pending}>
+                  {pending ? "Verifying…" : "Verify authenticator"}
+                </button>
+              </fieldset>
             </form>
           )}
         </>
       )}
       <p role="status">{message}</p>
       <form action="/auth/sign-out" method="post">
-        <button className="btn secondary">Sign out</button>
+        <fieldset className="hydration-fields" disabled={!ready}>
+          <button className="btn secondary">Sign out</button>
+        </fieldset>
       </form>
     </section>
   );

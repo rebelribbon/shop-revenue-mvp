@@ -107,61 +107,63 @@ export function InvoiceIssuer({
         }
       }}
     >
-      <h2>Create invoice</h2>
-      <p>
-        This bills authorized work. It does not mark work complete, send a
-        message or charge a card.
-      </p>
-      <label htmlFor="invoice-estimate">Authorized estimate</label>
-      <select
-        id="invoice-estimate"
-        name="versionId"
-        required
-        defaultValue={initialVersionId ?? ""}
-      >
-        <option value="">Choose approved estimate</option>
-        {choices.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.label}
-          </option>
-        ))}
-      </select>
-      <label htmlFor="invoice-due-mode">Payment due</label>
-      <select
-        id="invoice-due-mode"
-        value={dueMode}
-        onChange={(e) => setDueMode(e.target.value)}
-      >
-        <option value="receipt">Due on receipt</option>
-        <option value="date">Choose a due date</option>
-      </select>
-      {dueMode === "date" && (
-        <>
-          <label htmlFor="dueOn">Due date</label>
-          <input
-            id="dueOn"
-            name="dueOn"
-            type="date"
-            value={dueOn}
-            onChange={(e) => setDueOn(e.target.value)}
-            required
-          />
-          <p className="muted">
-            Calendar date in the shop’s timezone. This will not shift when the
-            customer opens the invoice.
-          </p>
-        </>
-      )}
-      <label htmlFor="invoiceTerms">Invoice terms</label>
-      <textarea
-        id="invoiceTerms"
-        name="terms"
-        maxLength={dueMode === "receipt" ? 4980 : 5000}
-      />
-      <button className="btn primary" disabled={pending}>
-        {pending ? "Preparing…" : "Create invoice"}
-      </button>
-      <p role="status">{message}</p>
+      <fieldset className="hydration-fields" disabled={!ready}>
+        <h2>Create invoice</h2>
+        <p>
+          This bills authorized work. It does not mark work complete, send a
+          message or charge a card.
+        </p>
+        <label htmlFor="invoice-estimate">Authorized estimate</label>
+        <select
+          id="invoice-estimate"
+          name="versionId"
+          required
+          defaultValue={initialVersionId ?? ""}
+        >
+          <option value="">Choose approved estimate</option>
+          {choices.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="invoice-due-mode">Payment due</label>
+        <select
+          id="invoice-due-mode"
+          value={dueMode}
+          onChange={(e) => setDueMode(e.target.value)}
+        >
+          <option value="receipt">Due on receipt</option>
+          <option value="date">Choose a due date</option>
+        </select>
+        {dueMode === "date" && (
+          <>
+            <label htmlFor="dueOn">Due date</label>
+            <input
+              id="dueOn"
+              name="dueOn"
+              type="date"
+              value={dueOn}
+              onChange={(e) => setDueOn(e.target.value)}
+              required
+            />
+            <p className="muted">
+              Calendar date in the shop’s timezone. This will not shift when the
+              customer opens the invoice.
+            </p>
+          </>
+        )}
+        <label htmlFor="invoiceTerms">Invoice terms</label>
+        <textarea
+          id="invoiceTerms"
+          name="terms"
+          maxLength={dueMode === "receipt" ? 4980 : 5000}
+        />
+        <button className="btn primary" disabled={pending}>
+          {pending ? "Preparing…" : "Create invoice"}
+        </button>
+        <p role="status">{message}</p>
+      </fieldset>
     </form>
   );
 }
@@ -271,35 +273,37 @@ export function InvoicePaymentForm({
         }
       }}
     >
-      <h3>Record payment received</h3>
-      <p className="muted">Enter a payment you already received.</p>
-      <label htmlFor={`payment-${id}`}>Amount ($)</label>
-      <input
-        id={`payment-${id}`}
-        name="amount"
-        type="number"
-        step="0.01"
-        min="0.01"
-        max={balanceCents / 100}
-        key={balanceCents}
-        defaultValue={(balanceCents / 100).toFixed(2)}
-        required
-      />
-      <label htmlFor={`method-${id}`}>Payment method</label>
-      <select id={`method-${id}`} name="method" defaultValue="cash">
-        <option value="cash">Cash</option>
-        <option value="check">Check</option>
-        <option value="bank_transfer">Bank transfer</option>
-        <option value="external_card">
-          Card paid through another processor
-        </option>
-      </select>
-      <label htmlFor={`reference-${id}`}>Receipt / check reference</label>
-      <input id={`reference-${id}`} name="reference" maxLength={500} />
-      <button className="btn primary" disabled={pending}>
-        {pending ? "Recording…" : "Record payment"}
-      </button>
-      <p role="status">{message}</p>
+      <fieldset className="hydration-fields" disabled={!ready}>
+        <h3>Record payment received</h3>
+        <p className="muted">Enter a payment you already received.</p>
+        <label htmlFor={`payment-${id}`}>Amount ($)</label>
+        <input
+          id={`payment-${id}`}
+          name="amount"
+          type="number"
+          step="0.01"
+          min="0.01"
+          max={balanceCents / 100}
+          key={balanceCents}
+          defaultValue={(balanceCents / 100).toFixed(2)}
+          required
+        />
+        <label htmlFor={`method-${id}`}>Payment method</label>
+        <select id={`method-${id}`} name="method" defaultValue="cash">
+          <option value="cash">Cash</option>
+          <option value="check">Check</option>
+          <option value="bank_transfer">Bank transfer</option>
+          <option value="external_card">
+            Card paid through another processor
+          </option>
+        </select>
+        <label htmlFor={`reference-${id}`}>Receipt / check reference</label>
+        <input id={`reference-${id}`} name="reference" maxLength={500} />
+        <button className="btn primary" disabled={pending}>
+          {pending ? "Recording…" : "Record payment"}
+        </button>
+        <p role="status">{message}</p>
+      </fieldset>
     </form>
   );
 }

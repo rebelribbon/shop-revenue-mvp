@@ -59,7 +59,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
   await page.getByLabel("Job name").fill(title);
   await page.getByRole("button", { name: "Add part", exact: true }).click();
-  const parts = page.locator("fieldset");
+  const parts = page.locator("fieldset:not(.hydration-fields)");
   await parts
     .nth(0)
     .getByLabel("Description", { exact: true })

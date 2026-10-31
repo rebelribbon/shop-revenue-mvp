@@ -176,378 +176,380 @@ export function JobEditor({
         }
       }}
     >
-      <h2>Job details</h2>
-      {commonJobs.length > 0 && (
-        <section>
-          <label htmlFor="common-job">Start from a common job</label>
-          <select
-            id="common-job"
-            value={commonId}
-            onChange={(e) => setCommonId(e.target.value)}
-          >
-            <option value="">Choose saved work</option>
-            {commonJobs.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={!commonId}
-            onClick={() => {
-              if (
-                (parts.length || labor.length) &&
-                !window.confirm(
-                  "Replace the current parts and labor with this common job?",
-                )
-              )
-                return;
-              const c = commonJobs.find((c) => c.id === commonId);
-              if (c) {
-                setTitle(c.name);
-                setParts(c.parts.map((p) => ({ ...p })));
-                setLabor(
-                  c.labor.map((l) => ({ ...l, actualHoursHundredths: null })),
-                );
-              }
-            }}
-          >
-            Use common job
-          </button>
-        </section>
-      )}
-      <label>
-        Job name
-        <input
-          required
-          maxLength={200}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </label>
-      <CustomerPicker
-        id="job-customer"
-        options={options.customers}
-        value={customerId}
-        onChange={(id) => {
-          clearLinks();
-          setCustomer(id);
-          setVehicle("");
-          setServiceAsset("");
-        }}
-      />
-      <label htmlFor="job-target">
-        {auto ? "Vehicle" : "Property / equipment"}
-      </label>
-      <select
-        id="job-target"
-        required
-        value={auto ? vehicleId : serviceAssetId}
-        onChange={(e) => {
-          clearLinks();
-          if (auto) setVehicle(e.target.value);
-          else setServiceAsset(e.target.value);
-        }}
-      >
-        <option value="">
-          {auto ? "Choose vehicle" : "Choose property or equipment"}
-        </option>
-        {auto
-          ? options.vehicles
-              .filter((v) => v.customerId === customerId)
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
-                    "Vehicle"}
-                </option>
-              ))
-          : options.serviceAssets
-              .filter((a) => a.customerId === customerId)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.displayName}
+      <fieldset className="hydration-fields" disabled={!ready}>
+        <h2>Job details</h2>
+        {commonJobs.length > 0 && (
+          <section>
+            <label htmlFor="common-job">Start from a common job</label>
+            <select
+              id="common-job"
+              value={commonId}
+              onChange={(e) => setCommonId(e.target.value)}
+            >
+              <option value="">Choose saved work</option>
+              {commonJobs.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
-      </select>
-      {customerId && (
-        <p>
-          <Link href={`/app/customers/${customerId}?view=assets`}>
-            Manage {auto ? "vehicles" : "properties & equipment"}
-          </Link>
-        </p>
-      )}
-      <h3>{auto ? "Parts" : "Materials"}</h3>
-      {parts.map((p, i) => (
-        <fieldset key={`part-${i}`}>
-          <legend>
-            {auto ? "Part" : "Material"} {i + 1}
-          </legend>
-          {recField(p.recommendationId, (id) =>
-            setParts(
-              parts.map((x, n) =>
-                n === i ? { ...x, recommendationId: id } : x,
-              ),
-            ),
-          )}
-          <label>
-            Description
-            <input
-              required
-              maxLength={200}
-              value={p.description}
-              onChange={(e) =>
-                setParts(
-                  parts.map((x, n) =>
-                    n === i ? { ...x, description: e.target.value } : x,
-                  ),
+            </select>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={!commonId}
+              onClick={() => {
+                if (
+                  (parts.length || labor.length) &&
+                  !window.confirm(
+                    "Replace the current parts and labor with this common job?",
+                  )
                 )
-              }
-            />
-          </label>
-          {numberField("Unit selling price", p.unitPriceCents, (v) =>
-            setParts(
-              parts.map((x, n) =>
-                n === i ? { ...x, unitPriceCents: v ?? 0 } : x,
-              ),
-            ),
-          )}
-          <details>
-            <summary>Part costs &amp; quantity</summary>
-            {numberField(
-              "Quantity",
-              p.quantity,
-              (v) =>
-                setParts(
-                  parts.map((x, n) =>
-                    n === i ? { ...x, quantity: v ?? 0 } : x,
-                  ),
-                ),
-              1,
-            )}
-            {numberField("Unit cost", p.unitCostCents, (v) =>
+                  return;
+                const c = commonJobs.find((c) => c.id === commonId);
+                if (c) {
+                  setTitle(c.name);
+                  setParts(c.parts.map((p) => ({ ...p })));
+                  setLabor(
+                    c.labor.map((l) => ({ ...l, actualHoursHundredths: null })),
+                  );
+                }
+              }}
+            >
+              Use common job
+            </button>
+          </section>
+        )}
+        <label>
+          Job name
+          <input
+            required
+            maxLength={200}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <CustomerPicker
+          id="job-customer"
+          options={options.customers}
+          value={customerId}
+          onChange={(id) => {
+            clearLinks();
+            setCustomer(id);
+            setVehicle("");
+            setServiceAsset("");
+          }}
+        />
+        <label htmlFor="job-target">
+          {auto ? "Vehicle" : "Property / equipment"}
+        </label>
+        <select
+          id="job-target"
+          required
+          value={auto ? vehicleId : serviceAssetId}
+          onChange={(e) => {
+            clearLinks();
+            if (auto) setVehicle(e.target.value);
+            else setServiceAsset(e.target.value);
+          }}
+        >
+          <option value="">
+            {auto ? "Choose vehicle" : "Choose property or equipment"}
+          </option>
+          {auto
+            ? options.vehicles
+                .filter((v) => v.customerId === customerId)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
+                      "Vehicle"}
+                  </option>
+                ))
+            : options.serviceAssets
+                .filter((a) => a.customerId === customerId)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.displayName}
+                  </option>
+                ))}
+        </select>
+        {customerId && (
+          <p>
+            <Link href={`/app/customers/${customerId}?view=assets`}>
+              Manage {auto ? "vehicles" : "properties & equipment"}
+            </Link>
+          </p>
+        )}
+        <h3>{auto ? "Parts" : "Materials"}</h3>
+        {parts.map((p, i) => (
+          <fieldset key={`part-${i}`}>
+            <legend>
+              {auto ? "Part" : "Material"} {i + 1}
+            </legend>
+            {recField(p.recommendationId, (id) =>
               setParts(
                 parts.map((x, n) =>
-                  n === i ? { ...x, unitCostCents: v ?? 0 } : x,
+                  n === i ? { ...x, recommendationId: id } : x,
                 ),
               ),
             )}
             <label>
+              Description
               <input
-                type="checkbox"
-                checked={p.taxable ?? partsTaxableDefault}
+                required
+                maxLength={200}
+                value={p.description}
                 onChange={(e) =>
                   setParts(
                     parts.map((x, n) =>
-                      n === i ? { ...x, taxable: e.target.checked } : x,
+                      n === i ? { ...x, description: e.target.value } : x,
                     ),
                   )
                 }
               />
-              Taxable item
             </label>
-          </details>
-          <button
-            type="button"
-            className="btn secondary"
-            onClick={() => setParts(parts.filter((_, n) => n !== i))}
-          >
-            Remove {auto ? "part" : "material"}
-          </button>
-        </fieldset>
-      ))}
-      <button
-        type="button"
-        className="btn secondary"
-        onClick={() =>
-          setParts([
-            ...parts,
-            {
-              description: "",
-              quantity: 1,
-              unitCostCents: 0,
-              unitPriceCents: 0,
-              taxable: partsTaxableDefault,
-            },
-          ])
-        }
-      >
-        Add {auto ? "part" : "material"}
-      </button>
-      <h3>Labor</h3>
-      {labor.map((l, i) => (
-        <fieldset key={`labor-${i}`}>
-          <legend>Labor {i + 1}</legend>
-          {recField(l.recommendationId, (id) =>
-            setLabor(
-              labor.map((x, n) =>
-                n === i ? { ...x, recommendationId: id } : x,
+            {numberField("Unit selling price", p.unitPriceCents, (v) =>
+              setParts(
+                parts.map((x, n) =>
+                  n === i ? { ...x, unitPriceCents: v ?? 0 } : x,
+                ),
               ),
-            ),
-          )}
-          <label>
-            Description
-            <input
-              required
-              maxLength={200}
-              value={l.description}
-              onChange={(e) =>
-                setLabor(
-                  labor.map((x, n) =>
-                    n === i ? { ...x, description: e.target.value } : x,
+            )}
+            <details>
+              <summary>Part costs &amp; quantity</summary>
+              {numberField(
+                "Quantity",
+                p.quantity,
+                (v) =>
+                  setParts(
+                    parts.map((x, n) =>
+                      n === i ? { ...x, quantity: v ?? 0 } : x,
+                    ),
                   ),
-                )
-              }
-            />
-          </label>
-          {numberField("Quoted hours", l.estimatedHoursHundredths, (v) =>
-            setLabor(
-              labor.map((x, n) =>
-                n === i ? { ...x, estimatedHoursHundredths: v ?? 0 } : x,
-              ),
-            ),
-          )}
-          {numberField("Hourly selling rate", l.sellRateCents, (v) =>
-            setLabor(
-              labor.map((x, n) =>
-                n === i ? { ...x, sellRateCents: v ?? 0 } : x,
-              ),
-            ),
-          )}
-          <details>
-            <summary>Labor time &amp; cost</summary>
-            {numberField(
-              "Actual hours",
-              l.actualHoursHundredths,
-              (v) =>
-                setLabor(
-                  labor.map((x, n) =>
-                    n === i ? { ...x, actualHoursHundredths: v } : x,
+                1,
+              )}
+              {numberField("Unit cost", p.unitCostCents, (v) =>
+                setParts(
+                  parts.map((x, n) =>
+                    n === i ? { ...x, unitCostCents: v ?? 0 } : x,
                   ),
                 ),
-              100,
-              true,
-            )}
-            {numberField("Hourly internal cost", l.costRateCents, (v) =>
+              )}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={p.taxable ?? partsTaxableDefault}
+                  onChange={(e) =>
+                    setParts(
+                      parts.map((x, n) =>
+                        n === i ? { ...x, taxable: e.target.checked } : x,
+                      ),
+                    )
+                  }
+                />
+                Taxable item
+              </label>
+            </details>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setParts(parts.filter((_, n) => n !== i))}
+            >
+              Remove {auto ? "part" : "material"}
+            </button>
+          </fieldset>
+        ))}
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={() =>
+            setParts([
+              ...parts,
+              {
+                description: "",
+                quantity: 1,
+                unitCostCents: 0,
+                unitPriceCents: 0,
+                taxable: partsTaxableDefault,
+              },
+            ])
+          }
+        >
+          Add {auto ? "part" : "material"}
+        </button>
+        <h3>Labor</h3>
+        {labor.map((l, i) => (
+          <fieldset key={`labor-${i}`}>
+            <legend>Labor {i + 1}</legend>
+            {recField(l.recommendationId, (id) =>
               setLabor(
                 labor.map((x, n) =>
-                  n === i ? { ...x, costRateCents: v ?? 0 } : x,
+                  n === i ? { ...x, recommendationId: id } : x,
                 ),
               ),
             )}
             <label>
+              Description
               <input
-                type="checkbox"
-                checked={l.taxable ?? laborTaxableDefault}
+                required
+                maxLength={200}
+                value={l.description}
                 onChange={(e) =>
                   setLabor(
                     labor.map((x, n) =>
-                      n === i ? { ...x, taxable: e.target.checked } : x,
+                      n === i ? { ...x, description: e.target.value } : x,
                     ),
                   )
                 }
               />
-              Taxable labor
             </label>
-          </details>
-          <button
-            type="button"
-            className="btn secondary"
-            onClick={() => setLabor(labor.filter((_, n) => n !== i))}
-          >
-            Remove labor
-          </button>
-        </fieldset>
-      ))}
-      <button
-        type="button"
-        className="btn secondary"
-        onClick={() =>
-          setLabor([
-            ...labor,
-            {
-              description: "",
-              estimatedHoursHundredths: 100,
-              actualHoursHundredths: null,
-              sellRateCents: laborSellRateCents,
-              costRateCents: laborCostRateCents,
-              taxable: laborTaxableDefault,
-            },
-          ])
-        }
-      >
-        Add labor
-      </button>
-      {totals ? (
-        <>
-          <p>
-            Quoted subtotal: <strong>{money(totals.subtotalCents)}</strong>
+            {numberField("Quoted hours", l.estimatedHoursHundredths, (v) =>
+              setLabor(
+                labor.map((x, n) =>
+                  n === i ? { ...x, estimatedHoursHundredths: v ?? 0 } : x,
+                ),
+              ),
+            )}
+            {numberField("Hourly selling rate", l.sellRateCents, (v) =>
+              setLabor(
+                labor.map((x, n) =>
+                  n === i ? { ...x, sellRateCents: v ?? 0 } : x,
+                ),
+              ),
+            )}
+            <details>
+              <summary>Labor time &amp; cost</summary>
+              {numberField(
+                "Actual hours",
+                l.actualHoursHundredths,
+                (v) =>
+                  setLabor(
+                    labor.map((x, n) =>
+                      n === i ? { ...x, actualHoursHundredths: v } : x,
+                    ),
+                  ),
+                100,
+                true,
+              )}
+              {numberField("Hourly internal cost", l.costRateCents, (v) =>
+                setLabor(
+                  labor.map((x, n) =>
+                    n === i ? { ...x, costRateCents: v ?? 0 } : x,
+                  ),
+                ),
+              )}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={l.taxable ?? laborTaxableDefault}
+                  onChange={(e) =>
+                    setLabor(
+                      labor.map((x, n) =>
+                        n === i ? { ...x, taxable: e.target.checked } : x,
+                      ),
+                    )
+                  }
+                />
+                Taxable labor
+              </label>
+            </details>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setLabor(labor.filter((_, n) => n !== i))}
+            >
+              Remove labor
+            </button>
+          </fieldset>
+        ))}
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={() =>
+            setLabor([
+              ...labor,
+              {
+                description: "",
+                estimatedHoursHundredths: 100,
+                actualHoursHundredths: null,
+                sellRateCents: laborSellRateCents,
+                costRateCents: laborCostRateCents,
+                taxable: laborTaxableDefault,
+              },
+            ])
+          }
+        >
+          Add labor
+        </button>
+        {totals ? (
+          <>
+            <p>
+              Quoted subtotal: <strong>{money(totals.subtotalCents)}</strong>
+            </p>
+            <details>
+              <summary>Job costs &amp; profit</summary>
+              <p>
+                Estimated cost: {money(totals.estimatedCostCents)} · Gross
+                profit: {money(totals.estimatedGrossProfitCents)}
+              </p>
+              <p>
+                Actual cost:{" "}
+                {totals.actualCostCents === null
+                  ? "Add actual hours"
+                  : money(totals.actualCostCents)}
+              </p>
+            </details>
+          </>
+        ) : (
+          <p className="notice error">
+            Check negative or unusually large amounts before saving.
           </p>
+        )}
+        {canSaveCommon && (
           <details>
-            <summary>Job costs &amp; profit</summary>
+            <summary>Save as a common job</summary>
             <p>
-              Estimated cost: {money(totals.estimatedCostCents)} · Gross profit:{" "}
-              {money(totals.estimatedGrossProfitCents)}
+              Save these parts, prices and labor for next time. Customer details
+              are not saved. Up to 25 common jobs.
             </p>
-            <p>
-              Actual cost:{" "}
-              {totals.actualCostCents === null
-                ? "Add actual hours"
-                : money(totals.actualCostCents)}
-            </p>
-          </details>
-        </>
-      ) : (
-        <p className="notice error">
-          Check negative or unusually large amounts before saving.
-        </p>
-      )}
-      {canSaveCommon && (
-        <details>
-          <summary>Save as a common job</summary>
-          <p>
-            Save these parts, prices and labor for next time. Customer details
-            are not saved. Up to 25 common jobs.
-          </p>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={
-              pending ||
-              !valid ||
-              !title.trim() ||
-              (!parts.length && !labor.length)
-            }
-            onClick={async () => {
-              setPending(true);
-              try {
-                const r = await saveCommonJobAction({
-                  name: title,
-                  parts,
-                  labor,
-                  clientRequestId: crypto.randomUUID(),
-                });
-                setMessage(r.ok ? "Common job saved." : r.error.message);
-                if (r.ok) router.refresh();
-              } catch {
-                setMessage("Could not save the common job.");
-              } finally {
-                setPending(false);
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={
+                pending ||
+                !valid ||
+                !title.trim() ||
+                (!parts.length && !labor.length)
               }
-            }}
-          >
-            Save common job
-          </button>
-        </details>
-      )}
-      <button
-        className="btn primary"
-        disabled={pending || !valid || (!parts.length && !labor.length)}
-      >
-        {pending ? "Saving…" : "Save job sheet"}
-      </button>
-      <p role="status">{message}</p>
+              onClick={async () => {
+                setPending(true);
+                try {
+                  const r = await saveCommonJobAction({
+                    name: title,
+                    parts,
+                    labor,
+                    clientRequestId: crypto.randomUUID(),
+                  });
+                  setMessage(r.ok ? "Common job saved." : r.error.message);
+                  if (r.ok) router.refresh();
+                } catch {
+                  setMessage("Could not save the common job.");
+                } finally {
+                  setPending(false);
+                }
+              }}
+            >
+              Save common job
+            </button>
+          </details>
+        )}
+        <button
+          className="btn primary"
+          disabled={pending || !valid || (!parts.length && !labor.length)}
+        >
+          {pending ? "Saving…" : "Save job sheet"}
+        </button>
+        <p role="status">{message}</p>
+      </fieldset>
     </form>
   );
 }

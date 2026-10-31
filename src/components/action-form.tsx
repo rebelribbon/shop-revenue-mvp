@@ -77,28 +77,30 @@ export function ActionForm(props: {
         void submit(e.currentTarget);
       }}
     >
-      {props.children}
-      {confirming && <p className="confirm">{props.confirm}</p>}
-      <button
-        data-destructive={props.variant === "danger" ? "true" : undefined}
-        className={`btn ${props.variant ?? "secondary"}`}
-        type="submit"
-        disabled={pending}
-      >
-        {pending
-          ? (props.pendingLabel ?? "Working…")
-          : confirming
-            ? "Yes, continue"
-            : props.submitLabel}
-      </button>
-      {message && (
-        <p
-          role="status"
-          className={message.kind === "ok" ? "notice ok" : "notice error"}
+      <fieldset className="hydration-fields" disabled={!ready}>
+        {props.children}
+        {confirming && <p className="confirm">{props.confirm}</p>}
+        <button
+          data-destructive={props.variant === "danger" ? "true" : undefined}
+          className={`btn ${props.variant ?? "secondary"}`}
+          type="submit"
+          disabled={pending}
         >
-          {message.text}
-        </p>
-      )}
+          {pending
+            ? (props.pendingLabel ?? "Working…")
+            : confirming
+              ? "Yes, continue"
+              : props.submitLabel}
+        </button>
+        {message && (
+          <p
+            role="status"
+            className={message.kind === "ok" ? "notice ok" : "notice error"}
+          >
+            {message.text}
+          </p>
+        )}
+      </fieldset>
     </form>
   );
 }

@@ -82,65 +82,67 @@ export function EstimatePublisher({
         }
       }}
     >
-      <h4>Send estimate</h4>
-      <details>
-        <summary>Tax and customer notes</summary>
-        <label>
-          Tax rate (%)
-          <input
-            name="taxPercent"
-            type="number"
-            min="0"
-            max="20"
-            step="0.01"
-            defaultValue={taxRateBps / 100}
-            required
-          />
-        </label>
-        <p className="muted">
-          Applied only to lines marked taxable on the job sheet. Starts from
-          your business default; confirm the rate and line flags before
-          publishing.
-        </p>
-        <label>
-          Customer terms
-          <textarea name="terms" maxLength={5000} rows={3} />
-        </label>
-        <p className="muted">Changes need the customer’s approval again.</p>
-      </details>{" "}
-      <label hidden={!existingVersion}>
-        What changed?
-        <textarea
-          required={!!existingVersion}
-          name="supplementReason"
-          maxLength={2000}
-          rows={2}
-        />
-      </label>
-      <button
-        className="btn secondary"
-        data-page-primary={!existingVersion ? "true" : undefined}
-        disabled={pending}
-      >
-        {pending ? "Preparing…" : "Send estimate"}
-      </button>
-      <p role="status">{message}</p>
-      {path && (
-        <p>
-          <a href={path} target="_blank" rel="noreferrer">
-            Open customer estimate
-          </a>
-          <br />
+      <fieldset className="hydration-fields" disabled={!ready}>
+        <h4>Send estimate</h4>
+        <details>
+          <summary>Tax and customer notes</summary>
           <label>
-            Customer link
+            Tax rate (%)
             <input
-              readOnly
-              value={`${window.location.origin}${path}`}
-              onFocus={(e) => e.currentTarget.select()}
+              name="taxPercent"
+              type="number"
+              min="0"
+              max="20"
+              step="0.01"
+              defaultValue={taxRateBps / 100}
+              required
             />
           </label>
-        </p>
-      )}
+          <p className="muted">
+            Applied only to lines marked taxable on the job sheet. Starts from
+            your business default; confirm the rate and line flags before
+            publishing.
+          </p>
+          <label>
+            Customer terms
+            <textarea name="terms" maxLength={5000} rows={3} />
+          </label>
+          <p className="muted">Changes need the customer’s approval again.</p>
+        </details>{" "}
+        <label hidden={!existingVersion}>
+          What changed?
+          <textarea
+            required={!!existingVersion}
+            name="supplementReason"
+            maxLength={2000}
+            rows={2}
+          />
+        </label>
+        <button
+          className="btn secondary"
+          data-page-primary={!existingVersion ? "true" : undefined}
+          disabled={pending}
+        >
+          {pending ? "Preparing…" : "Send estimate"}
+        </button>
+        <p role="status">{message}</p>
+        {path && (
+          <p>
+            <a href={path} target="_blank" rel="noreferrer">
+              Open customer estimate
+            </a>
+            <br />
+            <label>
+              Customer link
+              <input
+                readOnly
+                value={`${window.location.origin}${path}`}
+                onFocus={(e) => e.currentTarget.select()}
+              />
+            </label>
+          </p>
+        )}
+      </fieldset>
     </form>
   );
   return existingVersion ? (

@@ -288,3 +288,6 @@ input::-webkit-datetime-edit { padding: 0; }
 @media (max-width: 359px) { .shop-mobile-nav { grid-template-columns: minmax(104px,1.5fr) repeat(3,minmax(48px,1fr)); } .shop-mobile-nav a[href="/app"] { display: none !important; } }
 
 .workspace-mobile-brand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Keep native disabling during hydration without adding another visual group. */
+.hydration-fields { display: contents; }
