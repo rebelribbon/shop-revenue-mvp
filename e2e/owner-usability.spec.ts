@@ -70,6 +70,10 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     .click();
   await expect(page.getByRole("status")).toContainText("Common job saved");
   await auditUX(page);
+  await page.screenshot({
+    path: `test-results/owner-job-form-${info.project.name}.png`,
+    fullPage: true,
+  });
   await expect(page.getByRole("status")).not.toContainText(
     "Something went wrong",
   );
@@ -103,6 +107,10 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     page.getByText(`Thursday brake visit ${name}`, { exact: false }),
   ).toBeVisible();
   await auditUX(page);
+  await page.screenshot({
+    path: `test-results/owner-week-${info.project.name}.png`,
+    fullPage: true,
+  });
   await page.goto("/app/schedule?new=1");
   await page.getByText("Add customer here", { exact: true }).click();
   await page
@@ -129,6 +137,12 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
       exact: true,
     }),
   ).toBeVisible();
+  await auditUX(page);
+  await page.screenshot({
+    path: `test-results/owner-expense-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await page.goto("/app/money?month=2026-10");
   await auditUX(page);
   await page.screenshot({
     path: `test-results/owner-money-${info.project.name}.png`,

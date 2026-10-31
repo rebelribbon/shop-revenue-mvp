@@ -325,7 +325,7 @@ export function MoneyFinder({
                       subjectId: item.subjectId,
                       destination: "appointment",
                     }}
-                    submitLabel="Book appointment"
+                    submitLabel="Book visit"
                     variant="secondary"
                   />
                   <ActionForm
@@ -335,7 +335,7 @@ export function MoneyFinder({
                       subjectId: item.subjectId,
                       destination: "job",
                     }}
-                    submitLabel={auto ? "Start job" : "Start job"}
+                    submitLabel="Start job"
                     variant="secondary"
                   />
                 </>

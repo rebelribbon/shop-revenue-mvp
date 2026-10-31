@@ -69,6 +69,7 @@ jobs:
             test-results/revenue-*.png
             test-results/hardening-*.png
             test-results/ux-*.png
+            test-results/owner-*.png
           if-no-files-found: ignore
           retention-days: 7
       - if: failure()

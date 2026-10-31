@@ -157,7 +157,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByLabel("Correction reason")
     .fill("Customer says this work was already planned");
   await page
-    .getByRole("button", { name: "Exclude this attribution", exact: true })
+    .getByRole("button", { name: "Remove from follow-up totals", exact: true })
     .click();
   await expect(
     page.getByRole("heading", {
