@@ -43,3 +43,11 @@ export function localDateTimeToUtc(input: string, timeZone: string): Date {
 export function localMidnightToUtc(key: string, timeZone: string) {
   return localDateTimeToUtc(`${key}T00:00`, timeZone);
 }
+
+
+// Date-only invoice terms are calendar dates, never UTC instants to shift locally.
+export function formatDateOnly(key:string) {
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(key))return key;
+ const date=new Date(`${key}T12:00:00Z`);
+ return Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==key?key:date.toLocaleDateString("en-US",{timeZone:"UTC",year:"numeric",month:"short",day:"numeric"});
+}

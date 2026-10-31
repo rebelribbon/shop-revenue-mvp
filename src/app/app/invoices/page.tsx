@@ -1,8 +1,11 @@
+import { z } from "zod";
+import { notFound } from "next/navigation";
+import { localDateKey, formatDateOnly } from "@/lib/timezone";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { WorkNavigation } from "@/components/work-navigation";
 import Link from "next/link";
 import { StripeButton, StripeRefundForm } from "@/components/stripe-controls";
-import { invoiceCheckout, invoiceRefund } from "@/db/schema";
+import { invoiceCheckout, invoiceRefund, estimateVersion } from "@/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
 import { activeCheckoutStates } from "@/domain/payments";
 import { withTenant } from "@/db/tenant";
@@ -23,11 +26,14 @@ import {
 } from "@/server/actions/invoices";
 export default async function InvoicesPage({searchParams}:{searchParams:Promise<{new?:string;versionId?:string;invoiceId?:string}>}) {
   const params=await searchParams;
+  if((params.versionId&&!z.uuid().safeParse(params.versionId).success)||(params.invoiceId&&!z.uuid().safeParse(params.invoiceId).success))notFound();
   const s = await requireShopSession("/app/invoices");
-  const data = await withTenant(s.businessId, s.actor, async (tx) => ({
+  const data = await withTenant(s.businessId, s.actor, async (tx) => {
+   const [requested]=params.versionId?await tx.select({quoteId:estimateVersion.quoteId}).from(estimateVersion).where(and(eq(estimateVersion.businessId,tx.businessId),eq(estimateVersion.id,params.versionId))):[];
+   return {
     profile: await getBusinessProfile(tx),
-    invoices: await listInvoices(tx),
-    estimates: await listEstimates(tx),
+    invoices: await listInvoices(tx,params.invoiceId),
+    estimates: await listEstimates(tx,requested?.quoteId),
     checkouts: await tx
       .select()
       .from(invoiceCheckout)
@@ -41,7 +47,8 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
       .select()
       .from(invoiceRefund)
       .where(eq(invoiceRefund.businessId, tx.businessId)),
-  }));
+  };});
+  if(params.invoiceId&&!data.invoices.length)notFound();
   const choices = data.estimates
     .filter(
       (e, i, a) =>
@@ -54,6 +61,7 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
     )
     .map((e) => ({
       id: e.id,
+      jobId:e.quoteId,
       label: `${e.snapshot.title} · Version ${e.version} · ${e.snapshot.customerName}`,
     }));
   return (
@@ -69,7 +77,7 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
         <StripeButton kind="reconcile" />
       )}
       </details>
-      {params.new==="1"&&<><p><Link href="/app/invoices">← All invoices</Link></p><InvoiceIssuer key={params.versionId??"new"} choices={choices} initialVersionId={choices.some(c=>c.id===params.versionId)?params.versionId:undefined} /></>}
+      {params.new==="1"&&<><p><Link href="/app/invoices">← All invoices</Link></p><InvoiceIssuer today={localDateKey(new Date(),data.profile?.timezone??"America/Chicago")} key={params.versionId??"new"} choices={choices} initialVersionId={choices.some(c=>c.id===params.versionId)?params.versionId:undefined} /></>}
       {params.new!=="1"&&<h2>{params.invoiceId?"Invoice details":"Issued invoices"}</h2>}
       {params.new!=="1"&&!data.invoices.length && <p>No invoices issued yet.</p>}
       {data.invoices.filter(i=>params.new!=="1"&&(!params.invoiceId||i.id===params.invoiceId)).map((i) => (
@@ -96,7 +104,8 @@ export default async function InvoicesPage({searchParams}:{searchParams:Promise<
             {formatMoney(i.paidCents)} · Balance:{" "}
             <strong>{formatMoney(i.voidedAt ? 0 : i.balanceCents)}</strong>
           </p>
-          {i.dueOn && <p>Due: {i.dueOn}</p>}
+          <p>Due: {i.dueOn?formatDateOnly(i.dueOn):i.invoiceTerms.startsWith("Due on receipt.")?"On receipt":"Not specified — see invoice terms"}</p>
+          <Link href={`/app/jobs?job=${i.quoteId}`}>Job timeline, authorization &amp; work remaining</Link>
           {i.voidReason && <p>Void reason: {i.voidReason}</p>}
           <details className="record-details" open={params.invoiceId===i.id}><summary>View invoice &amp; payments</summary>
           <InvoiceLink id={i.id} />

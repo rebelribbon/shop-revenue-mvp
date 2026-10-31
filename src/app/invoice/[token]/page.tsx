@@ -1,3 +1,4 @@
+import { formatDateOnly } from "@/lib/timezone";
 import { StripeButton } from "@/components/stripe-controls";
 import { notFound } from "next/navigation";
 import { readPublicInvoice } from "@/domain/invoices";
@@ -33,7 +34,7 @@ export default async function InvoicePage({
           {new Date(i.issuedAt).toLocaleDateString("en-US", {
             timeZone: "America/Chicago",
           })}
-          {i.dueOn ? ` · Due: ${i.dueOn}` : ""}
+          {i.dueOn ? ` · Due: ${formatDateOnly(i.dueOn)}` : i.terms.startsWith("Due on receipt.")?" · Due on receipt":" · Due date not specified"}
         </p>
         <ul>
           {s.lines.map((l) => (

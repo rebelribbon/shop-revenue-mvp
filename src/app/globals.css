@@ -256,3 +256,25 @@ body:has(.workspace-shell) [data-ux-primary] { inset-inline-end: max(24px,calc((
 .customer-row-title { margin: 0; font-size: 20px; line-height: 24px; }
 
 .workspace-brand .workspace-industry { margin: 8px 0 0; color: var(--muted); font-weight: 400; }
+
+/* Keep native iOS date controls inside their single-column form. */
+input[type="date"], input[type="datetime-local"] { min-width: 0; min-inline-size: 0; max-width: 100%; inline-size: 100%; overflow: hidden; appearance: none; }
+input::-webkit-date-and-time-value { text-align: left; min-height: 24px; }
+input::-webkit-datetime-edit { padding: 0; }
+.job-workflow { display: grid; gap: 16px; margin: 24px 0; }
+.job-workflow h3, .job-workflow h4 { margin: 0 0 8px; }
+.workflow-status { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
+.workflow-status > span { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.workflow-next { padding: 16px; border-left: 8px solid var(--accent); background: var(--surface); }
+.workflow-timeline { padding-left: 24px; margin: 16px 0; }
+.workflow-timeline li { padding: 8px 0; }
+.workflow-timeline time { display: block; color: var(--muted); }
+.workflow-stage-label { display: block; margin-top: 8px; }
+.authorized-work li { margin: 8px 0; }
+.job-row .workflow-status { font-weight: 400; }
+
+.workflow-milestones { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.workflow-milestones li { display: grid; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.workflow-milestones span { color: var(--muted); }
+
+.job-workflow, .workflow-status > span { min-width: 0; overflow-wrap: anywhere; }

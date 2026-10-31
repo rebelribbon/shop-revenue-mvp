@@ -45,7 +45,7 @@ export default async function HomePage({searchParams}:{searchParams:Promise<{den
    <section className="card"><h2>Next steps on recent work</h2><p className="muted">Pick up where you left off.</p>
     <div className="overview-row"><div><strong>{waiting.length} awaiting customer approval</strong><p>Review estimates and their latest decisions.</p></div><Link href="/app/estimates">Estimates</Link></div>
     <div className="overview-row"><div><strong>{unpaid.length} recent invoices with a balance</strong><p>Review payments and outstanding amounts.</p></div><Link href="/app/invoices">Invoices</Link></div>
-    <div className="overview-row"><div><strong>{auto?"Repair jobs and labor costs":"Jobs and labor costs"}</strong><p>Open a saved job or record actual hours.</p></div><Link href="/app/jobs">{labels.jobs}</Link></div>
+    <div className="overview-row"><div><strong>{auto?"Repair jobs and labor costs":"Jobs and labor costs"}</strong><p>Track customer approval, authorized work, completion, invoices and payment in one job timeline.</p></div><Link href="/app/jobs">{labels.jobs}</Link></div>
    </section>
   </div>
   <section className="card"><h2>Start with a customer</h2><p>{auto?'Find contact details, vehicles, repair history and notes in one place.':'Find contact details, properties, equipment, work history and notes in one place.'}</p><div className="money-actions"><Link href="/app/customers">Find a customer</Link><Link href="/app/customers/new">Add a customer</Link></div></section>
