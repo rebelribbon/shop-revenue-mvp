@@ -26,12 +26,12 @@ export default async function HomePage({searchParams}:{searchParams:Promise<{den
  const date=new Date().toLocaleDateString('en-US',{timeZone:days.timezone,weekday:'long',month:'long',day:'numeric'});
  return <main id="main-content" tabIndex={-1}>
   {params.denied&&<p role="status" className="notice error">Only the owner can open that page.</p>}
-  <div className="page-heading"><p className="eyebrow">Your workspace</p><h1>Home</h1><p className="muted">{date} · {profile?.dba||profile?.legalName}</p></div>
+  <div className="page-heading"><h1>Home</h1><p className="muted">{date}</p></div>
   <Link className="btn primary" data-page-primary href="/app/jobs?new=1">New job / estimate</Link>
   {(!profile?.phoneE164||!profile.addressLine1)&&<div className="notice banner"><p>Finish your business details so appointments and documents use the right information.</p><Link href="/app/settings/business">Finish setup</Link></div>}
   <div className="overview-metrics">
-   <Link className="card overview-metric" href="/app/schedule"><span>Scheduled today</span><strong>{visits.length}</strong><span className="muted">Open the schedule →</span></Link>
-   <Link className="card overview-metric" href="/app/opportunities"><span>Follow-up opportunities</span><strong>{money.total}</strong><span className="muted">Open Money Finder →</span></Link>
+   <Link className="card overview-metric" href="/app/schedule"><strong>{visits.length}</strong><span>Scheduled today</span></Link>
+   <Link className="card overview-metric" href="/app/opportunities"><strong>{money.total}</strong><span>Money Finder follow-ups</span></Link>
 
   </div>
   <div className="overview-columns">

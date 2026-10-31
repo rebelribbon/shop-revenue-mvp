@@ -106,6 +106,9 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, second staff s
   await support.getByRole("button", { name: "Start view-as" }).click();
   await expect(support).toHaveURL(/\/app$/);
   await expect(support.getByRole("alert").filter({ hasText: "as support (read-only)" })).toBeVisible();
+  await support.getByRole("button",{name:"Quick find",exact:true}).click();
+  await expect(support.getByRole("dialog",{name:"Quick find",exact:true}).locator('[data-ux-primary]')).toHaveText('Search');
+  await support.keyboard.press('Escape');
   await support.goto("/app/settings/team");
   await expect(support.getByRole("button", { name: "Send invite" })).toHaveCount(0);
   await support.getByRole("button", { name: "End view-as" }).click();

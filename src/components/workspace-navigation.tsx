@@ -1,18 +1,19 @@
 "use client";
 import Link from "next/link";
+import { WorkspaceIcon } from "./workspace-icon";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  {href:"/app",label:"Home",mobile:"Home"},
-  {href:"/app/customers",label:"Customers",mobile:"Clients"},
-  {href:"/app/work",label:"Work",mobile:"Work"},
-  {href:"/app/schedule",label:"Schedule",mobile:"Visits"},
-  {href:"/app/settings",label:"Settings",mobile:"Setup"},
-];
+  {href:"/app",label:"Home",mobile:"Home",icon:"home"},
+  {href:"/app/customers",label:"Customers",mobile:"Customers",icon:"customers"},
+  {href:"/app/work",label:"Work",mobile:"Work",icon:"work"},
+  {href:"/app/schedule",label:"Schedule",mobile:"Visits",icon:"schedule"},
+  {href:"/app/settings",label:"Settings",mobile:"Setup",icon:"settings"},
+] as const;
 const workPaths=["/app/jobs","/app/estimates","/app/invoices"];
 export function WorkspaceNavigation({mobile=false}:{mobile?:boolean}) {
   const path=usePathname();
-  return <nav className={mobile?"mobile-nav":"desktop-nav"} aria-label={mobile?"Mobile navigation":"Main"}>
-    {shopItems.map(item=><Link key={item.href} href={item.href} aria-label={item.label} aria-current={(item.href==="/app"?(path===item.href||path.startsWith("/app/opportunities")||path.startsWith("/app/revenue")):path.startsWith(item.href)||(item.href==="/app/work"&&workPaths.some(p=>path.startsWith(p))))?"page":undefined}>{mobile?item.mobile:item.label}</Link>)}
+  return <nav className={mobile?"mobile-nav shop-mobile-nav":"desktop-nav workspace-nav"} aria-label={mobile?"Mobile navigation":"Main"}>
+    {(mobile?shopItems.slice(0,4):shopItems).map(item=><Link key={item.href} href={item.href} aria-label={item.label} aria-current={(item.href==="/app"?(path===item.href||path.startsWith("/app/opportunities")||path.startsWith("/app/revenue")):path.startsWith(item.href)||(item.href==="/app/work"&&workPaths.some(p=>path.startsWith(p))))?"page":undefined}>{!mobile&&<WorkspaceIcon name={item.icon}/>}<span>{mobile?item.mobile:item.label}</span></Link>)}
   </nav>;
 }
 export function AdminNavigation({isAdmin,mobile=false}:{isAdmin:boolean;mobile?:boolean}) {

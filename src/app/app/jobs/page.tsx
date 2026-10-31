@@ -5,6 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { appointment, estimateVersion, recommendation } from "@/db/schema";
 import {EstimatePublisher} from "@/components/estimate-publisher";
 import Link from "next/link";
+import { WorkspaceIcon } from "@/components/workspace-icon";
 import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { withTenant } from "@/db/tenant";
@@ -42,7 +43,7 @@ export default async function JobsPage({searchParams}:{searchParams:Promise<{edi
    <Link className="btn primary" data-page-primary data-stable-primary href="/app/jobs?new=1">New job / estimate</Link>
    <form className="card" method="get"><label htmlFor="job-search">Find a job</label><div className="search-controls"><input id="job-search" name="q" defaultValue={q??''} maxLength={100} placeholder="Job or customer name"/><button className="btn secondary">Search</button></div></form>
    <h2>Recent job sheets</h2>{!rows.length&&<div className="card"><h3>{q?'No matching jobs':'No jobs yet'}</h3><p>{q?'Try another name.':'Start with a customer, add parts or materials and labor, then save the job.'}</p></div>}
-   {rows.map(j=>{const input=jobInput.parse(j.data),t=calculateJob(input.parts,input.labor);return <article className="card" key={j.id}><h3>{j.title}</h3><p>{data.options.customers.find(c=>c.id===input.customerId)?.name}</p><div className="record-meta"><strong>{money(t.subtotalCents)} quoted</strong><span className="muted">Updated {j.createdAt.toLocaleDateString('en-US',{timeZone:data.profile?.timezone||'America/Chicago'})}</span></div><Link className="btn secondary" href={`/app/jobs?job=${j.id}`}>Open job</Link></article>;})}
+   <div className="job-list">{rows.map(j=>{const input=jobInput.parse(j.data),t=calculateJob(input.parts,input.labor);return <article key={j.id}><Link className="card job-row" href={`/app/jobs?job=${j.id}`} aria-label={`Open job: ${j.title}`}><div><h3>{j.title}</h3><p className="muted">{data.options.customers.find(c=>c.id===input.customerId)?.name}</p></div><div className="job-row-meta"><strong>{money(t.subtotalCents)} quoted</strong><span className="muted">Updated {j.createdAt.toLocaleDateString('en-US',{timeZone:data.profile?.timezone||'America/Chicago'})}</span></div><WorkspaceIcon name="arrow"/></Link></article>;})}</div>
   </>}
  </main>;
 }

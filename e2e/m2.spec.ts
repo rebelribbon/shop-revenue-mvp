@@ -23,7 +23,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page.getByLabel("Mobile number").fill(phone);
   await page.getByRole("button", { name: "Add customer" }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
-  await expect(page.getByRole("heading", { name: `${first} ${last}` })).toBeVisible();
+  await expect(page.getByRole("heading", { name: `${first} ${last}`, exact: true })).toBeVisible();
 
   await page.getByRole("link",{name:"Vehicles",exact:true}).click();
   await page.getByLabel("Year").last().fill("2022");
@@ -37,11 +37,11 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(page.getByRole("heading", { name: /2022 Honda Accord/ })).toBeVisible();
 
   await page.goto(`/app/customers?q=${vin.slice(-6)}`);
-  await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
+  await expect(page.getByRole("link", { name: `${first} ${last}`, exact: true })).toBeVisible();
   await page.goto(`/app/customers?q=${encodeURIComponent("210 555 0199")}`);
-  await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
+  await expect(page.getByRole("link", { name: `${first} ${last}`, exact: true })).toBeVisible();
   await page.goto(`/app/customers?q=${plate}`);
-  await expect(page.getByRole("link", { name: `${first} ${last}` })).toBeVisible();
+  await expect(page.getByRole("link", { name: `${first} ${last}`, exact: true })).toBeVisible();
 
   await page.goto("/app/schedule?new=1");
   await page.getByLabel("Customer", { exact: true }).selectOption({ label: `${first} ${last}` });
@@ -54,7 +54,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(tomorrow).toContainText("Brake inspection");
 
   await page.goto("/app/customers");
-  await page.getByRole("link", { name: `${first} ${last}` }).click();
+  await page.getByRole("link", { name: `${first} ${last}`, exact: true }).click();
   await expect(page.getByText(/Appointment scheduled/)).toBeVisible();
 });
 
@@ -77,7 +77,7 @@ test("M2 mobile navigation reaches focused job and customer creation without ove
   await page.goto("/app/customers");
   const nav=page.getByRole("navigation",{name:"Mobile navigation"});
   await expect(nav).toBeVisible();
-  await expect(nav.getByRole("link")).toHaveCount(5);
+  await expect(nav.getByRole("link")).toHaveCount(4);
   await nav.getByRole("link",{name:"Work",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Jobs",exact:true})).toBeVisible();
   await page.getByRole("link",{name:"New job / estimate",exact:true}).click();
