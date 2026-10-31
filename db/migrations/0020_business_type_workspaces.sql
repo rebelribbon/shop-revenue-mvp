@@ -1,4 +1,9 @@
 -- Preserve existing automotive tenants and records; owners explicitly choose their workspace.
+-- Existing estimate/invoice capability policies expose rows to migration_owner,
+-- while FORCE RLS hides customers without a tenant context. Initial FK validation
+-- must see both sides. This read policy exists only inside the migration transaction
+-- and is removed below; runtime roles and committed tenant policies are unchanged.
+CREATE POLICY workspace_migration_customer_validation ON app.customer FOR SELECT TO migration_owner USING (true);
 ALTER TABLE app.business ADD COLUMN business_type text NOT NULL DEFAULT 'automotive' CHECK(business_type IN ('automotive','hvac','plumbing','home_improvement','handyman','other_home_service'));
 ALTER TABLE app.business ADD COLUMN business_type_selected boolean NOT NULL DEFAULT false;
 GRANT UPDATE(business_type,business_type_selected) ON app.business TO app_user;
@@ -50,3 +55,5 @@ ALTER TABLE app.appointment ADD COLUMN service_asset_id uuid;
 ALTER TABLE app.appointment ADD CONSTRAINT appointment_service_asset_customer_fk FOREIGN KEY(business_id,customer_id,service_asset_id) REFERENCES app.asset(business_id,customer_id,id);
 ALTER TABLE app.appointment ADD CONSTRAINT appointment_work_target_check CHECK(vehicle_id IS NULL OR service_asset_id IS NULL);
 CREATE INDEX appointment_service_asset_idx ON app.appointment(business_id,customer_id,service_asset_id);
+
+DROP POLICY workspace_migration_customer_validation ON app.customer;
