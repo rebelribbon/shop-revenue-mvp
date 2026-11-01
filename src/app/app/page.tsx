@@ -163,7 +163,7 @@ export default async function HomePage({
               <strong>{waiting.length} awaiting customer approval</strong>
               <p>Review estimates and their latest decisions.</p>
             </div>
-            <Link href="/app/estimates">Estimates</Link>
+            <Link href="/app/estimates">See estimates</Link>
           </div>
           <div className="overview-row">
             <div>
@@ -173,7 +173,7 @@ export default async function HomePage({
               </strong>
               <p>Review payments and outstanding amounts.</p>
             </div>
-            <Link href="/app/invoices">Invoices</Link>
+            <Link href="/app/invoices">See invoices</Link>
           </div>
           <div className="overview-row">
             <div>
@@ -185,7 +185,7 @@ export default async function HomePage({
                 and payment in one job timeline.
               </p>
             </div>
-            <Link href="/app/jobs">{labels.jobs}</Link>
+            <Link href="/app/jobs">See all {labels.jobs.toLowerCase()}</Link>
           </div>
         </section>
       </div>
