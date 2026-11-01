@@ -13,6 +13,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { assertOwner } from "./membership";
 import { audit, type RequestMeta } from "./records";
 import { jobInput } from "./jobs";
+import { partLineCents } from "./job-costing";
 import { z } from "zod";
 export const expenseCategories = [
   "rent",
@@ -228,7 +229,7 @@ export async function getOwnerMoney(
           unknown = true;
           continue;
         }
-        costCents += Math.round(line.quantity * p.unitCostCents);
+        costCents += partLineCents(line.quantity, p.unitCostCents);
       } else {
         const l = parsed.data.labor[index];
         if (!l || l.description !== line.description) {

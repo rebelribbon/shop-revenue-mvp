@@ -87,7 +87,7 @@ export function JobEditor({
   } catch {
     /* An unfinished numeric edit must not crash the page. */
   }
-  const valid = !!totals && parts.every((p) => p.quantity >= 1);
+  const valid = !!totals && parts.every((p) => p.quantity > 0);
   const clearLinks = () => {
     setParts((ps) => ps.map((p) => ({ ...p, recommendationId: undefined })));
     setLabor((ls) => ls.map((l) => ({ ...l, recommendationId: undefined })));
@@ -316,16 +316,12 @@ export function JobEditor({
             )}
             <details>
               <summary>Part costs &amp; quantity</summary>
-              {numberField(
-                "Quantity",
-                p.quantity,
-                (v) =>
-                  setParts(
-                    parts.map((x, n) =>
-                      n === i ? { ...x, quantity: v ?? 0 } : x,
-                    ),
+              {numberField("Quantity", Math.round(p.quantity * 100), (v) =>
+                setParts(
+                  parts.map((x, n) =>
+                    n === i ? { ...x, quantity: (v ?? 0) / 100 } : x,
                   ),
-                1,
+                ),
               )}
               {numberField("Unit cost", p.unitCostCents, (v) =>
                 setParts(

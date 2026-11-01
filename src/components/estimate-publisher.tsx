@@ -84,6 +84,14 @@ export function EstimatePublisher({
     >
       <fieldset className="hydration-fields" disabled={!ready}>
         <h4>Send estimate</h4>
+        {taxRateBps === 0 && (
+          <p className="muted" role="note">
+            <strong>Sales tax is set to 0%.</strong> Taxable parts will go out
+            with no tax. Set your rate in{" "}
+            <Link href="/app/settings/business">Business profile</Link>, or
+            enter it under Tax and customer notes below.
+          </p>
+        )}
         <details>
           <summary>Tax and customer notes</summary>
           <label>

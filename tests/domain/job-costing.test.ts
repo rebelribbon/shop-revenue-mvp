@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calculateJob } from "@/domain/job-costing";
+import { calculateJob, partLineCents } from "@/domain/job-costing";
+import { jobInput } from "@/domain/jobs";
 const parts = [{ quantity: 1, unitCostCents: 14000, unitPriceCents: 25000 }];
 const labor = [
   {
@@ -10,6 +11,33 @@ const labor = [
   },
 ];
 describe("job costing", () => {
+  it("prices fractional part quantities without rounding the quantity", () => {
+    // 4.5 quarts at $7.99 is $35.955, rounded half-up to $35.96 (not 5 × $7.99).
+    expect(partLineCents(4.5, 799)).toBe(3596);
+    expect(partLineCents(2.25, 1000)).toBe(2250);
+    expect(
+      calculateJob(
+        [{ quantity: 4.5, unitCostCents: 400, unitPriceCents: 799 }],
+        [],
+      ),
+    ).toMatchObject({ partsPriceCents: 3596, partsCostCents: 1800 });
+    expect(() => partLineCents(4.555, 100)).toThrow(/quantity/);
+    expect(() => partLineCents(0, 100)).toThrow(/quantity/);
+    const base = {
+      customerId: "00000000-0000-4000-8000-000000000000",
+      title: "Oil",
+      labor: [],
+    };
+    const part = { description: "Oil", unitCostCents: 0, unitPriceCents: 799 };
+    expect(
+      jobInput.safeParse({ ...base, parts: [{ ...part, quantity: 4.5 }] })
+        .success,
+    ).toBe(true);
+    expect(
+      jobInput.safeParse({ ...base, parts: [{ ...part, quantity: 4.555 }] })
+        .success,
+    ).toBe(false);
+  });
   it("keeps quoted labor fixed while actual time changes gross profit", () => {
     expect(calculateJob(parts, labor)).toMatchObject({
       subtotalCents: 50000,
