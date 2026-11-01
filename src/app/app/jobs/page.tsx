@@ -278,6 +278,18 @@ export default async function JobsPage({
                 </details>
                 <section className="record-details" id="job-estimate">
                   <h3>Customer estimate</h3>
+                  {!flow?.currentInvoice &&
+                    s.actor.type !== "support" &&
+                    !data.profile?.taxRateConfirmedAt && (
+                      <p className="banner" role="note">
+                        Your sales tax rate isn’t confirmed yet (currently{" "}
+                        {(data.profile?.taxRateBps ?? 0) / 100}%).{" "}
+                        <Link href="/app/settings/business#taxPercent">
+                          Set your tax rate
+                        </Link>{" "}
+                        before sending estimates.
+                      </p>
+                    )}
                   {!flow?.currentInvoice && s.actor.type !== "support" ? (
                     <EstimatePublisher
                       taxRateBps={data.profile?.taxRateBps}

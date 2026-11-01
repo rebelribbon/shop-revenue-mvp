@@ -176,6 +176,13 @@
       "when": 1793465228693,
       "tag": "0024_staff_team_seats",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793546131998,
+      "tag": "0025_contact_tax_compliance",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors";
 import { assertOwner } from "./membership";
 import { z } from "zod";
 import { businessTypes, type BusinessType } from "@/lib/business-types";
@@ -34,6 +35,9 @@ export async function updateBusinessProfile(
     laborCostRateCents?: number;
     partsTaxableDefault?: boolean;
     laborTaxableDefault?: boolean;
+    // The owner ticked "I chose this tax rate". Required whenever the tax
+    // settings are saved for the first time or changed.
+    taxConfirmed?: boolean;
   },
 ) {
   await assertOwner(tx);
@@ -41,6 +45,26 @@ export async function updateBusinessProfile(
     .select()
     .from(business)
     .where(eq(business.id, tx.businessId));
+  const changed = <T>(next: T | undefined, prev: T | undefined) =>
+    next !== undefined && next !== prev;
+  const taxSubmitted = input.taxRateBps !== undefined;
+  const taxChanged =
+    changed(input.taxRateBps, before?.taxRateBps) ||
+    changed(input.partsTaxableDefault, before?.partsTaxableDefault) ||
+    changed(input.laborTaxableDefault, before?.laborTaxableDefault);
+  const needsConfirm =
+    taxSubmitted && (taxChanged || !before?.taxRateConfirmedAt);
+  if (needsConfirm && !input.taxConfirmed)
+    throw new AppError(
+      "VALIDATION",
+      "Tick the box to confirm you chose this tax rate.",
+      {
+        fields: {
+          taxConfirmed: "Confirm you chose this tax rate before saving.",
+        },
+      },
+    );
+  const confirmNow = needsConfirm && input.taxConfirmed === true;
   const [row] = await tx
     .update(business)
     .set({
@@ -64,6 +88,12 @@ export async function updateBusinessProfile(
       laborCostRateCents: input.laborCostRateCents,
       partsTaxableDefault: input.partsTaxableDefault,
       laborTaxableDefault: input.laborTaxableDefault,
+      ...(confirmNow
+        ? {
+            taxRateConfirmedAt: new Date(),
+            taxRateConfirmedBy: tx.actor.type === "user" ? tx.actor.id : null,
+          }
+        : {}),
     })
     .where(eq(business.id, tx.businessId))
     .returning();
@@ -94,6 +124,12 @@ export async function updateBusinessProfile(
       laborCostRateCents: row.laborCostRateCents,
       partsTaxableDefault: row.partsTaxableDefault,
       laborTaxableDefault: row.laborTaxableDefault,
+      ...(confirmNow
+        ? {
+            taxRateConfirmedAt: row.taxRateConfirmedAt,
+            taxRateConfirmedBy: row.taxRateConfirmedBy,
+          }
+        : {}),
     },
   });
   await recordActivity(tx, {

@@ -101,6 +101,7 @@ test("M2 business settings are Owner editable", async ({ page }) => {
   await page.getByLabel("City").fill("Austin");
   await page.getByLabel("State").fill("TX");
   await page.getByLabel("ZIP").fill("78701");
+  await page.getByLabel(/I chose this tax rate/).check();
   await page.getByRole("button", { name: "Save business profile" }).click();
   await expect(page.getByRole("status")).toContainText(
     "Business profile updated",

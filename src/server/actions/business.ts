@@ -25,6 +25,7 @@ const saveBusinessProfile = defineShopAction({
     laborCostRate: z.coerce.number().min(0).max(1000000).optional(),
     partsTaxableDefault: z.enum(["true", "false"]).optional(),
     laborTaxableDefault: z.enum(["true", "false"]).optional(),
+    taxConfirmed: z.enum(["on", "true"]).optional(),
   }),
   run: ({ tx, meta }, input) =>
     updateBusinessProfile(tx, meta, {
@@ -58,6 +59,7 @@ const saveBusinessProfile = defineShopAction({
         input.laborTaxableDefault === undefined
           ? undefined
           : input.laborTaxableDefault === "true",
+      taxConfirmed: input.taxConfirmed !== undefined,
     }),
   persist: () => ({ message: "Business profile updated." }),
 });

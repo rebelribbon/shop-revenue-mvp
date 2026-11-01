@@ -28,6 +28,9 @@ export const customer = app.table(
     phoneDigits: text("phone_digits"),
     notes: text("notes"),
     doNotContact: boolean("do_not_contact").notNull().default(false),
+    // Null = allowed. Set when the customer asks to stop (e.g. replies STOP).
+    textOptedOutAt: timestamp("text_opted_out_at", { withTimezone: true }),
+    emailOptedOutAt: timestamp("email_opted_out_at", { withTimezone: true }),
     status: text("status").notNull().default("active"),
   },
   (t) => [

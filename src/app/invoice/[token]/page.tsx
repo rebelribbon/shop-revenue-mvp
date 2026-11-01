@@ -46,12 +46,13 @@ export default async function InvoicePage({
             <li key={l.id}>
               {l.description} — {l.quantity} × {formatMoney(l.unitPriceCents)} ={" "}
               {formatMoney(l.totalCents)}
+              {l.taxable === false ? " · Not taxable" : ""}
             </li>
           ))}
         </ul>
         <p>
-          Subtotal: {formatMoney(s.subtotalCents)} · Tax:{" "}
-          {formatMoney(s.taxCents)}
+          Subtotal: {formatMoney(s.subtotalCents)} · Sales tax ({s.taxBps / 100}
+          %): {formatMoney(s.taxCents)}
         </p>
         <p>
           Total: <strong>{formatMoney(i.totalCents)}</strong> · Paid:{" "}

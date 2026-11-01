@@ -194,9 +194,30 @@ export default async function BusinessSettingsPage() {
               <option value="false">No</option>
             </select>
             <p className="muted">
-              Confirm the rate and defaults with your accountant for your trade
-              and contract. Review each line before publishing. Saved estimates
-              and invoices keep their original tax treatment.
+              Enter the combined rate for your shop’s address (state + county +
+              city). Your state’s revenue department website has a rate lookup.
+              What’s taxable differs by state — for example, many states tax
+              parts but not repair labor, and some tax both. Ask your accountant
+              if you’re not sure. You can still switch tax on or off for each
+              line on a job.
+            </p>
+            <label>
+              <input
+                type="checkbox"
+                name="taxConfirmed"
+                id="taxConfirmed"
+                required={!profile.taxRateConfirmedAt}
+              />
+              <span>
+                I chose this tax rate and these defaults for my business. I’m
+                responsible for charging and paying the right sales tax.
+              </span>
+            </label>
+            <p className="muted">
+              {profile.taxRateConfirmedAt
+                ? `Last confirmed ${profile.taxRateConfirmedAt.toLocaleDateString("en-US", { timeZone: profile.timezone, dateStyle: "medium" })}. Tick the box again if you change the rate or defaults.`
+                : "Not confirmed yet."}{" "}
+              Saved estimates and invoices keep their original tax.
             </p>
             <label htmlFor="timezone">Timezone</label>
             <select

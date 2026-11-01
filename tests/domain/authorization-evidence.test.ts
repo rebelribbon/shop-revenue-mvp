@@ -205,6 +205,7 @@ it("uses line tax flags and owner defaults without altering frozen or legacy doc
       taxRateBps: 825,
       partsTaxableDefault: true,
       laborTaxableDefault: false,
+      taxConfirmed: true,
     }),
   );
   const e = await f.run((tx) => freezeEstimate(tx, meta(), f.input));
@@ -223,6 +224,7 @@ it("uses line tax flags and owner defaults without altering frozen or legacy doc
       taxRateBps: 500,
       partsTaxableDefault: false,
       laborTaxableDefault: true,
+      taxConfirmed: true,
     }),
   );
   expect((await readPublicEstimate(token))!.snapshot).toEqual(visible.snapshot);

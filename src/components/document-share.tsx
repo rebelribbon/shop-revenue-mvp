@@ -4,6 +4,9 @@ import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
 import { useState } from "react";
 import { prepareDocumentShare } from "@/server/actions/document-sharing";
+import type { ShareRecipient } from "@/domain/document-sharing";
+
+export type ShareData = ShareRecipient & { path: string };
 export function DocumentShare({
   id,
   kind,
@@ -15,26 +18,27 @@ export function DocumentShare({
   kind: "estimate" | "invoice";
   primary?: boolean;
   label?: string;
-  initial?: {
-    path: string;
-    name: string;
-    phone: string | null;
-    email: string | null;
-  };
+  initial?: ShareData;
 }) {
   const ready = useActionHydration();
-  const [data, setData] = useState<{
-      path: string;
-      name: string;
-      phone: string | null;
-      email: string | null;
-    } | null>(initial ?? null),
+  const [data, setData] = useState<ShareData | null>(initial ?? null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   const [needsReplacement, setNeedsReplacement] = useState(false),
     [revisionPath, setRevisionPath] = useState<string | undefined>();
   const url = data ? new URL(data.path, window.location.origin).href : "";
-  const body = `Hi ${data?.name ?? ""}, here is your ${kind}: ${url}`;
+  const from = data?.senderName ? ` from ${data.senderName}` : "";
+  // Texts carry the opt-out line the FCC's standard keywords rely on.
+  const textBody = `Hi ${data?.name ?? ""}, here is your ${kind}${from}: ${url}\n\nReply STOP to opt out.`;
+  // Emails carry who sent it, a postal address and how to stop (CAN-SPAM).
+  const emailBody = [
+    `Hi ${data?.name ?? ""}, here is your ${kind}${from}: ${url}`,
+    "",
+    [data?.senderName, data?.senderAddress].filter(Boolean).join("\n"),
+    "To stop emails from us, reply “unsubscribe”.",
+  ].join("\n");
+  const canText = Boolean(data?.phone && !data.textStoppedOn);
+  const canEmail = Boolean(data?.email && !data.emailStoppedOn);
   const ios =
     typeof navigator !== "undefined" &&
     (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -77,20 +81,20 @@ export function DocumentShare({
           </h4>
           <p>Choose Text or Email, then tap Send in your own app.</p>
           <div className="money-actions">
-            {data.phone && (
+            {canText && (
               <a
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
-                href={`sms:${data.phone}${ios ? "&" : "?"}body=${encodeURIComponent(body)}`}
+                href={`sms:${data.phone}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
               >
                 Text to customer
               </a>
             )}
-            {data.email && (
+            {canEmail && (
               <a
-                className={`btn ${primary && !data.phone ? "primary" : "secondary"}`}
-                data-page-primary={primary && !data.phone ? true : undefined}
-                href={`mailto:${encodeURIComponent(data.email).replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(body)}`}
+                className={`btn ${primary && !canText ? "primary" : "secondary"}`}
+                data-page-primary={primary && !canText ? true : undefined}
+                href={`mailto:${encodeURIComponent(data.email ?? "").replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}
               >
                 Email to customer
               </a>
@@ -125,6 +129,22 @@ export function DocumentShare({
               Open customer {kind}
             </a>
           </div>
+          {canText && data.quietHours && (
+            <p className="banner" role="note">
+              It’s before 8 AM or after 9 PM where your shop is. Several states
+              ban business texts at these hours. Send it in the morning, or use
+              email or Copy link.
+            </p>
+          )}
+          {(data.textStoppedOn || data.emailStoppedOn) && (
+            <p className="muted">
+              {data.name} asked you to stop{" "}
+              {[data.textStoppedOn && "texts", data.emailStoppedOn && "emails"]
+                .filter(Boolean)
+                .join(" and ")}
+              . Hand them the link in person or use the other option.
+            </p>
+          )}
           {!data.phone && !data.email && (
             <p>
               Add a phone number or email on the customer record, or copy the

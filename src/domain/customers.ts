@@ -572,3 +572,50 @@ export async function listCustomerTimeline(tx: TenantTx, customerId: string) {
     .orderBy(desc(activity.occurredAt))
     .limit(100);
 }
+
+export type ContactChannel = "text" | "email";
+
+// Stop or restart texts or emails to one customer. A stop is recorded with the
+// time it was entered, so the business can show it honoured the request.
+export async function setContactPermission(
+  tx: TenantTx,
+  meta: RequestMeta,
+  customerId: string,
+  channel: ContactChannel,
+  allowed: boolean,
+) {
+  const column = channel === "text" ? "textOptedOutAt" : "emailOptedOutAt";
+  const [before] = await tx
+    .select({ at: customer[column] })
+    .from(customer)
+    .where(
+      and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
+    );
+  if (!before) throw notFound("That customer");
+  const already = allowed ? before.at === null : before.at !== null;
+  if (already) return { id: customerId, changed: false };
+  await tx
+    .update(customer)
+    .set({ [column]: allowed ? null : new Date() })
+    .where(
+      and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
+    );
+  const label = channel === "text" ? "Texts" : "Emails";
+  await audit(tx, meta, {
+    action: "customer.contact_permission",
+    targetType: "customer",
+    targetId: customerId,
+    before: { channel, allowed: before.at === null },
+    after: { channel, allowed },
+  });
+  await recordActivity(tx, {
+    kind: "customer.contact_permission",
+    subjectType: "customer",
+    subjectId: customerId,
+    summary: allowed
+      ? `${label} turned back on`
+      : `${label} stopped at customer’s request`,
+    data: { channel, allowed },
+  });
+  return { id: customerId, changed: true };
+}
