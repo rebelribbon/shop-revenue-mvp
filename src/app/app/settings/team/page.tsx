@@ -1,7 +1,8 @@
+import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
-import { listTeam } from "@/domain/membership";
+import { listTeam, MAX_STAFF_SEATS } from "@/domain/membership";
 import {
   inviteStaffAction,
   removeStaffAction,
@@ -13,7 +14,8 @@ export default async function TeamPage() {
   const s = await requireShopSession("/app/settings/team");
   const team = await withTenant(s.businessId, s.actor, (tx) => listTeam(tx));
   const isOwner = s.role === "owner";
-  const staffSeatUsed = team.some((m) => m.role === "staff");
+  const staffSeats = team.filter((m) => m.role === "staff").length;
+  const seatsLeft = MAX_STAFF_SEATS - staffSeats;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Team</h1>
@@ -36,8 +38,7 @@ export default async function TeamPage() {
                   <span className="muted">
                     {m.email ??
                       m.inviteEmail ??
-                      m.phoneE164 ??
-                      m.invitePhoneE164}
+                      formatPhone(m.phoneE164 ?? m.invitePhoneE164)}
                   </span>
                 </td>
                 <td>{m.role === "owner" ? "Owner" : "Staff"}</td>
@@ -72,9 +73,13 @@ export default async function TeamPage() {
           </tbody>
         </table>
       </div>
-      {isOwner && !staffSeatUsed && (
+      {isOwner && seatsLeft > 0 && (
         <div className="card">
-          <h2>Invite one teammate</h2>
+          <h2>Invite a teammate</h2>
+          <p className="muted">
+            Each person gets their own login. {seatsLeft} of {MAX_STAFF_SEATS}{" "}
+            staff logins left.
+          </p>
           <ActionForm action={inviteStaffAction} submitLabel="Send invite">
             <label htmlFor="name">Name</label>
             <input id="name" name="name" required maxLength={100} />
@@ -85,10 +90,10 @@ export default async function TeamPage() {
           </ActionForm>
         </div>
       )}
-      {isOwner && staffSeatUsed && (
+      {isOwner && seatsLeft <= 0 && (
         <p className="muted">
-          Your plan includes one staff login. Remove the current one to invite
-          someone else.
+          You have {MAX_STAFF_SEATS} staff logins, the most allowed. Remove one
+          to invite someone else.
         </p>
       )}
     </HydratedMain>

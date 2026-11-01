@@ -87,7 +87,7 @@ export function JobEditor({
   } catch {
     /* An unfinished numeric edit must not crash the page. */
   }
-  const valid = !!totals && parts.every((p) => p.quantity >= 1);
+  const valid = !!totals && parts.every((p) => p.quantity > 0);
   const clearLinks = () => {
     setParts((ps) => ps.map((p) => ({ ...p, recommendationId: undefined })));
     setLabor((ls) => ls.map((l) => ({ ...l, recommendationId: undefined })));
@@ -316,23 +316,24 @@ export function JobEditor({
             )}
             <details>
               <summary>Part costs &amp; quantity</summary>
+              {numberField("Quantity", Math.round(p.quantity * 100), (v) =>
+                setParts(
+                  parts.map((x, n) =>
+                    n === i ? { ...x, quantity: (v ?? 0) / 100 } : x,
+                  ),
+                ),
+              )}
               {numberField(
-                "Quantity",
-                p.quantity,
+                "Unit cost",
+                p.unitCostCents,
                 (v) =>
                   setParts(
                     parts.map((x, n) =>
-                      n === i ? { ...x, quantity: v ?? 0 } : x,
+                      n === i ? { ...x, unitCostCents: v } : x,
                     ),
                   ),
-                1,
-              )}
-              {numberField("Unit cost", p.unitCostCents, (v) =>
-                setParts(
-                  parts.map((x, n) =>
-                    n === i ? { ...x, unitCostCents: v ?? 0 } : x,
-                  ),
-                ),
+                100,
+                true,
               )}
               <label>
                 <input
@@ -367,7 +368,7 @@ export function JobEditor({
               {
                 description: "",
                 quantity: 1,
-                unitCostCents: 0,
+                unitCostCents: null,
                 unitPriceCents: 0,
                 taxable: partsTaxableDefault,
               },
@@ -430,12 +431,17 @@ export function JobEditor({
                 100,
                 true,
               )}
-              {numberField("Hourly internal cost", l.costRateCents, (v) =>
-                setLabor(
-                  labor.map((x, n) =>
-                    n === i ? { ...x, costRateCents: v ?? 0 } : x,
+              {numberField(
+                "Hourly internal cost",
+                l.costRateCents,
+                (v) =>
+                  setLabor(
+                    labor.map((x, n) =>
+                      n === i ? { ...x, costRateCents: v } : x,
+                    ),
                   ),
-                ),
+                100,
+                true,
               )}
               <label>
                 <input
@@ -472,7 +478,7 @@ export function JobEditor({
                 estimatedHoursHundredths: 100,
                 actualHoursHundredths: null,
                 sellRateCents: laborSellRateCents,
-                costRateCents: laborCostRateCents,
+                costRateCents: laborCostRateCents || null,
                 taxable: laborTaxableDefault,
               },
             ])
@@ -487,14 +493,27 @@ export function JobEditor({
             </p>
             <details>
               <summary>Job costs &amp; profit</summary>
-              <p>
-                Estimated cost: {money(totals.estimatedCostCents)} · Gross
-                profit: {money(totals.estimatedGrossProfitCents)}
-              </p>
+              {totals.estimatedCostCents === null ||
+              totals.estimatedGrossProfitCents === null ? (
+                <p>
+                  Profit unknown: add your cost for{" "}
+                  {totals.missingCosts === 1
+                    ? "1 line"
+                    : `${totals.missingCosts} lines`}{" "}
+                  to see it.
+                </p>
+              ) : (
+                <p>
+                  Estimated cost: {money(totals.estimatedCostCents)} · Gross
+                  profit: {money(totals.estimatedGrossProfitCents)}
+                </p>
+              )}
               <p>
                 Actual cost:{" "}
                 {totals.actualCostCents === null
-                  ? "Add actual hours"
+                  ? totals.missingCosts
+                    ? "Add missing costs and actual hours"
+                    : "Add actual hours"
                   : money(totals.actualCostCents)}
               </p>
             </details>

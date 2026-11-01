@@ -42,7 +42,7 @@ export function fromDatabaseError(err: unknown): AppError | null {
   if (msg.startsWith("MEMBERSHIP_LIMIT"))
     return new AppError(
       "CONFLICT",
-      "This business already has two people with access.",
+      "This business already has the most staff logins allowed (10). Remove one first.",
     );
   if (msg.startsWith("TENANT_MISMATCH"))
     return new AppError(

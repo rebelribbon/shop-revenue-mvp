@@ -21,6 +21,8 @@ export type ActionError = {
   message: string;
   referenceId: string;
   fields?: Record<string, string>;
+  // An existing record the input matches (e.g. a customer with the same phone).
+  duplicate?: { id: string; name: string };
 };
 export type ActionResult<T> =
   { ok: true; data: T } | { ok: false; error: ActionError };
@@ -211,6 +213,8 @@ export function toActionError(
       message: app.message,
       referenceId: meta.requestId,
       fields: app.details?.fields as Record<string, string> | undefined,
+      duplicate: app.details?.duplicate as
+        { id: string; name: string } | undefined,
     };
   }
   logger.error({

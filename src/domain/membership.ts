@@ -60,6 +60,9 @@ export async function listTeam(tx: TenantTx) {
     .orderBy(membership.createdAt);
 }
 
+// Mirrors the cap in app.membership_guard (db/migrations/0024).
+export const MAX_STAFF_SEATS = 10;
+
 export type InviteDelivery = {
   membershipId: string;
   token: string;
@@ -86,10 +89,10 @@ export async function inviteStaff(
         inArray(membership.status, ["invited", "active"]),
       ),
     );
-  if (seats > 0) {
+  if (seats >= MAX_STAFF_SEATS) {
     throw new AppError(
       "CONFLICT",
-      "Your plan includes one staff login. Remove the current one to invite someone else.",
+      `You can have up to ${MAX_STAFF_SEATS} staff logins. Remove one to invite someone else.`,
     );
   }
   const invite = newToken();

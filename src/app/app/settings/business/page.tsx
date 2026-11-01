@@ -1,3 +1,4 @@
+import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { businessTypes, businessTypeLabels } from "@/lib/business-types";
 import Link from "next/link";
@@ -89,7 +90,7 @@ export default async function BusinessSettingsPage() {
               id="phone"
               name="phone"
               type="tel"
-              defaultValue={profile.phoneE164 ?? ""}
+              defaultValue={formatPhone(profile.phoneE164)}
             />
             <label htmlFor="addressLine1">Street address</label>
             <input
@@ -215,7 +216,7 @@ export default async function BusinessSettingsPage() {
             <p>
               <strong>{profile.dba || profile.legalName}</strong>
             </p>
-            <p>{profile.phoneE164 || "No phone"}</p>
+            <p>{formatPhone(profile.phoneE164) || "No phone"}</p>
             <p>
               {[
                 profile.addressLine1,

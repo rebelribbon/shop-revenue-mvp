@@ -35,8 +35,17 @@ const customerInput = (input: z.infer<typeof customerFields>) => ({
 
 export const createCustomerAction = defineShopAction({
   name: "createCustomer",
-  input: customerFields,
-  run: ({ tx, meta }, input) => createCustomer(tx, meta, customerInput(input)),
+  input: customerFields.extend({
+    allowDuplicate: z
+      .union([z.boolean(), z.literal("true"), z.literal("")])
+      .optional(),
+  }),
+  run: ({ tx, meta }, input) =>
+    createCustomer(tx, meta, {
+      ...customerInput(input),
+      allowDuplicate:
+        input.allowDuplicate === true || input.allowDuplicate === "true",
+    }),
   persist: (row) => ({
     id: row.id,
     displayName: row.displayName,

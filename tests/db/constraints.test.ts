@@ -45,7 +45,7 @@ beforeAll(async () => {
   adminId = (await createInternalUser("admin")).id;
 });
 
-describe("membership rules (Section 8: max one owner, max two members)", () => {
+describe("membership rules (Section 8: max one owner, up to 10 staff)", () => {
   it("rejects a second active owner", async () => {
     const solo = await seedTenant("Delta");
     const err = await sqlAs(
@@ -60,11 +60,22 @@ describe("membership rules (Section 8: max one owner, max two members)", () => {
     });
   });
 
-  it("rejects a third active member (owner + staff already active)", async () => {
+  it("allows up to 10 staff logins and rejects the 11th", async () => {
+    const shop = await seedTenant("Echo", { withStaff: true });
+    for (let n = 2; n <= 10; n++)
+      expect(
+        await sqlAs(
+          shop.owner.actor,
+          `INSERT INTO app.membership (business_id, role, status, invite_email) VALUES ($1, 'staff', 'invited', $2)`,
+          [shop.businessId, `staff${n}@example.test`],
+          shop.businessId,
+        ),
+      ).toBeNull();
     const err = await sqlAs(
-      A.owner.actor,
-      `INSERT INTO app.membership (business_id, role, status, user_id) VALUES ($1, 'owner', 'active', $2)`,
-      [A.businessId, A.staff!.userId],
+      shop.owner.actor,
+      `INSERT INTO app.membership (business_id, role, status, invite_email) VALUES ($1, 'staff', 'invited', 'eleventh@example.test')`,
+      [shop.businessId],
+      shop.businessId,
     );
     expect(err).toMatchObject({
       code: "23514",
@@ -72,63 +83,16 @@ describe("membership rules (Section 8: max one owner, max two members)", () => {
     });
   });
 
-  it("rejects a second staff seat while one is invited or active", async () => {
+  it("an extra active owner still hits the one-owner index", async () => {
     const err = await sqlAs(
       A.owner.actor,
-      `INSERT INTO app.membership (business_id, role, status, invite_email) VALUES ($1, 'staff', 'invited', 'second@example.test')`,
-      [A.businessId],
+      `INSERT INTO app.membership (business_id, role, status, user_id) VALUES ($1, 'owner', 'active', $2)`,
+      [A.businessId, A.staff!.userId],
     );
-    expect(err).toMatchObject({
-      code: "23505",
-      constraint: "membership_one_staff_seat_idx",
-    });
-  });
-
-  it("the trigger caps active members at two even if the seat indexes were bypassed", async () => {
-    // Drop the staff-seat index inside a rolled-back migration_owner transaction to
-    // prove the trigger is an independent layer.
-    const c = await rawClient("migration");
-    await c.query("BEGIN");
-    try {
-      await c.query("DROP INDEX app.membership_one_staff_seat_idx");
-      await c.query("SELECT set_config('app.business_id', $1, true)", [
-        A.businessId,
-      ]);
-      // migration_owner needs a policy to write; use the trigger directly through app_user semantics:
-      await c.query(
-        "CREATE POLICY t_tmp ON app.membership FOR ALL TO migration_owner USING (true) WITH CHECK (true)",
-      );
-      await c.query(
-        'CREATE POLICY t_tmp ON app."user" FOR ALL TO migration_owner USING (true) WITH CHECK (true)',
-      );
-      const { rows } = await c.query(
-        `INSERT INTO app."user" (auth_provider_id, display_name) VALUES ($1, 'Third') RETURNING id`,
-        [randomUUID()],
-      );
-      await expect(
-        c.query(
-          `INSERT INTO app.membership (business_id, role, status, user_id) VALUES ($1, 'staff', 'active', $2)`,
-          [A.businessId, rows[0].id],
-        ),
-      ).rejects.toMatchObject({
-        code: "23514",
-        message: expect.stringContaining("MEMBERSHIP_LIMIT"),
-      });
-    } finally {
-      await c.query("ROLLBACK");
-      await c.end();
-    }
+    expect(err).toMatchObject({ code: "23505" });
   });
 
   it("rejects invalid membership transitions (removed -> active)", async () => {
-    const id = randomUUID();
-    expect(
-      await sqlAs(
-        A.owner.actor,
-        `INSERT INTO app.membership (id, business_id, role, status, invite_email) VALUES ($1, $2, 'staff', 'invited', 'x@example.test')`,
-        [id, A.businessId],
-      ),
-    ).toMatchObject({ code: "23505" }); // seat is taken by the active staff
     const err = await sqlAs(
       A.owner.actor,
       `UPDATE app.membership SET status = 'invited' WHERE user_id = $1`,

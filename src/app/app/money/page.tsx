@@ -84,8 +84,10 @@ export default async function MoneyPage({
         </p>
         {m.unknownCostJobs > 0 && (
           <p className="notice">
-            {m.unknownCostJobs} invoice(s) need original job costs before a
-            profit estimate is available.
+            Profit is hidden because {m.unknownCostJobs}{" "}
+            {m.unknownCostJobs === 1 ? "invoiced job is" : "invoiced jobs are"}{" "}
+            missing a part cost or labor cost. Open the job and fill in what you
+            paid.
           </p>
         )}
         <Link href="/app/invoices">See unpaid invoices</Link>
