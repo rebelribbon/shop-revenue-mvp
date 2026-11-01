@@ -509,6 +509,11 @@ td button {
   border: 1px solid var(--line);
   text-transform: capitalize;
 }
+.pill-warn {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border-color: var(--warn-text);
+}
 .row,
 .money-actions {
   display: flex;
@@ -715,9 +720,10 @@ details {
   .mobile-nav {
     height: calc(72px + var(--safe-bottom));
     display: grid;
-    grid-template-columns:
-      minmax(56px, 1fr) minmax(64px, 1.2fr) minmax(48px, 1fr)
-      minmax(56px, 1fr) minmax(56px, 1fr);
+    grid-template-columns: minmax(56px, 1fr) minmax(64px, 1.2fr) minmax(
+        48px,
+        1fr
+      ) minmax(56px, 1fr) minmax(56px, 1fr);
     gap: 8px;
     align-items: center;
     position: fixed;
@@ -1125,9 +1131,10 @@ body:has(.workspace-shell) [data-ux-primary] {
     display: inline;
   }
   .shop-mobile-nav {
-    grid-template-columns:
-      minmax(56px, 1fr) minmax(104px, 1.4fr) minmax(56px, 1fr)
-      minmax(64px, 1fr);
+    grid-template-columns: minmax(56px, 1fr) minmax(104px, 1.4fr) minmax(
+        56px,
+        1fr
+      ) minmax(64px, 1fr);
     padding-inline: 8px;
   }
   body:has(.workspace-shell) [data-ux-primary] {
