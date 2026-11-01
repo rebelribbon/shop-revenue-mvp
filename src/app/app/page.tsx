@@ -114,7 +114,7 @@ export default async function HomePage({
         </Link>
         <Link className="card overview-metric" href="/app/opportunities">
           <strong>{money.total}</strong>
-          <span>Follow-ups follow-ups</span>
+          <span>Follow-ups</span>
         </Link>
       </div>
       <div className="overview-columns">

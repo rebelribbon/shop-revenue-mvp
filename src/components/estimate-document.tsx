@@ -22,7 +22,14 @@ export function EstimateDocument({
         {s.lines.map((l) => (
           <li key={l.id}>
             {l.description} — {l.quantity}{" "}
-            {l.kind === "labor" ? "hours" : "units"} ×{" "}
+            {l.kind === "labor"
+              ? l.quantity === 1
+                ? "hour"
+                : "hours"
+              : l.quantity === 1
+                ? "unit"
+                : "units"}{" "}
+            ×{" "}
             {formatMoney(l.unitPriceCents)} ={" "}
             <strong>{formatMoney(l.totalCents)}</strong>
             {l.taxable === false
