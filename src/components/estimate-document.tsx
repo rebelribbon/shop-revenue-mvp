@@ -40,8 +40,8 @@ export function EstimateDocument({
         ))}
       </ul>
       <p>
-        Subtotal: {formatMoney(s.subtotalCents)} · Tax:{" "}
-        {formatMoney(s.taxCents)}
+        Subtotal: {formatMoney(s.subtotalCents)} · Sales tax ({s.taxBps / 100}
+        %): {formatMoney(s.taxCents)}
       </p>
       <p>
         <strong>Estimate total: {formatMoney(s.totalCents)}</strong>

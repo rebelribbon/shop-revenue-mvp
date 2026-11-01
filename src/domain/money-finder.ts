@@ -98,7 +98,7 @@ function candidates(tx: TenantTx, now: Date) {
     FROM balances CROSS JOIN settings s WHERE total_cents>0 AND paid>=total_cents AND paid_at IS NOT NULL AND paid_at<=s.as_of AND created_at<=s.as_of
   ), declines AS (
     SELECT 'declined'::text AS category,coalesce(v.id,c.id) AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
-      c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
       'Declined work: ' || left(string_agg(r.description,'; ' ORDER BY r.declined_at DESC,r.id),500) AS reason,
       CASE WHEN bool_and(r.amount_cents IS NOT NULL) THEN sum(r.amount_cents) END AS amount_cents,
       max(r.declined_at) AS occurred_at,false AS renew_first,0::numeric AS lifetime
@@ -108,13 +108,13 @@ function candidates(tx: TenantTx, now: Date) {
     WHERE r.business_id=${tx.businessId} AND (r.vehicle_id IS NULL OR v.id IS NOT NULL) AND r.declined_at BETWEEN s.as_of-interval '18 months' AND s.as_of
       AND (r.status='open' OR (r.status='dismissed' AND state.status='dismissed'
         AND state.dismissed_recommendation_ids ? r.id::text))
-    GROUP BY v.id,c.id,c.display_name,v.label,c.phone_e164,c.email
+    GROUP BY v.id,c.id,c.display_name,v.label,c.phone_e164,c.email,c.email_opted_out_at
   ), latest_estimates AS (
     SELECT DISTINCT ON(quote_id) * FROM app.estimate_version WHERE business_id=${tx.businessId}
     ORDER BY quote_id,version DESC
   ), open_estimates AS (
     SELECT 'open_estimate'::text AS category,e.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
-      c.display_name AS customer_name,coalesce(v.label,e.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,coalesce(v.label,e.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
       'Unsigned estimate: ' || (e.snapshot->>'title') AS reason,(e.snapshot->>'subtotalCents')::numeric AS amount_cents,
       e.created_at AS occurred_at,e.expires_at<=s.as_of AS renew_first,0::numeric AS lifetime
     FROM latest_estimates e JOIN contacts c ON c.id=e.customer_id LEFT JOIN vehicles v ON v.id=e.vehicle_id CROSS JOIN settings s
@@ -122,7 +122,7 @@ function candidates(tx: TenantTx, now: Date) {
       AND NOT EXISTS(SELECT 1 FROM app.estimate_authorization a WHERE a.business_id=${tx.businessId} AND a.version_id=e.id)
   ), unpaid AS (
     SELECT 'unpaid_invoice'::text AS category,i.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
-      c.display_name AS customer_name,coalesce(v.label,i.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,coalesce(v.label,i.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
       'Balance due on invoice #' || i.number::text AS reason,(i.total_cents-i.paid)::numeric AS amount_cents,
       i.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
     FROM balances i JOIN contacts c ON c.id=i.customer_id LEFT JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
@@ -131,7 +131,7 @@ function candidates(tx: TenantTx, now: Date) {
     SELECT customer_id FROM declines UNION SELECT customer_id FROM open_estimates UNION SELECT customer_id FROM unpaid
   ), lapsed AS (
     SELECT 'lapsed'::text AS category,c.id AS subject_id,c.id AS customer_id,NULL::uuid AS vehicle_id,
-      c.display_name AS customer_name,NULL::text AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,NULL::text AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
       'No paid visit since ' || to_char(max(v.visit_at) AT TIME ZONE s.zone,'Mon DD, YYYY') AS reason,
       round(avg(v.total_cents) FILTER(WHERE v.visit_rank<=5)) AS amount_cents,max(v.visit_at) AS occurred_at,
       false AS renew_first,sum(v.total_cents)::numeric AS lifetime
@@ -141,11 +141,11 @@ function candidates(tx: TenantTx, now: Date) {
         AND a.status='scheduled' AND a.starts_at>=s.as_of)
       AND NOT EXISTS(SELECT 1 FROM app.recovery_item r WHERE r.business_id=${tx.businessId} AND r.category='lapsed'
         AND r.customer_id=c.id AND r.last_contact_at>s.as_of-interval '90 days')
-    GROUP BY c.id,c.display_name,c.phone_e164,c.email,s.as_of,s.zone
+    GROUP BY c.id,c.display_name,c.phone_e164,c.email,c.email_opted_out_at,s.as_of,s.zone
     HAVING max(v.visit_at) BETWEEN s.as_of-interval '24 months' AND s.as_of-interval '6 months'
   ), service_due AS (
     SELECT 'service_due'::text AS category,v.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
-      c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
       coalesce(v.next_service_description,'Next service') || ' due ' || to_char(v.next_service_on,'Mon DD, YYYY') AS reason,
       v.next_service_amount_cents::numeric AS amount_cents,(v.next_service_on::timestamp AT TIME ZONE s.zone) AS occurred_at,
       false AS renew_first,0::numeric AS lifetime
@@ -157,7 +157,7 @@ function candidates(tx: TenantTx, now: Date) {
         AND (p.visit_at AT TIME ZONE s.zone)::date>=v.next_service_on-30)
   ), home_service_due AS (
     SELECT 'service_due'::text AS category,a.id AS subject_id,c.id AS customer_id,NULL::uuid AS vehicle_id,
-      c.display_name AS customer_name,a.label AS vehicle_label,c.phone_e164 AS phone,c.email,
+      c.display_name AS customer_name,a.label AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
       coalesce(a.next_service_description,'Next service') || ' due ' || to_char(a.next_service_on,'Mon DD, YYYY') AS reason,
       a.next_service_amount_cents::numeric AS amount_cents,(a.next_service_on::timestamp AT TIME ZONE s.zone) AS occurred_at,
       false AS renew_first,0::numeric AS lifetime
@@ -259,7 +259,7 @@ async function findCandidate(
   if (!item && allowRecorded) {
     const recorded =
       await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,'serviceAssetId',r.service_asset_id,
-    'customerName',c.display_name,'vehicleLabel',coalesce(NULLIF(concat_ws(' ',v.year,v.make,v.model,v.plate),''),sa.display_name),'phone',c.phone_e164,'email',c.email,'reason','Recorded manual follow-up','amountCents',NULL,'occurredAt',r.created_at,'renewFirst',false,
+    'customerName',c.display_name,'vehicleLabel',coalesce(NULLIF(concat_ws(' ',v.year,v.make,v.model,v.plate),''),sa.display_name),'phone',c.phone_e164,'email',CASE WHEN c.email_opted_out_at IS NULL THEN c.email END,'reason','Recorded manual follow-up','amountCents',NULL,'occurredAt',r.created_at,'renewFirst',false,
     'recoveryId',r.id,'status',r.status,'snoozedUntil',r.snoozed_until,'dismissedReason',r.dismissed_reason,'lastContactAt',r.last_contact_at,'lastContactMethod',r.last_contact_method) AS data
     FROM app.recovery_item r JOIN app.customer c ON c.business_id=r.business_id AND c.id=r.customer_id
     LEFT JOIN app.vehicle v ON v.business_id=r.business_id AND v.id=r.vehicle_id

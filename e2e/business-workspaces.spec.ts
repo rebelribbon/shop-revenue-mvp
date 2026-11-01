@@ -21,6 +21,7 @@ test("home-service setup creates a real property and equipment job without vehic
     await page
       .getByLabel("What line of business are you in?")
       .selectOption("hvac");
+    await page.getByLabel(/I chose this tax rate/).check();
     await page
       .getByRole("button", { name: "Save business profile", exact: true })
       .click();
@@ -150,6 +151,7 @@ test("home-service setup creates a real property and equipment job without vehic
       await page
         .getByLabel("What line of business are you in?")
         .selectOption("automotive");
+      await page.getByLabel(/I chose this tax rate/).check();
       await page
         .getByRole("button", { name: "Save business profile", exact: true })
         .click();

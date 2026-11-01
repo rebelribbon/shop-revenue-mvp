@@ -33,6 +33,11 @@ export const business = app.table(
     timezone: text("timezone").notNull().default("America/Chicago"),
     jurisdictionCode: text("jurisdiction_code").notNull().default("US-TX"),
     taxRateBps: integer("tax_rate_bps").notNull().default(0),
+    // The owner confirms they chose the rate; reset whenever the rate changes.
+    taxRateConfirmedAt: timestamp("tax_rate_confirmed_at", {
+      withTimezone: true,
+    }),
+    taxRateConfirmedBy: uuid("tax_rate_confirmed_by"),
     laborSellRateCents: integer("labor_sell_rate_cents").notNull().default(0),
     laborCostRateCents: integer("labor_cost_rate_cents").notNull().default(0),
     partsTaxableDefault: boolean("parts_taxable_default")

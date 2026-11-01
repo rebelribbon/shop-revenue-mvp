@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { customer, estimateVersion, invoice } from "@/db/schema";
+import { business, customer, estimateVersion, invoice } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { openShareToken } from "@/lib/share-token";
 import { hashToken } from "@/lib/tokens";
@@ -58,19 +58,71 @@ export async function getDocumentShare(
   }
   if (hashToken(token) !== row.tokenHash)
     throw new AppError("CONFLICT", "Refresh and use the latest sharing link.");
+  return {
+    path: `/${kind}/${token}`,
+    kind,
+    ...(await shareRecipient(tx, row.customerId)),
+  };
+}
+
+// Texting hours many states allow for business texts (e.g. Florida 8am-9pm).
+export const QUIET_START_HOUR = 21;
+export const QUIET_END_HOUR = 8;
+
+export function inQuietHours(timeZone: string, now = new Date()) {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(now),
+  );
+  return hour >= QUIET_START_HOUR || hour < QUIET_END_HOUR;
+}
+
+// Who a document goes to, whether they have stopped texts or emails, and the
+// sender details a message footer needs.
+export async function shareRecipient(tx: TenantTx, customerId: string) {
   const [person] = await tx
     .select({
+      name: customer.displayName,
       phone: customer.phoneE164,
       email: customer.email,
-      name: customer.displayName,
+      textOptedOutAt: customer.textOptedOutAt,
+      emailOptedOutAt: customer.emailOptedOutAt,
     })
     .from(customer)
     .where(
-      and(
-        eq(customer.businessId, tx.businessId),
-        eq(customer.id, row.customerId),
-      ),
+      and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
     );
   if (!person) throw notFound("That customer");
-  return { path: `/${kind}/${token}`, kind, ...person };
+  const [b] = await tx
+    .select({
+      legalName: business.legalName,
+      dba: business.dba,
+      line1: business.addressLine1,
+      city: business.city,
+      region: business.region,
+      postal: business.postalCode,
+      timezone: business.timezone,
+    })
+    .from(business)
+    .where(eq(business.id, tx.businessId));
+  const address = b
+    ? [b.line1, [b.city, b.region].filter(Boolean).join(", "), b.postal]
+        .filter(Boolean)
+        .join(" ")
+    : "";
+  return {
+    name: person.name,
+    phone: person.phone,
+    email: person.email,
+    textStoppedOn: person.textOptedOutAt?.toISOString() ?? null,
+    emailStoppedOn: person.emailOptedOutAt?.toISOString() ?? null,
+    senderName: b?.dba || b?.legalName || "",
+    senderAddress: address,
+    quietHours: b ? inQuietHours(b.timezone) : false,
+  };
 }
+
+export type ShareRecipient = Awaited<ReturnType<typeof shareRecipient>>;

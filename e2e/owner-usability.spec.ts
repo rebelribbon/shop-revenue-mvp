@@ -27,6 +27,7 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     .fill("125");
   await page.getByLabel("Your labor cost ($/hour)", { exact: true }).fill("40");
   await page.getByLabel("Default tax rate (%)", { exact: true }).fill("8.25");
+  await page.getByLabel(/I chose this tax rate/).check();
   await page
     .getByRole("button", { name: "Save business profile", exact: true })
     .click();

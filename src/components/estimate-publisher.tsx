@@ -1,7 +1,7 @@
 "use client";
 import { useActionHydration } from "./action-hydration";
 import Link from "next/link";
-import { DocumentShare } from "./document-share";
+import { DocumentShare, type ShareData } from "./document-share";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -25,10 +25,7 @@ export function EstimatePublisher({
   const [message, setMessage] = useState("");
   const [path, setPath] = useState("");
   const [publishedId, setPublishedId] = useState("");
-  const [share, setShare] = useState<
-    | { path: string; name: string; phone: string | null; email: string | null }
-    | undefined
-  >();
+  const [share, setShare] = useState<ShareData | undefined>();
   const [pending, setPending] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const ready = useActionHydration();

@@ -1,8 +1,8 @@
+import { shareRecipient } from "./document-sharing";
 import { sealShareToken } from "@/lib/share-token";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   business,
-  customer,
   estimateAuthorization,
   estimateVersion,
   invoice,
@@ -144,23 +144,13 @@ export async function issueInvoice(
     summary: `Invoice #${row.number} issued`,
     data: { invoiceId: row.id },
   });
-  const [person] = await tx
-    .select({
-      name: customer.displayName,
-      phone: customer.phoneE164,
-      email: customer.email,
-    })
-    .from(customer)
-    .where(
-      and(
-        eq(customer.businessId, tx.businessId),
-        eq(customer.id, v.customerId),
-      ),
-    );
   return {
     id: row.id,
     path: `/invoice/${token.token}`,
-    share: { path: `/invoice/${token.token}`, ...person },
+    share: {
+      path: `/invoice/${token.token}`,
+      ...(await shareRecipient(tx, v.customerId)),
+    },
   };
 }
 export async function listInvoices(tx: TenantTx, id?: string, jobId?: string) {
