@@ -1,24 +1,78 @@
-import {test,expect} from '@playwright/test';
-import {signInWithPassword} from './helpers';
-test('Money Finder records real work, manual follow-up and source-linked jobs',async({page},info)=>{
- const name=`Money ${Date.now()} ${info.project.name}`;
- await signInWithPassword(page,'owner.a@shop-a.test');
- await page.goto('/app/customers/new');await page.getByLabel('First name').fill(name);
- await page.getByRole('button',{name:'Add customer',exact:true}).click();await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
- await page.getByRole('link',{name:'Vehicles',exact:true}).click();await page.getByLabel('Make',{exact:true}).fill('Honda');await page.getByRole('button',{name:'Add vehicle',exact:true}).click();await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
- await page.getByRole('link',{name:'Service & notes',exact:true}).click();await page.getByText('Record declined / postponed work',{exact:true}).click();
- await page.getByLabel('Work recommended').fill('Brake pads postponed');await page.getByLabel('Quoted price before tax ($, optional)').fill('250');
- await page.getByRole('button',{name:'Save declined work',exact:true}).click();await expect(page.getByRole('heading',{name:'Brake pads postponed',exact:true})).toBeVisible();
- await page.goto(`/app?category=declined&q=${encodeURIComponent(name)}`);
- const item=page.locator('article.money-opportunity');await expect(item).toHaveCount(1);await expect(item).toContainText('$250.00');
- await item.getByText('Track follow-up',{exact:true}).click();await item.getByRole('button',{name:'Snooze 30 days',exact:true}).click();await expect(item).toHaveCount(0);
- await page.getByRole('link',{name:'Snoozed',exact:true}).click();await expect(item).toHaveCount(1);await item.getByRole('button',{name:'Unsnooze',exact:true}).click();await expect(item).toHaveCount(0);
- await page.getByRole('link',{name:'Active',exact:true}).click();await expect(item).toHaveCount(1);
- await item.getByText('Track follow-up',{exact:true}).click();await item.getByLabel('Contact method').selectOption('in_person');await item.getByLabel('Contact notes').fill('Discussed at the counter');
- await item.getByRole('button',{name:'Log manual contact',exact:true}).click();await expect(item).toContainText('contacted');await expect(item).toContainText('(in person)');
- await page.screenshot({path:`test-results/money-finder-${info.project.name}.png`,fullPage:true});
- await item.getByRole('button',{name:'New repair / re-quote',exact:true}).click();await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
- await expect(page.getByLabel('Customer',{exact:true})).not.toHaveValue('');await expect(page.getByLabel('Vehicle',{exact:true})).not.toHaveValue('');
- await page.getByLabel('Job name').fill(`Source-linked brakes ${info.project.name}`);await page.getByRole('button',{name:'Add part',exact:true}).click();await page.getByLabel('Description',{exact:true}).fill('Brake pads');await page.getByLabel('Unit selling price',{exact:true}).fill('250');await page.getByRole('button',{name:'Save job sheet',exact:true}).click();
- await expect(page.getByRole('heading',{name:`Source-linked brakes ${info.project.name}`,exact:true})).toBeVisible();
+import { test, expect } from "@playwright/test";
+import { signInWithPassword } from "./helpers";
+test("Money Finder records real work, manual follow-up and source-linked jobs", async ({
+  page,
+}, info) => {
+  const name = `Money ${Date.now()} ${info.project.name}`;
+  await signInWithPassword(page, "owner.a@shop-a.test");
+  await page.goto("/app/customers/new");
+  await page.getByLabel("First name").fill(name);
+  await page.getByRole("button", { name: "Add customer", exact: true }).click();
+  await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
+  await page.getByRole("link", { name: "Vehicles", exact: true }).click();
+  await page.getByLabel("Make", { exact: true }).fill("Honda");
+  await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
+  await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
+  await page
+    .getByRole("link", { name: "Service & notes", exact: true })
+    .click();
+  await page
+    .getByText("Record declined / postponed work", { exact: true })
+    .click();
+  await page.getByLabel("Work recommended").fill("Brake pads postponed");
+  await page.getByLabel("Quoted price before tax ($, optional)").fill("250");
+  await page
+    .getByRole("button", { name: "Save declined work", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Brake pads postponed", exact: true }),
+  ).toBeVisible();
+  await page.goto(`/app?category=declined&q=${encodeURIComponent(name)}`);
+  const item = page.locator("article.money-opportunity");
+  await expect(item).toHaveCount(1);
+  await expect(item).toContainText("$250.00");
+  await item.getByText("Track follow-up", { exact: true }).click();
+  await item
+    .getByRole("button", { name: "Snooze 30 days", exact: true })
+    .click();
+  await expect(item).toHaveCount(0);
+  await page.getByRole("link", { name: "Snoozed", exact: true }).click();
+  await expect(item).toHaveCount(1);
+  await item.getByRole("button", { name: "Show again", exact: true }).click();
+  await expect(item).toHaveCount(0);
+  await page.getByRole("link", { name: "Active", exact: true }).click();
+  await expect(item).toHaveCount(1);
+  await item.getByText("Track follow-up", { exact: true }).click();
+  await item.getByLabel("Contact method").selectOption("in_person");
+  await item.getByLabel("Contact notes").fill("Discussed at the counter");
+  await item
+    .getByRole("button", { name: "Save follow-up", exact: true })
+    .click();
+  await expect(item).toContainText("contacted");
+  await expect(item).toContainText("(in person)");
+  await page.screenshot({
+    path: `test-results/money-finder-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await item.getByRole("button", { name: "Start job", exact: true }).click();
+  await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
+  await expect(page.getByLabel("Customer", { exact: true })).not.toHaveValue(
+    "",
+  );
+  await expect(page.getByLabel("Vehicle", { exact: true })).not.toHaveValue("");
+  await page
+    .getByLabel("Job name")
+    .fill(`Source-linked brakes ${info.project.name}`);
+  await page.getByRole("button", { name: "Add part", exact: true }).click();
+  await page.getByLabel("Description", { exact: true }).fill("Brake pads");
+  await page.getByLabel("Unit selling price", { exact: true }).fill("250");
+  await page
+    .getByRole("button", { name: "Save job sheet", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: `Source-linked brakes ${info.project.name}`,
+      exact: true,
+    }),
+  ).toBeVisible();
 });

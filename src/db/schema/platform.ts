@@ -30,17 +30,37 @@ export const activity = app.table(
     actorId: uuid("actor_id"),
     summary: text("summary").notNull(),
     data: jsonb("data").notNull().default({}),
-    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     unique("activity_business_id_id_key").on(t.businessId, t.id),
-    index("activity_business_occurred_idx").on(t.businessId, t.occurredAt.desc()),
-    index("activity_business_subject_idx").on(t.businessId, t.subjectType, t.subjectId),
-    check("activity_actor_type_check", sql`${t.actorType} IN ('user', 'customer', 'system', 'support')`),
+    index("activity_business_occurred_idx").on(
+      t.businessId,
+      t.occurredAt.desc(),
+    ),
+    index("activity_business_subject_idx").on(
+      t.businessId,
+      t.subjectType,
+      t.subjectId,
+    ),
+    check(
+      "activity_actor_type_check",
+      sql`${t.actorType} IN ('user', 'customer', 'system', 'support')`,
+    ),
     check("activity_kind_check", sql`${t.kind} ~ '^[a-z_]+\\.[a-z_]+$'`),
     check("activity_summary_check", sql`length(${t.summary}) <= 280`),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "activity_business_fk" }),
-    foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "activity_created_by_fk" }),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "activity_business_fk",
+    }),
+    foreignKey({
+      columns: [t.createdByUserId],
+      foreignColumns: [user.id],
+      name: "activity_created_by_fk",
+    }),
   ],
 );
 
@@ -65,7 +85,9 @@ export const auditEvent = app.table(
     ip: inet("ip"),
     requestId: text("request_id").notNull(),
     supportSessionId: uuid("support_session_id"),
-    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     unique("audit_event_business_id_id_key").on(t.businessId, t.id),
@@ -80,9 +102,20 @@ export const auditEvent = app.table(
       "audit_event_platform_scope_check",
       sql`${t.businessId} IS NOT NULL OR ${t.actorType} IN ('internal', 'system')`,
     ),
-    check("audit_event_action_check", sql`${t.action} ~ '^[a-z_]+(\\.[a-z_]+)+$'`),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "audit_event_business_fk" }),
-    foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "audit_event_created_by_fk" }),
+    check(
+      "audit_event_action_check",
+      sql`${t.action} ~ '^[a-z_]+(\\.[a-z_]+)+$'`,
+    ),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "audit_event_business_fk",
+    }),
+    foreignKey({
+      columns: [t.createdByUserId],
+      foreignColumns: [user.id],
+      name: "audit_event_created_by_fk",
+    }),
     foreignKey({
       columns: [t.supportSessionId],
       foreignColumns: [supportSession.id],
@@ -110,9 +143,16 @@ export const requestIdempotency = app.table(
   },
   (t) => [
     unique("request_idempotency_business_id_id_key").on(t.businessId, t.id),
-    unique("request_idempotency_client_request_key").on(t.businessId, t.clientRequestId),
+    unique("request_idempotency_client_request_key").on(
+      t.businessId,
+      t.clientRequestId,
+    ),
     index("request_idempotency_created_idx").on(t.createdAt),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "request_idempotency_business_fk" }),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "request_idempotency_business_fk",
+    }),
     foreignKey({
       columns: [t.createdByUserId],
       foreignColumns: [user.id],
@@ -140,15 +180,26 @@ export const file = app.table(
       "file_kind_check",
       sql`${t.kind} IN ('estimate_photo', 'signature', 'estimate_pdf', 'invoice_pdf', 'authorization_pdf', 'logo', 'import_source', 'export')`,
     ),
-    check("file_status_check", sql`${t.status} IN ('pending', 'ready', 'quarantined')`),
+    check(
+      "file_status_check",
+      sql`${t.status} IN ('pending', 'ready', 'quarantined')`,
+    ),
     check("file_byte_size_check", sql`${t.byteSize} >= 0`),
     check("file_sha256_check", sql`${t.sha256} ~ '^[0-9a-f]{64}$'`),
     check(
       "file_storage_key_prefix_check",
       sql`${t.storageKey} LIKE 'b/' || ${t.businessId}::text || '/' || ${t.kind} || '/%'`,
     ),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "file_business_fk" }),
-    foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "file_created_by_fk" }),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "file_business_fk",
+    }),
+    foreignKey({
+      columns: [t.createdByUserId],
+      foreignColumns: [user.id],
+      name: "file_created_by_fk",
+    }),
   ],
 );
 
@@ -167,16 +218,24 @@ export const webhookEvent = app.table(
     status: text("status").notNull().default("received"),
     attempts: integer("attempts").notNull().default(0),
     lastError: text("last_error"),
-    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     appliedAt: timestamp("applied_at", { withTimezone: true }),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
     ...timestamps(),
   },
   (t) => [
-    unique("webhook_event_provider_event_key").on(t.provider, t.providerEventId),
+    unique("webhook_event_provider_event_key").on(
+      t.provider,
+      t.providerEventId,
+    ),
     index("webhook_event_status_received_idx").on(t.status, t.receivedAt),
     index("webhook_event_business_received_idx").on(t.businessId, t.receivedAt),
-    check("webhook_event_provider_check", sql`${t.provider} IN ('stripe', 'twilio', 'postmark')`),
+    check(
+      "webhook_event_provider_check",
+      sql`${t.provider} IN ('stripe', 'twilio', 'postmark')`,
+    ),
     check(
       "webhook_event_status_check",
       sql`${t.status} IN ('received', 'processing', 'applied', 'ignored', 'failed', 'dead')`,
@@ -184,7 +243,11 @@ export const webhookEvent = app.table(
     check("webhook_event_attempts_check", sql`${t.attempts} BETWEEN 0 AND 8`),
     // Only signature-verified events are ever stored (invalid ones are rejected at the route).
     check("webhook_event_signature_check", sql`${t.signatureValid}`),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "webhook_event_business_fk" }),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "webhook_event_business_fk",
+    }),
   ],
 );
 
@@ -207,7 +270,11 @@ export const legalPolicy = app.table(
     ...timestamps(),
   },
   (t) => [
-    unique("legal_policy_version_key").on(t.jurisdictionCode, t.kind, t.version),
+    unique("legal_policy_version_key").on(
+      t.jurisdictionCode,
+      t.kind,
+      t.version,
+    ),
     uniqueIndex("legal_policy_one_approved_idx")
       .on(t.jurisdictionCode, t.kind)
       .where(sql`${t.status} = 'approved'`),
@@ -215,22 +282,41 @@ export const legalPolicy = app.table(
       "legal_policy_kind_check",
       sql`${t.kind} IN ('estimate_authorization', 'invoice_terms', 'sms_consent_disclosure', 'recovery_footer', 'retention_rules', 'texting_attestation')`,
     ),
-    check("legal_policy_status_check", sql`${t.status} IN ('draft', 'approved', 'retired')`),
+    check(
+      "legal_policy_status_check",
+      sql`${t.status} IN ('draft', 'approved', 'retired')`,
+    ),
     check("legal_policy_version_check", sql`${t.version} >= 1`),
-    check("legal_policy_jurisdiction_check", sql`${t.jurisdictionCode} ~ '^[A-Z]{2}-[A-Z]{2}$'`),
-    check("legal_policy_body_hash_check", sql`${t.bodySha256} = encode(sha256(convert_to(${t.body}, 'UTF8')), 'hex')`),
+    check(
+      "legal_policy_jurisdiction_check",
+      sql`${t.jurisdictionCode} ~ '^[A-Z]{2}-[A-Z]{2}$'`,
+    ),
+    check(
+      "legal_policy_body_hash_check",
+      sql`${t.bodySha256} = encode(sha256(convert_to(${t.body}, 'UTF8')), 'hex')`,
+    ),
     check(
       "legal_policy_approval_check",
       sql`${t.status} = 'draft' OR (${t.approvedBy} IS NOT NULL AND ${t.approvedAt} IS NOT NULL AND length(btrim(${t.approvalReference})) > 0)`,
     ),
     // Approval requires a second admin (I5).
-    check("legal_policy_second_admin_check", sql`${t.approvedBy} IS DISTINCT FROM ${t.createdByInternalUserId}`),
-    check("legal_policy_retired_check", sql`(${t.status} = 'retired') = (${t.retiredAt} IS NOT NULL)`),
+    check(
+      "legal_policy_second_admin_check",
+      sql`${t.approvedBy} IS DISTINCT FROM ${t.createdByInternalUserId}`,
+    ),
+    check(
+      "legal_policy_retired_check",
+      sql`(${t.status} = 'retired') = (${t.retiredAt} IS NOT NULL)`,
+    ),
     foreignKey({
       columns: [t.createdByInternalUserId],
       foreignColumns: [internalUser.id],
       name: "legal_policy_created_by_fk",
     }),
-    foreignKey({ columns: [t.approvedBy], foreignColumns: [internalUser.id], name: "legal_policy_approved_by_fk" }),
+    foreignKey({
+      columns: [t.approvedBy],
+      foreignColumns: [internalUser.id],
+      name: "legal_policy_approved_by_fk",
+    }),
   ],
 );

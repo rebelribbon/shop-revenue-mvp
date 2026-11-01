@@ -20,9 +20,16 @@ export type CreateBusinessInput = {
 // One transaction: business, its default location (D4), the owner's invited
 // membership and the audit rows. Returns the plaintext invite token once, for
 // delivery after commit; only its hash is stored.
-export async function createBusiness(actor: InternalActor, meta: RequestMeta, input: CreateBusinessInput) {
+export async function createBusiness(
+  actor: InternalActor,
+  meta: RequestMeta,
+  input: CreateBusinessInput,
+) {
   if (!input.owner.email && !input.owner.phoneE164) {
-    throw new AppError("VALIDATION", "The owner needs an email or a mobile number for the invite.");
+    throw new AppError(
+      "VALIDATION",
+      "The owner needs an email or a mobile number for the invite.",
+    );
   }
   const invite = newToken();
   return withAdmin(actor, async (tx) => {
@@ -42,7 +49,11 @@ export async function createBusiness(actor: InternalActor, meta: RequestMeta, in
       businessId: b.id,
       actor: { type: "internal", id: actor.internalUserId },
     }) as TenantTx;
-    await tx.insert(location).values({ businessId: b.id, name: input.dba || input.legalName, isDefault: true });
+    await tx.insert(location).values({
+      businessId: b.id,
+      name: input.dba || input.legalName,
+      isDefault: true,
+    });
     const [m] = await tx
       .insert(membership)
       .values({
@@ -68,7 +79,11 @@ export async function createBusiness(actor: InternalActor, meta: RequestMeta, in
       targetId: m.id,
       after: { role: "owner" },
     });
-    return { businessId: b.id, ownerMembershipId: m.id, inviteToken: invite.token };
+    return {
+      businessId: b.id,
+      ownerMembershipId: m.id,
+      inviteToken: invite.token,
+    };
   });
 }
 
@@ -85,14 +100,29 @@ export const PROFILE_FIELDS = [
   "taxRateBps",
 ] as const;
 
-export type BusinessProfile = Partial<Record<(typeof PROFILE_FIELDS)[number], string | number | null>>;
+export type BusinessProfile = Partial<
+  Record<(typeof PROFILE_FIELDS)[number], string | number | null>
+>;
 
-export async function updateBusinessProfile(tx: TenantTx, meta: RequestMeta, input: BusinessProfile) {
-  const [before] = await tx.select().from(business).where(eq(business.id, tx.businessId));
+export async function updateBusinessProfile(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: BusinessProfile,
+) {
+  const [before] = await tx
+    .select()
+    .from(business)
+    .where(eq(business.id, tx.businessId));
   if (!before) throw new AppError("NOT_FOUND", "Business not found.");
-  const patch = Object.fromEntries(PROFILE_FIELDS.filter((k) => k in input).map((k) => [k, input[k]]));
+  const patch = Object.fromEntries(
+    PROFILE_FIELDS.filter((k) => k in input).map((k) => [k, input[k]]),
+  );
   if (!Object.keys(patch).length) return before;
-  const [after] = await tx.update(business).set(patch).where(eq(business.id, tx.businessId)).returning();
+  const [after] = await tx
+    .update(business)
+    .set(patch)
+    .where(eq(business.id, tx.businessId))
+    .returning();
   await tx
     .update(location)
     .set({
@@ -102,8 +132,13 @@ export async function updateBusinessProfile(tx: TenantTx, meta: RequestMeta, inp
       region: after.region,
       postalCode: after.postalCode,
     })
-    .where(sql`${location.businessId} = ${tx.businessId} AND ${location.isDefault}`);
-  const pick = (r: typeof before) => Object.fromEntries(Object.keys(patch).map((k) => [k, r[k as keyof typeof r]]));
+    .where(
+      sql`${location.businessId} = ${tx.businessId} AND ${location.isDefault}`,
+    );
+  const pick = (r: typeof before) =>
+    Object.fromEntries(
+      Object.keys(patch).map((k) => [k, r[k as keyof typeof r]]),
+    );
   await audit(tx, meta, {
     action: "business.profile_updated",
     targetType: "business",

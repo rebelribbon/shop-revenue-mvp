@@ -11,7 +11,8 @@ import { loadEnv, requireEnv } from "../lib/env";
 loadEnv();
 const name = `rls_selftest_${Date.now()}`;
 const bootstrap = requireEnv("DATABASE_URL_BOOTSTRAP");
-const withDb = (url: string) => Object.assign(new URL(url), { pathname: `/${name}` }).toString();
+const withDb = (url: string) =>
+  Object.assign(new URL(url), { pathname: `/${name}` }).toString();
 const root = new pg.Client({ connectionString: bootstrap });
 await root.connect();
 await root.query(`CREATE DATABASE "${name}"`);
@@ -26,16 +27,26 @@ try {
       admin_user: requireEnv("ADMIN_USER_PASSWORD"),
     },
   });
-  await migrateDatabase(withDb(requireEnv("DATABASE_URL_MIGRATION")), { quiet: true });
-  const c = new pg.Client({ connectionString: withDb(requireEnv("DATABASE_URL_MIGRATION")) });
+  await migrateDatabase(withDb(requireEnv("DATABASE_URL_MIGRATION")), {
+    quiet: true,
+  });
+  const c = new pg.Client({
+    connectionString: withDb(requireEnv("DATABASE_URL_MIGRATION")),
+  });
   await c.connect();
-  if ((await findRlsViolations(c)).length) throw new Error("self-test setup: clean chain already has violations");
-  await c.query(readFileSync("tests/fixtures/migration-without-rls.sql", "utf8"));
+  if ((await findRlsViolations(c)).length)
+    throw new Error("self-test setup: clean chain already has violations");
+  await c.query(
+    readFileSync("tests/fixtures/migration-without-rls.sql", "utf8"),
+  );
   const violations = await findRlsViolations(c);
   await c.end();
   const caught = violations.find((v) => v.table === "app.forgot_rls");
-  if (!caught) throw new Error("RLS check did NOT catch a tenant table added without RLS");
-  console.log(`RLS check self-test passed: rejected app.forgot_rls (${caught.problems.join(", ")})`);
+  if (!caught)
+    throw new Error("RLS check did NOT catch a tenant table added without RLS");
+  console.log(
+    `RLS check self-test passed: rejected app.forgot_rls (${caught.problems.join(", ")})`,
+  );
 } finally {
   await root.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`);
   await root.end();

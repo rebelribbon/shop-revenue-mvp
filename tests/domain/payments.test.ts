@@ -1,3 +1,5 @@
+import { testPolicySnapshot } from "../helpers/policy";
+import { signTestEstimate as signEstimate } from "../helpers/authorization";
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -11,7 +13,7 @@ import {
 } from "@/db/schema";
 import { withTenant, runInContext } from "@/db/tenant";
 import { createCustomer, createVehicle } from "@/domain/customers";
-import { signEstimate } from "@/domain/estimates";
+
 import {
   issueInvoice,
   listInvoices,
@@ -58,6 +60,7 @@ async function fixture() {
         tokenHash: token.hash,
         expiresAt: new Date(Date.now() + 3600000),
         snapshot: {
+          authorizationPolicy: await testPolicySnapshot(),
           title: "Repair",
           shopName: "Shop",
           customerName: "Customer",
@@ -273,18 +276,25 @@ describe("online invoice payments", () => {
     for (const terminal of ["failed", "expired"]) {
       const f = await fixture();
       const a = await reserve(f);
-      const old = session(f, a, { status: "complete", payment_status: "unpaid" });
+      const old = session(f, a, {
+        status: "complete",
+        payment_status: "unpaid",
+      });
       await withPaymentTenant(f.businessId, (tx) =>
         settleCheckout(tx, meta(), a.id, f.accountId, old),
       );
-      await withPaymentTenant(f.businessId, (tx) => tx.execute(
-        sql`update app.invoice_checkout set status=${terminal} where id=${a.id}`,
-      ));
+      await withPaymentTenant(f.businessId, (tx) =>
+        tx.execute(
+          sql`update app.invoice_checkout set status=${terminal} where id=${a.id}`,
+        ),
+      );
       const replacement = await reserve(f);
       await withPaymentTenant(f.businessId, (tx) =>
         settleCheckout(tx, meta(), a.id, f.accountId, old),
       );
-      const rows = await withPaymentTenant(f.businessId, (tx) => tx.select().from(invoiceCheckout));
+      const rows = await withPaymentTenant(f.businessId, (tx) =>
+        tx.select().from(invoiceCheckout),
+      );
       expect(rows.find((r) => r.id === a.id)?.status).toBe(terminal);
       expect((await reserve(f)).id).toBe(replacement.id);
       expect((await readPublicInvoice(f.token))?.paidCents).toBe(0);
@@ -332,28 +342,59 @@ describe("online invoice payments", () => {
   });
 });
 describe("Stripe refunds", () => {
-  it.each(["failed", "canceled"] as const)("preserves %s refunds on stale pending reads and rejects provider identity substitution", async (terminal) => {
-    const f = await fixture();
-    const p = await pay(f);
-    const request = { paymentId: p.id, amountCents: 10000, reason: "Adjustment", requestId: randomUUID() };
-    await withTenant(f.businessId, f.owner.actor, (tx) => reserveRefund(tx, meta(), request));
-    const refund = {
-      id: `re_${randomUUID()}`, payment_intent: p.stripePaymentIntentId,
-      currency: "usd", amount: 10000, status: terminal,
-      metadata: { refund_request_id: request.requestId },
-    } as unknown as Stripe.Refund;
-    await withPaymentTenant(f.businessId, (tx) => settleRefund(tx, meta(), f.accountId, refund));
-    const next = { ...request, requestId: randomUUID() };
-    await withTenant(f.businessId, f.owner.actor, (tx) => reserveRefund(tx, meta(), next));
-    await withPaymentTenant(f.businessId, (tx) => settleRefund(tx, meta(), f.accountId, { ...refund, status: "pending" }));
-    const rows = await withPaymentTenant(f.businessId, (tx) => tx.select().from(invoiceRefund));
-    expect(rows.find((r) => r.id === request.requestId)?.status).toBe(terminal);
-    expect(rows.find((r) => r.id === next.requestId)?.status).toBe("creating");
-    await expect(withPaymentTenant(f.businessId, (tx) => settleRefund(tx, meta(), f.accountId, {
-      ...refund, id: `re_${randomUUID()}`, status: "succeeded",
-    }))).rejects.toThrow(/match/);
-    expect((await readPublicInvoice(f.token))?.paidCents).toBe(10000);
-  });
+  it.each(["failed", "canceled"] as const)(
+    "preserves %s refunds on stale pending reads and rejects provider identity substitution",
+    async (terminal) => {
+      const f = await fixture();
+      const p = await pay(f);
+      const request = {
+        paymentId: p.id,
+        amountCents: 10000,
+        reason: "Adjustment",
+        requestId: randomUUID(),
+      };
+      await withTenant(f.businessId, f.owner.actor, (tx) =>
+        reserveRefund(tx, meta(), request),
+      );
+      const refund = {
+        id: `re_${randomUUID()}`,
+        payment_intent: p.stripePaymentIntentId,
+        currency: "usd",
+        amount: 10000,
+        status: terminal,
+        metadata: { refund_request_id: request.requestId },
+      } as unknown as Stripe.Refund;
+      await withPaymentTenant(f.businessId, (tx) =>
+        settleRefund(tx, meta(), f.accountId, refund),
+      );
+      const next = { ...request, requestId: randomUUID() };
+      await withTenant(f.businessId, f.owner.actor, (tx) =>
+        reserveRefund(tx, meta(), next),
+      );
+      await withPaymentTenant(f.businessId, (tx) =>
+        settleRefund(tx, meta(), f.accountId, { ...refund, status: "pending" }),
+      );
+      const rows = await withPaymentTenant(f.businessId, (tx) =>
+        tx.select().from(invoiceRefund),
+      );
+      expect(rows.find((r) => r.id === request.requestId)?.status).toBe(
+        terminal,
+      );
+      expect(rows.find((r) => r.id === next.requestId)?.status).toBe(
+        "creating",
+      );
+      await expect(
+        withPaymentTenant(f.businessId, (tx) =>
+          settleRefund(tx, meta(), f.accountId, {
+            ...refund,
+            id: `re_${randomUUID()}`,
+            status: "succeeded",
+          }),
+        ),
+      ).rejects.toThrow(/match/);
+      expect((await readPublicInvoice(f.token))?.paidCents).toBe(10000);
+    },
+  );
   it("requires owner, caps cumulative requests, preserves pending balance and imports success once", async () => {
     const f = await fixture();
     const p = await pay(f);
@@ -719,21 +760,33 @@ it("releases definitively rejected refunds while preserving uncertain attempts",
     const confirmed = {
       id: `re_${randomUUID()}`,
       payment_intent: p.stripePaymentIntentId,
-      currency: "usd", amount: 10000, status: "succeeded",
+      currency: "usd",
+      amount: 10000,
+      status: "succeeded",
       metadata: { refund_request_id: retry.requestId },
     } as unknown as Stripe.Refund;
     provider.refunds.create.mockResolvedValue(confirmed);
     provider.refunds.retrieve.mockResolvedValue(confirmed);
     await requestStripeRefund(
-      { businessId: f.businessId, actor: f.owner.actor }, meta(), retry,
+      { businessId: f.businessId, actor: f.owner.actor },
+      meta(),
+      retry,
     );
-    expect(provider.refunds.create.mock.calls[2]).toEqual(provider.refunds.create.mock.calls[1]);
+    expect(provider.refunds.create.mock.calls[2]).toEqual(
+      provider.refunds.create.mock.calls[1],
+    );
     await requestStripeRefund(
-      { businessId: f.businessId, actor: f.owner.actor }, meta(), retry,
+      { businessId: f.businessId, actor: f.owner.actor },
+      meta(),
+      retry,
     );
     expect(provider.refunds.create).toHaveBeenCalledTimes(3);
-    const [invoice] = await withTenant(f.businessId, f.owner.actor, (tx) => listInvoices(tx));
-    expect(invoice.entries.filter((entry) => entry.method === "stripe_refund")).toHaveLength(1);
+    const [invoice] = await withTenant(f.businessId, f.owner.actor, (tx) =>
+      listInvoices(tx),
+    );
+    expect(
+      invoice.entries.filter((entry) => entry.method === "stripe_refund"),
+    ).toHaveLength(1);
     expect((await readPublicInvoice(f.token))?.paidCents).toBe(0);
   } finally {
     spy.mockRestore();

@@ -21,7 +21,11 @@ export type InterleaveResult = {
 
 export async function runInterleaved(
   tenants: InterleaveTenant[],
-  opts: { requests?: number; concurrency?: number; noContextQuery?: () => Promise<number> } = {},
+  opts: {
+    requests?: number;
+    concurrency?: number;
+    noContextQuery?: () => Promise<number>;
+  } = {},
 ): Promise<InterleaveResult> {
   const total = opts.requests ?? 1000;
   const concurrency = opts.concurrency ?? 50;
@@ -47,7 +51,10 @@ export async function runInterleaved(
     if (i % 10 === 9) {
       noContextRequests++;
       const n = await noContext();
-      if (n !== 0) violations.push(`request ${i}: query without tenant context saw ${n} rows`);
+      if (n !== 0)
+        violations.push(
+          `request ${i}: query without tenant context saw ${n} rows`,
+        );
       return;
     }
     tenantRequests++;
@@ -55,19 +62,44 @@ export async function runInterleaved(
     const marker = randomUUID();
     await withTenant(t.businessId, t.actor, async (tx) => {
       const c = clientOf(tx);
-      const ctx = (await c.query("SELECT current_setting('app.business_id', true) AS b")).rows[0].b;
-      if (ctx !== t.businessId) violations.push(`request ${i}: context ${ctx} != ${t.businessId}`);
-      await audit(tx, { requestId: `interleave-${i}` }, { action: "test.interleave", targetType: "test", targetId: marker });
+      const ctx = (
+        await c.query("SELECT current_setting('app.business_id', true) AS b")
+      ).rows[0].b;
+      if (ctx !== t.businessId)
+        violations.push(`request ${i}: context ${ctx} != ${t.businessId}`);
+      await audit(
+        tx,
+        { requestId: `interleave-${i}` },
+        { action: "test.interleave", targetType: "test", targetId: marker },
+      );
       // Yield inside the transaction so other requests interleave on other connections.
       await new Promise((r) => setTimeout(r, Math.random() * 3));
-      const biz = (await c.query("SELECT id FROM app.business")).rows.map((r) => r.id);
-      if (biz.length !== 1 || biz[0] !== t.businessId) violations.push(`request ${i}: saw businesses ${biz.join(",")}`);
-      const foreign = (await c.query("SELECT count(*)::int n FROM app.audit_event WHERE business_id <> $1", [t.businessId])).rows[0].n;
-      if (foreign !== 0) violations.push(`request ${i}: saw ${foreign} foreign audit rows`);
-      const mine = (await c.query("SELECT business_id FROM app.audit_event WHERE target_id = $1", [marker])).rows;
-      if (mine.length !== 1 || mine[0].business_id !== t.businessId) violations.push(`request ${i}: own write not visible exactly once`);
-      const members = (await c.query("SELECT DISTINCT business_id FROM app.membership")).rows.map((r) => r.business_id);
-      if (members.some((b) => b !== t.businessId)) violations.push(`request ${i}: saw foreign memberships`);
+      const biz = (await c.query("SELECT id FROM app.business")).rows.map(
+        (r) => r.id,
+      );
+      if (biz.length !== 1 || biz[0] !== t.businessId)
+        violations.push(`request ${i}: saw businesses ${biz.join(",")}`);
+      const foreign = (
+        await c.query(
+          "SELECT count(*)::int n FROM app.audit_event WHERE business_id <> $1",
+          [t.businessId],
+        )
+      ).rows[0].n;
+      if (foreign !== 0)
+        violations.push(`request ${i}: saw ${foreign} foreign audit rows`);
+      const mine = (
+        await c.query(
+          "SELECT business_id FROM app.audit_event WHERE target_id = $1",
+          [marker],
+        )
+      ).rows;
+      if (mine.length !== 1 || mine[0].business_id !== t.businessId)
+        violations.push(`request ${i}: own write not visible exactly once`);
+      const members = (
+        await c.query("SELECT DISTINCT business_id FROM app.membership")
+      ).rows.map((r) => r.business_id);
+      if (members.some((b) => b !== t.businessId))
+        violations.push(`request ${i}: saw foreign memberships`);
     });
   }
 
@@ -82,5 +114,11 @@ export async function runInterleaved(
     }
   }
   await Promise.all(Array.from({ length: concurrency }, lane));
-  return { requests: total, tenantRequests, noContextRequests, violations, ms: Date.now() - started };
+  return {
+    requests: total,
+    tenantRequests,
+    noContextRequests,
+    violations,
+    ms: Date.now() - started,
+  };
 }

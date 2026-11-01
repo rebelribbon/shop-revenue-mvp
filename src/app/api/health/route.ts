@@ -14,24 +14,42 @@ export async function GET() {
   const started = Date.now();
   try {
     await pingDatabase();
-    const maintenance=process.env.CRON_SECRET?await maintenanceStatus().catch(()=>({healthy:false,lastSuccessAt:null})):null;
+    const maintenance = process.env.CRON_SECRET
+      ? await maintenanceStatus().catch(() => ({
+          healthy: false,
+          lastSuccessAt: null,
+        }))
+      : null;
     return Response.json(
       {
         status: "ok",
         database: { ok: true, latencyMs: Date.now() - started },
-        backgroundProcessing: maintenance?{mode:process.env.MAINTENANCE_SCHEDULE_ENABLED==="true"?"scheduled":"manual",...maintenance}:{mode:"unconfigured",healthy:false},
-        version: process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev",
+        backgroundProcessing: maintenance
+          ? {
+              mode:
+                process.env.MAINTENANCE_SCHEDULE_ENABLED === "true"
+                  ? "scheduled"
+                  : "manual",
+              ...maintenance,
+            }
+          : { mode: "unconfigured", healthy: false },
+        version:
+          process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? "dev",
       },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
     // Keep health responses and logs free of connection strings, credentials,
     // query text, and customer data while still making hosted failures diagnosable.
-    const safeError = error && typeof error === "object" ? (error as { name?: unknown; code?: unknown }) : null;
+    const safeError =
+      error && typeof error === "object"
+        ? (error as { name?: unknown; code?: unknown })
+        : null;
     console.error(
       JSON.stringify({
         event: "health.database_unavailable",
-        errorName: typeof safeError?.name === "string" ? safeError.name : "UnknownError",
+        errorName:
+          typeof safeError?.name === "string" ? safeError.name : "UnknownError",
         errorCode: typeof safeError?.code === "string" ? safeError.code : null,
       }),
     );
@@ -41,4 +59,3 @@ export async function GET() {
     );
   }
 }
-

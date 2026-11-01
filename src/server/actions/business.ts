@@ -20,22 +20,47 @@ const saveBusinessProfile = defineShopAction({
     region: z.string().max(60).optional().or(z.literal("")),
     postalCode: z.string().max(20).optional().or(z.literal("")),
     timezone: z.string().min(1).max(100),
+    taxPercent: z.coerce.number().min(0).max(20).optional(),
+    laborSellRate: z.coerce.number().min(0).max(1000000).optional(),
+    laborCostRate: z.coerce.number().min(0).max(1000000).optional(),
+    partsTaxableDefault: z.enum(["true", "false"]).optional(),
+    laborTaxableDefault: z.enum(["true", "false"]).optional(),
   }),
-  run: ({ tx, meta }, input) => updateBusinessProfile(tx, meta, {
-    businessType: input.businessType,
-    legalName: input.legalName,
-    dba: input.dba || null,
-    phoneE164: input.phone ? normalizePhone(input.phone) : null,
-    addressLine1: input.addressLine1 || null,
-    addressLine2: input.addressLine2 || null,
-    city: input.city || null,
-    region: input.region || null,
-    postalCode: input.postalCode || null,
-    timezone: input.timezone,
-  }),
+  run: ({ tx, meta }, input) =>
+    updateBusinessProfile(tx, meta, {
+      businessType: input.businessType,
+      legalName: input.legalName,
+      dba: input.dba || null,
+      phoneE164: input.phone ? normalizePhone(input.phone) : null,
+      addressLine1: input.addressLine1 || null,
+      addressLine2: input.addressLine2 || null,
+      city: input.city || null,
+      region: input.region || null,
+      postalCode: input.postalCode || null,
+      timezone: input.timezone,
+      laborSellRateCents:
+        input.laborSellRate === undefined
+          ? undefined
+          : Math.round(input.laborSellRate * 100),
+      laborCostRateCents:
+        input.laborCostRate === undefined
+          ? undefined
+          : Math.round(input.laborCostRate * 100),
+      taxRateBps:
+        input.taxPercent === undefined
+          ? undefined
+          : Math.round(input.taxPercent * 100),
+      partsTaxableDefault:
+        input.partsTaxableDefault === undefined
+          ? undefined
+          : input.partsTaxableDefault === "true",
+      laborTaxableDefault:
+        input.laborTaxableDefault === undefined
+          ? undefined
+          : input.laborTaxableDefault === "true",
+    }),
   persist: () => ({ message: "Business profile updated." }),
 });
-
 
 // Invalidate after the tenant transaction commits, including successful retries.
 // Every previously visited workspace page must use the newly saved industry.

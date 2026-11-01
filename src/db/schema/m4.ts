@@ -40,10 +40,14 @@ export const invoice = app.table(
     voidReason: text("void_reason"),
     disputeOpen: text("dispute_open"),
     tokenHash: text("token_hash").notNull(),
+    shareTokenCiphertext: text("share_token_ciphertext"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [
-    foreignKey({columns:[t.businessId,t.customerId,t.serviceAssetId],foreignColumns:[asset.businessId,asset.customerId,asset.id]}),
+    foreignKey({
+      columns: [t.businessId, t.customerId, t.serviceAssetId],
+      foreignColumns: [asset.businessId, asset.customerId, asset.id],
+    }),
     unique().on(t.businessId, t.id),
     unique().on(t.businessId, t.number),
     foreignKey({

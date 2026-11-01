@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -20,9 +21,10 @@ export function StripeButton({
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
+  const ready = useActionHydration();
   const router = useRouter();
   return (
-    <div>
+    <div data-ux-ready={ready}>
       <button
         className={`btn ${kind === "cancel" || kind === "retry-refund" ? "danger" : kind === "pay" || kind === "connect" ? "primary" : "secondary"}`}
         disabled={busy}
@@ -94,9 +96,11 @@ export function StripeRefundForm({
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const ready = useActionHydration();
   const router = useRouter();
   return (
     <form
+      data-ux-ready={ready}
       onSubmit={(e) => {
         e.preventDefault();
         if (!confirming) {
@@ -144,51 +148,53 @@ export function StripeRefundForm({
         });
       }}
     >
-      <label htmlFor={`refund-amount-${paymentId}`}>Refund amount ($)</label>
-      <input
-        id={`refund-amount-${paymentId}`}
-        name="amount"
-        type="number"
-        min="0.01"
-        max={maxCents / 100}
-        step="0.01"
-        required
-        defaultValue={(maxCents / 100).toFixed(2)}
-        readOnly={confirming}
-        disabled={busy}
-      />
-      <label htmlFor={`refund-reason-${paymentId}`}>Refund reason</label>
-      <input
-        id={`refund-reason-${paymentId}`}
-        name="reason"
-        required
-        maxLength={1000}
-        readOnly={confirming}
-        disabled={busy}
-      />
-      {confirming && (
-        <p role="alert">
-          Confirm: send this refund through Stripe? This moves money back to the
-          customer.
-        </p>
-      )}
-      <button className="btn danger" disabled={busy}>
-        {busy
-          ? "Submitting refund…"
-          : confirming
-            ? "Confirm Stripe refund"
-            : "Review refund"}
-      </button>
-      {confirming && (
-        <button
-          type="button"
+      <fieldset className="hydration-fields" disabled={!ready}>
+        <label htmlFor={`refund-amount-${paymentId}`}>Refund amount ($)</label>
+        <input
+          id={`refund-amount-${paymentId}`}
+          name="amount"
+          type="number"
+          min="0.01"
+          max={maxCents / 100}
+          step="0.01"
+          required
+          defaultValue={(maxCents / 100).toFixed(2)}
+          readOnly={confirming}
           disabled={busy}
-          onClick={() => setConfirming(false)}
-        >
-          Cancel
+        />
+        <label htmlFor={`refund-reason-${paymentId}`}>Refund reason</label>
+        <input
+          id={`refund-reason-${paymentId}`}
+          name="reason"
+          required
+          maxLength={1000}
+          readOnly={confirming}
+          disabled={busy}
+        />
+        {confirming && (
+          <p role="alert">
+            Confirm: send this refund through Stripe? This moves money back to
+            the customer.
+          </p>
+        )}
+        <button className="btn danger" disabled={busy}>
+          {busy
+            ? "Submitting refund…"
+            : confirming
+              ? "Confirm Stripe refund"
+              : "Review refund"}
         </button>
-      )}
-      {message && <p role="status">{message}</p>}
+        {confirming && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setConfirming(false)}
+          >
+            Cancel
+          </button>
+        )}
+        {message && <p role="status">{message}</p>}
+      </fieldset>
     </form>
   );
 }

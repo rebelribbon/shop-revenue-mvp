@@ -7,20 +7,47 @@ import { reconcileRevenue } from "@/domain/revenue";
 import { z } from "zod";
 import { withTenant, withGlobalWorker } from "@/db/tenant";
 import { closeExpiredSupportSessions } from "@/domain/support";
-import {applyStripeEvent} from "@/domain/stripe-payments";
+import { applyStripeEvent } from "@/domain/stripe-payments";
 import type Stripe from "stripe";
-import {registerWebhookHandler} from "@/domain/webhooks";
+import { registerWebhookHandler } from "@/domain/webhooks";
 import { processWebhookEvent } from "@/domain/webhooks";
 import { logger } from "@/lib/logger";
 
-for(const eventType of ["checkout.session.completed","checkout.session.async_payment_succeeded","checkout.session.async_payment_failed","checkout.session.expired","refund.created","refund.updated","refund.failed","account.updated"]){registerWebhookHandler("stripe",eventType,async row=>(await applyStripeEvent(row.payload as Stripe.Event))?"applied":"ignored");}
+for (const eventType of [
+  "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
+  "checkout.session.expired",
+  "refund.created",
+  "refund.updated",
+  "refund.failed",
+  "account.updated",
+]) {
+  registerWebhookHandler("stripe", eventType, async (row) =>
+    (await applyStripeEvent(row.payload as Stripe.Event))
+      ? "applied"
+      : "ignored",
+  );
+}
 
 const meta = (job: string) => ({ requestId: `job-${job}-${randomUUID()}` });
 
 export const taskList: TaskList = {
-  reconcile_revenue: async payload => {
-    const businessId=z.uuid().parse((payload as {business_id?:unknown}).business_id);
-    await withTenant(businessId,{type:"system",id:null},tx=>reconcileRevenue(tx,meta("reconcile_revenue"),"Nightly evidence reconciliation"),{role:"worker"});
+  reconcile_revenue: async (payload) => {
+    const businessId = z
+      .uuid()
+      .parse((payload as { business_id?: unknown }).business_id);
+    await withTenant(
+      businessId,
+      { type: "system", id: null },
+      (tx) =>
+        reconcileRevenue(
+          tx,
+          meta("reconcile_revenue"),
+          "Nightly evidence reconciliation",
+        ),
+      { role: "worker" },
+    );
   },
   process_webhook_event: async (payload) => {
     const id = (payload as { webhook_event_id?: string }).webhook_event_id;
@@ -33,12 +60,21 @@ export const taskList: TaskList = {
     logger.debug({ event: "worker.heartbeat" });
   },
   close_expired_support_sessions: async () => {
-    const n = await closeExpiredSupportSessions(meta("close_expired_support_sessions"));
+    const n = await closeExpiredSupportSessions(
+      meta("close_expired_support_sessions"),
+    );
     if (n) logger.info({ event: "support_session.expired", count: n });
   },
   purge_request_idempotency: async () => {
-    const r = await withGlobalWorker((tx) => tx.execute<{ n: number }>(sql`SELECT app.purge_request_idempotency() AS n`));
-    logger.info({ event: "purge_request_idempotency", deleted: r.rows[0]?.n ?? 0 });
+    const r = await withGlobalWorker((tx) =>
+      tx.execute<{ n: number }>(
+        sql`SELECT app.purge_request_idempotency() AS n`,
+      ),
+    );
+    logger.info({
+      event: "purge_request_idempotency",
+      deleted: r.rows[0]?.n ?? 0,
+    });
   },
 };
 
@@ -47,4 +83,3 @@ export const crontab = [
   "*/5 * * * * close_expired_support_sessions",
   "15 8 * * * purge_request_idempotency",
 ].join("\n");
-

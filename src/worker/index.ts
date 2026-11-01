@@ -9,7 +9,8 @@ const { logger } = await import("@/lib/logger");
 const { initServerObservability } = await import("@/lib/observability");
 
 initServerObservability("worker");
-const connectionString = process.env.DATABASE_URL_WORKER_SESSION ?? process.env.DATABASE_URL_WORKER;
+const connectionString =
+  process.env.DATABASE_URL_WORKER_SESSION ?? process.env.DATABASE_URL_WORKER;
 if (!connectionString) throw new Error("DATABASE_URL_WORKER is not configured");
 
 const runner = await run({

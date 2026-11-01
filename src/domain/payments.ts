@@ -19,7 +19,7 @@ import { stripeLivemode } from "@/lib/stripe";
 import { assertOwner } from "./membership";
 import { audit, recordActivity, type RequestMeta } from "./records";
 
-import {lockRevenue,reconcileRevenue} from "./revenue";
+import { lockRevenue, reconcileRevenue } from "./revenue";
 
 export const activeCheckoutStates = ["creating", "open", "processing"];
 export async function getStripeConnection(tx: TenantTx) {
@@ -225,7 +225,7 @@ export async function settleCheckout(
       summary: `Online payment received for invoice #${i.number}`,
       data: { invoiceId: i.id, paymentId: p.id },
     });
-    await reconcileRevenue(tx,meta,"Verified Stripe payment",i.customerId);
+    await reconcileRevenue(tx, meta, "Verified Stripe payment", i.customerId);
     return { paid: true };
   }
   // A slower request may carry an unpaid snapshot fetched before another worker
@@ -371,7 +371,7 @@ export async function settleRefund(
       ),
     );
   if (!p) return false;
-  const sourceInvoice=await lockInvoice(tx, p.invoiceId);
+  const sourceInvoice = await lockInvoice(tx, p.invoiceId);
   // Dashboard-initiated refunds are imported too; provider refund ID dedupes both paths.
   const [byProvider] = await tx
     .select()
@@ -414,7 +414,8 @@ export async function settleRefund(
     row &&
     ["failed", "canceled"].includes(row.status) &&
     refund.status !== "succeeded"
-  ) return true;
+  )
+    return true;
   const status =
     refund.status === "succeeded"
       ? "succeeded"
@@ -465,7 +466,13 @@ export async function settleRefund(
         after: { amountCents: refund.amount, paymentId: p.id },
       });
   }
-  if(status==="succeeded")await reconcileRevenue(tx,meta,"Verified Stripe refund",sourceInvoice.customerId);
+  if (status === "succeeded")
+    await reconcileRevenue(
+      tx,
+      meta,
+      "Verified Stripe refund",
+      sourceInvoice.customerId,
+    );
   return true;
 }
 export async function stripeBusiness(account: string) {

@@ -19,7 +19,8 @@ export function authServiceUnavailable(error: AuthFailure): boolean {
 
 export function signInFailureMessage(error: AuthFailure): string {
   // Keep rejected credentials generic even if a provider uses HTTP 401.
-  if (error.code === "invalid_credentials") return "Email or password is incorrect.";
+  if (error.code === "invalid_credentials")
+    return "Email or password is incorrect.";
   return authServiceUnavailable(error)
     ? "Sign-in is unavailable right now. Please try again shortly."
     : "Email or password is incorrect.";

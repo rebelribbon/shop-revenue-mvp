@@ -3,6 +3,9 @@ import { closePools } from "@/db/tenant";
 
 const db = inject("testDb");
 process.env.APP_ENV = "test";
+process.env.SESSION_SIGNING_SECRET =
+  process.env.SESSION_SIGNING_SECRET ??
+  "test-only-share-key-at-least-32-characters";
 process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? "silent";
 process.env.DATABASE_URL_MIGRATION = db.urls.migration;
 process.env.DATABASE_URL_APP = db.urls.app;

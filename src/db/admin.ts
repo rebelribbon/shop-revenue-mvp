@@ -4,10 +4,21 @@
 import type { Tx, TenantTx } from "./tenant";
 import { runInContext, withTenant } from "./tenant";
 
-export type InternalActor = { internalUserId: string; supportSessionId?: string | null };
+export type InternalActor = {
+  internalUserId: string;
+  supportSessionId?: string | null;
+};
 
-export async function withAdmin<T>(actor: InternalActor | null, fn: (tx: Tx) => Promise<T>): Promise<T> {
-  return runInContext(null, { type: "internal", id: actor?.internalUserId ?? null }, fn, { role: "admin" });
+export async function withAdmin<T>(
+  actor: InternalActor | null,
+  fn: (tx: Tx) => Promise<T>,
+): Promise<T> {
+  return runInContext(
+    null,
+    { type: "internal", id: actor?.internalUserId ?? null },
+    fn,
+    { role: "admin" },
+  );
 }
 
 export async function withAdminTenant<T>(
@@ -15,5 +26,10 @@ export async function withAdminTenant<T>(
   actor: InternalActor,
   fn: (tx: TenantTx) => Promise<T>,
 ): Promise<T> {
-  return withTenant(businessId, { type: "internal", id: actor.internalUserId }, fn, { role: "admin" });
+  return withTenant(
+    businessId,
+    { type: "internal", id: actor.internalUserId },
+    fn,
+    { role: "admin" },
+  );
 }

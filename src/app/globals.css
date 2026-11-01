@@ -278,3 +278,16 @@ input::-webkit-datetime-edit { padding: 0; }
 .workflow-milestones span { color: var(--muted); }
 
 .job-workflow, .workflow-status > span { min-width: 0; overflow-wrap: anywhere; }
+
+
+.money-total { font-size: 32px; line-height: 40px; }
+.expense-row { border-bottom: 1px solid var(--line); padding: 16px 0; }
+.shop-mobile-nav { grid-template-columns: minmax(48px,1fr) minmax(104px,1.5fr) repeat(3,minmax(48px,1fr)); }
+@media (max-width: 599px) { .overview-metrics { grid-template-columns: minmax(0,1fr); } }
+
+@media (max-width: 359px) { .shop-mobile-nav { grid-template-columns: minmax(104px,1.5fr) repeat(3,minmax(48px,1fr)); } .shop-mobile-nav a[href="/app"] { display: none !important; } }
+
+.workspace-mobile-brand { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Keep native disabling during hydration without adding another visual group. */
+.hydration-fields { display: contents; }

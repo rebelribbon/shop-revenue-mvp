@@ -9,11 +9,20 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body><a className="skip-link" href="#main-content">Skip to content</a>{children}<PageActions/></body>
+      <body>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
+        {children}
+        <PageActions />
+      </body>
     </html>
   );
 }
-
