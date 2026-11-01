@@ -201,12 +201,16 @@
         "internal_user_email_key": {
           "name": "internal_user_email_key",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         },
         "internal_user_auth_provider_id_key": {
           "name": "internal_user_auth_provider_id_key",
           "nullsNotDistinct": false,
-          "columns": ["auth_provider_id"]
+          "columns": [
+            "auth_provider_id"
+          ]
         }
       },
       "policies": {},
@@ -327,8 +331,12 @@
           "tableFrom": "location",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -337,8 +345,12 @@
           "tableFrom": "location",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -348,7 +360,10 @@
         "location_business_id_id_key": {
           "name": "location_business_id_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "id"]
+          "columns": [
+            "business_id",
+            "id"
+          ]
         }
       },
       "policies": {},
@@ -508,8 +523,12 @@
           "tableFrom": "membership",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -518,8 +537,12 @@
           "tableFrom": "membership",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -528,8 +551,12 @@
           "tableFrom": "membership",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -539,17 +566,25 @@
         "membership_business_id_id_key": {
           "name": "membership_business_id_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "id"]
+          "columns": [
+            "business_id",
+            "id"
+          ]
         },
         "membership_business_id_user_id_key": {
           "name": "membership_business_id_user_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "user_id"]
+          "columns": [
+            "business_id",
+            "user_id"
+          ]
         },
         "membership_invite_token_hash_key": {
           "name": "membership_invite_token_hash_key",
           "nullsNotDistinct": false,
-          "columns": ["invite_token_hash"]
+          "columns": [
+            "invite_token_hash"
+          ]
         }
       },
       "policies": {},
@@ -679,8 +714,12 @@
           "tableFrom": "support_session",
           "tableTo": "internal_user",
           "schemaTo": "app",
-          "columnsFrom": ["admin_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "admin_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -689,8 +728,12 @@
           "tableFrom": "support_session",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -788,17 +831,23 @@
         "user_auth_provider_id_key": {
           "name": "user_auth_provider_id_key",
           "nullsNotDistinct": false,
-          "columns": ["auth_provider_id"]
+          "columns": [
+            "auth_provider_id"
+          ]
         },
         "user_email_key": {
           "name": "user_email_key",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         },
         "user_phone_e164_key": {
           "name": "user_phone_e164_key",
           "nullsNotDistinct": false,
-          "columns": ["phone_e164"]
+          "columns": [
+            "phone_e164"
+          ]
         }
       },
       "policies": {},
@@ -966,8 +1015,12 @@
           "tableFrom": "activity",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -976,8 +1029,12 @@
           "tableFrom": "activity",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -987,7 +1044,10 @@
         "activity_business_id_id_key": {
           "name": "activity_business_id_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "id"]
+          "columns": [
+            "business_id",
+            "id"
+          ]
         }
       },
       "policies": {},
@@ -1177,8 +1237,12 @@
           "tableFrom": "audit_event",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1187,8 +1251,12 @@
           "tableFrom": "audit_event",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1197,8 +1265,12 @@
           "tableFrom": "audit_event",
           "tableTo": "support_session",
           "schemaTo": "app",
-          "columnsFrom": ["support_session_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "support_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1208,7 +1280,10 @@
         "audit_event_business_id_id_key": {
           "name": "audit_event_business_id_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "id"]
+          "columns": [
+            "business_id",
+            "id"
+          ]
         }
       },
       "policies": {},
@@ -1310,8 +1385,12 @@
           "tableFrom": "file",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1320,8 +1399,12 @@
           "tableFrom": "file",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1331,12 +1414,17 @@
         "file_business_id_id_key": {
           "name": "file_business_id_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "id"]
+          "columns": [
+            "business_id",
+            "id"
+          ]
         },
         "file_storage_key_key": {
           "name": "file_storage_key_key",
           "nullsNotDistinct": false,
-          "columns": ["storage_key"]
+          "columns": [
+            "storage_key"
+          ]
         }
       },
       "policies": {},
@@ -1487,8 +1575,12 @@
           "tableFrom": "legal_policy",
           "tableTo": "internal_user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_internal_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_internal_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1497,8 +1589,12 @@
           "tableFrom": "legal_policy",
           "tableTo": "internal_user",
           "schemaTo": "app",
-          "columnsFrom": ["approved_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1508,7 +1604,11 @@
         "legal_policy_version_key": {
           "name": "legal_policy_version_key",
           "nullsNotDistinct": false,
-          "columns": ["jurisdiction_code", "kind", "version"]
+          "columns": [
+            "jurisdiction_code",
+            "kind",
+            "version"
+          ]
         }
       },
       "policies": {},
@@ -1627,8 +1727,12 @@
           "tableFrom": "request_idempotency",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1637,8 +1741,12 @@
           "tableFrom": "request_idempotency",
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsFrom": ["created_by_user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1648,12 +1756,18 @@
         "request_idempotency_business_id_id_key": {
           "name": "request_idempotency_business_id_id_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "id"]
+          "columns": [
+            "business_id",
+            "id"
+          ]
         },
         "request_idempotency_client_request_key": {
           "name": "request_idempotency_client_request_key",
           "nullsNotDistinct": false,
-          "columns": ["business_id", "client_request_id"]
+          "columns": [
+            "business_id",
+            "client_request_id"
+          ]
         }
       },
       "policies": {},
@@ -1811,8 +1925,12 @@
           "tableFrom": "webhook_event",
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsFrom": ["business_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "business_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1822,7 +1940,10 @@
         "webhook_event_provider_event_key": {
           "name": "webhook_event_provider_event_key",
           "nullsNotDistinct": false,
-          "columns": ["provider", "provider_event_id"]
+          "columns": [
+            "provider",
+            "provider_event_id"
+          ]
         }
       },
       "policies": {},
