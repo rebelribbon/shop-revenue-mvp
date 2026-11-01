@@ -25,7 +25,8 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   const stamp = `${Date.now()}-${info.project.name}`;
   const first = `M2${stamp.slice(-8)}`;
   const last = "Customer";
-  const phone = "(210) 555-0199";
+  // Unique per run: the same mobile number is caught as a duplicate customer.
+  const phone = `(210) 555-${String(Date.now()).slice(-3)}${info.project.name === "phone" ? 1 : 2}`;
   const vin =
     info.project.name === "phone" ? "1HGCM82633A004352" : "1HGCM82633A004353";
   const plate = `M2${stamp.replace(/\D/g, "").slice(-5)}`;
@@ -58,7 +59,9 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(
     page.getByRole("link", { name: `${first} ${last}`, exact: true }),
   ).toBeVisible();
-  await page.goto(`/app/customers?q=${encodeURIComponent("210 555 0199")}`);
+  await page.goto(
+    `/app/customers?q=${encodeURIComponent(phone.replace(/[()-]/g, " "))}`,
+  );
   await expect(
     page.getByRole("link", { name: `${first} ${last}`, exact: true }),
   ).toBeVisible();

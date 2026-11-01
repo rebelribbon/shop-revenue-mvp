@@ -247,7 +247,9 @@ export default async function JobsPage({
                   </div>
                   <p>
                     Quoted: {money(t.subtotalCents)} · Estimated job profit:{" "}
-                    {money(t.estimatedGrossProfitCents)}
+                    {t.estimatedGrossProfitCents === null
+                      ? "unknown until every cost is entered"
+                      : money(t.estimatedGrossProfitCents)}
                   </p>
                 </details>
                 <details>
@@ -257,7 +259,10 @@ export default async function JobsPage({
                       <li key={i}>
                         {part.description} — {part.quantity} ×{" "}
                         {money(part.unitPriceCents)} (unit cost{" "}
-                        {money(part.unitCostCents)})
+                        {part.unitCostCents === null
+                          ? "not entered"
+                          : money(part.unitCostCents)}
+                        )
                       </li>
                     ))}
                     {input.labor.map((line, i) => (
@@ -279,6 +284,7 @@ export default async function JobsPage({
                       jobId={selected.id}
                       version={selected.version}
                       existingVersion={flow?.latest?.estimate.version}
+                      pendingChanges={flow?.changedSinceEstimate}
                     />
                   ) : (
                     <p>

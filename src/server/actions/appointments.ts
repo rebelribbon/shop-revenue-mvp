@@ -1,6 +1,10 @@
 "use server";
 import { z } from "zod";
-import { createAppointment, setAppointmentStatus } from "@/domain/appointments";
+import {
+  createAppointment,
+  rescheduleAppointment,
+  setAppointmentStatus,
+} from "@/domain/appointments";
 import { defineShopAction } from "./define";
 
 export const createAppointmentAction = defineShopAction({
@@ -38,4 +42,15 @@ export const setAppointmentStatusAction = defineShopAction({
   run: ({ tx, meta }, input) =>
     setAppointmentStatus(tx, meta, input.appointmentId, input.status),
   persist: (row) => ({ id: row.id, message: "Appointment updated." }),
+});
+
+export const rescheduleAppointmentAction = defineShopAction({
+  name: "rescheduleAppointment",
+  input: z.object({
+    appointmentId: z.uuid(),
+    startsAt: z.string().min(1).max(32),
+  }),
+  run: ({ tx, meta }, input) =>
+    rescheduleAppointment(tx, meta, input.appointmentId, input.startsAt),
+  persist: (row) => ({ id: row.id, message: "Visit moved." }),
 });

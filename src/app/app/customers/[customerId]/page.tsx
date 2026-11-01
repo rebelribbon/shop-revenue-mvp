@@ -1,3 +1,4 @@
+import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ServiceAssets } from "@/components/service-assets";
 import { listServiceAssets } from "@/domain/service-assets";
@@ -97,7 +98,7 @@ export default async function CustomerDetailPage(props: {
             <h2>Contact</h2>
             <div className="money-actions">
               {c.phoneE164 ? (
-                <a href={`tel:${c.phoneE164}`}>{c.phoneE164}</a>
+                <a href={`tel:${c.phoneE164}`}>{formatPhone(c.phoneE164)}</a>
               ) : (
                 <span className="muted">No phone recorded</span>
               )}
@@ -212,7 +213,7 @@ export default async function CustomerDetailPage(props: {
                 name="phone"
                 type="tel"
                 inputMode="tel"
-                defaultValue={c.phoneE164 ?? ""}
+                defaultValue={formatPhone(c.phoneE164)}
               />
               <label htmlFor="email">Email</label>
               <input

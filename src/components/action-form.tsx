@@ -2,14 +2,16 @@
 import { useActionHydration } from "./action-hydration";
 // Calls a shop server action with a clientRequestId generated when the form opens
 // (Section 10 idempotency). Shows typed errors with the reference ID; keeps input.
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 
 type ActionError = {
   code: string;
   message: string;
   referenceId: string;
   fields?: Record<string, string>;
+  duplicate?: { id: string; name: string };
 };
 type Result = { ok: true; data: unknown } | { ok: false; error: ActionError };
 
@@ -33,14 +35,19 @@ export function ActionForm(props: {
     text: string;
   } | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [duplicate, setDuplicate] = useState<ActionError["duplicate"]>();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  async function submit(form: HTMLFormElement) {
+  async function submit(form: HTMLFormElement, extra?: Record<string, string>) {
     const data = Object.fromEntries(new FormData(form));
+    setDuplicate(undefined);
     start(async () => {
       const r = await props.action({
         ...data,
         ...props.hidden,
-        clientRequestId: requestId,
+        ...extra,
+        // A different request: the first attempt was rejected as a duplicate.
+        clientRequestId: extra ? crypto.randomUUID() : requestId,
       });
       if (r.ok) {
         const to = (r.data as { redirectTo?: unknown } | null)?.redirectTo;
@@ -58,9 +65,12 @@ export function ActionForm(props: {
         const fields = r.error.fields
           ? ` ${Object.values(r.error.fields).join(" ")}`
           : "";
+        setDuplicate(r.error.duplicate);
         setMessage({
           kind: "error",
-          text: `${r.error.message}${fields} (reference ${r.error.referenceId})`,
+          text: r.error.duplicate
+            ? r.error.message
+            : `${r.error.message}${fields} (reference ${r.error.referenceId})`,
         });
       }
       setConfirming(false);
@@ -69,6 +79,7 @@ export function ActionForm(props: {
 
   return (
     <form
+      ref={formRef}
       data-ux-ready={ready}
       className="action-form"
       onSubmit={(e) => {
@@ -99,6 +110,27 @@ export function ActionForm(props: {
           >
             {message.text}
           </p>
+        )}
+        {duplicate && (
+          <div className="money-actions">
+            <Link
+              className="btn primary"
+              href={`/app/customers/${duplicate.id}`}
+            >
+              Open {duplicate.name}
+            </Link>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={pending}
+              onClick={() =>
+                formRef.current &&
+                void submit(formRef.current, { allowDuplicate: "true" })
+              }
+            >
+              Add as a separate customer
+            </button>
+          </div>
         )}
       </fieldset>
     </form>

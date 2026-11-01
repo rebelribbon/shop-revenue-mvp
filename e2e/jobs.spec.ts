@@ -7,9 +7,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
 }, info) => {
   test.setTimeout(120_000);
   await signInWithPassword(page, "owner.a@shop-a.test");
+  // A unique number per run: the same mobile number is caught as a duplicate.
+  const mobile = `+1512555${String(Date.now()).slice(-3)}${info.project.name === "phone" ? 1 : 2}`;
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill(`Job ${info.project.name}`);
-  await page.getByLabel("Mobile number", { exact: true }).fill("+15125550123");
+  await page.getByLabel("Mobile number", { exact: true }).fill(mobile);
   await page
     .getByLabel("Email", { exact: true })
     .fill(`job-${info.project.name}@example.test`);
@@ -67,7 +69,10 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .click();
   await expect(
     card.getByRole("link", { name: "Text to customer", exact: true }),
-  ).toHaveAttribute("href", /^sms:\+15125550123[?&]body=.*%2Festimate%2F/);
+  ).toHaveAttribute(
+    "href",
+    new RegExp(`^sms:\\${mobile}[?&]body=.*%2Festimate%2F`),
+  );
   await expect(
     card.getByRole("link", { name: "Email to customer", exact: true }),
   ).toHaveAttribute(

@@ -139,10 +139,8 @@ export const membership = app.table(
     uniqueIndex("membership_one_active_owner_idx")
       .on(t.businessId)
       .where(sql`${t.role} = 'owner' AND ${t.status} = 'active'`),
-    // Owner + one Staff (D15): at most one staff seat that is invited or active.
-    uniqueIndex("membership_one_staff_seat_idx")
-      .on(t.businessId)
-      .where(sql`${t.role} = 'staff' AND ${t.status} IN ('invited', 'active')`),
+    // Staff seats (invited or active) are capped by app.membership_guard
+    // (migration 0024), which replaced the original one-seat unique index.
     index("membership_user_id_idx").on(t.userId),
     check("membership_role_check", sql`${t.role} IN ('owner', 'staff')`),
     check(

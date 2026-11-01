@@ -1,15 +1,17 @@
 // Job costing uses integer cents and hundredths of an hour. Customer totals
-// exclude internal costs. Missing actual time remains unknown rather than zero.
+// exclude internal costs. Missing actual time remains unknown rather than zero,
+// and so does a blank part cost or labor cost rate: profit is only shown when
+// every cost is known, so a skipped field can't make a job look more profitable.
 export type JobPart = {
   quantity: number;
-  unitCostCents: number;
+  unitCostCents: number | null;
   unitPriceCents: number;
 };
 export type JobLabor = {
   estimatedHoursHundredths: number;
   actualHoursHundredths: number | null;
   sellRateCents: number;
-  costRateCents: number;
+  costRateCents: number | null;
 };
 function integer(value: number, label: string) {
   if (!Number.isSafeInteger(value) || value < 0)
@@ -52,12 +54,16 @@ function multiply(a: number, b: number, divisor = 1) {
 export function calculateJob(parts: JobPart[], labor: JobLabor[]) {
   const partCosts: number[] = [];
   const partSales: number[] = [];
+  let missingCosts = 0;
   for (const part of parts) {
     const qty = quantityHundredths(part.quantity);
-    integer(part.unitCostCents, "part cost");
     integer(part.unitPriceCents, "part price");
-    partCosts.push(multiply(qty, part.unitCostCents, 100));
     partSales.push(multiply(qty, part.unitPriceCents, 100));
+    if (part.unitCostCents === null) missingCosts++;
+    else {
+      integer(part.unitCostCents, "part cost");
+      partCosts.push(multiply(qty, part.unitCostCents, 100));
+    }
   }
   const estimatedCosts: number[] = [];
   const actualCosts: number[] = [];
@@ -66,42 +72,50 @@ export function calculateJob(parts: JobPart[], labor: JobLabor[]) {
   for (const line of labor) {
     integer(line.estimatedHoursHundredths, "estimated hours");
     integer(line.sellRateCents, "labor sell rate");
-    integer(line.costRateCents, "labor cost rate");
-    estimatedCosts.push(
-      multiply(line.estimatedHoursHundredths, line.costRateCents, 100),
-    );
     laborSales.push(
       multiply(line.estimatedHoursHundredths, line.sellRateCents, 100),
     );
     if (line.actualHoursHundredths === null) actualComplete = false;
-    else {
-      integer(line.actualHoursHundredths, "actual hours");
+    else integer(line.actualHoursHundredths, "actual hours");
+    if (line.costRateCents === null) {
+      missingCosts++;
+      continue;
+    }
+    integer(line.costRateCents, "labor cost rate");
+    estimatedCosts.push(
+      multiply(line.estimatedHoursHundredths, line.costRateCents, 100),
+    );
+    if (line.actualHoursHundredths !== null)
       actualCosts.push(
         multiply(line.actualHoursHundredths, line.costRateCents, 100),
       );
-    }
   }
-  const partsCostCents = sum(partCosts);
+  const costsKnown = missingCosts === 0;
+  const partsCostCents = costsKnown ? sum(partCosts) : null;
   const partsPriceCents = sum(partSales);
   const laborPriceCents = sum(laborSales);
   const subtotalCents = sum([partsPriceCents, laborPriceCents]);
-  const estimatedCostCents = sum([partsCostCents, sum(estimatedCosts)]);
-  const actualCostCents = actualComplete
-    ? sum([partsCostCents, sum(actualCosts)])
-    : null;
+  const estimatedCostCents =
+    partsCostCents === null ? null : sum([partsCostCents, sum(estimatedCosts)]);
+  const actualCostCents =
+    actualComplete && partsCostCents !== null
+      ? sum([partsCostCents, sum(actualCosts)])
+      : null;
   return {
+    missingCosts,
     partsCostCents,
     partsPriceCents,
     laborPriceCents,
     subtotalCents,
     estimatedCostCents,
     actualCostCents,
-    estimatedGrossProfitCents: subtotalCents - estimatedCostCents,
+    estimatedGrossProfitCents:
+      estimatedCostCents === null ? null : subtotalCents - estimatedCostCents,
     actualGrossProfitCents:
       actualCostCents === null ? null : subtotalCents - actualCostCents,
     // Gross margin is before shop overhead, taxes and payment fees.
     estimatedMarginBps:
-      subtotalCents === 0
+      subtotalCents === 0 || estimatedCostCents === null
         ? null
         : Math.round(
             ((subtotalCents - estimatedCostCents) * 10000) / subtotalCents,

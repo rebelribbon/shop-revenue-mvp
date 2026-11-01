@@ -52,7 +52,7 @@ test("invalid password gets a generic credential error", async ({ page }) => {
   );
 });
 
-test("F1 + Owner invites Staff: owner and staff choose passwords, second staff seat blocked, view-as remains read-only", async ({
+test("F1 + Owner invites Staff: owner and staff choose passwords, more staff seats available, view-as remains read-only", async ({
   browser,
 }, info) => {
   const stamp = `${Date.now()}${info.project.name}`;
@@ -94,14 +94,11 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, second staff s
   await owner.getByLabel("Name").fill("Sid Staff");
   await owner.getByLabel("Email").fill(staffEmail);
   await owner.getByRole("button", { name: "Send invite" }).click();
-  // The invite form unmounts when the occupied seat arrives in the refreshed RSC.
   // Assert the durable invitation, then prove delivered email and access below.
   await expect(
     owner.getByRole("row").filter({ hasText: staffEmail }),
   ).toContainText("Invite sent");
-  await expect(
-    owner.getByText("Your plan includes one staff login"),
-  ).toBeVisible();
+  await expect(owner.getByText("9 of 10 staff logins left")).toBeVisible();
 
   const staff = await (await browser.newContext()).newPage();
   await staff.goto(await inviteLink(staffEmail, since));

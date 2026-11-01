@@ -11,12 +11,50 @@ export type CustomerInput = {
   email?: string | null;
   phoneE164?: string | null;
   notes?: string | null;
+  // Set when the owner confirmed a same-phone/email customer is a different person.
+  allowDuplicate?: boolean;
 };
 
 const displayName = (firstName: string, lastName: string) =>
   `${firstName} ${lastName}`.trim();
 const phoneDigits = (phoneE164: string | null | undefined) =>
   phoneE164?.replace(/\D/g, "") || null;
+
+// Same mobile number or email as an active customer usually means the person
+// is already on file (a second record splits their history and follow-ups).
+export async function findMatchingCustomer(
+  tx: TenantTx,
+  input: Pick<CustomerInput, "email" | "phoneE164">,
+) {
+  const digits = phoneDigits(input.phoneE164);
+  const email = input.email?.toLowerCase() || null;
+  if (!digits && !email) return null;
+  const [row] = await tx
+    .select({
+      id: customer.id,
+      displayName: customer.displayName,
+      phoneDigits: customer.phoneDigits,
+    })
+    .from(customer)
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        eq(customer.status, "active"),
+        or(
+          digits ? eq(customer.phoneDigits, digits) : sql`false`,
+          email ? eq(customer.email, email) : sql`false`,
+        ),
+      ),
+    )
+    .orderBy(asc(customer.createdAt))
+    .limit(1);
+  if (!row) return null;
+  return {
+    id: row.id,
+    displayName: row.displayName,
+    by: digits && row.phoneDigits === digits ? "mobile number" : "email",
+  };
+}
 
 export async function createCustomer(
   tx: TenantTx,
@@ -25,6 +63,15 @@ export async function createCustomer(
 ) {
   const name = displayName(input.firstName, input.lastName);
   if (!name) throw new AppError("VALIDATION", "Enter a customer name.");
+  if (!input.allowDuplicate) {
+    const match = await findMatchingCustomer(tx, input);
+    if (match)
+      throw new AppError(
+        "CONFLICT",
+        `${match.displayName} already has this ${match.by}. Open their record instead, or add a separate customer if this is a different person.`,
+        { duplicate: { id: match.id, name: match.displayName } },
+      );
+  }
   const [row] = await tx
     .insert(customer)
     .values({

@@ -1,3 +1,4 @@
+import { formatPhone } from "@/lib/phone-format";
 import { isAutomotive } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "./action-form";
@@ -305,7 +306,9 @@ export function MoneyFinder({
             </p>
           )}
           <div className="money-actions">
-            {item.phone && <a href={`tel:${item.phone}`}>{item.phone}</a>}
+            {item.phone && (
+              <a href={`tel:${item.phone}`}>{formatPhone(item.phone)}</a>
+            )}
             {item.email && <a href={`mailto:${item.email}`}>{item.email}</a>}
             {(item.category === "declined" ||
               item.category === "open_estimate") && (

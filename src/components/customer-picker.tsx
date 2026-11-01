@@ -114,6 +114,21 @@ export function CustomerPicker({
                 setFirst("");
                 setLast("");
                 setPhone("");
+              } else if (r.error.duplicate) {
+                const existing = r.error.duplicate;
+                setAdded((a) =>
+                  a.some((x) => x.id === existing.id)
+                    ? a
+                    : [...a, { id: existing.id, name: existing.name }],
+                );
+                setQuery("");
+                onChange(existing.id);
+                setMessage(
+                  `${existing.name} is already a customer with that number, so we selected them.`,
+                );
+                setFirst("");
+                setLast("");
+                setPhone("");
               } else setMessage(r.error.message);
             } catch {
               setMessage("Could not add the customer. Your entries are kept.");
