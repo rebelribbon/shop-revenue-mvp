@@ -1,9 +1,12 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import {
   isAutomotive,
   workspaceLabels,
   businessTypeLabel,
 } from "@/lib/business-types";
 import Link from "next/link";
+import { getOwnerMoney } from "@/domain/owner-money";
+import { formatMoney } from "@/components/estimate-document";
 import { redirect } from "next/navigation";
 import { withTenant } from "@/db/tenant";
 import { requireShopSession } from "@/server/views/shop";
@@ -25,7 +28,7 @@ export default async function HomePage({
   }>;
 }) {
   const params = await searchParams;
-  // Existing bookmarked Money Finder filters keep their meaning.
+  // Existing bookmarked Follow-ups filters keep their meaning.
   if (params.category || params.view || params.q || params.page) {
     const query = new URLSearchParams(
       Object.entries(params).filter(
@@ -35,7 +38,7 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, days, estimates, invoices, money] = await withTenant(
+  const [profile, days, estimates, invoices, money, summary] = await withTenant(
     s.businessId,
     s.actor,
     (tx) =>
@@ -45,6 +48,9 @@ export default async function HomePage({
         listEstimates(tx),
         listInvoices(tx),
         getMoneyFinder(tx, { view: "active", page: 1, query: "" }),
+        s.role === "owner"
+          ? getOwnerMoney(tx, undefined, new Date(), false)
+          : null,
       ]),
   );
   const type = profile?.businessType ?? "automotive",
@@ -65,7 +71,7 @@ export default async function HomePage({
     day: "numeric",
   });
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       {params.denied && (
         <p role="status" className="notice error">
           Only the owner can open that page.
@@ -89,6 +95,18 @@ export default async function HomePage({
           <Link href="/app/settings/business">Finish setup</Link>
         </div>
       )}
+      {summary && (
+        <div className="overview-metrics">
+          <Link href="/app/money" className="card overview-metric">
+            <strong>{formatMoney(summary.collectedCents)}</strong>
+            <span>Collected this month</span>
+          </Link>
+          <Link href="/app/money" className="card overview-metric">
+            <strong>{formatMoney(summary.owedCents)}</strong>
+            <span>Customers owe you</span>
+          </Link>
+        </div>
+      )}
       <div className="overview-metrics">
         <Link className="card overview-metric" href="/app/schedule">
           <strong>{visits.length}</strong>
@@ -96,13 +114,13 @@ export default async function HomePage({
         </Link>
         <Link className="card overview-metric" href="/app/opportunities">
           <strong>{money.total}</strong>
-          <span>Money Finder follow-ups</span>
+          <span>Follow-ups</span>
         </Link>
       </div>
       <div className="overview-columns">
         <section className="card">
           <div className="section-heading">
-            <h2>Today’s appointments</h2>
+            <h2>Today’s visits</h2>
             <Link href="/app/schedule">Full schedule</Link>
           </div>
           {!visits.length && (
@@ -124,7 +142,7 @@ export default async function HomePage({
                 <Link href={`/app/customers/${a.customerId}`}>
                   {a.customerName}
                 </Link>
-                <p>{a.reason || "Appointment"}</p>
+                <p>{a.reason || "Visit"}</p>
                 {a.serviceAssetName && (
                   <p className="muted">
                     {a.serviceAssetName} · {a.serviceAddress}
@@ -134,7 +152,7 @@ export default async function HomePage({
             </div>
           ))}
           <Link className="btn secondary" href="/app/schedule?new=1">
-            Schedule a visit
+            Book visit
           </Link>
         </section>
         <section className="card">
@@ -149,7 +167,10 @@ export default async function HomePage({
           </div>
           <div className="overview-row">
             <div>
-              <strong>{unpaid.length} recent invoices with a balance</strong>
+              <strong>
+                {summary ? formatMoney(summary.owedCents) : unpaid.length}{" "}
+                {summary ? "owed by customers" : "invoices waiting for payment"}
+              </strong>
               <p>Review payments and outstanding amounts.</p>
             </div>
             <Link href="/app/invoices">Invoices</Link>
@@ -157,7 +178,7 @@ export default async function HomePage({
           <div className="overview-row">
             <div>
               <strong>
-                {auto ? "Repair jobs and labor costs" : "Jobs and labor costs"}
+                {auto ? "Jobs and labor costs" : "Jobs and labor costs"}
               </strong>
               <p>
                 Track customer approval, authorized work, completion, invoices
@@ -180,6 +201,6 @@ export default async function HomePage({
           <Link href="/app/customers/new">Add a customer</Link>
         </div>
       </section>
-    </main>
+    </HydratedMain>
   );
 }

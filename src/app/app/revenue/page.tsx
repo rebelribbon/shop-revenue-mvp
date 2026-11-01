@@ -1,3 +1,5 @@
+import { HydratedMain } from "@/components/hydrated-main";
+import { MoneyNavigation } from "@/components/money-navigation";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
 import { listRevenue, recentRecoveryFollowups } from "@/domain/revenue";
@@ -36,11 +38,12 @@ export default async function RevenuePage({
     Promise.all([listRevenue(tx, month, page), recentRecoveryFollowups(tx)]),
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <p>
-        <Link href="/app">← Money Finder</Link>
+        <Link href="/app">← Follow-ups</Link>
       </p>
-      <h1>Recovered revenue</h1>
+      <h1>Follow-up sales</h1>
+      <MoneyNavigation current="sales" />
       <RevenueSummary {...data} />
       <form action="/app/revenue" className="card">
         <label htmlFor="revenue-month">Reporting month</label>
@@ -53,8 +56,8 @@ export default async function RevenuePage({
         />
         <button className="btn secondary">View month</button>
         <p className="muted">
-          {data.timezone} · Each invoice has one attribution. Direct and
-          influenced are never added together.
+          {data.timezone} · Each sale is counted once. Confirmed follow-up sales
+          and other sales are shown separately.
         </p>
       </form>
       {s.actor.type !== "support" && (
@@ -67,7 +70,7 @@ export default async function RevenuePage({
       <section id="follow-ups">
         <h2>Recent manual follow-ups</h2>
         <p className="muted">
-          Continue here after an item leaves Money Finder, including lapsed
+          Continue here after an item leaves Follow-ups, including lapsed
           contacts in their 90-day cooldown.
         </p>
         {!followups.length && <p>No manual contacts recorded.</p>}
@@ -133,7 +136,7 @@ export default async function RevenuePage({
                       subjectId: f.subjectId,
                       destination: "appointment",
                     }}
-                    submitLabel="Book linked appointment"
+                    submitLabel="Book visit"
                     variant="secondary"
                   />
                 </div>
@@ -142,12 +145,12 @@ export default async function RevenuePage({
           </article>
         ))}
       </section>
-      <h2>Attribution records · all dates</h2>
+      <h2>Sales linked to follow-ups</h2>
       {!data.rows.length && (
         <section className="card">
           <h3>No recovered revenue recorded yet</h3>
           <p>
-            Log a real manual contact from Money Finder. Confirm delivery when
+            Log a real manual contact from Follow-ups. Confirm delivery when
             known, record the actual customer response, then create linked work.
             Declined-work credit requires recommendation links on the billed
             lines. Credit appears only after payments are recorded.
@@ -169,9 +172,9 @@ export default async function RevenuePage({
           <p>
             <strong>
               {a.classification === "direct"
-                ? "Directly recovered"
+                ? "Confirmed follow-up sale"
                 : a.classification === "influenced"
-                  ? "Influenced — not recovered"
+                  ? "Sale after a follow-up"
                   : "Reversed / no current credit"}
               : {revenueMoney(a.amountCents)}
             </strong>
@@ -195,6 +198,6 @@ export default async function RevenuePage({
           </Link>
         )}
       </div>
-    </main>
+    </HydratedMain>
   );
 }

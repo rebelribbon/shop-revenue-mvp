@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 // Calls a shop server action with a clientRequestId generated when the form opens
 // (Section 10 idempotency). Shows typed errors with the reference ID; keeps input.
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ export function ActionForm(props: {
   variant?: "primary" | "danger" | "secondary";
   children?: ReactNode;
 }) {
+  const ready = useActionHydration();
   const router = useRouter();
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [pending, start] = useTransition();
@@ -67,6 +69,7 @@ export function ActionForm(props: {
 
   return (
     <form
+      data-ux-ready={ready}
       className="action-form"
       onSubmit={(e) => {
         e.preventDefault();
@@ -74,28 +77,30 @@ export function ActionForm(props: {
         void submit(e.currentTarget);
       }}
     >
-      {props.children}
-      {confirming && <p className="confirm">{props.confirm}</p>}
-      <button
-        data-destructive={props.variant === "danger" ? "true" : undefined}
-        className={`btn ${props.variant ?? "secondary"}`}
-        type="submit"
-        disabled={pending}
-      >
-        {pending
-          ? (props.pendingLabel ?? "Working…")
-          : confirming
-            ? "Yes, continue"
-            : props.submitLabel}
-      </button>
-      {message && (
-        <p
-          role="status"
-          className={message.kind === "ok" ? "notice ok" : "notice error"}
+      <fieldset className="hydration-fields" disabled={!ready}>
+        {props.children}
+        {confirming && <p className="confirm">{props.confirm}</p>}
+        <button
+          data-destructive={props.variant === "danger" ? "true" : undefined}
+          className={`btn ${props.variant ?? "secondary"}`}
+          type="submit"
+          disabled={pending}
         >
-          {message.text}
-        </p>
-      )}
+          {pending
+            ? (props.pendingLabel ?? "Working…")
+            : confirming
+              ? "Yes, continue"
+              : props.submitLabel}
+        </button>
+        {message && (
+          <p
+            role="status"
+            className={message.kind === "ok" ? "notice ok" : "notice error"}
+          >
+            {message.text}
+          </p>
+        )}
+      </fieldset>
     </form>
   );
 }

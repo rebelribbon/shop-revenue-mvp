@@ -84,3 +84,12 @@ export async function drawEstimateSignature(page: Page) {
   await page.mouse.move(bounds.x + 180, bounds.y + 40, { steps: 8 });
   await page.mouse.up();
 }
+
+export async function revealField(page: Page, label: string) {
+  const field = page.getByLabel(label, { exact: true });
+  const details = field.locator("xpath=ancestor::details");
+  for (const parent of await details.all()) {
+    if (!(await parent.evaluate((e) => e.hasAttribute("open"))))
+      await parent.locator(":scope > summary").click();
+  }
+}

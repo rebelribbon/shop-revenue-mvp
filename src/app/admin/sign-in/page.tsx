@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { redirect } from "next/navigation";
 import { getInternalUser } from "@/server/auth/session";
 import { signInWithGoogle } from "@/server/actions/admin";
@@ -12,7 +13,7 @@ export default async function AdminSignIn({
   const { error } = await searchParams;
   const local = ["local", "test"].includes(process.env.APP_ENV ?? "local");
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Admin sign-in</h1>
       {error && (
         <p className="notice error">
@@ -36,6 +37,6 @@ export default async function AdminSignIn({
           <SignInForms next="/admin" />
         </>
       )}
-    </main>
+    </HydratedMain>
   );
 }

@@ -1,6 +1,8 @@
+import { sealShareToken } from "@/lib/share-token";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   business,
+  customer,
   estimateAuthorization,
   estimateVersion,
   invoice,
@@ -120,6 +122,7 @@ export async function issueInvoice(
       dueOn: input.dueOn,
       invoiceTerms: input.terms,
       tokenHash: token.hash,
+      shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 90 * 86400000),
     })
     .returning();
@@ -141,7 +144,24 @@ export async function issueInvoice(
     summary: `Invoice #${row.number} issued`,
     data: { invoiceId: row.id },
   });
-  return { id: row.id, path: `/invoice/${token.token}` };
+  const [person] = await tx
+    .select({
+      name: customer.displayName,
+      phone: customer.phoneE164,
+      email: customer.email,
+    })
+    .from(customer)
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        eq(customer.id, v.customerId),
+      ),
+    );
+  return {
+    id: row.id,
+    path: `/invoice/${token.token}`,
+    share: { path: `/invoice/${token.token}`, ...person },
+  };
 }
 export async function listInvoices(tx: TenantTx, id?: string, jobId?: string) {
   const invoices = await tx
@@ -317,6 +337,7 @@ export async function rotateInvoiceLink(
     .update(invoice)
     .set({
       tokenHash: token.hash,
+      shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 90 * 86400000),
     })
     .where(and(eq(invoice.businessId, tx.businessId), eq(invoice.id, id)))

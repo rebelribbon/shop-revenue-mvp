@@ -43,7 +43,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByLabel("Contact notes")
     .fill("Discussed the postponed brakes at the counter");
   await opportunity
-    .getByRole("button", { name: "Log manual contact", exact: true })
+    .getByRole("button", { name: "Save follow-up", exact: true })
     .click();
   await expect(opportunity).toContainText("contacted");
   await opportunity
@@ -54,12 +54,12 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .click();
   await expect(opportunity).toContainText("responded");
   await opportunity
-    .getByRole("button", { name: "New repair / re-quote", exact: true })
+    .getByRole("button", { name: "Start job", exact: true })
     .click();
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
   await page.getByLabel("Job name").fill(title);
   await page.getByRole("button", { name: "Add part", exact: true }).click();
-  const parts = page.locator("fieldset");
+  const parts = page.locator("fieldset:not(.hydration-fields)");
   await parts
     .nth(0)
     .getByLabel("Description", { exact: true })
@@ -90,9 +90,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   const job = page
     .getByRole("heading", { name: title, exact: true })
     .locator("..");
-  await job
-    .getByRole("button", { name: "Freeze and publish estimate", exact: true })
-    .click();
+  await job.getByRole("button", { name: "Send estimate", exact: true }).click();
   await expect(
     job.getByRole("link", { name: "Open customer estimate", exact: true }),
   ).toBeVisible();
@@ -118,9 +116,9 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   await page.goto("/app/invoices?new=1");
   await page
     .getByLabel("Authorized estimate", { exact: true })
-    .selectOption({ label: `${title} · Version 1 · ${name}` });
+    .selectOption({ label: `${title} · ${name}` });
   await page
-    .getByRole("button", { name: "Issue invoice", exact: true })
+    .getByRole("button", { name: "Create invoice", exact: true })
     .click();
   await page
     .getByRole("link", { name: "Open invoice & record payment", exact: true })
@@ -136,7 +134,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   await expect(inv.getByText("Paid", { exact: true })).toBeVisible();
   await page.goto("/app/revenue");
   const record = page.locator("article.card").filter({ hasText: title });
-  await expect(record).toContainText("Directly recovered: $640.00");
+  await expect(record).toContainText("Confirmed follow-up sale: $640.00");
   await record
     .getByRole("link", { name: "Explanation and history", exact: true })
     .click();
@@ -159,7 +157,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByLabel("Correction reason")
     .fill("Customer says this work was already planned");
   await page
-    .getByRole("button", { name: "Exclude this attribution", exact: true })
+    .getByRole("button", { name: "Remove from follow-up totals", exact: true })
     .click();
   await expect(
     page.getByRole("heading", {

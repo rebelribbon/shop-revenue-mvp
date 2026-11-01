@@ -40,6 +40,7 @@ export const invoice = app.table(
     voidReason: text("void_reason"),
     disputeOpen: text("dispute_open"),
     tokenHash: text("token_hash").notNull(),
+    shareTokenCiphertext: text("share_token_ciphertext"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [

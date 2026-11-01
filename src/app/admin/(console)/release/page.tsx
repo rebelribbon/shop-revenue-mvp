@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { requireInternal } from "@/server/views/admin";
 import { releaseConfiguration } from "@/lib/release-readiness";
 import { maintenanceStatus } from "@/domain/maintenance";
@@ -9,7 +10,7 @@ export default async function ReleaseReadinessPage() {
       lastSuccessAt: null,
     }));
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Release readiness</h1>
       <p>
         Runtime configuration checks do not replace delivery tests, restore
@@ -48,6 +49,6 @@ export default async function ReleaseReadinessPage() {
         Do not enable the first real shop until the external evidence checklist
         and release gate pass.
       </p>
-    </main>
+    </HydratedMain>
   );
 }

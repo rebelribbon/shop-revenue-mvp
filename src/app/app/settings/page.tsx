@@ -1,10 +1,11 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { requireShopSession } from "@/server/views/shop";
 
 export default async function SettingsPage() {
   const s = await requireShopSession("/app/settings");
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Settings</h1>
       <Link
         href="/app/settings/business"
@@ -17,6 +18,12 @@ export default async function SettingsPage() {
         <button className="btn secondary">Sign out</button>
       </form>
       <div className="settings-grid">
+        {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/common-jobs">
+            <strong>Common jobs</strong>
+            <span className="muted">Saved parts, prices and labor</span>
+          </Link>
+        )}
         <Link className="card settings-link" href="/verify?next=/app/settings">
           <strong>Authenticator security</strong>
           <span className="muted">Set up or verify your authenticator</span>
@@ -49,6 +56,6 @@ export default async function SettingsPage() {
           </Link>
         )}
       </div>
-    </main>
+    </HydratedMain>
   );
 }

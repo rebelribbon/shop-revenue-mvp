@@ -1,3 +1,4 @@
+import { revealField } from "./helpers";
 import { auditUX } from "./ux-audit";
 import { test, expect } from "@playwright/test";
 import { drawEstimateSignature, signInWithPassword } from "./helpers";
@@ -8,15 +9,17 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await signInWithPassword(page, "owner.a@shop-a.test");
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill(`Job ${info.project.name}`);
+  await page.getByLabel("Mobile number", { exact: true }).fill("+15125550123");
+  await page
+    .getByLabel("Email", { exact: true })
+    .fill(`job-${info.project.name}@example.test`);
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
-  await page
-    .getByRole("link", { name: "New repair / estimate", exact: true })
-    .click();
+  await page.getByRole("link", { name: "New job", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await expect(
     page.getByLabel("Customer", { exact: true }).locator("option:checked"),
@@ -26,6 +29,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   ).toHaveText("Honda");
   await page.getByRole("button", { name: "Add part", exact: true }).click();
   await page.getByLabel("Description", { exact: true }).fill("Pads");
+  await revealField(page, "Unit cost");
   await page.getByLabel("Unit cost", { exact: true }).fill("100");
   await page.getByLabel("Unit selling price", { exact: true }).fill("200");
   await expect(
@@ -59,8 +63,19 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .getByRole("heading", { name: `Brakes ${info.project.name}`, exact: true })
     .locator("..");
   await card
-    .getByRole("button", { name: "Freeze and publish estimate", exact: true })
+    .getByRole("button", { name: "Send estimate", exact: true })
     .click();
+  await expect(
+    card.getByRole("link", { name: "Text to customer", exact: true }),
+  ).toHaveAttribute("href", /^sms:\+15125550123[?&]body=.*%2Festimate%2F/);
+  await expect(
+    card.getByRole("link", { name: "Email to customer", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    new RegExp(
+      `^mailto:job-${info.project.name}@example\\.test\\?subject=.*&body=.*%2Festimate%2F`,
+    ),
+  );
   await expect(
     card.getByRole("link", { name: "Open customer estimate", exact: true }),
   ).toBeVisible();
@@ -104,26 +119,26 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     exact: true,
   });
   await expect(
-    workflow.getByRole("heading", { name: "Ready for work", exact: true }),
+    workflow.getByRole("heading", { name: /approved \$/ }),
   ).toBeVisible();
   await expect(workflow).toContainText("Pads");
-  await expect(workflow).toContainText("Authorized");
+  await expect(workflow).toContainText("Approved work");
   await workflow
-    .getByRole("button", { name: "Start authorized work", exact: true })
+    .getByRole("button", { name: "Start job", exact: true })
     .click();
   await expect(
-    workflow.getByRole("heading", { name: "Work in progress", exact: true }),
+    workflow.getByRole("heading", { name: /^Work in progress:/ }),
   ).toBeVisible();
   await auditUX(page);
   await workflow
-    .getByRole("button", { name: "Mark authorized work complete", exact: true })
+    .getByRole("button", { name: "Mark job finished", exact: true })
     .click();
   await expect(
-    workflow.getByRole("heading", { name: "Ready to invoice", exact: true }),
+    workflow.getByRole("heading", { name: /^Work finished:/ }),
   ).toBeVisible();
   await workflow
     .getByRole("link", {
-      name: "Create invoice for completed work",
+      name: "Create invoice",
       exact: true,
     })
     .click();
@@ -131,9 +146,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     page
       .getByLabel("Authorized estimate", { exact: true })
       .locator("option:checked"),
-  ).toHaveText(
-    `Brakes ${info.project.name} · Version 1 · Job ${info.project.name}`,
-  );
+  ).toHaveText(`Brakes ${info.project.name} · Job ${info.project.name}`);
   await expect(page.getByLabel("Payment due", { exact: true })).toHaveValue(
     "receipt",
   );
@@ -150,10 +163,10 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   if (info.project.name === "phone")
     await page.setViewportSize({ width: 390, height: 844 });
   const issuer = page
-    .getByRole("button", { name: "Issue invoice", exact: true })
+    .getByRole("button", { name: "Create invoice", exact: true })
     .locator("..");
   await issuer
-    .getByRole("button", { name: "Issue invoice", exact: true })
+    .getByRole("button", { name: "Create invoice", exact: true })
     .click();
   await expect(
     page.getByRole("link", { name: "Open customer invoice", exact: true }),
@@ -171,6 +184,9 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
       name: new RegExp(`Invoice #.*Brakes ${info.project.name}`),
     })
     .locator("..");
+  await expect(invoice.getByLabel("Amount ($)", { exact: true })).toHaveValue(
+    "200.00",
+  );
   await invoice.getByLabel("Amount ($)", { exact: true }).fill("50");
   await invoice
     .getByRole("button", { name: "Record payment", exact: true })

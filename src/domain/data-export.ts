@@ -1,6 +1,8 @@
 import { and, asc, eq, gt, lte, sql } from "drizzle-orm";
 import {
   activity,
+  expense,
+  commonJob,
   appointment,
   asset,
   assetReading,
@@ -37,6 +39,8 @@ export const exportDatasets = [
   "revenue",
   "revenue-history",
   "estimate-lines",
+  "expenses",
+  "common-jobs",
 ] as const;
 export type ExportDataset = (typeof exportDatasets)[number];
 const tables = {
@@ -56,9 +60,12 @@ const tables = {
   revenue: revenueAttribution,
   "revenue-history": revenueAttributionEvent,
   "estimate-lines": estimateRecommendationLine,
+  expenses: expense,
+  "common-jobs": commonJob,
 };
 const forbidden = new Set([
   "tokenHash",
+  "shareTokenCiphertext",
   "inviteTokenHash",
   "inviteToken",
   "accessToken",

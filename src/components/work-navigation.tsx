@@ -1,9 +1,7 @@
-import { isAutomotive } from "@/lib/business-types";
 import Link from "next/link";
 
 export function WorkNavigation({
   current,
-  businessType = "automotive",
 }: {
   current: "jobs" | "estimates" | "invoices";
   businessType?: string;
@@ -12,7 +10,7 @@ export function WorkNavigation({
     <nav className="section-tabs" aria-label="Work stages">
       {(
         [
-          ["jobs", isAutomotive(businessType) ? "Repairs" : "Jobs"],
+          ["jobs", "Jobs"],
           ["estimates", "Estimates"],
           ["invoices", "Invoices"],
         ] as const

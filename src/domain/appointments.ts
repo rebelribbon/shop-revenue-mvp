@@ -168,7 +168,7 @@ export async function createAppointment(
     kind: "appointment.created",
     subjectType: "customer",
     subjectId: row.customerId,
-    summary: `Appointment scheduled for ${c.name}`,
+    summary: `Visit booked for ${c.name}`,
     data: {
       appointmentId: row.id,
       sourceRecoveryItemId: row.sourceRecoveryItemId,
@@ -214,19 +214,20 @@ export async function setAppointmentStatus(
     kind: "appointment.updated",
     subjectType: "customer",
     subjectId: row.customerId,
-    summary: `Appointment marked ${status.replace("_", " ")}`,
+    summary: `Visit marked ${status.replace("_", " ")}`,
     data: { appointmentId: row.id },
   });
   return row;
 }
 
-export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
-  const timezone = await shopTimezone(tx);
-  const today = localDateKey(now, timezone);
-  const tomorrow = addLocalDays(today, 1);
-  const afterTomorrow = addLocalDays(today, 2);
-  const start = localMidnightToUtc(today, timezone);
-  const end = localMidnightToUtc(afterTomorrow, timezone);
+export async function listVisitsRange(
+  tx: TenantTx,
+  startDay: string,
+  endDay: string,
+) {
+  const timezone = await shopTimezone(tx),
+    start = localMidnightToUtc(startDay, timezone),
+    end = localMidnightToUtc(endDay, timezone);
   const property = alias(asset, "appointment_service_property");
   const rows = await tx
     .select({
@@ -291,6 +292,13 @@ export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
       ),
     )
     .orderBy(asc(appointment.startsAt));
+  return { timezone, rows };
+}
+export async function listTodayTomorrow(tx: TenantTx, now = new Date()) {
+  const timezone = await shopTimezone(tx),
+    today = localDateKey(now, timezone),
+    tomorrow = addLocalDays(today, 1);
+  const { rows } = await listVisitsRange(tx, today, addLocalDays(today, 2));
   return {
     timezone,
     today: rows.filter((r) => localDateKey(r.startsAt, timezone) === today),

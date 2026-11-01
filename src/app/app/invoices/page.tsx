@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { z } from "zod";
 import { notFound } from "next/navigation";
 import { localDateKey, formatDateOnly } from "@/lib/timezone";
@@ -85,10 +86,10 @@ export default async function InvoicesPage({
     .map((e) => ({
       id: e.id,
       jobId: e.quoteId,
-      label: `${e.snapshot.title} · Version ${e.version} · ${e.snapshot.customerName}`,
+      label: `${e.snapshot.title} · ${e.snapshot.customerName}`,
     }));
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Invoices</h1>
       <WorkNavigation
         current="invoices"
@@ -191,26 +192,25 @@ export default async function InvoicesPage({
               <InvoiceLink id={i.id} />
               {i.disputeOpen && (
                 <p className="notice">
-                  Open dispute: {i.disputeOpen}. Money Finder follow-up is
-                  paused.
+                  Open dispute: {i.disputeOpen}. Follow-ups follow-up is paused.
                 </p>
               )}
               {!i.voidedAt && s.actor.type !== "support" && (
                 <details>
-                  <summary>Record or resolve a dispute</summary>
+                  <summary>Customer has a billing question</summary>
                   <p>
                     Record disputes reported to the shop here. Clear the reason
-                    after resolution. This pauses Money Finder follow-up and
-                    does not move money or change Stripe dispute handling.
+                    after resolution. This pauses Follow-ups follow-up and does
+                    not move money or change Stripe dispute handling.
                   </p>
                   <ActionForm
                     action={setInvoiceDisputeAction}
                     hidden={{ id: i.id }}
-                    submitLabel="Save dispute status"
+                    submitLabel="Save billing note"
                     variant="secondary"
                   >
                     <label htmlFor={`dispute-${i.id}`}>
-                      Open dispute reason (clear to resolve)
+                      Billing question (clear when resolved)
                     </label>
                     <input
                       id={`dispute-${i.id}`}
@@ -351,6 +351,6 @@ export default async function InvoicesPage({
             </details>
           </article>
         ))}
-    </main>
+    </HydratedMain>
   );
 }

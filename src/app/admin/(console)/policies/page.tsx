@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { ActionForm } from "@/components/action-form";
 import { listPolicies, POLICY_KINDS } from "@/domain/legal-policy";
 import {
@@ -14,7 +15,7 @@ export default async function Policies() {
   const me = await requireInternal("admin");
   const policies = await listPolicies();
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Legal policies</h1>
       {policies.length === 0 && (
         <p className="muted">
@@ -101,6 +102,6 @@ export default async function Policies() {
           <textarea id="body" name="body" required />
         </ActionForm>
       </div>
-    </main>
+    </HydratedMain>
   );
 }

@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import { listTeam } from "@/domain/membership";
@@ -14,7 +15,7 @@ export default async function TeamPage() {
   const isOwner = s.role === "owner";
   const staffSeatUsed = team.some((m) => m.role === "staff");
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Team</h1>
       <div className="card table-wrap">
         <table>
@@ -90,6 +91,6 @@ export default async function TeamPage() {
           someone else.
         </p>
       )}
-    </main>
+    </HydratedMain>
   );
 }

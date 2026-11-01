@@ -54,17 +54,21 @@ export default async function ShopLayout({
               {businessTypeLabel(b?.businessType)}
             </p>
           </div>
-          <WorkspaceNavigation />
+          <WorkspaceNavigation canSeeMoney={s.role === "owner"} />
         </aside>
         <header className="workspace-header">
-          <strong className="workspace-mobile-brand">
+          <Link
+            href="/app"
+            aria-label="Go home"
+            className="workspace-mobile-brand"
+          >
             {b?.dba || b?.legalName}
-          </strong>
+          </Link>
           <QuickFind
             automotive={isAutomotive(b?.businessType ?? "automotive")}
           />
           <Link
-            className="btn secondary icon-button workspace-mobile-settings"
+            className="btn secondary icon-button"
             href="/app/settings"
             aria-label="Settings"
             title="Settings"
@@ -82,7 +86,7 @@ export default async function ShopLayout({
           )}
           {children}
         </div>
-        <WorkspaceNavigation mobile />
+        <WorkspaceNavigation mobile canSeeMoney={s.role === "owner"} />
       </div>
     </>
   );

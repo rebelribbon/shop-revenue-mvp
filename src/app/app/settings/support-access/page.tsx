@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { desc, eq } from "drizzle-orm";
 import { auditEvent } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
@@ -35,7 +36,7 @@ export default async function SupportAccessPage() {
       ] as const,
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Support access</h1>
       <div className="card table-wrap">
         {sessions.length === 0 ? (
@@ -87,6 +88,6 @@ export default async function SupportAccessPage() {
           </tbody>
         </table>
       </div>
-    </main>
+    </HydratedMain>
   );
 }

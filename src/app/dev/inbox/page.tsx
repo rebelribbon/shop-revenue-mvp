@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import { notFound } from "next/navigation";
 import { readDevInbox } from "@/providers/messaging";
 
@@ -12,7 +13,7 @@ export default function DevInbox() {
     notFound();
   const messages = readDevInbox();
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Dev SMS inbox</h1>
       <p className="muted">
         Fake messaging adapter. Nothing here was sent to a real phone.
@@ -37,6 +38,6 @@ export default function DevInbox() {
           </tbody>
         </table>
       </div>
-    </main>
+    </HydratedMain>
   );
 }

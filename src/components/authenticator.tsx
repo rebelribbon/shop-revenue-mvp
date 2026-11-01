@@ -1,4 +1,5 @@
 "use client";
+import { useActionHydration } from "./action-hydration";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { enrollAuthenticator, verifyAuthenticator } from "@/server/actions/mfa";
@@ -16,9 +17,10 @@ export function Authenticator({
     [secret, setSecret] = useState(""),
     [message, setMessage] = useState("");
   const [pending, start] = useTransition();
+  const ready = useActionHydration();
   const router = useRouter();
   return (
-    <section className="card">
+    <section className="card" data-ux-ready={ready}>
       <h1>{verified ? "Authenticator verified" : "Verify your sign-in"}</h1>
       <p>
         Use an authenticator app you control. Keep access to that app; contact
@@ -83,6 +85,7 @@ export function Authenticator({
           )}
           {factorId && (
             <form
+              data-ux-ready={ready}
               onSubmit={(e) => {
                 e.preventDefault();
                 const code = String(
@@ -106,41 +109,45 @@ export function Authenticator({
                 });
               }}
             >
-              {factors.length > 1 && (
-                <label>
-                  Authenticator
-                  <select
-                    value={factorId}
-                    onChange={(e) => setFactor(e.target.value)}
-                  >
-                    {factors.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <label htmlFor="mfa-code">Authenticator code</label>
-              <input
-                id="mfa-code"
-                name="code"
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                required
-              />
-              <button className="btn primary" disabled={pending}>
-                {pending ? "Verifying…" : "Verify authenticator"}
-              </button>
+              <fieldset className="hydration-fields" disabled={!ready}>
+                {factors.length > 1 && (
+                  <label>
+                    Authenticator
+                    <select
+                      value={factorId}
+                      onChange={(e) => setFactor(e.target.value)}
+                    >
+                      {factors.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label htmlFor="mfa-code">Authenticator code</label>
+                <input
+                  id="mfa-code"
+                  name="code"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  required
+                />
+                <button className="btn primary" disabled={pending}>
+                  {pending ? "Verifying…" : "Verify authenticator"}
+                </button>
+              </fieldset>
             </form>
           )}
         </>
       )}
       <p role="status">{message}</p>
       <form action="/auth/sign-out" method="post">
-        <button className="btn secondary">Sign out</button>
+        <fieldset className="hydration-fields" disabled={!ready}>
+          <button className="btn secondary">Sign out</button>
+        </fieldset>
       </form>
     </section>
   );

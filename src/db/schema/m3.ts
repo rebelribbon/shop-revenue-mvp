@@ -54,6 +54,7 @@ export const estimateVersion = app.table(
     snapshot: jsonb("snapshot").$type<EstimateSnapshot>().notNull(),
     supplementReason: text("supplement_reason"),
     tokenHash: text("token_hash").notNull(),
+    shareTokenCiphertext: text("share_token_ciphertext"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
   },

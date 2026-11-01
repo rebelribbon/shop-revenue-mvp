@@ -38,7 +38,7 @@ test("Money Finder records real work, manual follow-up and source-linked jobs", 
   await expect(item).toHaveCount(0);
   await page.getByRole("link", { name: "Snoozed", exact: true }).click();
   await expect(item).toHaveCount(1);
-  await item.getByRole("button", { name: "Unsnooze", exact: true }).click();
+  await item.getByRole("button", { name: "Show again", exact: true }).click();
   await expect(item).toHaveCount(0);
   await page.getByRole("link", { name: "Active", exact: true }).click();
   await expect(item).toHaveCount(1);
@@ -46,7 +46,7 @@ test("Money Finder records real work, manual follow-up and source-linked jobs", 
   await item.getByLabel("Contact method").selectOption("in_person");
   await item.getByLabel("Contact notes").fill("Discussed at the counter");
   await item
-    .getByRole("button", { name: "Log manual contact", exact: true })
+    .getByRole("button", { name: "Save follow-up", exact: true })
     .click();
   await expect(item).toContainText("contacted");
   await expect(item).toContainText("(in person)");
@@ -54,9 +54,7 @@ test("Money Finder records real work, manual follow-up and source-linked jobs", 
     path: `test-results/money-finder-${info.project.name}.png`,
     fullPage: true,
   });
-  await item
-    .getByRole("button", { name: "New repair / re-quote", exact: true })
-    .click();
+  await item.getByRole("button", { name: "Start job", exact: true }).click();
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
   await expect(page.getByLabel("Customer", { exact: true })).not.toHaveValue(
     "",
