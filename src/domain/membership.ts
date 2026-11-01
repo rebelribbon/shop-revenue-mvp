@@ -1,8 +1,8 @@
 // Team access (D15, S28): Owner + one Staff login. inviteStaff, resendInvite,
 // removeStaff are Owner-only; acceptInvite activates an invited membership for
 // the signed-in person whose verified email or phone matches the invite.
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { membership, user } from "@/db/schema";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { auditEvent, membership, user } from "@/db/schema";
 import { resolveInvite, withTenant, type TenantTx } from "@/db/tenant";
 import { AppError, forbidden, notFound } from "@/lib/errors";
 import { hashToken, isWellFormedToken, newToken } from "@/lib/tokens";
@@ -31,6 +31,35 @@ export async function currentMemberRole(
 export async function assertOwner(tx: TenantTx) {
   if ((await currentMemberRole(tx)) !== "owner")
     throw forbidden("Only the owner can do that.");
+}
+
+export const INVITE_DELIVERY_ACTION = "membership.invite_delivery";
+
+// Latest delivery attempt per invited membership, from the audit trail written
+// after each send. Invites with no recorded attempt are absent from the map.
+export async function inviteDeliveryStatus(
+  tx: TenantTx,
+  membershipIds: string[],
+): Promise<Map<string, "sent" | "failed">> {
+  const out = new Map<string, "sent" | "failed">();
+  if (!membershipIds.length) return out;
+  const rows = await tx
+    .select({ targetId: auditEvent.targetId, after: auditEvent.after })
+    .from(auditEvent)
+    .where(
+      and(
+        eq(auditEvent.businessId, tx.businessId),
+        eq(auditEvent.action, INVITE_DELIVERY_ACTION),
+        inArray(auditEvent.targetId, membershipIds),
+      ),
+    )
+    .orderBy(desc(auditEvent.occurredAt), desc(auditEvent.id));
+  for (const r of rows) {
+    if (!r.targetId || out.has(r.targetId)) continue;
+    const status = (r.after as { status?: string } | null)?.status;
+    out.set(r.targetId, status === "sent" ? "sent" : "failed");
+  }
+  return out;
 }
 
 export async function listTeam(tx: TenantTx) {

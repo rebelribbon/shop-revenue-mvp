@@ -2,7 +2,11 @@ import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
-import { listTeam, MAX_STAFF_SEATS } from "@/domain/membership";
+import {
+  inviteDeliveryStatus,
+  listTeam,
+  MAX_STAFF_SEATS,
+} from "@/domain/membership";
 import {
   inviteStaffAction,
   removeStaffAction,
@@ -12,7 +16,34 @@ import { requireShopSession } from "@/server/views/shop";
 
 export default async function TeamPage() {
   const s = await requireShopSession("/app/settings/team");
-  const team = await withTenant(s.businessId, s.actor, (tx) => listTeam(tx));
+  const { team, delivery, expired } = await withTenant(
+    s.businessId,
+    s.actor,
+    async (tx) => {
+      const team = await listTeam(tx);
+      const invited = team.filter((m) => m.status === "invited");
+      const delivery = await inviteDeliveryStatus(
+        tx,
+        invited.map((m) => m.id),
+      );
+      const expired = new Set(
+        invited
+          .filter((m) => m.inviteExpiresAt && m.inviteExpiresAt < new Date())
+          .map((m) => m.id),
+      );
+      return { team, delivery, expired };
+    },
+  );
+  const statusLabel = (m: (typeof team)[number]) => {
+    if (m.status !== "invited") return { text: "Active", warn: false };
+    if (delivery.get(m.id) === "failed")
+      return { text: "Not sent – resend", warn: true };
+    if (expired.has(m.id))
+      return { text: "Invite expired – resend", warn: true };
+    if (delivery.get(m.id) === "sent")
+      return { text: "Invite sent", warn: false };
+    return { text: "Invited", warn: false };
+  };
   const isOwner = s.role === "owner";
   const staffSeats = team.filter((m) => m.role === "staff").length;
   const seatsLeft = MAX_STAFF_SEATS - staffSeats;
@@ -43,8 +74,10 @@ export default async function TeamPage() {
                 </td>
                 <td>{m.role === "owner" ? "Owner" : "Staff"}</td>
                 <td>
-                  <span className="pill">
-                    {m.status === "invited" ? "Invite sent" : "Active"}
+                  <span
+                    className={statusLabel(m).warn ? "pill pill-warn" : "pill"}
+                  >
+                    {statusLabel(m).text}
                   </span>
                 </td>
                 {isOwner && (
