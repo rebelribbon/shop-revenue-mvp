@@ -264,9 +264,7 @@ it("shows sales, net collections, all unpaid money, quote-based profit and expen
     0,
   );
   // Reversing the payment also reverses its sales-tax share.
-  expect((await f.run((tx) => getOwnerMoney(tx, month))).salesTaxCents).toBe(
-    0,
-  );
+  expect((await f.run((tx) => getOwnerMoney(tx, month))).salesTaxCents).toBe(0);
   expect((await f.run((tx) => getOwnerMoney(tx, month))).owedCents).toBe(31650);
   await expect(
     withTenant(f.t.businessId, f.t.staff!.actor, (tx) =>

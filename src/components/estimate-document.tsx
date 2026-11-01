@@ -29,8 +29,7 @@ export function EstimateDocument({
               : l.quantity === 1
                 ? "unit"
                 : "units"}{" "}
-            ×{" "}
-            {formatMoney(l.unitPriceCents)} ={" "}
+            × {formatMoney(l.unitPriceCents)} ={" "}
             <strong>{formatMoney(l.totalCents)}</strong>
             {l.taxable === false
               ? " · Not taxable"
