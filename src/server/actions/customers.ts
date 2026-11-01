@@ -7,6 +7,7 @@ import {
   createVehicle,
   updateCustomer,
   updateVehicle,
+  setContactPermission,
 } from "@/domain/customers";
 import { normalizeEmail, normalizePhone } from "@/lib/normalize";
 import { defineShopAction } from "./define";
@@ -141,4 +142,30 @@ export const archiveVehicleAction = defineShopAction({
     message: "Vehicle archived.",
     redirectTo: `/app/customers/${row.customerId}`,
   }),
+});
+
+export const setContactPermissionAction = defineShopAction({
+  name: "setContactPermission",
+  input: z.object({
+    customerId: z.uuid(),
+    channel: z.enum(["text", "email"]),
+    allowed: z.enum(["true", "false"]),
+  }),
+  run: async ({ tx, meta }, input) => {
+    const allowed = input.allowed === "true";
+    const r = await setContactPermission(
+      tx,
+      meta,
+      input.customerId,
+      input.channel,
+      allowed,
+    );
+    const label = input.channel === "text" ? "Texts" : "Emails";
+    return {
+      ...r,
+      message: allowed
+        ? `${label} turned back on.`
+        : `${label} stopped for this customer.`,
+    };
+  },
 });

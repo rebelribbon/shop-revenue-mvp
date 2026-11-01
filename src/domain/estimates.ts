@@ -1,3 +1,4 @@
+import { shareRecipient } from "./document-sharing";
 import { partLineCents } from "./job-costing";
 import { sealShareToken } from "@/lib/share-token";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -270,9 +271,7 @@ export async function freezeEstimate(
     path: `/estimate/${token.token}`,
     share: {
       path: `/estimate/${token.token}`,
-      name: c.customer.displayName,
-      phone: c.customer.phoneE164,
-      email: c.customer.email,
+      ...(await shareRecipient(tx, c.customer.id)),
     },
   };
 }

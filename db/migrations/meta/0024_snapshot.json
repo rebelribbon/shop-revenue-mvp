@@ -200,16 +200,12 @@
       "uniqueConstraints": {
         "internal_user_email_key": {
           "name": "internal_user_email_key",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "nullsNotDistinct": false
         },
         "internal_user_auth_provider_id_key": {
           "name": "internal_user_auth_provider_id_key",
-          "columns": [
-            "auth_provider_id"
-          ],
+          "columns": ["auth_provider_id"],
           "nullsNotDistinct": false
         }
       },
@@ -329,28 +325,20 @@
         "location_business_fk": {
           "name": "location_business_fk",
           "tableFrom": "location",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "location_created_by_fk": {
           "name": "location_created_by_fk",
           "tableFrom": "location",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -359,10 +347,7 @@
       "uniqueConstraints": {
         "location_business_id_id_key": {
           "name": "location_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -505,42 +490,30 @@
         "membership_business_fk": {
           "name": "membership_business_fk",
           "tableFrom": "membership",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "membership_user_fk": {
           "name": "membership_user_fk",
           "tableFrom": "membership",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "membership_created_by_fk": {
           "name": "membership_created_by_fk",
           "tableFrom": "membership",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -549,25 +522,17 @@
       "uniqueConstraints": {
         "membership_business_id_id_key": {
           "name": "membership_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         },
         "membership_business_id_user_id_key": {
           "name": "membership_business_id_user_id_key",
-          "columns": [
-            "business_id",
-            "user_id"
-          ],
+          "columns": ["business_id", "user_id"],
           "nullsNotDistinct": false
         },
         "membership_invite_token_hash_key": {
           "name": "membership_invite_token_hash_key",
-          "columns": [
-            "invite_token_hash"
-          ],
+          "columns": ["invite_token_hash"],
           "nullsNotDistinct": false
         }
       },
@@ -702,28 +667,20 @@
         "support_session_admin_fk": {
           "name": "support_session_admin_fk",
           "tableFrom": "support_session",
-          "columnsFrom": [
-            "admin_user_id"
-          ],
+          "columnsFrom": ["admin_user_id"],
           "tableTo": "internal_user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "support_session_business_fk": {
           "name": "support_session_business_fk",
           "tableFrom": "support_session",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -732,10 +689,7 @@
       "uniqueConstraints": {
         "support_session_business_id_id_key": {
           "name": "support_session_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -829,23 +783,17 @@
       "uniqueConstraints": {
         "user_auth_provider_id_key": {
           "name": "user_auth_provider_id_key",
-          "columns": [
-            "auth_provider_id"
-          ],
+          "columns": ["auth_provider_id"],
           "nullsNotDistinct": false
         },
         "user_email_key": {
           "name": "user_email_key",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "nullsNotDistinct": false
         },
         "user_phone_e164_key": {
           "name": "user_phone_e164_key",
-          "columns": [
-            "phone_e164"
-          ],
+          "columns": ["phone_e164"],
           "nullsNotDistinct": false
         }
       },
@@ -1012,28 +960,20 @@
         "activity_business_fk": {
           "name": "activity_business_fk",
           "tableFrom": "activity",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "activity_created_by_fk": {
           "name": "activity_created_by_fk",
           "tableFrom": "activity",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1042,10 +982,7 @@
       "uniqueConstraints": {
         "activity_business_id_id_key": {
           "name": "activity_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -1234,58 +1171,40 @@
         "audit_event_business_fk": {
           "name": "audit_event_business_fk",
           "tableFrom": "audit_event",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "audit_event_created_by_fk": {
           "name": "audit_event_created_by_fk",
           "tableFrom": "audit_event",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "audit_event_support_session_fk": {
           "name": "audit_event_support_session_fk",
           "tableFrom": "audit_event",
-          "columnsFrom": [
-            "support_session_id"
-          ],
+          "columnsFrom": ["support_session_id"],
           "tableTo": "support_session",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "audit_event_support_session_tenant_fk": {
           "name": "audit_event_support_session_tenant_fk",
           "tableFrom": "audit_event",
-          "columnsFrom": [
-            "business_id",
-            "support_session_id"
-          ],
+          "columnsFrom": ["business_id", "support_session_id"],
           "tableTo": "support_session",
           "schemaTo": "app",
-          "columnsTo": [
-            "business_id",
-            "id"
-          ],
+          "columnsTo": ["business_id", "id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1294,10 +1213,7 @@
       "uniqueConstraints": {
         "audit_event_business_id_id_key": {
           "name": "audit_event_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -1398,28 +1314,20 @@
         "file_business_fk": {
           "name": "file_business_fk",
           "tableFrom": "file",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "file_created_by_fk": {
           "name": "file_created_by_fk",
           "tableFrom": "file",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1428,17 +1336,12 @@
       "uniqueConstraints": {
         "file_business_id_id_key": {
           "name": "file_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         },
         "file_storage_key_key": {
           "name": "file_storage_key_key",
-          "columns": [
-            "storage_key"
-          ],
+          "columns": ["storage_key"],
           "nullsNotDistinct": false
         }
       },
@@ -1588,28 +1491,20 @@
         "legal_policy_created_by_fk": {
           "name": "legal_policy_created_by_fk",
           "tableFrom": "legal_policy",
-          "columnsFrom": [
-            "created_by_internal_user_id"
-          ],
+          "columnsFrom": ["created_by_internal_user_id"],
           "tableTo": "internal_user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "legal_policy_approved_by_fk": {
           "name": "legal_policy_approved_by_fk",
           "tableFrom": "legal_policy",
-          "columnsFrom": [
-            "approved_by"
-          ],
+          "columnsFrom": ["approved_by"],
           "tableTo": "internal_user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1618,11 +1513,7 @@
       "uniqueConstraints": {
         "legal_policy_version_key": {
           "name": "legal_policy_version_key",
-          "columns": [
-            "jurisdiction_code",
-            "kind",
-            "version"
-          ],
+          "columns": ["jurisdiction_code", "kind", "version"],
           "nullsNotDistinct": false
         }
       },
@@ -1740,28 +1631,20 @@
         "request_idempotency_business_fk": {
           "name": "request_idempotency_business_fk",
           "tableFrom": "request_idempotency",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "request_idempotency_created_by_fk": {
           "name": "request_idempotency_created_by_fk",
           "tableFrom": "request_idempotency",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
           "tableTo": "user",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1770,18 +1653,12 @@
       "uniqueConstraints": {
         "request_idempotency_business_id_id_key": {
           "name": "request_idempotency_business_id_id_key",
-          "columns": [
-            "business_id",
-            "id"
-          ],
+          "columns": ["business_id", "id"],
           "nullsNotDistinct": false
         },
         "request_idempotency_client_request_key": {
           "name": "request_idempotency_client_request_key",
-          "columns": [
-            "business_id",
-            "client_request_id"
-          ],
+          "columns": ["business_id", "client_request_id"],
           "nullsNotDistinct": false
         }
       },
@@ -1938,14 +1815,10 @@
         "webhook_event_business_fk": {
           "name": "webhook_event_business_fk",
           "tableFrom": "webhook_event",
-          "columnsFrom": [
-            "business_id"
-          ],
+          "columnsFrom": ["business_id"],
           "tableTo": "business",
           "schemaTo": "app",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1954,10 +1827,7 @@
       "uniqueConstraints": {
         "webhook_event_provider_event_key": {
           "name": "webhook_event_provider_event_key",
-          "columns": [
-            "provider",
-            "provider_event_id"
-          ],
+          "columns": ["provider", "provider_event_id"],
           "nullsNotDistinct": false
         }
       },

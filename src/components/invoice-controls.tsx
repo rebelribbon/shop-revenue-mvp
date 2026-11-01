@@ -1,7 +1,7 @@
 "use client";
 import { useActionHydration } from "./action-hydration";
 import Link from "next/link";
-import { DocumentShare } from "./document-share";
+import { DocumentShare, type ShareData } from "./document-share";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -21,10 +21,7 @@ export function InvoiceIssuer({
   const ready = useActionHydration();
   const router = useRouter();
   const [issuedId, setIssuedId] = useState("");
-  const [share, setShare] = useState<
-    | { path: string; name: string; phone: string | null; email: string | null }
-    | undefined
-  >();
+  const [share, setShare] = useState<ShareData | undefined>();
   const [issuedJobId, setIssuedJobId] = useState("");
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);

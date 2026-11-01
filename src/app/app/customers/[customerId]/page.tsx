@@ -20,7 +20,7 @@ import {
   updateCustomerAction,
 } from "@/server/actions/customers";
 import { requireShopSession } from "@/server/views/shop";
-import { setDoNotContactAction } from "@/server/actions/money-finder";
+import { ContactPermissions } from "@/components/contact-permissions";
 
 export default async function CustomerDetailPage(props: {
   params: Promise<{ customerId: string }>;
@@ -47,6 +47,18 @@ export default async function CustomerDetailPage(props: {
     : "overview";
   const auto = isAutomotive(profile?.businessType ?? "automotive");
   const base = `/app/customers/${customerId}`;
+  const permissions = (
+    <ContactPermissions
+      customerId={customerId}
+      hasPhone={Boolean(c.phoneE164)}
+      hasEmail={Boolean(c.email)}
+      textOptedOutAt={c.textOptedOutAt}
+      emailOptedOutAt={c.emailOptedOutAt}
+      doNotContact={c.doNotContact}
+      timeZone={profile?.timezone || "America/Chicago"}
+      canEdit={s.actor.type !== "support"}
+    />
+  );
   const assetCount = data.vehicles.length + assets.length;
 
   return (
@@ -102,20 +114,18 @@ export default async function CustomerDetailPage(props: {
               ) : (
                 <span className="muted">No phone recorded</span>
               )}
-              {c.email ? (
+              {c.email && c.emailOptedOutAt ? (
+                <span>{c.email} (emails stopped)</span>
+              ) : c.email ? (
                 <a href={`mailto:${c.email}`}>{c.email}</a>
               ) : (
                 <span className="muted">No email recorded</span>
               )}
             </div>
-            <p>
-              {c.doNotContact
-                ? "Do not contact — excluded from Follow-ups."
-                : "Manual follow-up allowed."}
-            </p>
             {c.notes && <p>{c.notes}</p>}
             <Link href={`${base}?view=details`}>Edit contact details</Link>
           </section>
+          {permissions}
           <section className="card">
             <h2>{auto ? "Vehicles" : "Properties & equipment"}</h2>
             {!assetCount && (
@@ -161,29 +171,7 @@ export default async function CustomerDetailPage(props: {
       )}
       {view === "details" && (
         <>
-          <div className="card">
-            <h2>Contact preference</h2>
-            <p>
-              {c.doNotContact
-                ? "Do not contact — excluded from Follow-ups."
-                : "Manual follow-up allowed."}
-            </p>
-            {s.actor.type !== "support" && (
-              <ActionForm
-                action={setDoNotContactAction}
-                hidden={{
-                  customerId,
-                  value: c.doNotContact ? "false" : "true",
-                }}
-                submitLabel={
-                  c.doNotContact
-                    ? "Allow manual follow-up"
-                    : "Mark do not contact"
-                }
-                variant="secondary"
-              />
-            )}
-          </div>
+          {permissions}
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Customer details</h2>
             <ActionForm
