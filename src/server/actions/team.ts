@@ -5,7 +5,10 @@ import { z } from "zod";
 import { business } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { deliverInvite } from "@/domain/invite-delivery";
+import { audit, type RequestMeta } from "@/domain/records";
+import { logger } from "@/lib/logger";
 import {
+  INVITE_DELIVERY_ACTION,
   inviteStaff,
   removeStaff,
   resendInvite,
@@ -32,6 +35,37 @@ const delivered = (d: InviteDelivery) => ({
   message: "Invite already sent for this request.",
 });
 
+// Send, then record the outcome so the Team page can say whether it went out.
+const sendAndRecord = async (
+  d: InviteDelivery,
+  session: { businessId: string; actor: Parameters<typeof withTenant>[1] },
+  meta: RequestMeta,
+) => {
+  const outcome = await deliverInvite(
+    d,
+    await businessName(session.businessId, session.actor),
+    meta.requestId,
+  );
+  try {
+    await withTenant(session.businessId, session.actor, (tx) =>
+      audit(tx, meta, {
+        action: INVITE_DELIVERY_ACTION,
+        targetType: "membership",
+        targetId: d.membershipId,
+        after: { status: outcome.status, channel: outcome.channel },
+      }),
+    );
+  } catch (e) {
+    logger.warn({
+      event: "invite.delivery_record_failed",
+      requestId: meta.requestId,
+      membershipId: d.membershipId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+  return outcome;
+};
+
 const inviteInput = z.object({
   name: z.string().min(1).max(100),
   email: z.string().max(254).optional().or(z.literal("")),
@@ -49,12 +83,7 @@ export const inviteStaffAction = defineShopAction({
       phoneE164: input.phone ? normalizePhone(input.phone) : null,
     }),
   persist: delivered,
-  afterCommit: async (d, session, meta) =>
-    deliverInvite(
-      d,
-      await businessName(session.businessId, session.actor),
-      meta.requestId,
-    ),
+  afterCommit: (d, session, meta) => sendAndRecord(d, session, meta),
 });
 
 export const resendInviteAction = defineShopAction({
@@ -63,12 +92,7 @@ export const resendInviteAction = defineShopAction({
   ownerOnly: true,
   run: ({ tx, meta }, input) => resendInvite(tx, meta, input.membershipId),
   persist: delivered,
-  afterCommit: async (d, session, meta) =>
-    deliverInvite(
-      d,
-      await businessName(session.businessId, session.actor),
-      meta.requestId,
-    ),
+  afterCommit: (d, session, meta) => sendAndRecord(d, session, meta),
 });
 
 export const removeStaffAction = defineShopAction({
