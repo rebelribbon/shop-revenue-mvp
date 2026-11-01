@@ -193,6 +193,16 @@ export async function setAppointmentStatus(
       ),
     );
   if (!before) throw notFound("That appointment");
+  // Booked visits move to a final state; a final state can only go back to
+  // booked (an undo), never sideways (completed -> no-show).
+  if (
+    before.status === status ||
+    (before.status !== "scheduled" && status !== "scheduled")
+  )
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "That visit was already updated. Refresh to see its status.",
+    );
   const [row] = await tx
     .update(appointment)
     .set({ status, updatedAt: new Date() })
@@ -214,7 +224,75 @@ export async function setAppointmentStatus(
     kind: "appointment.updated",
     subjectType: "customer",
     subjectId: row.customerId,
-    summary: `Visit marked ${status.replace("_", " ")}`,
+    summary: `Visit marked ${visitStatusLabel(status).toLowerCase()}`,
+    data: { appointmentId: row.id },
+  });
+  return row;
+}
+
+export const visitStatusLabel = (status: string) =>
+  status === "scheduled"
+    ? "Booked"
+    : status === "no_show"
+      ? "No-show"
+      : status === "completed"
+        ? "Completed"
+        : status === "cancelled"
+          ? "Cancelled"
+          : status;
+
+export async function rescheduleAppointment(
+  tx: TenantTx,
+  meta: RequestMeta,
+  appointmentId: string,
+  localStartsAt: string,
+) {
+  const [before] = await tx
+    .select()
+    .from(appointment)
+    .where(
+      and(
+        eq(appointment.businessId, tx.businessId),
+        eq(appointment.id, appointmentId),
+      ),
+    );
+  if (!before) throw notFound("That appointment");
+  if (before.status !== "scheduled")
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "Only booked visits can be moved. Book a new visit instead.",
+    );
+  const timezone = await shopTimezone(tx);
+  const startsAt = localDateTimeToUtc(localStartsAt, timezone);
+  // Keep the visit length if one was recorded.
+  const endsAt =
+    before.endsAt &&
+    new Date(
+      startsAt.getTime() +
+        (before.endsAt.getTime() - before.startsAt.getTime()),
+    );
+  const [row] = await tx
+    .update(appointment)
+    .set({ startsAt, endsAt: endsAt ?? null, updatedAt: new Date() })
+    .where(
+      and(
+        eq(appointment.businessId, tx.businessId),
+        eq(appointment.id, appointmentId),
+      ),
+    )
+    .returning();
+  await audit(tx, meta, {
+    action: "appointment.rescheduled",
+    targetType: "appointment",
+    targetId: row.id,
+    before: { startsAt: before.startsAt.toISOString() },
+    after: { startsAt: row.startsAt.toISOString() },
+  });
+  await recordActivity(tx, {
+    kind: "appointment.updated",
+    subjectType: "customer",
+    subjectId: row.customerId,
+    summary: `Visit moved to ${row.startsAt.toLocaleString("en-US", { timeZone: timezone, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
     data: { appointmentId: row.id },
   });
   return row;

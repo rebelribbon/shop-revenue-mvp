@@ -229,10 +229,18 @@ export async function getOwnerMoney(
           unknown = true;
           continue;
         }
+        if (p.unitCostCents === null) {
+          unknown = true;
+          continue;
+        }
         costCents += partLineCents(line.quantity, p.unitCostCents);
       } else {
         const l = parsed.data.labor[index];
         if (!l || l.description !== line.description) {
+          unknown = true;
+          continue;
+        }
+        if (l.costRateCents === null) {
           unknown = true;
           continue;
         }

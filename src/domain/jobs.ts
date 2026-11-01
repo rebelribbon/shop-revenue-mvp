@@ -41,7 +41,8 @@ export const jobInput = z.object({
             (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6,
             "Use at most two decimal places for quantity.",
           ),
-        unitCostCents: amount,
+        // null = cost not entered yet (profit stays unknown, never $0 cost).
+        unitCostCents: amount.nullable(),
         unitPriceCents: amount,
         taxable: z.boolean().optional(),
       }),
@@ -55,7 +56,7 @@ export const jobInput = z.object({
         estimatedHoursHundredths: amount.max(100000),
         actualHoursHundredths: amount.max(100000).nullable(),
         sellRateCents: amount,
-        costRateCents: amount,
+        costRateCents: amount.nullable(),
         taxable: z.boolean().optional(),
       }),
     )

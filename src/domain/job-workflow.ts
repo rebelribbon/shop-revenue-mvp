@@ -12,7 +12,7 @@ import {
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
-import { getJob } from "./jobs";
+import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { activeCheckoutStates } from "./payments";
 import { sql } from "drizzle-orm";
@@ -120,6 +120,45 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       ),
     )
     .orderBy(activity.occurredAt, activity.id);
+  // What the customer would see from each saved job version (not costs or
+  // actual hours), to tell whether the job changed after the estimate froze.
+  const costed = await tx
+    .select({
+      id: activity.id,
+      subjectId: activity.subjectId,
+      occurredAt: activity.occurredAt,
+      data: activity.data,
+    })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectType, "job"),
+        inArray(activity.subjectId, jobIds),
+        eq(activity.kind, "job.costed"),
+      ),
+    )
+    .orderBy(activity.occurredAt, activity.id);
+  const customerFacing = (data: unknown) => {
+    const parsed = jobInput.safeParse(data);
+    if (!parsed.success) return null;
+    const j = parsed.data;
+    return JSON.stringify([
+      j.title,
+      j.parts.map((p) => [
+        p.description,
+        p.quantity,
+        p.unitPriceCents,
+        p.taxable ?? null,
+      ]),
+      j.labor.map((l) => [
+        l.description,
+        l.estimatedHoursHundredths,
+        l.sellRateCents,
+        l.taxable ?? null,
+      ]),
+    ]);
+  };
   const result = new Map<string, JobWorkflow>();
   for (const jobId of jobIds) {
     const estimates = versions.filter((v) => v.estimate.quoteId === jobId);
@@ -133,20 +172,40 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
           (l) => !latest.authorization!.approvedLineIds.includes(l.id),
         )
       : [];
-    const progress = events
+    const jobProgress = events.filter(
+      (e) => e.subjectId === jobId && e.kind === "job.progress",
+    );
+    const progress = jobProgress
       .filter(
         (e) =>
-          e.subjectId === jobId &&
-          e.kind === "job.progress" &&
           (e.data as { versionId?: string }).versionId === latest?.estimate.id,
       )
       .at(-1);
     const recorded = (progress?.data as { status?: string } | undefined)
       ?.status;
+    // A revised estimate mid-job keeps the job moving: work already started on
+    // an earlier version stays in progress. Finished work goes back to "in
+    // progress" because the revision may add work that isn't done yet.
+    const earlier = (
+      jobProgress.at(-1)?.data as { status?: string } | undefined
+    )?.status;
     const work: WorkStatus =
       recorded === "completed" || recorded === "in_progress"
         ? recorded
-        : "not_recorded";
+        : earlier === "completed" || earlier === "in_progress"
+          ? "in_progress"
+          : "not_recorded";
+    const saves = costed.filter((c) => c.subjectId === jobId);
+    const frozenFrom = latest
+      ? saves.filter((c) => c.occurredAt <= latest.estimate.createdAt).at(-1)
+      : undefined;
+    const current = saves.at(-1);
+    const changedSinceEstimate =
+      !!latest &&
+      !!frozenFrom &&
+      !!current &&
+      current.id !== frozenFrom.id &&
+      customerFacing(current.data) !== customerFacing(frozenFrom.data);
     const issued = invoices.filter((i) => i.quoteId === jobId);
     const currentInvoice = issued.find((i) => !i.voidedAt) ?? null;
     const entries = payments.filter((p) => p.invoiceId === currentInvoice?.id);
@@ -258,6 +317,7 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       processing,
       refundPending,
       timeline,
+      changedSinceEstimate,
       sharedEstimate: events.some(
         (e) =>
           e.subjectId === jobId &&
@@ -303,6 +363,9 @@ type Projection = {
   processing: boolean;
   refundPending: boolean;
   timeline: { id: string; at: Date; text: string }[];
+  // The job's parts/labor/prices were edited after the latest estimate was
+  // published, so the customer hasn't seen (or approved) the changes.
+  changedSinceEstimate: boolean;
   sharedEstimate: boolean;
   sharedInvoice: boolean;
 };

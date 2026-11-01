@@ -291,8 +291,9 @@ it("requires a new signature for a supplement and never treats declined work as 
       terms: "",
     }),
   );
+  // Work already started stays started; the stage waits on the new signature.
   expect(await f.flow()).toMatchObject({
-    work: "not_recorded",
+    work: "in_progress",
     stage: "awaiting",
     approval: "Awaiting customer",
   });

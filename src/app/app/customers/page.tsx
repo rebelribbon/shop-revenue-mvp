@@ -1,3 +1,4 @@
+import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
@@ -110,7 +111,9 @@ export default async function CustomersPage(props: {
                 </h2>
                 <div className="customer-contacts">
                   {c.phoneE164 && (
-                    <a href={`tel:${c.phoneE164}`}>{c.phoneE164}</a>
+                    <a href={`tel:${c.phoneE164}`}>
+                      {formatPhone(c.phoneE164)}
+                    </a>
                   )}
                   {c.email && <a href={`mailto:${c.email}`}>{c.email}</a>}
                   {!c.phoneE164 && !c.email && (

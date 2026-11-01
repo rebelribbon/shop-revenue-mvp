@@ -81,6 +81,26 @@ export function JobWorkflow({
       data-stage={flow.stage}
     >
       <h3>{headline}</h3>
+      {flow.changedSinceEstimate && e && !i && (
+        <div className="notice banner" role="status">
+          <p>
+            {a
+              ? `You changed this job after ${e.snapshot.customerName} approved it. They haven’t approved the changes, and an invoice will only bill what they approved.`
+              : `You changed this job after sending the estimate. ${e.snapshot.customerName} is still seeing the old prices.`}
+          </p>
+          {!readOnly && (
+            <Link href={`/app/jobs?job=${jobId}#job-estimate`}>
+              Send updated estimate
+            </Link>
+          )}
+        </div>
+      )}
+      {flow.changedSinceEstimate && i && (
+        <p className="notice">
+          This job was changed after the invoice was made. The invoice still
+          shows the approved work. Start a new job for extra work.
+        </p>
+      )}
       {flow.processing && (
         <p className="notice">
           Card payment is still processing. Check before taking another payment.

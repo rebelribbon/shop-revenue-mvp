@@ -323,12 +323,17 @@ export function JobEditor({
                   ),
                 ),
               )}
-              {numberField("Unit cost", p.unitCostCents, (v) =>
-                setParts(
-                  parts.map((x, n) =>
-                    n === i ? { ...x, unitCostCents: v ?? 0 } : x,
+              {numberField(
+                "Unit cost",
+                p.unitCostCents,
+                (v) =>
+                  setParts(
+                    parts.map((x, n) =>
+                      n === i ? { ...x, unitCostCents: v } : x,
+                    ),
                   ),
-                ),
+                100,
+                true,
               )}
               <label>
                 <input
@@ -363,7 +368,7 @@ export function JobEditor({
               {
                 description: "",
                 quantity: 1,
-                unitCostCents: 0,
+                unitCostCents: null,
                 unitPriceCents: 0,
                 taxable: partsTaxableDefault,
               },
@@ -426,12 +431,17 @@ export function JobEditor({
                 100,
                 true,
               )}
-              {numberField("Hourly internal cost", l.costRateCents, (v) =>
-                setLabor(
-                  labor.map((x, n) =>
-                    n === i ? { ...x, costRateCents: v ?? 0 } : x,
+              {numberField(
+                "Hourly internal cost",
+                l.costRateCents,
+                (v) =>
+                  setLabor(
+                    labor.map((x, n) =>
+                      n === i ? { ...x, costRateCents: v } : x,
+                    ),
                   ),
-                ),
+                100,
+                true,
               )}
               <label>
                 <input
@@ -468,7 +478,7 @@ export function JobEditor({
                 estimatedHoursHundredths: 100,
                 actualHoursHundredths: null,
                 sellRateCents: laborSellRateCents,
-                costRateCents: laborCostRateCents,
+                costRateCents: laborCostRateCents || null,
                 taxable: laborTaxableDefault,
               },
             ])
@@ -483,14 +493,27 @@ export function JobEditor({
             </p>
             <details>
               <summary>Job costs &amp; profit</summary>
-              <p>
-                Estimated cost: {money(totals.estimatedCostCents)} · Gross
-                profit: {money(totals.estimatedGrossProfitCents)}
-              </p>
+              {totals.estimatedCostCents === null ||
+              totals.estimatedGrossProfitCents === null ? (
+                <p>
+                  Profit unknown: add your cost for{" "}
+                  {totals.missingCosts === 1
+                    ? "1 line"
+                    : `${totals.missingCosts} lines`}{" "}
+                  to see it.
+                </p>
+              ) : (
+                <p>
+                  Estimated cost: {money(totals.estimatedCostCents)} · Gross
+                  profit: {money(totals.estimatedGrossProfitCents)}
+                </p>
+              )}
               <p>
                 Actual cost:{" "}
                 {totals.actualCostCents === null
-                  ? "Add actual hours"
+                  ? totals.missingCosts
+                    ? "Add missing costs and actual hours"
+                    : "Add actual hours"
                   : money(totals.actualCostCents)}
               </p>
             </details>
