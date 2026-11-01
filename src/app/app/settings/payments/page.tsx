@@ -1,3 +1,4 @@
+import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { StripeNotifications } from "@/components/stripe-notifications";
 import { withTenant } from "@/db/tenant";
@@ -15,7 +16,7 @@ export default async function PaymentsSettings() {
     process.env.PAYMENTS_BASE_URL,
   );
   return (
-    <main id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Online payments</h1>
       <p>
         Accept customer invoice payments into your shop’s Stripe account. Stripe
@@ -70,6 +71,6 @@ export default async function PaymentsSettings() {
       <p>
         <Link href="/app/invoices">Back to invoices</Link>
       </p>
-    </main>
+    </HydratedMain>
   );
 }

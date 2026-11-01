@@ -38,17 +38,89 @@ export function VehicleFields({ initial = {} }: { initial?: Initial }) {
     <>
       <label htmlFor="vin">VIN</label>
       <div className="inline-action">
-        <input id="vin" name="vin" maxLength={17} autoCapitalize="characters" value={vin} onChange={(e) => setVin(e.target.value.toUpperCase())} />
-        <button className="btn secondary" type="button" onClick={lookup} disabled={pending || vin.replace(/\s/g, "").length !== 17}>{pending ? "Looking up…" : "Look up VIN"}</button>
+        <input
+          id="vin"
+          name="vin"
+          maxLength={17}
+          autoCapitalize="characters"
+          value={vin}
+          onChange={(e) => setVin(e.target.value.toUpperCase())}
+        />
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={lookup}
+          disabled={pending || vin.replace(/\s/g, "").length !== 17}
+        >
+          {pending ? "Looking up…" : "Look up VIN"}
+        </button>
       </div>
-      {message && <p className="muted" role="status">{message}</p>}
-      <label htmlFor="year">Year</label><input id="year" name="year" type="number" min={1886} max={2200} inputMode="numeric" value={year} onChange={(e) => setYear(e.target.value)} />
-      <label htmlFor="make">Make</label><input id="make" name="make" maxLength={100} value={make} onChange={(e) => setMake(e.target.value)} />
-      <label htmlFor="model">Model</label><input id="model" name="model" maxLength={100} value={model} onChange={(e) => setModel(e.target.value)} />
-      <label htmlFor="trim">Trim</label><input id="trim" name="trim" maxLength={100} value={trim} onChange={(e) => setTrim(e.target.value)} />
-      <label htmlFor="plate">Plate</label><input id="plate" name="plate" maxLength={20} autoCapitalize="characters" defaultValue={initial.plate ?? ""} />
-      <label htmlFor="mileage">Mileage</label><input id="mileage" name="mileage" type="number" min={0} max={3000000} inputMode="numeric" defaultValue={initial.mileage ?? ""} />
-      <label htmlFor="vehicleNotes">Notes</label><textarea id="vehicleNotes" name="notes" rows={4} maxLength={5000} defaultValue={initial.notes ?? ""} />
+      {message && (
+        <p className="muted" role="status">
+          {message}
+        </p>
+      )}
+      <label htmlFor="year">Year</label>
+      <input
+        id="year"
+        name="year"
+        type="number"
+        min={1886}
+        max={2200}
+        inputMode="numeric"
+        value={year}
+        onChange={(e) => setYear(e.target.value)}
+      />
+      <label htmlFor="make">Make</label>
+      <input
+        id="make"
+        name="make"
+        maxLength={100}
+        value={make}
+        onChange={(e) => setMake(e.target.value)}
+      />
+      <label htmlFor="model">Model</label>
+      <input
+        id="model"
+        name="model"
+        maxLength={100}
+        value={model}
+        onChange={(e) => setModel(e.target.value)}
+      />
+      <label htmlFor="trim">Trim</label>
+      <input
+        id="trim"
+        name="trim"
+        maxLength={100}
+        value={trim}
+        onChange={(e) => setTrim(e.target.value)}
+      />
+      <label htmlFor="plate">Plate</label>
+      <input
+        id="plate"
+        name="plate"
+        maxLength={20}
+        autoCapitalize="characters"
+        defaultValue={initial.plate ?? ""}
+      />
+      <label htmlFor="mileage">Mileage</label>
+      <input
+        id="mileage"
+        name="mileage"
+        type="number"
+        min={0}
+        max={3000000}
+        inputMode="numeric"
+        defaultValue={initial.mileage ?? ""}
+      />
+      <label htmlFor="vehicleNotes">Notes</label>
+      <textarea
+        id="vehicleNotes"
+        name="notes"
+        rows={4}
+        maxLength={5000}
+        defaultValue={initial.notes ?? ""}
+      />
     </>
   );
 }

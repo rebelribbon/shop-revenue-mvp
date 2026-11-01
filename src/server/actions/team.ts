@@ -5,18 +5,32 @@ import { z } from "zod";
 import { business } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { deliverInvite } from "@/domain/invite-delivery";
-import { inviteStaff, removeStaff, resendInvite, type InviteDelivery } from "@/domain/membership";
+import {
+  inviteStaff,
+  removeStaff,
+  resendInvite,
+  type InviteDelivery,
+} from "@/domain/membership";
 import { normalizeEmail, normalizePhone } from "@/lib/normalize";
 import { defineShopAction } from "./define";
 
-const businessName = (businessId: string, actor: Parameters<typeof withTenant>[1]) =>
+const businessName = (
+  businessId: string,
+  actor: Parameters<typeof withTenant>[1],
+) =>
   withTenant(businessId, actor, async (tx) => {
-    const [b] = await tx.select({ legal: business.legalName, dba: business.dba }).from(business).where(eq(business.id, businessId));
+    const [b] = await tx
+      .select({ legal: business.legalName, dba: business.dba })
+      .from(business)
+      .where(eq(business.id, businessId));
     return b?.dba || b?.legal || "Your shop";
   });
 
 // Stored for idempotent repeats: never the token. A repeat does not resend.
-const delivered = (d: InviteDelivery) => ({ membershipId: d.membershipId, message: "Invite already sent for this request." });
+const delivered = (d: InviteDelivery) => ({
+  membershipId: d.membershipId,
+  message: "Invite already sent for this request.",
+});
 
 const inviteInput = z.object({
   name: z.string().min(1).max(100),
@@ -35,7 +49,12 @@ export const inviteStaffAction = defineShopAction({
       phoneE164: input.phone ? normalizePhone(input.phone) : null,
     }),
   persist: delivered,
-  afterCommit: async (d, session, meta) => deliverInvite(d, await businessName(session.businessId, session.actor), meta.requestId),
+  afterCommit: async (d, session, meta) =>
+    deliverInvite(
+      d,
+      await businessName(session.businessId, session.actor),
+      meta.requestId,
+    ),
 });
 
 export const resendInviteAction = defineShopAction({
@@ -44,7 +63,12 @@ export const resendInviteAction = defineShopAction({
   ownerOnly: true,
   run: ({ tx, meta }, input) => resendInvite(tx, meta, input.membershipId),
   persist: delivered,
-  afterCommit: async (d, session, meta) => deliverInvite(d, await businessName(session.businessId, session.actor), meta.requestId),
+  afterCommit: async (d, session, meta) =>
+    deliverInvite(
+      d,
+      await businessName(session.businessId, session.actor),
+      meta.requestId,
+    ),
 });
 
 export const removeStaffAction = defineShopAction({

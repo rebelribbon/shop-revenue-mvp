@@ -1,11 +1,21 @@
 "use server";
 import { z } from "zod";
-import { archiveCustomer, archiveVehicle, createCustomer, createVehicle, updateCustomer, updateVehicle } from "@/domain/customers";
+import {
+  archiveCustomer,
+  archiveVehicle,
+  createCustomer,
+  createVehicle,
+  updateCustomer,
+  updateVehicle,
+} from "@/domain/customers";
 import { normalizeEmail, normalizePhone } from "@/lib/normalize";
 import { defineShopAction } from "./define";
 
 const optionalInt = (min: number, max: number) =>
-  z.preprocess((value) => (value === "" || value == null ? null : Number(value)), z.union([z.number().int().min(min).max(max), z.null()]));
+  z.preprocess(
+    (value) => (value === "" || value == null ? null : Number(value)),
+    z.union([z.number().int().min(min).max(max), z.null()]),
+  );
 
 const customerFields = z.object({
   firstName: z.string().max(100),
@@ -27,14 +37,23 @@ export const createCustomerAction = defineShopAction({
   name: "createCustomer",
   input: customerFields,
   run: ({ tx, meta }, input) => createCustomer(tx, meta, customerInput(input)),
-  persist: (row) => ({ id: row.id, displayName: row.displayName, redirectTo: `/app/customers/${row.id}` }),
-  afterCommit: async (row) => ({ id: row.id, displayName: row.displayName, redirectTo: `/app/customers/${row.id}` }),
+  persist: (row) => ({
+    id: row.id,
+    displayName: row.displayName,
+    redirectTo: `/app/customers/${row.id}`,
+  }),
+  afterCommit: async (row) => ({
+    id: row.id,
+    displayName: row.displayName,
+    redirectTo: `/app/customers/${row.id}`,
+  }),
 });
 
 export const updateCustomerAction = defineShopAction({
   name: "updateCustomer",
   input: customerFields.extend({ customerId: z.uuid() }),
-  run: ({ tx, meta }, input) => updateCustomer(tx, meta, input.customerId, customerInput(input)),
+  run: ({ tx, meta }, input) =>
+    updateCustomer(tx, meta, input.customerId, customerInput(input)),
   persist: (row) => ({ id: row.id, message: "Customer updated." }),
 });
 
@@ -42,8 +61,14 @@ export const archiveCustomerAction = defineShopAction({
   name: "archiveCustomer",
   input: z.object({ customerId: z.uuid() }),
   run: ({ tx, meta }, input) => archiveCustomer(tx, meta, input.customerId),
-  persist: () => ({ message: "Customer archived.", redirectTo: "/app/customers" }),
-  afterCommit: async () => ({ message: "Customer archived.", redirectTo: "/app/customers" }),
+  persist: () => ({
+    message: "Customer archived.",
+    redirectTo: "/app/customers",
+  }),
+  afterCommit: async () => ({
+    message: "Customer archived.",
+    redirectTo: "/app/customers",
+  }),
 });
 
 const vehicleFields = z.object({
@@ -74,21 +99,37 @@ export const createVehicleAction = defineShopAction({
   name: "createVehicle",
   input: vehicleFields,
   run: ({ tx, meta }, input) => createVehicle(tx, meta, vehicleInput(input)),
-  persist: (row) => ({ id: row.id, customerId: row.customerId, redirectTo: `/app/customers/${row.customerId}/vehicles/${row.id}` }),
-  afterCommit: async (row) => ({ id: row.id, customerId: row.customerId, redirectTo: `/app/customers/${row.customerId}/vehicles/${row.id}` }),
+  persist: (row) => ({
+    id: row.id,
+    customerId: row.customerId,
+    redirectTo: `/app/customers/${row.customerId}/vehicles/${row.id}`,
+  }),
+  afterCommit: async (row) => ({
+    id: row.id,
+    customerId: row.customerId,
+    redirectTo: `/app/customers/${row.customerId}/vehicles/${row.id}`,
+  }),
 });
 
 export const updateVehicleAction = defineShopAction({
   name: "updateVehicle",
   input: vehicleFields.extend({ vehicleId: z.uuid() }),
-  run: ({ tx, meta }, input) => updateVehicle(tx, meta, input.vehicleId, vehicleInput(input)),
+  run: ({ tx, meta }, input) =>
+    updateVehicle(tx, meta, input.vehicleId, vehicleInput(input)),
   persist: (row) => ({ id: row.id, message: "Vehicle updated." }),
 });
 
 export const archiveVehicleAction = defineShopAction({
   name: "archiveVehicle",
   input: z.object({ customerId: z.uuid(), vehicleId: z.uuid() }),
-  run: ({ tx, meta }, input) => archiveVehicle(tx, meta, input.customerId, input.vehicleId),
-  persist: (row) => ({ message: "Vehicle archived.", redirectTo: `/app/customers/${row.customerId}` }),
-  afterCommit: async (row) => ({ message: "Vehicle archived.", redirectTo: `/app/customers/${row.customerId}` }),
+  run: ({ tx, meta }, input) =>
+    archiveVehicle(tx, meta, input.customerId, input.vehicleId),
+  persist: (row) => ({
+    message: "Vehicle archived.",
+    redirectTo: `/app/customers/${row.customerId}`,
+  }),
+  afterCommit: async (row) => ({
+    message: "Vehicle archived.",
+    redirectTo: `/app/customers/${row.customerId}`,
+  }),
 });

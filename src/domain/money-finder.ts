@@ -1,5 +1,11 @@
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
-import { activity, customer, recommendation, recoveryItem, vehicle } from "@/db/schema";
+import {
+  activity,
+  customer,
+  recommendation,
+  recoveryItem,
+  vehicle,
+} from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
@@ -9,21 +15,58 @@ import { getVehicle } from "./customers";
 import { currentMemberRole } from "./membership";
 import { lockRevenue, reconcileRevenue } from "./revenue";
 
-export const moneyCategories = ["declined", "open_estimate", "unpaid_invoice", "lapsed", "service_due"] as const;
-export type MoneyCategory = typeof moneyCategories[number];
+export const moneyCategories = [
+  "declined",
+  "open_estimate",
+  "unpaid_invoice",
+  "lapsed",
+  "service_due",
+] as const;
+export type MoneyCategory = (typeof moneyCategories)[number];
 export const categoryLabels: Record<MoneyCategory, string> = {
-  declined: "Declined work", open_estimate: "Open estimates", unpaid_invoice: "Unpaid invoices",
-  lapsed: "Not back in 6+ months", service_due: "Service due",
+  declined: "Declined work",
+  open_estimate: "Open estimates",
+  unpaid_invoice: "Unpaid invoices",
+  lapsed: "Not back in 6+ months",
+  service_due: "Service due",
 };
 export type MoneyItem = {
-  category: MoneyCategory; subjectId: string; customerId: string; vehicleId: string | null; serviceAssetId: string | null;
-  customerName: string; vehicleLabel: string | null; phone: string | null; email: string | null;
-  reason: string; amountCents: number | null; occurredAt: string; renewFirst: boolean;
-  recoveryId: string | null; status: string; snoozedUntil: string | null; dismissedReason: string | null;
-  lastContactAt: string | null; lastContactMethod: string | null;
+  category: MoneyCategory;
+  subjectId: string;
+  customerId: string;
+  vehicleId: string | null;
+  serviceAssetId: string | null;
+  customerName: string;
+  vehicleLabel: string | null;
+  phone: string | null;
+  email: string | null;
+  reason: string;
+  amountCents: number | null;
+  occurredAt: string;
+  renewFirst: boolean;
+  recoveryId: string | null;
+  status: string;
+  snoozedUntil: string | null;
+  dismissedReason: string | null;
+  lastContactAt: string | null;
+  lastContactMethod: string | null;
 };
-export type MoneyCard = { category: MoneyCategory; count: number; knownCents: number | null; unknownCount: number; oldestAt: string | null };
-export type MoneyDashboard = { cards: MoneyCard[]; items: MoneyItem[]; total: number; knownCents: number | null; timezone: string; today: string; hasServiceDates:boolean };
+export type MoneyCard = {
+  category: MoneyCategory;
+  count: number;
+  knownCents: number | null;
+  unknownCount: number;
+  oldestAt: string | null;
+};
+export type MoneyDashboard = {
+  cards: MoneyCard[];
+  items: MoneyItem[];
+  total: number;
+  knownCents: number | null;
+  timezone: string;
+  today: string;
+  hasServiceDates: boolean;
+};
 
 // All five lists use current source records, in one tenant-scoped request. Only
 // workflow preferences and manual-contact evidence are stored in recovery_item.
@@ -147,27 +190,37 @@ function itemJson() {
 }
 const safeCents = (n: unknown): number | null => {
   if (n === null || n === undefined) return null;
-  const value=Number(n); return Number.isSafeInteger(value) && value>=0 ? value : null;
+  const value = Number(n);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
 
-export async function getMoneyFinder(tx: TenantTx, options: {
-  category?: MoneyCategory; view?: "active" | "snoozed" | "dismissed"; query?: string; page?: number; now?: Date;
-} = {}): Promise<MoneyDashboard> {
-  const view=options.view??"active",page=Math.max(1,Math.min(options.page??1,10000));
-  const rows=await tx.execute(sql`${candidates(tx,options.now??new Date())}, active AS (
+export async function getMoneyFinder(
+  tx: TenantTx,
+  options: {
+    category?: MoneyCategory;
+    view?: "active" | "snoozed" | "dismissed";
+    query?: string;
+    page?: number;
+    now?: Date;
+  } = {},
+): Promise<MoneyDashboard> {
+  const view = options.view ?? "active",
+    page = Math.max(1, Math.min(options.page ?? 1, 10000));
+  const rows =
+    await tx.execute(sql`${candidates(tx, options.now ?? new Date())}, active AS (
     SELECT items.* FROM items CROSS JOIN settings s WHERE status<>'dismissed' AND (snoozed_until IS NULL OR snoozed_until<=s.today)
   ), visible AS (
     SELECT items.* FROM items CROSS JOIN settings s WHERE
       (${view}='active' AND status<>'dismissed' AND (snoozed_until IS NULL OR snoozed_until<=s.today)) OR
       (${view}='snoozed' AND status<>'dismissed' AND snoozed_until>s.today) OR (${view}='dismissed' AND status='dismissed')
   ), filtered AS (
-    SELECT * FROM visible WHERE (${options.category??null}::text IS NULL OR category=${options.category??null})
-      AND (${options.query??""}='' OR concat_ws(' ',customer_name,vehicle_label,reason) ILIKE ${`%${options.query??""}%`})
+    SELECT * FROM visible WHERE (${options.category ?? null}::text IS NULL OR category=${options.category ?? null})
+      AND (${options.query ?? ""}='' OR concat_ws(' ',customer_name,vehicle_label,reason) ILIKE ${`%${options.query ?? ""}%`})
   ), paged AS (
     SELECT * FROM filtered ORDER BY
       CASE WHEN category IN ('unpaid_invoice','service_due') THEN occurred_at END ASC,
       CASE WHEN category='lapsed' THEN lifetime ELSE amount_cents END DESC NULLS LAST,occurred_at DESC,subject_id
-    LIMIT 50 OFFSET ${(page-1)*50}
+    LIMIT 50 OFFSET ${(page - 1) * 50}
   ) SELECT jsonb_build_object(
     'timezone',(SELECT zone FROM settings),'today',(SELECT today FROM settings),
     'hasServiceDates',(EXISTS(SELECT 1 FROM vehicles WHERE next_service_on IS NOT NULL) OR EXISTS(SELECT 1 FROM service_assets WHERE next_service_on IS NOT NULL)),
@@ -178,17 +231,34 @@ export async function getMoneyFinder(tx: TenantTx, options: {
         count(*) FILTER(WHERE amount_cents IS NULL) AS "unknownCount",min(occurred_at) AS "oldestAt"
       FROM active GROUP BY category) card),'[]'::jsonb),
     'items',coalesce((SELECT jsonb_agg(${itemJson()}) FROM paged),'[]'::jsonb)) AS data`);
-  const data=rows.rows[0].data as unknown as MoneyDashboard;
-  return {...data,knownCents:safeCents(data.knownCents),
-    cards:data.cards.map(c=>({...c,knownCents:safeCents(c.knownCents)})),
-    items:data.items.map(i=>({...i,amountCents:safeCents(i.amountCents)}))};
+  const data = rows.rows[0].data as unknown as MoneyDashboard;
+  return {
+    ...data,
+    knownCents: safeCents(data.knownCents),
+    cards: data.cards.map((c) => ({
+      ...c,
+      knownCents: safeCents(c.knownCents),
+    })),
+    items: data.items.map((i) => ({
+      ...i,
+      amountCents: safeCents(i.amountCents),
+    })),
+  };
 }
 
-async function findCandidate(tx:TenantTx,category:MoneyCategory,subjectId:string,allowRecorded=false) {
-  const rows=await tx.execute(sql`${candidates(tx,new Date())} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`);
-  let item=rows.rows[0]?.data as unknown as MoneyItem|undefined;
-  if(!item&&allowRecorded){
-   const recorded=await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,'serviceAssetId',r.service_asset_id,
+async function findCandidate(
+  tx: TenantTx,
+  category: MoneyCategory,
+  subjectId: string,
+  allowRecorded = false,
+) {
+  const rows = await tx.execute(
+    sql`${candidates(tx, new Date())} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`,
+  );
+  let item = rows.rows[0]?.data as unknown as MoneyItem | undefined;
+  if (!item && allowRecorded) {
+    const recorded =
+      await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,'serviceAssetId',r.service_asset_id,
     'customerName',c.display_name,'vehicleLabel',coalesce(NULLIF(concat_ws(' ',v.year,v.make,v.model,v.plate),''),sa.display_name),'phone',c.phone_e164,'email',c.email,'reason','Recorded manual follow-up','amountCents',NULL,'occurredAt',r.created_at,'renewFirst',false,
     'recoveryId',r.id,'status',r.status,'snoozedUntil',r.snoozed_until,'dismissedReason',r.dismissed_reason,'lastContactAt',r.last_contact_at,'lastContactMethod',r.last_contact_method) AS data
     FROM app.recovery_item r JOIN app.customer c ON c.business_id=r.business_id AND c.id=r.customer_id
@@ -198,106 +268,467 @@ async function findCandidate(tx:TenantTx,category:MoneyCategory,subjectId:string
      AND c.status='active' AND NOT c.do_not_contact AND (r.vehicle_id IS NULL OR v.status='active')
      AND (r.service_asset_id IS NULL OR sa.status='active')
      AND EXISTS(SELECT 1 FROM app.activity a WHERE a.business_id=r.business_id AND a.kind='recovery.contact' AND a.data->>'recoveryItemId'=r.id::text)`);
-   item=recorded.rows[0]?.data as unknown as MoneyItem|undefined;
+    item = recorded.rows[0]?.data as unknown as MoneyItem | undefined;
   }
-  if(!item) throw notFound("That opportunity (it may have resolved)");
-  return {...item,amountCents:safeCents(item.amountCents)};
+  if (!item) throw notFound("That opportunity (it may have resolved)");
+  return { ...item, amountCents: safeCents(item.amountCents) };
 }
 
-export async function updateRecovery(tx:TenantTx,meta:RequestMeta,input:{
-  category:MoneyCategory;subjectId:string;action:"contact"|"responded"|"booked"|"snooze"|"dismiss"|"restore";
-  deliveryConfirmed?:boolean;method?:"phone"|"email"|"in_person"|"other";note?:string;days?:30|90;reason?:string;
-}) {
+export async function updateRecovery(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: {
+    category: MoneyCategory;
+    subjectId: string;
+    action:
+      "contact" | "responded" | "booked" | "snooze" | "dismiss" | "restore";
+    deliveryConfirmed?: boolean;
+    method?: "phone" | "email" | "in_person" | "other";
+    note?: string;
+    days?: 30 | 90;
+    reason?: string;
+  },
+) {
   await lockRevenue(tx);
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
-  const source=await findCandidate(tx,input.category,input.subjectId,input.action==='responded'||input.action==='booked');
-  await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,
-    category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId,serviceAssetId:source.serviceAssetId})
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`,
+  );
+  const source = await findCandidate(
+    tx,
+    input.category,
+    input.subjectId,
+    input.action === "responded" || input.action === "booked",
+  );
+  await tx
+    .insert(recoveryItem)
+    .values({
+      businessId: tx.businessId,
+      createdByUserId: tx.actor.id,
+      category: input.category,
+      subjectId: input.subjectId,
+      customerId: source.customerId,
+      vehicleId: source.vehicleId,
+      serviceAssetId: source.serviceAssetId,
+    })
     .onConflictDoNothing();
-  const [row]=await tx.select().from(recoveryItem).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.category,input.category),eq(recoveryItem.subjectId,input.subjectId))).for('update');
-  if(row.status==='dismissed' && input.action!=='restore') throw new AppError("INVALID_TRANSITION","Restore this opportunity first.");
-  const change:Partial<typeof recoveryItem.$inferInsert>={};
-  if(input.action==='contact') {
-    if(!input.method || (input.method==='phone'&&!source.phone)||(input.method==='email'&&!source.email))
-      throw new AppError("VALIDATION","Choose an available contact method.");
-    change.status='contacted';change.lastContactAt=new Date();change.lastContactMethod=input.method;change.snoozedUntil=null;
-  } else if(input.action==='snooze') {
-    if(![30,90].includes(input.days??0)) throw new AppError("VALIDATION","Choose 30 or 90 days.");
-    const [b]=await tx.execute(sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`).then(r=>r.rows);
-    change.snoozedUntil=addLocalDays(localDateKey(new Date(),String(b.timezone)),input.days!);
-  } else if(input.action==='dismiss') {
-    if(!input.reason?.trim()) throw new AppError("VALIDATION","Enter a dismissal reason.");
-    change.status='dismissed';change.dismissedReason=input.reason;change.snoozedUntil=null;
-    if(input.category==='declined') {
-      const rows=await tx.update(recommendation).set({status:'dismissed'}).where(and(eq(recommendation.businessId,tx.businessId),or(eq(recommendation.vehicleId,input.subjectId),and(sql`${recommendation.vehicleId} IS NULL`,eq(recommendation.customerId,input.subjectId))),eq(recommendation.status,'open'))).returning({id:recommendation.id});
-      change.dismissedRecommendationIds=rows.map(r=>r.id);
+  const [row] = await tx
+    .select()
+    .from(recoveryItem)
+    .where(
+      and(
+        eq(recoveryItem.businessId, tx.businessId),
+        eq(recoveryItem.category, input.category),
+        eq(recoveryItem.subjectId, input.subjectId),
+      ),
+    )
+    .for("update");
+  if (row.status === "dismissed" && input.action !== "restore")
+    throw new AppError("INVALID_TRANSITION", "Restore this opportunity first.");
+  const change: Partial<typeof recoveryItem.$inferInsert> = {};
+  if (input.action === "contact") {
+    if (
+      !input.method ||
+      (input.method === "phone" && !source.phone) ||
+      (input.method === "email" && !source.email)
+    )
+      throw new AppError("VALIDATION", "Choose an available contact method.");
+    change.status = "contacted";
+    change.lastContactAt = new Date();
+    change.lastContactMethod = input.method;
+    change.snoozedUntil = null;
+  } else if (input.action === "snooze") {
+    if (![30, 90].includes(input.days ?? 0))
+      throw new AppError("VALIDATION", "Choose 30 or 90 days.");
+    const [b] = await tx
+      .execute(sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`)
+      .then((r) => r.rows);
+    change.snoozedUntil = addLocalDays(
+      localDateKey(new Date(), String(b.timezone)),
+      input.days!,
+    );
+  } else if (input.action === "dismiss") {
+    if (!input.reason?.trim())
+      throw new AppError("VALIDATION", "Enter a dismissal reason.");
+    change.status = "dismissed";
+    change.dismissedReason = input.reason;
+    change.snoozedUntil = null;
+    if (input.category === "declined") {
+      const rows = await tx
+        .update(recommendation)
+        .set({ status: "dismissed" })
+        .where(
+          and(
+            eq(recommendation.businessId, tx.businessId),
+            or(
+              eq(recommendation.vehicleId, input.subjectId),
+              and(
+                sql`${recommendation.vehicleId} IS NULL`,
+                eq(recommendation.customerId, input.subjectId),
+              ),
+            ),
+            eq(recommendation.status, "open"),
+          ),
+        )
+        .returning({ id: recommendation.id });
+      change.dismissedRecommendationIds = rows.map((r) => r.id);
     }
-  } else if(input.action==='restore') {
-    change.status='open';change.snoozedUntil=null;change.dismissedReason=null;change.dismissedRecommendationIds=[];
-    if(row.dismissedRecommendationIds.length) await tx.update(recommendation).set({status:'open'}).where(and(eq(recommendation.businessId,tx.businessId),inArray(recommendation.id,row.dismissedRecommendationIds),eq(recommendation.status,'dismissed')));
+  } else if (input.action === "restore") {
+    change.status = "open";
+    change.snoozedUntil = null;
+    change.dismissedReason = null;
+    change.dismissedRecommendationIds = [];
+    if (row.dismissedRecommendationIds.length)
+      await tx
+        .update(recommendation)
+        .set({ status: "open" })
+        .where(
+          and(
+            eq(recommendation.businessId, tx.businessId),
+            inArray(recommendation.id, row.dismissedRecommendationIds),
+            eq(recommendation.status, "dismissed"),
+          ),
+        );
   } else {
-    if(!input.note?.trim()) throw new AppError("VALIDATION","Record what the customer said or the booking details.");
-    change.status=input.action;
+    if (!input.note?.trim())
+      throw new AppError(
+        "VALIDATION",
+        "Record what the customer said or the booking details.",
+      );
+    change.status = input.action;
   }
-  await tx.update(recoveryItem).set(change).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.id,row.id)));
-  await audit(tx,meta,{action:`recovery.${input.action}`,targetType:'recovery_item',targetId:row.id,after:{...change,note:input.note??null}});
-  const priorContact=input.action==='responded'?(await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.contact'),sql`${activity.data}->>'recoveryItemId'=${row.id}`)).orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1))[0]:undefined;
-  if(input.action==='responded'&&!priorContact)throw new AppError('VALIDATION','Log the manual contact before recording a response.');
-  const recommendationIds=input.action==='contact'&&input.category==='declined'?(await tx.select({id:recommendation.id}).from(recommendation).where(and(eq(recommendation.businessId,tx.businessId),or(eq(recommendation.vehicleId,input.subjectId),and(sql`${recommendation.vehicleId} IS NULL`,eq(recommendation.customerId,input.subjectId))),eq(recommendation.status,'open')))).map(r=>r.id):[];
-  const event=await recordActivity(tx,{kind:`recovery.${input.action}`,subjectType:'customer',subjectId:source.customerId,
-    summary:`${categoryLabels[input.category]}: ${input.action==='contact'?'manual contact recorded':input.action}`,
-    data:{recoveryItemId:row.id,category:input.category,subjectId:input.subjectId,amountCents:source.amountCents,method:input.method??null,note:input.note??null,deliveryConfirmed:input.action==='contact'&&input.deliveryConfirmed===true,recommendationIds,contactActivityId:priorContact?.id??null,ownerConfirmed:input.action==='responded'&&(await currentMemberRole(tx))==='owner'}});
-  if(input.action==='responded')await reconcileRevenue(tx,meta,'Customer response recorded',source.customerId);
-  return {id:row.id,activityId:event.id};
+  await tx
+    .update(recoveryItem)
+    .set(change)
+    .where(
+      and(
+        eq(recoveryItem.businessId, tx.businessId),
+        eq(recoveryItem.id, row.id),
+      ),
+    );
+  await audit(tx, meta, {
+    action: `recovery.${input.action}`,
+    targetType: "recovery_item",
+    targetId: row.id,
+    after: { ...change, note: input.note ?? null },
+  });
+  const priorContact =
+    input.action === "responded"
+      ? (
+          await tx
+            .select()
+            .from(activity)
+            .where(
+              and(
+                eq(activity.businessId, tx.businessId),
+                eq(activity.kind, "recovery.contact"),
+                sql`${activity.data}->>'recoveryItemId'=${row.id}`,
+              ),
+            )
+            .orderBy(desc(activity.occurredAt), desc(activity.id))
+            .limit(1)
+        )[0]
+      : undefined;
+  if (input.action === "responded" && !priorContact)
+    throw new AppError(
+      "VALIDATION",
+      "Log the manual contact before recording a response.",
+    );
+  const recommendationIds =
+    input.action === "contact" && input.category === "declined"
+      ? (
+          await tx
+            .select({ id: recommendation.id })
+            .from(recommendation)
+            .where(
+              and(
+                eq(recommendation.businessId, tx.businessId),
+                or(
+                  eq(recommendation.vehicleId, input.subjectId),
+                  and(
+                    sql`${recommendation.vehicleId} IS NULL`,
+                    eq(recommendation.customerId, input.subjectId),
+                  ),
+                ),
+                eq(recommendation.status, "open"),
+              ),
+            )
+        ).map((r) => r.id)
+      : [];
+  const event = await recordActivity(tx, {
+    kind: `recovery.${input.action}`,
+    subjectType: "customer",
+    subjectId: source.customerId,
+    summary: `${categoryLabels[input.category]}: ${input.action === "contact" ? "manual contact recorded" : input.action}`,
+    data: {
+      recoveryItemId: row.id,
+      category: input.category,
+      subjectId: input.subjectId,
+      amountCents: source.amountCents,
+      method: input.method ?? null,
+      note: input.note ?? null,
+      deliveryConfirmed:
+        input.action === "contact" && input.deliveryConfirmed === true,
+      recommendationIds,
+      contactActivityId: priorContact?.id ?? null,
+      ownerConfirmed:
+        input.action === "responded" &&
+        (await currentMemberRole(tx)) === "owner",
+    },
+  });
+  if (input.action === "responded")
+    await reconcileRevenue(
+      tx,
+      meta,
+      "Customer response recorded",
+      source.customerId,
+    );
+  return { id: row.id, activityId: event.id };
 }
 
-export async function addRecommendation(tx:TenantTx,meta:RequestMeta,input:{customerId:string;vehicleId:string;description:string;amountCents:number|null;declinedOn:string}) {
-  await getVehicle(tx,input.customerId,input.vehicleId);
-  const b=await tx.execute(sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`).then(r=>r.rows[0]);
-  const zone=String(b.timezone);
-  if(input.declinedOn>localDateKey(new Date(),zone)) throw new AppError('VALIDATION','Declined work cannot have a future date.');
-  const [row]=await tx.insert(recommendation).values({businessId:tx.businessId,createdByUserId:tx.actor.id,...input,declinedAt:localMidnightToUtc(input.declinedOn,zone)}).returning();
-  await audit(tx,meta,{action:'recommendation.created',targetType:'recommendation',targetId:row.id,after:{description:input.description,amountCents:input.amountCents}});
-  await recordActivity(tx,{kind:'recommendation.created',subjectType:'vehicle',subjectId:input.vehicleId,summary:`Declined work recorded: ${input.description}`,data:{recommendationId:row.id}});
-  return {id:row.id};
+export async function addRecommendation(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: {
+    customerId: string;
+    vehicleId: string;
+    description: string;
+    amountCents: number | null;
+    declinedOn: string;
+  },
+) {
+  await getVehicle(tx, input.customerId, input.vehicleId);
+  const b = await tx
+    .execute(sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`)
+    .then((r) => r.rows[0]);
+  const zone = String(b.timezone);
+  if (input.declinedOn > localDateKey(new Date(), zone))
+    throw new AppError(
+      "VALIDATION",
+      "Declined work cannot have a future date.",
+    );
+  const [row] = await tx
+    .insert(recommendation)
+    .values({
+      businessId: tx.businessId,
+      createdByUserId: tx.actor.id,
+      ...input,
+      declinedAt: localMidnightToUtc(input.declinedOn, zone),
+    })
+    .returning();
+  await audit(tx, meta, {
+    action: "recommendation.created",
+    targetType: "recommendation",
+    targetId: row.id,
+    after: { description: input.description, amountCents: input.amountCents },
+  });
+  await recordActivity(tx, {
+    kind: "recommendation.created",
+    subjectType: "vehicle",
+    subjectId: input.vehicleId,
+    summary: `Declined work recorded: ${input.description}`,
+    data: { recommendationId: row.id },
+  });
+  return { id: row.id };
 }
-export async function listRecommendations(tx:TenantTx,vehicleId:string) {
-  return tx.select().from(recommendation).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.vehicleId,vehicleId))).orderBy(desc(recommendation.declinedAt)).limit(100);
+export async function listRecommendations(tx: TenantTx, vehicleId: string) {
+  return tx
+    .select()
+    .from(recommendation)
+    .where(
+      and(
+        eq(recommendation.businessId, tx.businessId),
+        eq(recommendation.vehicleId, vehicleId),
+      ),
+    )
+    .orderBy(desc(recommendation.declinedAt))
+    .limit(100);
 }
-export async function setRecommendationStatus(tx:TenantTx,meta:RequestMeta,id:string,status:'open'|'quoted'|'won'|'lost') {
-  const [row]=await tx.update(recommendation).set({status}).where(and(eq(recommendation.businessId,tx.businessId),eq(recommendation.id,id))).returning();
-  if(!row) throw notFound('That recommendation');
-  await audit(tx,meta,{action:'recommendation.status_changed',targetType:'recommendation',targetId:id,after:{status}});
-  await recordActivity(tx,{kind:'recommendation.updated',subjectType:row.vehicleId?'vehicle':'customer',subjectId:row.vehicleId??row.customerId,summary:`Recommendation marked ${status}`,data:{recommendationId:id}});
-  return {id};
+export async function setRecommendationStatus(
+  tx: TenantTx,
+  meta: RequestMeta,
+  id: string,
+  status: "open" | "quoted" | "won" | "lost",
+) {
+  const [row] = await tx
+    .update(recommendation)
+    .set({ status })
+    .where(
+      and(
+        eq(recommendation.businessId, tx.businessId),
+        eq(recommendation.id, id),
+      ),
+    )
+    .returning();
+  if (!row) throw notFound("That recommendation");
+  await audit(tx, meta, {
+    action: "recommendation.status_changed",
+    targetType: "recommendation",
+    targetId: id,
+    after: { status },
+  });
+  await recordActivity(tx, {
+    kind: "recommendation.updated",
+    subjectType: row.vehicleId ? "vehicle" : "customer",
+    subjectId: row.vehicleId ?? row.customerId,
+    summary: `Recommendation marked ${status}`,
+    data: { recommendationId: id },
+  });
+  return { id };
 }
-export async function setNextService(tx:TenantTx,meta:RequestMeta,input:{customerId:string;vehicleId:string;on:string|null;description:string|null;amountCents:number|null}) {
-  await getVehicle(tx,input.customerId,input.vehicleId);
-  await tx.update(vehicle).set({nextServiceOn:input.on,nextServiceDescription:input.on?input.description:null,nextServiceAmountCents:input.on?input.amountCents:null})
-    .where(and(eq(vehicle.businessId,tx.businessId),eq(vehicle.id,input.vehicleId)));
-  await audit(tx,meta,{action:'vehicle.next_service_updated',targetType:'vehicle',targetId:input.vehicleId,after:input});
-  await recordActivity(tx,{kind:'vehicle.service_due_updated',subjectType:'vehicle',subjectId:input.vehicleId,summary:input.on?`Next service set: ${input.on}`:'Next service cleared',data:{on:input.on}});
-  return {id:input.vehicleId};
+export async function setNextService(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: {
+    customerId: string;
+    vehicleId: string;
+    on: string | null;
+    description: string | null;
+    amountCents: number | null;
+  },
+) {
+  await getVehicle(tx, input.customerId, input.vehicleId);
+  await tx
+    .update(vehicle)
+    .set({
+      nextServiceOn: input.on,
+      nextServiceDescription: input.on ? input.description : null,
+      nextServiceAmountCents: input.on ? input.amountCents : null,
+    })
+    .where(
+      and(
+        eq(vehicle.businessId, tx.businessId),
+        eq(vehicle.id, input.vehicleId),
+      ),
+    );
+  await audit(tx, meta, {
+    action: "vehicle.next_service_updated",
+    targetType: "vehicle",
+    targetId: input.vehicleId,
+    after: input,
+  });
+  await recordActivity(tx, {
+    kind: "vehicle.service_due_updated",
+    subjectType: "vehicle",
+    subjectId: input.vehicleId,
+    summary: input.on
+      ? `Next service set: ${input.on}`
+      : "Next service cleared",
+    data: { on: input.on },
+  });
+  return { id: input.vehicleId };
 }
-export async function setDoNotContact(tx:TenantTx,meta:RequestMeta,id:string,value:boolean) {
-  const [row]=await tx.update(customer).set({doNotContact:value}).where(and(eq(customer.businessId,tx.businessId),eq(customer.id,id))).returning();
-  if(!row) throw notFound('That customer');
-  await audit(tx,meta,{action:'customer.contact_preference',targetType:'customer',targetId:id,after:{doNotContact:value}});
-  await recordActivity(tx,{kind:'customer.contact_preference',subjectType:'customer',subjectId:id,summary:value?'Do not contact enabled':'Do not contact cleared'});
-  return {id};
+export async function setDoNotContact(
+  tx: TenantTx,
+  meta: RequestMeta,
+  id: string,
+  value: boolean,
+) {
+  const [row] = await tx
+    .update(customer)
+    .set({ doNotContact: value })
+    .where(and(eq(customer.businessId, tx.businessId), eq(customer.id, id)))
+    .returning();
+  if (!row) throw notFound("That customer");
+  await audit(tx, meta, {
+    action: "customer.contact_preference",
+    targetType: "customer",
+    targetId: id,
+    after: { doNotContact: value },
+  });
+  await recordActivity(tx, {
+    kind: "customer.contact_preference",
+    subjectType: "customer",
+    subjectId: id,
+    summary: value ? "Do not contact enabled" : "Do not contact cleared",
+  });
+  return { id };
 }
 
-export async function startRecoveryWork(tx:TenantTx,meta:RequestMeta,input:{category:MoneyCategory;subjectId:string;destination:'job'|'appointment'}) {
- await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`);
- const source=await findCandidate(tx,input.category,input.subjectId,true);
- if(source.status==='dismissed') throw new AppError('INVALID_TRANSITION','Restore this opportunity first.');
- await tx.insert(recoveryItem).values({businessId:tx.businessId,createdByUserId:tx.actor.id,category:input.category,subjectId:input.subjectId,customerId:source.customerId,vehicleId:source.vehicleId,serviceAssetId:source.serviceAssetId}).onConflictDoNothing();
- const [row]=await tx.select().from(recoveryItem).where(and(eq(recoveryItem.businessId,tx.businessId),eq(recoveryItem.category,input.category),eq(recoveryItem.subjectId,input.subjectId)));
- await audit(tx,meta,{action:'recovery.work_started',targetType:'recovery_item',targetId:row.id,after:{destination:input.destination}});
- const contacts=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.contact'),sql`${activity.data}->>'recoveryItemId'=${row.id}`)).orderBy(desc(activity.occurredAt),desc(activity.id));
- const responses=await tx.select().from(activity).where(and(eq(activity.businessId,tx.businessId),eq(activity.kind,'recovery.responded'),sql`${activity.data}->>'recoveryItemId'=${row.id} AND ${activity.data}->>'ownerConfirmed'='true'`)).orderBy(desc(activity.occurredAt),desc(activity.id));
- const response=responses.find(r=>contacts.some(c=>c.id===(r.data as Record<string,unknown>).contactActivityId&&r.occurredAt>=c.occurredAt&&r.occurredAt.getTime()-c.occurredAt.getTime()<=30*86400000));
- const contactId=(response?.data as Record<string,unknown>|undefined)?.contactActivityId as string|undefined??contacts[0]?.id;
- const params=new URLSearchParams({sourceRecoveryItemId:row.id,...(contactId?{sourceContactActivityId:contactId}:{}),customerId:source.customerId,...(source.vehicleId?{vehicleId:source.vehicleId}:{}),...(source.serviceAssetId?{serviceAssetId:source.serviceAssetId}:{})});
- return {id:row.id,redirectTo:`/app/${input.destination==='job'?'jobs':'schedule'}?${params}${input.destination==='appointment'?'#new-appointment':''}`};
+export async function startRecoveryWork(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: {
+    category: MoneyCategory;
+    subjectId: string;
+    destination: "job" | "appointment";
+  },
+) {
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`,
+  );
+  const source = await findCandidate(tx, input.category, input.subjectId, true);
+  if (source.status === "dismissed")
+    throw new AppError("INVALID_TRANSITION", "Restore this opportunity first.");
+  await tx
+    .insert(recoveryItem)
+    .values({
+      businessId: tx.businessId,
+      createdByUserId: tx.actor.id,
+      category: input.category,
+      subjectId: input.subjectId,
+      customerId: source.customerId,
+      vehicleId: source.vehicleId,
+      serviceAssetId: source.serviceAssetId,
+    })
+    .onConflictDoNothing();
+  const [row] = await tx
+    .select()
+    .from(recoveryItem)
+    .where(
+      and(
+        eq(recoveryItem.businessId, tx.businessId),
+        eq(recoveryItem.category, input.category),
+        eq(recoveryItem.subjectId, input.subjectId),
+      ),
+    );
+  await audit(tx, meta, {
+    action: "recovery.work_started",
+    targetType: "recovery_item",
+    targetId: row.id,
+    after: { destination: input.destination },
+  });
+  const contacts = await tx
+    .select()
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.kind, "recovery.contact"),
+        sql`${activity.data}->>'recoveryItemId'=${row.id}`,
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id));
+  const responses = await tx
+    .select()
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.kind, "recovery.responded"),
+        sql`${activity.data}->>'recoveryItemId'=${row.id} AND ${activity.data}->>'ownerConfirmed'='true'`,
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id));
+  const response = responses.find((r) =>
+    contacts.some(
+      (c) =>
+        c.id === (r.data as Record<string, unknown>).contactActivityId &&
+        r.occurredAt >= c.occurredAt &&
+        r.occurredAt.getTime() - c.occurredAt.getTime() <= 30 * 86400000,
+    ),
+  );
+  const contactId =
+    ((response?.data as Record<string, unknown> | undefined)
+      ?.contactActivityId as string | undefined) ?? contacts[0]?.id;
+  const params = new URLSearchParams({
+    sourceRecoveryItemId: row.id,
+    ...(contactId ? { sourceContactActivityId: contactId } : {}),
+    customerId: source.customerId,
+    ...(source.vehicleId ? { vehicleId: source.vehicleId } : {}),
+    ...(source.serviceAssetId ? { serviceAssetId: source.serviceAssetId } : {}),
+  });
+  return {
+    id: row.id,
+    redirectTo: `/app/${input.destination === "job" ? "jobs" : "schedule"}?${params}${input.destination === "appointment" ? "#new-appointment" : ""}`,
+  };
 }

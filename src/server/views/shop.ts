@@ -6,9 +6,11 @@ import { getSessionState, type ShopSession } from "../auth/session";
 
 export async function requireShopSession(path: string): Promise<ShopSession> {
   const state = await getSessionState();
-  if (state.kind === "anonymous") redirect(`/sign-in?next=${encodeURIComponent(path)}`);
+  if (state.kind === "anonymous")
+    redirect(`/sign-in?next=${encodeURIComponent(path)}`);
   if (state.kind === "no_access") redirect("/no-access");
-  if(await sessionNeedsMfa(state.session.role))redirect(`/verify?next=${encodeURIComponent(path)}`);
+  if (await sessionNeedsMfa(state.session.role))
+    redirect(`/verify?next=${encodeURIComponent(path)}`);
   return state.session;
 }
 
@@ -18,4 +20,3 @@ export async function requireOwnerView(path: string): Promise<ShopSession> {
   if (s.role === "staff") redirect("/app?denied=1");
   return s;
 }
-

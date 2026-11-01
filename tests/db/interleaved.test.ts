@@ -5,7 +5,9 @@ import { seedTenant } from "../helpers/fixtures";
 let tenants: InterleaveTenant[];
 
 beforeAll(async () => {
-  const seeded = await Promise.all(["Hotel", "India", "Juliet"].map((l) => seedTenant(l, { withStaff: true })));
+  const seeded = await Promise.all(
+    ["Hotel", "India", "Juliet"].map((l) => seedTenant(l, { withStaff: true })),
+  );
   tenants = seeded.flatMap((t) => [
     { businessId: t.businessId, actor: t.owner.actor },
     { businessId: t.businessId, actor: t.staff!.actor },

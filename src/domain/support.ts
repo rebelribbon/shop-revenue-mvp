@@ -13,51 +13,107 @@ function asTenant(tx: object, businessId: string, actor: TenantTx["actor"]) {
   return Object.assign(Object.create(tx), { businessId, actor }) as TenantTx;
 }
 
-export async function startSupportSession(actor: InternalActor, meta: RequestMeta, input: { businessId: string; reason: string }) {
+export async function startSupportSession(
+  actor: InternalActor,
+  meta: RequestMeta,
+  input: { businessId: string; reason: string },
+) {
   const reason = input.reason.trim();
-  if (reason.length < 10) throw new AppError("VALIDATION", "Write a reason of at least 10 characters.", { field: "reason" });
+  if (reason.length < 10)
+    throw new AppError(
+      "VALIDATION",
+      "Write a reason of at least 10 characters.",
+      { field: "reason" },
+    );
   return withAdmin(actor, async (tx) => {
-    const [b] = await tx.select({ id: business.id }).from(business).where(eq(business.id, input.businessId));
+    const [b] = await tx
+      .select({ id: business.id })
+      .from(business)
+      .where(eq(business.id, input.businessId));
     if (!b) throw notFound("That business");
-    const [me] = await tx.select().from(internalUser).where(eq(internalUser.id, actor.internalUserId));
-    if (!me?.active) throw new AppError("FORBIDDEN", "Your admin access is not active.");
+    const [me] = await tx
+      .select()
+      .from(internalUser)
+      .where(eq(internalUser.id, actor.internalUserId));
+    if (!me?.active)
+      throw new AppError("FORBIDDEN", "Your admin access is not active.");
     const [s] = await tx
       .insert(supportSession)
       // expires_at is set by the database (started_at + 60 minutes); the value here is ignored.
-      .values({ adminUserId: me.id, adminDisplayName: me.displayName, businessId: b.id, reason, expiresAt: new Date() })
+      .values({
+        adminUserId: me.id,
+        adminDisplayName: me.displayName,
+        businessId: b.id,
+        reason,
+        expiresAt: new Date(),
+      })
       .returning();
     await tx.execute(sql`SELECT set_config('app.business_id', ${b.id}, true)`);
-    await audit(asTenant(tx, b.id, { type: "internal", id: actor.internalUserId, supportSessionId: s.id }), meta, {
-      action: "support_session.started",
-      targetType: "support_session",
-      targetId: s.id,
-      after: { reason, expiresAt: s.expiresAt },
-    });
+    await audit(
+      asTenant(tx, b.id, {
+        type: "internal",
+        id: actor.internalUserId,
+        supportSessionId: s.id,
+      }),
+      meta,
+      {
+        action: "support_session.started",
+        targetType: "support_session",
+        targetId: s.id,
+        after: { reason, expiresAt: s.expiresAt },
+      },
+    );
     return s;
   });
 }
 
-export async function endSupportSession(actor: InternalActor, meta: RequestMeta, sessionId: string) {
+export async function endSupportSession(
+  actor: InternalActor,
+  meta: RequestMeta,
+  sessionId: string,
+) {
   return withAdmin(actor, async (tx) => {
     const [s] = await tx
       .update(supportSession)
-      .set({ endedAt: sql`least(now(), ${supportSession.expiresAt})`, endReason: "ended" })
-      .where(and(eq(supportSession.id, sessionId), eq(supportSession.adminUserId, actor.internalUserId), isNull(supportSession.endedAt)))
+      .set({
+        endedAt: sql`least(now(), ${supportSession.expiresAt})`,
+        endReason: "ended",
+      })
+      .where(
+        and(
+          eq(supportSession.id, sessionId),
+          eq(supportSession.adminUserId, actor.internalUserId),
+          isNull(supportSession.endedAt),
+        ),
+      )
       .returning();
     if (!s) return null;
-    await tx.execute(sql`SELECT set_config('app.business_id', ${s.businessId}, true)`);
-    await audit(asTenant(tx, s.businessId, { type: "internal", id: actor.internalUserId, supportSessionId: s.id }), meta, {
-      action: "support_session.ended",
-      targetType: "support_session",
-      targetId: s.id,
-      after: { endedAt: s.endedAt, endReason: "ended" },
-    });
+    await tx.execute(
+      sql`SELECT set_config('app.business_id', ${s.businessId}, true)`,
+    );
+    await audit(
+      asTenant(tx, s.businessId, {
+        type: "internal",
+        id: actor.internalUserId,
+        supportSessionId: s.id,
+      }),
+      meta,
+      {
+        action: "support_session.ended",
+        targetType: "support_session",
+        targetId: s.id,
+        after: { endedAt: s.endedAt, endReason: "ended" },
+      },
+    );
     return s;
   });
 }
 
 // For the shop UI resolver: is this view-as session live and owned by this internal user?
-export async function findActiveSupportSession(internalUserId: string, sessionId: string) {
+export async function findActiveSupportSession(
+  internalUserId: string,
+  sessionId: string,
+) {
   return withAdmin({ internalUserId }, async (tx) => {
     const [s] = await tx
       .select({
@@ -88,7 +144,12 @@ export async function closeExpiredSupportSessions(meta: RequestMeta) {
     tx
       .update(supportSession)
       .set({ endedAt: supportSession.expiresAt, endReason: "expired" })
-      .where(and(isNull(supportSession.endedAt), lt(supportSession.expiresAt, sql`now()`)))
+      .where(
+        and(
+          isNull(supportSession.endedAt),
+          lt(supportSession.expiresAt, sql`now()`),
+        ),
+      )
       .returning(),
   );
   for (const s of expired) {
@@ -100,7 +161,11 @@ export async function closeExpiredSupportSessions(meta: RequestMeta) {
           action: "support_session.expired",
           targetType: "support_session",
           targetId: s.id,
-          after: { endedAt: s.endedAt, endReason: "expired", adminUserId: s.adminUserId },
+          after: {
+            endedAt: s.endedAt,
+            endReason: "expired",
+            adminUserId: s.adminUserId,
+          },
         }),
       { role: "worker" },
     );

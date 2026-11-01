@@ -20,7 +20,9 @@ export const business = app.table(
     id: id(),
     legalName: text("legal_name").notNull(),
     businessType: text("business_type").notNull().default("automotive"),
-    businessTypeSelected: boolean("business_type_selected").notNull().default(false),
+    businessTypeSelected: boolean("business_type_selected")
+      .notNull()
+      .default(false),
     dba: text("dba"),
     phoneE164: text("phone_e164"),
     addressLine1: text("address_line1"),
@@ -31,14 +33,28 @@ export const business = app.table(
     timezone: text("timezone").notNull().default("America/Chicago"),
     jurisdictionCode: text("jurisdiction_code").notNull().default("US-TX"),
     taxRateBps: integer("tax_rate_bps").notNull().default(0),
+    laborSellRateCents: integer("labor_sell_rate_cents").notNull().default(0),
+    laborCostRateCents: integer("labor_cost_rate_cents").notNull().default(0),
+    partsTaxableDefault: boolean("parts_taxable_default")
+      .notNull()
+      .default(true),
+    laborTaxableDefault: boolean("labor_taxable_default")
+      .notNull()
+      .default(false),
     // FK to file (business_id, id) is added in hand-written SQL (circular reference).
     logoFileId: uuid("logo_file_id"),
     status: text("status").notNull().default("active"),
     ...timestamps(),
   },
   (t) => [
-    check("business_status_check", sql`${t.status} IN ('active', 'suspended', 'closed')`),
-    check("business_tax_rate_bps_check", sql`${t.taxRateBps} BETWEEN 0 AND 2000`),
+    check(
+      "business_status_check",
+      sql`${t.status} IN ('active', 'suspended', 'closed')`,
+    ),
+    check(
+      "business_tax_rate_bps_check",
+      sql`${t.taxRateBps} BETWEEN 0 AND 2000`,
+    ),
     check("business_phone_e164_check", sql`${t.phoneE164} ~ ${E164_CHECK}`),
     check("business_legal_name_check", sql`length(btrim(${t.legalName})) > 0`),
   ],
@@ -83,9 +99,19 @@ export const location = app.table(
   },
   (t) => [
     unique("location_business_id_id_key").on(t.businessId, t.id),
-    uniqueIndex("location_one_default_idx").on(t.businessId).where(sql`${t.isDefault}`),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "location_business_fk" }),
-    foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "location_created_by_fk" }),
+    uniqueIndex("location_one_default_idx")
+      .on(t.businessId)
+      .where(sql`${t.isDefault}`),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "location_business_fk",
+    }),
+    foreignKey({
+      columns: [t.createdByUserId],
+      foreignColumns: [user.id],
+      name: "location_created_by_fk",
+    }),
   ],
 );
 
@@ -119,18 +145,42 @@ export const membership = app.table(
       .where(sql`${t.role} = 'staff' AND ${t.status} IN ('invited', 'active')`),
     index("membership_user_id_idx").on(t.userId),
     check("membership_role_check", sql`${t.role} IN ('owner', 'staff')`),
-    check("membership_status_check", sql`${t.status} IN ('invited', 'active', 'removed')`),
+    check(
+      "membership_status_check",
+      sql`${t.status} IN ('invited', 'active', 'removed')`,
+    ),
     // A pending invite has no user yet and can be revoked (invited -> removed) without one.
-    check("membership_user_required_check", sql`${t.status} <> 'active' OR ${t.userId} IS NOT NULL`),
+    check(
+      "membership_user_required_check",
+      sql`${t.status} <> 'active' OR ${t.userId} IS NOT NULL`,
+    ),
     check(
       "membership_invite_contact_check",
       sql`${t.status} <> 'invited' OR ${t.inviteEmail} IS NOT NULL OR ${t.invitePhoneE164} IS NOT NULL`,
     ),
-    check("membership_invite_email_check", sql`${t.inviteEmail} = lower(btrim(${t.inviteEmail}))`),
-    check("membership_invite_phone_e164_check", sql`${t.invitePhoneE164} ~ ${E164_CHECK}`),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "membership_business_fk" }),
-    foreignKey({ columns: [t.userId], foreignColumns: [user.id], name: "membership_user_fk" }),
-    foreignKey({ columns: [t.createdByUserId], foreignColumns: [user.id], name: "membership_created_by_fk" }),
+    check(
+      "membership_invite_email_check",
+      sql`${t.inviteEmail} = lower(btrim(${t.inviteEmail}))`,
+    ),
+    check(
+      "membership_invite_phone_e164_check",
+      sql`${t.invitePhoneE164} ~ ${E164_CHECK}`,
+    ),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "membership_business_fk",
+    }),
+    foreignKey({
+      columns: [t.userId],
+      foreignColumns: [user.id],
+      name: "membership_user_fk",
+    }),
+    foreignKey({
+      columns: [t.createdByUserId],
+      foreignColumns: [user.id],
+      name: "membership_created_by_fk",
+    }),
   ],
 );
 
@@ -150,7 +200,10 @@ export const internalUser = app.table(
     unique("internal_user_email_key").on(t.email),
     unique("internal_user_auth_provider_id_key").on(t.authProviderId),
     check("internal_user_role_check", sql`${t.role} IN ('support', 'admin')`),
-    check("internal_user_email_check", sql`${t.email} = lower(btrim(${t.email}))`),
+    check(
+      "internal_user_email_check",
+      sql`${t.email} = lower(btrim(${t.email}))`,
+    ),
   ],
 );
 
@@ -166,7 +219,9 @@ export const supportSession = app.table(
     adminDisplayName: text("admin_display_name").notNull(),
     businessId: uuid("business_id").notNull(),
     reason: text("reason").notNull(),
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }),
     endReason: text("end_reason"),
@@ -176,15 +231,31 @@ export const supportSession = app.table(
     index("support_session_business_started_idx").on(t.businessId, t.startedAt),
     // Target of tenant-composite references (audit_event.support_session_id).
     unique("support_session_business_id_id_key").on(t.businessId, t.id),
-    check("support_session_reason_check", sql`length(btrim(${t.reason})) >= 10`),
-    check("support_session_duration_check", sql`${t.expiresAt} = ${t.startedAt} + interval '60 minutes'`),
-    check("support_session_end_check", sql`${t.endedAt} IS NULL OR ${t.endedAt} >= ${t.startedAt}`),
+    check(
+      "support_session_reason_check",
+      sql`length(btrim(${t.reason})) >= 10`,
+    ),
+    check(
+      "support_session_duration_check",
+      sql`${t.expiresAt} = ${t.startedAt} + interval '60 minutes'`,
+    ),
+    check(
+      "support_session_end_check",
+      sql`${t.endedAt} IS NULL OR ${t.endedAt} >= ${t.startedAt}`,
+    ),
     check(
       "support_session_end_reason_check",
       sql`(${t.endedAt} IS NULL) = (${t.endReason} IS NULL) AND (${t.endReason} IS NULL OR ${t.endReason} IN ('ended', 'expired'))`,
     ),
-    foreignKey({ columns: [t.adminUserId], foreignColumns: [internalUser.id], name: "support_session_admin_fk" }),
-    foreignKey({ columns: [t.businessId], foreignColumns: [business.id], name: "support_session_business_fk" }),
+    foreignKey({
+      columns: [t.adminUserId],
+      foreignColumns: [internalUser.id],
+      name: "support_session_admin_fk",
+    }),
+    foreignKey({
+      columns: [t.businessId],
+      foreignColumns: [business.id],
+      name: "support_session_business_fk",
+    }),
   ],
 );
-

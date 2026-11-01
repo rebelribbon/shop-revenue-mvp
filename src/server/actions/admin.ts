@@ -9,7 +9,13 @@ import { z } from "zod";
 import { withAdminTenant } from "@/db/admin";
 import { createBusiness } from "@/domain/business";
 import { deliverInvite } from "@/domain/invite-delivery";
-import { approvePolicy, createPolicyDraft, POLICY_KINDS, retirePolicy, updatePolicyDraft } from "@/domain/legal-policy";
+import {
+  approvePolicy,
+  createPolicyDraft,
+  POLICY_KINDS,
+  retirePolicy,
+  updatePolicyDraft,
+} from "@/domain/legal-policy";
 import { removeStaff, resendInvite } from "@/domain/membership";
 import { startSupportSession } from "@/domain/support";
 import { replayWebhookEvent } from "@/domain/webhooks";
@@ -24,25 +30,43 @@ function defineAdminAction<S extends z.ZodObject, R>(cfg: {
   name: string;
   role?: "admin";
   input: S;
-  run: (actor: { internalUserId: string }, meta: Awaited<ReturnType<typeof getRequestMeta>>, input: z.infer<S>) => Promise<R>;
+  run: (
+    actor: { internalUserId: string },
+    meta: Awaited<ReturnType<typeof getRequestMeta>>,
+    input: z.infer<S>,
+  ) => Promise<R>;
 }) {
-  const schema = cfg.input.extend({ clientRequestId: z.uuid().optional() }).strict();
+  const schema = cfg.input
+    .extend({ clientRequestId: z.uuid().optional() })
+    .strict();
   return async (raw: unknown): Promise<ActionResult<R>> => {
     const meta = await getRequestMeta();
     try {
       const me = await getInternalUser();
-      if (!me) throw new AppError("FORBIDDEN", "Please sign in to the admin console.");
+      if (!me)
+        throw new AppError("FORBIDDEN", "Please sign in to the admin console.");
       await assertSessionAssurance(me.role);
-      if (cfg.role === "admin" && me.role !== "admin") throw new AppError("FORBIDDEN", "Admins only.");
+      if (cfg.role === "admin" && me.role !== "admin")
+        throw new AppError("FORBIDDEN", "Admins only.");
       const parsed = schema.safeParse(raw);
       if (!parsed.success) {
         throw new AppError("VALIDATION", "Please check the fields.", {
-          fields: Object.fromEntries(parsed.error.issues.map((i) => [i.path.join("."), i.message])),
+          fields: Object.fromEntries(
+            parsed.error.issues.map((i) => [i.path.join("."), i.message]),
+          ),
         });
       }
-      const { clientRequestId: _ignored, ...input } = parsed.data as z.infer<S> & { clientRequestId?: string };
+      const { clientRequestId: _ignored, ...input } =
+        parsed.data as z.infer<S> & { clientRequestId?: string };
       void _ignored;
-      return { ok: true, data: await cfg.run({ internalUserId: me.id }, meta, input as z.infer<S>) };
+      return {
+        ok: true,
+        data: await cfg.run(
+          { internalUserId: me.id },
+          meta,
+          input as z.infer<S>,
+        ),
+      };
     } catch (err) {
       return { ok: false, error: toActionError(err, meta, cfg.name) };
     }
@@ -70,23 +94,38 @@ export const createBusinessAction = defineAdminAction({
       },
     });
     const delivery = await deliverInvite(
-      { membershipId: created.ownerMembershipId, token: created.inviteToken, name: i.ownerName, email: i.ownerEmail ? normalizeEmail(i.ownerEmail) : null, phoneE164: i.ownerPhone ? normalizePhone(i.ownerPhone) : null },
+      {
+        membershipId: created.ownerMembershipId,
+        token: created.inviteToken,
+        name: i.ownerName,
+        email: i.ownerEmail ? normalizeEmail(i.ownerEmail) : null,
+        phoneE164: i.ownerPhone ? normalizePhone(i.ownerPhone) : null,
+      },
       i.dba || i.legalName,
       meta.requestId,
     );
     return {
       businessId: created.businessId,
       invite: delivery.status,
-      message: delivery.status === "sent" ? "Created. Owner invite sent." : "Created, but the owner invite was NOT sent. Resend it from the tenant page.",
+      message:
+        delivery.status === "sent"
+          ? "Created. Owner invite sent."
+          : "Created, but the owner invite was NOT sent. Resend it from the tenant page.",
     };
   },
 });
 
 export const resendOwnerInviteAction = defineAdminAction({
   name: "resendInvite",
-  input: z.object({ businessId: z.uuid(), membershipId: z.uuid(), businessName: z.string().max(200) }),
+  input: z.object({
+    businessId: z.uuid(),
+    membershipId: z.uuid(),
+    businessName: z.string().max(200),
+  }),
   run: async (actor, meta, i) => {
-    const d = await withAdminTenant(i.businessId, actor, (tx) => resendInvite(tx, meta, i.membershipId));
+    const d = await withAdminTenant(i.businessId, actor, (tx) =>
+      resendInvite(tx, meta, i.membershipId),
+    );
     return deliverInvite(d, i.businessName, meta.requestId);
   },
 });
@@ -96,7 +135,9 @@ export const resetStaffAction = defineAdminAction({
   name: "removeStaff",
   input: z.object({ businessId: z.uuid(), membershipId: z.uuid() }),
   run: async (actor, meta, i) => {
-    await withAdminTenant(i.businessId, actor, (tx) => removeStaff(tx, meta, i.membershipId));
+    await withAdminTenant(i.businessId, actor, (tx) =>
+      removeStaff(tx, meta, i.membershipId),
+    );
     return { removed: i.membershipId, message: "Staff login removed." };
   },
 });
@@ -105,8 +146,14 @@ export const startViewAsAction = defineAdminAction({
   name: "startSupportSession",
   input: z.object({ businessId: z.uuid(), reason: z.string().max(500) }),
   run: async (actor, meta, i) => {
-    const s = await startSupportSession(actor, meta, { businessId: i.businessId, reason: i.reason });
-    (await cookies()).set(VIEW_AS_COOKIE, signValue(s.id), { ...AUTH_COOKIE_OPTIONS, maxAge: 60 * 60 });
+    const s = await startSupportSession(actor, meta, {
+      businessId: i.businessId,
+      reason: i.reason,
+    });
+    (await cookies()).set(VIEW_AS_COOKIE, signValue(s.id), {
+      ...AUTH_COOKIE_OPTIONS,
+      maxAge: 60 * 60,
+    });
     return { sessionId: s.id, redirectTo: "/app" };
   },
 });
@@ -114,7 +161,11 @@ export const startViewAsAction = defineAdminAction({
 export const createPolicyDraftAction = defineAdminAction({
   name: "createLegalPolicyDraft",
   role: "admin",
-  input: z.object({ jurisdictionCode: z.string().regex(/^[A-Z]{2}-[A-Z]{2}$/), kind: z.enum(POLICY_KINDS), body: z.string().min(1).max(20_000) }),
+  input: z.object({
+    jurisdictionCode: z.string().regex(/^[A-Z]{2}-[A-Z]{2}$/),
+    kind: z.enum(POLICY_KINDS),
+    body: z.string().min(1).max(20_000),
+  }),
   run: async (actor, meta, i) => (await createPolicyDraft(actor, meta, i)).id,
 });
 
@@ -122,13 +173,17 @@ export const updatePolicyDraftAction = defineAdminAction({
   name: "updateLegalPolicyDraft",
   role: "admin",
   input: z.object({ policyId: z.uuid(), body: z.string().min(1).max(20_000) }),
-  run: async (actor, meta, i) => (await updatePolicyDraft(actor, meta, i.policyId, i.body)).id,
+  run: async (actor, meta, i) =>
+    (await updatePolicyDraft(actor, meta, i.policyId, i.body)).id,
 });
 
 export const approvePolicyAction = defineAdminAction({
   name: "approveLegalPolicy",
   role: "admin",
-  input: z.object({ policyId: z.uuid(), approvalReference: z.string().min(1).max(200) }),
+  input: z.object({
+    policyId: z.uuid(),
+    approvalReference: z.string().min(1).max(200),
+  }),
   run: async (actor, meta, i) => (await approvePolicy(actor, meta, i)).id,
 });
 
@@ -136,7 +191,8 @@ export const retirePolicyAction = defineAdminAction({
   name: "retireLegalPolicy",
   role: "admin",
   input: z.object({ policyId: z.uuid() }),
-  run: async (actor, meta, i) => (await retirePolicy(actor, meta, i.policyId)).id,
+  run: async (actor, meta, i) =>
+    (await retirePolicy(actor, meta, i.policyId)).id,
 });
 
 export const replayWebhookAction = defineAdminAction({
@@ -155,10 +211,14 @@ export async function signInWithGoogle() {
     provider: "google",
     options: {
       redirectTo: `${base}/auth/callback?next=/admin`,
-      queryParams: process.env.ADMIN_ALLOWED_EMAIL_DOMAIN ? { hd: process.env.ADMIN_ALLOWED_EMAIL_DOMAIN, prompt: "select_account" } : undefined,
+      queryParams: process.env.ADMIN_ALLOWED_EMAIL_DOMAIN
+        ? {
+            hd: process.env.ADMIN_ALLOWED_EMAIL_DOMAIN,
+            prompt: "select_account",
+          }
+        : undefined,
     },
   });
   if (error || !data.url) redirect("/admin/sign-in?error=google");
   redirect(data.url);
 }
-

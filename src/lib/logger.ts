@@ -40,7 +40,10 @@ export const REDACT_PATHS = [
 
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? "info",
-  base: { service: process.env.SERVICE_NAME ?? "web", env: process.env.APP_ENV ?? "local" },
+  base: {
+    service: process.env.SERVICE_NAME ?? "web",
+    env: process.env.APP_ENV ?? "local",
+  },
   timestamp: pino.stdTimeFunctions.isoTime,
   redact: { paths: REDACT_PATHS, censor: "[redacted]" },
   formatters: { level: (label) => ({ level: label }) },
@@ -48,6 +51,9 @@ export const logger = pino({
 
 // Public-link paths carry tokens; route logging masks the token segment (Section 16).
 export const maskTokenPath = (path: string) => {
- const clean=path.split(/[?#]/,1)[0];
- return clean.replace(/^\/(e|i|r|invite|estimate|invoice|payment-return)\/[^/]+/, "/$1/[token]");
+  const clean = path.split(/[?#]/, 1)[0];
+  return clean.replace(
+    /^\/(e|i|r|invite|estimate|invoice|payment-return)\/[^/]+/,
+    "/$1/[token]",
+  );
 };

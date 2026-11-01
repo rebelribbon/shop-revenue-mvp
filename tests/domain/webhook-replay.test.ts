@@ -7,8 +7,18 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { withAdmin, withAdminTenant } from "@/db/admin";
 import { auditEvent, webhookEvent } from "@/db/schema";
 import { ingestWebhookEvent, withGlobalWorker, withTenant } from "@/db/tenant";
-import { processWebhookEvent, registerWebhookHandler, replayWebhookEvent } from "@/domain/webhooks";
-import { createInternalUser, meta, rawClient, seedTenant, type SeededTenant } from "../helpers/fixtures";
+import {
+  processWebhookEvent,
+  registerWebhookHandler,
+  replayWebhookEvent,
+} from "@/domain/webhooks";
+import {
+  createInternalUser,
+  meta,
+  rawClient,
+  seedTenant,
+  type SeededTenant,
+} from "../helpers/fixtures";
 
 let T: SeededTenant;
 let adminId: string;
@@ -20,7 +30,10 @@ beforeAll(async () => {
 
 // A stored event in a given state, optionally resolved to a business, with its
 // ingest job removed so later job counts measure only what replay enqueues.
-async function eventIn(status: "dead" | "failed" | "ignored" | "applied", businessId: string | null) {
+async function eventIn(
+  status: "dead" | "failed" | "ignored" | "applied",
+  businessId: string | null,
+) {
   const { eventId } = await ingestWebhookEvent({
     provider: "stripe",
     providerEventId: `evt_${randomUUID()}`,
@@ -35,24 +48,52 @@ async function eventIn(status: "dead" | "failed" | "ignored" | "applied", busine
       WHERE id = $1`,
     [eventId, status, businessId],
   );
-  await w.query("DELETE FROM graphile_worker._private_jobs WHERE key = $1", [`webhook:${eventId}`]);
+  await w.query("DELETE FROM graphile_worker._private_jobs WHERE key = $1", [
+    `webhook:${eventId}`,
+  ]);
   await w.end();
   return eventId;
 }
 
 const jobsFor = async (eventId: string) => {
   const w = await rawClient("worker");
-  const { rows } = await w.query("SELECT count(*)::int n FROM graphile_worker._private_jobs WHERE key = $1", [`webhook:${eventId}`]);
+  const { rows } = await w.query(
+    "SELECT count(*)::int n FROM graphile_worker._private_jobs WHERE key = $1",
+    [`webhook:${eventId}`],
+  );
   await w.end();
   return rows[0].n as number;
 };
-const eventRow = async (id: string) => (await withGlobalWorker((tx) => tx.select().from(webhookEvent).where(eq(webhookEvent.id, id))))[0];
+const eventRow = async (id: string) =>
+  (
+    await withGlobalWorker((tx) =>
+      tx.select().from(webhookEvent).where(eq(webhookEvent.id, id)),
+    )
+  )[0];
 const tenantAudits = (businessId: string, eventId: string) =>
   withAdminTenant(businessId, { internalUserId: adminId }, (tx) =>
-    tx.select().from(auditEvent).where(and(eq(auditEvent.targetId, eventId), eq(auditEvent.targetType, "webhook_event"))),
+    tx
+      .select()
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.targetId, eventId),
+          eq(auditEvent.targetType, "webhook_event"),
+        ),
+      ),
   );
 const platformAudits = (eventId: string) =>
-  withAdmin(null, (tx) => tx.select().from(auditEvent).where(and(eq(auditEvent.targetId, eventId), eq(auditEvent.targetType, "webhook_event"))));
+  withAdmin(null, (tx) =>
+    tx
+      .select()
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.targetId, eventId),
+          eq(auditEvent.targetType, "webhook_event"),
+        ),
+      ),
+  );
 
 // Makes every replay audit insert fail inside the database, then removes the trigger.
 async function withFailingReplayAudit<T>(fn: () => Promise<T>) {
@@ -68,7 +109,9 @@ async function withFailingReplayAudit<T>(fn: () => Promise<T>) {
   try {
     return await fn();
   } finally {
-    await c.query("DROP TRIGGER test_fail_replay_audit ON app.audit_event; DROP FUNCTION app.test_fail_replay_audit();");
+    await c.query(
+      "DROP TRIGGER test_fail_replay_audit ON app.audit_event; DROP FUNCTION app.test_fail_replay_audit();",
+    );
     await c.end();
   }
 }
@@ -78,7 +121,10 @@ describe("webhook replay is atomic with its audit (I4)", () => {
     const id = await eventIn("dead", T.businessId);
     const r = await replayWebhookEvent({ internalUserId: adminId }, meta(), id);
     expect(r).toMatchObject({ status: "received", requeued: true });
-    expect(await eventRow(id)).toMatchObject({ status: "received", attempts: 0 });
+    expect(await eventRow(id)).toMatchObject({
+      status: "received",
+      attempts: 0,
+    });
     expect(await jobsFor(id)).toBe(1);
     const audits = await tenantAudits(T.businessId, id);
     expect(audits).toHaveLength(1);
@@ -92,7 +138,10 @@ describe("webhook replay is atomic with its audit (I4)", () => {
     });
     // It lands in the shop's own log (S29 "recent account activity"), not the platform log.
     const ownerSees = await withTenant(T.businessId, T.owner.actor, (tx) =>
-      tx.select({ id: auditEvent.id }).from(auditEvent).where(eq(auditEvent.targetId, id)),
+      tx
+        .select({ id: auditEvent.id })
+        .from(auditEvent)
+        .where(eq(auditEvent.targetId, id)),
     );
     expect(ownerSees).toHaveLength(1);
     expect(await platformAudits(id)).toHaveLength(0);
@@ -101,9 +150,17 @@ describe("webhook replay is atomic with its audit (I4)", () => {
   it("tenant-resolved replay: a failed audit insert rolls back the requeue and the job", async () => {
     const id = await eventIn("dead", T.businessId);
     await withFailingReplayAudit(() =>
-      expect(replayWebhookEvent({ internalUserId: adminId }, meta(), id)).rejects.toMatchObject({ cause: expect.objectContaining({ message: "forced audit failure" }) }),
+      expect(
+        replayWebhookEvent({ internalUserId: adminId }, meta(), id),
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({ message: "forced audit failure" }),
+      }),
     );
-    expect(await eventRow(id)).toMatchObject({ status: "dead", attempts: 8, lastError: "boom" });
+    expect(await eventRow(id)).toMatchObject({
+      status: "dead",
+      attempts: 8,
+      lastError: "boom",
+    });
     expect(await jobsFor(id)).toBe(0);
     expect(await tenantAudits(T.businessId, id)).toHaveLength(0);
   });
@@ -111,7 +168,11 @@ describe("webhook replay is atomic with its audit (I4)", () => {
   it("platform-level replay: a failed audit insert rolls back too", async () => {
     const id = await eventIn("failed", null);
     await withFailingReplayAudit(() =>
-      expect(replayWebhookEvent({ internalUserId: adminId }, meta(), id)).rejects.toMatchObject({ cause: expect.objectContaining({ message: "forced audit failure" }) }),
+      expect(
+        replayWebhookEvent({ internalUserId: adminId }, meta(), id),
+      ).rejects.toMatchObject({
+        cause: expect.objectContaining({ message: "forced audit failure" }),
+      }),
     );
     expect(await eventRow(id)).toMatchObject({ status: "failed", attempts: 1 });
     expect(await jobsFor(id)).toBe(0);
@@ -125,20 +186,41 @@ describe("webhook replay is atomic with its audit (I4)", () => {
     expect(await jobsFor(id)).toBe(1);
     const audits = await platformAudits(id);
     expect(audits).toHaveLength(1);
-    expect(audits[0]).toMatchObject({ businessId: null, actorType: "internal", actorId: adminId, action: "webhook_event.replayed" });
+    expect(audits[0]).toMatchObject({
+      businessId: null,
+      actorType: "internal",
+      actorId: adminId,
+      action: "webhook_event.replayed",
+    });
   });
 
   it("an applied event stays applied, enqueues no job, and the no-op is audited", async () => {
     for (const businessId of [T.businessId, null]) {
       const id = await eventIn("applied", businessId);
       const before = await eventRow(id);
-      const r = await replayWebhookEvent({ internalUserId: adminId }, meta(), id);
-      expect(r).toEqual({ status: "applied", requeued: false, message: "Already applied; nothing was re-queued." });
+      const r = await replayWebhookEvent(
+        { internalUserId: adminId },
+        meta(),
+        id,
+      );
+      expect(r).toEqual({
+        status: "applied",
+        requeued: false,
+        message: "Already applied; nothing was re-queued.",
+      });
       expect(await jobsFor(id)).toBe(0);
       const after = await eventRow(id);
-      expect(after).toMatchObject({ status: "applied", attempts: before.attempts, updatedAt: before.updatedAt });
-      const audits = businessId ? await tenantAudits(businessId, id) : await platformAudits(id);
-      expect(audits.map((a) => a.action)).toEqual(["webhook_event.replay_noop"]);
+      expect(after).toMatchObject({
+        status: "applied",
+        attempts: before.attempts,
+        updatedAt: before.updatedAt,
+      });
+      const audits = businessId
+        ? await tenantAudits(businessId, id)
+        : await platformAudits(id);
+      expect(audits.map((a) => a.action)).toEqual([
+        "webhook_event.replay_noop",
+      ]);
     }
   });
 
@@ -160,15 +242,27 @@ describe("webhook replay is atomic with its audit (I4)", () => {
   it("a second replay while queued is a CONFLICT and writes nothing", async () => {
     const id = await eventIn("dead", T.businessId);
     await replayWebhookEvent({ internalUserId: adminId }, meta(), id);
-    await expect(replayWebhookEvent({ internalUserId: adminId }, meta(), id)).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(
+      replayWebhookEvent({ internalUserId: adminId }, meta(), id),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(await jobsFor(id)).toBe(1);
     expect(await tenantAudits(T.businessId, id)).toHaveLength(1);
   });
 
   it("duplicate provider deliveries still store one event", async () => {
     const providerEventId = `evt_${randomUUID()}`;
-    const a = await ingestWebhookEvent({ provider: "stripe", providerEventId, eventType: "x.y", payload: {} });
-    const b = await ingestWebhookEvent({ provider: "stripe", providerEventId, eventType: "x.y", payload: {} });
+    const a = await ingestWebhookEvent({
+      provider: "stripe",
+      providerEventId,
+      eventType: "x.y",
+      payload: {},
+    });
+    const b = await ingestWebhookEvent({
+      provider: "stripe",
+      providerEventId,
+      eventType: "x.y",
+      payload: {},
+    });
     expect(b).toEqual({ eventId: a.eventId, duplicate: true });
     expect(await jobsFor(a.eventId)).toBe(1);
   });

@@ -12,15 +12,22 @@ export type JobLabor = {
   costRateCents: number;
 };
 function integer(value: number, label: string) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`Invalid ${label}`);
+  if (!Number.isSafeInteger(value) || value < 0)
+    throw new Error(`Invalid ${label}`);
   return value;
 }
 function sum(values: number[]) {
-  return integer(values.reduce((a, b) => a + b, 0), "total");
+  return integer(
+    values.reduce((a, b) => a + b, 0),
+    "total",
+  );
 }
 function multiply(a: number, b: number, divisor = 1) {
   const product = BigInt(a) * BigInt(b);
-  return integer(Number((product + BigInt(divisor / 2 | 0)) / BigInt(divisor)), "amount");
+  return integer(
+    Number((product + BigInt((divisor / 2) | 0)) / BigInt(divisor)),
+    "amount",
+  );
 }
 export function calculateJob(parts: JobPart[], labor: JobLabor[]) {
   const partCosts: number[] = [];
@@ -40,12 +47,18 @@ export function calculateJob(parts: JobPart[], labor: JobLabor[]) {
     integer(line.estimatedHoursHundredths, "estimated hours");
     integer(line.sellRateCents, "labor sell rate");
     integer(line.costRateCents, "labor cost rate");
-    estimatedCosts.push(multiply(line.estimatedHoursHundredths, line.costRateCents, 100));
-    laborSales.push(multiply(line.estimatedHoursHundredths, line.sellRateCents, 100));
+    estimatedCosts.push(
+      multiply(line.estimatedHoursHundredths, line.costRateCents, 100),
+    );
+    laborSales.push(
+      multiply(line.estimatedHoursHundredths, line.sellRateCents, 100),
+    );
     if (line.actualHoursHundredths === null) actualComplete = false;
     else {
       integer(line.actualHoursHundredths, "actual hours");
-      actualCosts.push(multiply(line.actualHoursHundredths, line.costRateCents, 100));
+      actualCosts.push(
+        multiply(line.actualHoursHundredths, line.costRateCents, 100),
+      );
     }
   }
   const partsCostCents = sum(partCosts);
@@ -53,14 +66,25 @@ export function calculateJob(parts: JobPart[], labor: JobLabor[]) {
   const laborPriceCents = sum(laborSales);
   const subtotalCents = sum([partsPriceCents, laborPriceCents]);
   const estimatedCostCents = sum([partsCostCents, sum(estimatedCosts)]);
-  const actualCostCents = actualComplete ? sum([partsCostCents, sum(actualCosts)]) : null;
+  const actualCostCents = actualComplete
+    ? sum([partsCostCents, sum(actualCosts)])
+    : null;
   return {
-    partsCostCents, partsPriceCents, laborPriceCents, subtotalCents,
-    estimatedCostCents, actualCostCents,
+    partsCostCents,
+    partsPriceCents,
+    laborPriceCents,
+    subtotalCents,
+    estimatedCostCents,
+    actualCostCents,
     estimatedGrossProfitCents: subtotalCents - estimatedCostCents,
-    actualGrossProfitCents: actualCostCents === null ? null : subtotalCents - actualCostCents,
+    actualGrossProfitCents:
+      actualCostCents === null ? null : subtotalCents - actualCostCents,
     // Gross margin is before shop overhead, taxes and payment fees.
-    estimatedMarginBps: subtotalCents === 0 ? null : Math.round((subtotalCents - estimatedCostCents) * 10000 / subtotalCents),
+    estimatedMarginBps:
+      subtotalCents === 0
+        ? null
+        : Math.round(
+            ((subtotalCents - estimatedCostCents) * 10000) / subtotalCents,
+          ),
   };
 }
-

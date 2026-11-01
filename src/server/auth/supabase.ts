@@ -8,7 +8,8 @@ import { AppError } from "@/lib/errors";
 const env = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) throw new AppError("PROVIDER_UNAVAILABLE", "Sign-in is not configured.");
+  if (!url || !anon)
+    throw new AppError("PROVIDER_UNAVAILABLE", "Sign-in is not configured.");
   return { url, anon };
 };
 
@@ -28,7 +29,11 @@ export async function supabaseServer() {
       getAll: () => store.getAll(),
       setAll: (list) => {
         try {
-          for (const c of list) store.set(c.name, c.value, { ...c.options, ...AUTH_COOKIE_OPTIONS });
+          for (const c of list)
+            store.set(c.name, c.value, {
+              ...c.options,
+              ...AUTH_COOKIE_OPTIONS,
+            });
         } catch {
           // Called from a Server Component render: proxy.ts refreshes cookies instead.
         }
@@ -42,6 +47,12 @@ export async function supabaseServer() {
 export function supabaseAdmin() {
   const { url } = env();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!key) throw new AppError("PROVIDER_UNAVAILABLE", "Account administration is not configured.");
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  if (!key)
+    throw new AppError(
+      "PROVIDER_UNAVAILABLE",
+      "Account administration is not configured.",
+    );
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }

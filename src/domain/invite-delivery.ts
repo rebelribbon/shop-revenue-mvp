@@ -9,15 +9,28 @@ import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import type { InviteDelivery } from "./membership";
 
-export type DeliveryOutcome = { membershipId: string; channel: "email" | "sms"; status: "sent" | "failed"; message: string };
+export type DeliveryOutcome = {
+  membershipId: string;
+  channel: "email" | "sms";
+  status: "sent" | "failed";
+  message: string;
+};
 
 export function inviteLink(token: string) {
   const base = process.env.APP_BASE_URL;
-  if (!base) throw new AppError("PROVIDER_UNAVAILABLE", "APP_BASE_URL is not configured.");
+  if (!base)
+    throw new AppError(
+      "PROVIDER_UNAVAILABLE",
+      "APP_BASE_URL is not configured.",
+    );
   return `${base.replace(/\/$/, "")}/invite/${token}`;
 }
 
-export async function deliverInvite(d: InviteDelivery, businessName: string, requestId: string): Promise<DeliveryOutcome> {
+export async function deliverInvite(
+  d: InviteDelivery,
+  businessName: string,
+  requestId: string,
+): Promise<DeliveryOutcome> {
   const link = inviteLink(d.token);
   const channel = d.email ? "email" : "sms";
   try {
@@ -35,11 +48,31 @@ export async function deliverInvite(d: InviteDelivery, businessName: string, req
         purpose: "system",
       });
     }
-    logger.info({ event: "invite.delivered", requestId, membershipId: d.membershipId, channel });
-    return { membershipId: d.membershipId, channel, status: "sent", message: `Invite sent by ${channel === "email" ? "email" : "text"}.` };
+    logger.info({
+      event: "invite.delivered",
+      requestId,
+      membershipId: d.membershipId,
+      channel,
+    });
+    return {
+      membershipId: d.membershipId,
+      channel,
+      status: "sent",
+      message: `Invite sent by ${channel === "email" ? "email" : "text"}.`,
+    };
   } catch (e) {
-    logger.warn({ event: "invite.delivery_failed", requestId, membershipId: d.membershipId, channel, ...safeErrorDiagnostic(e) });
-    return { membershipId: d.membershipId, channel, status: "failed", message: "The invite was saved but could not be sent. Use Resend invite." };
+    logger.warn({
+      event: "invite.delivery_failed",
+      requestId,
+      membershipId: d.membershipId,
+      channel,
+      ...safeErrorDiagnostic(e),
+    });
+    return {
+      membershipId: d.membershipId,
+      channel,
+      status: "failed",
+      message: "The invite was saved but could not be sent. Use Resend invite.",
+    };
   }
 }
-
