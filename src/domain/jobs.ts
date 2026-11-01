@@ -33,7 +33,14 @@ export const jobInput = z.object({
       z.object({
         recommendationId: z.uuid().optional(),
         description: z.string().trim().min(1).max(200),
-        quantity: z.number().int().min(1).max(10000),
+        quantity: z
+          .number()
+          .min(0.01)
+          .max(10000)
+          .refine(
+            (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6,
+            "Use at most two decimal places for quantity.",
+          ),
         unitCostCents: amount,
         unitPriceCents: amount,
         taxable: z.boolean().optional(),

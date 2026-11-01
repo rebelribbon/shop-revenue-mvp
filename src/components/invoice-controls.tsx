@@ -2,7 +2,7 @@
 import { useActionHydration } from "./action-hydration";
 import Link from "next/link";
 import { DocumentShare } from "./document-share";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   issueInvoiceAction,
@@ -246,11 +246,36 @@ export function InvoicePaymentForm({
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  // A second tap must never become a second payment. The lock blocks taps that
+  // land before React re-renders; after success the form is replaced by a
+  // confirmation, and the request ID is only rotated when the owner explicitly
+  // starts another payment, so a late duplicate replays idempotently.
+  const submitting = useRef(false);
+  const [recorded, setRecorded] = useState<string | null>(null);
+  if (recorded)
+    return (
+      <div className="card" data-ux-ready={ready}>
+        <p role="status">Payment of {recorded} recorded.</p>
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={() => {
+            setRecorded(null);
+            setMessage("");
+            setRequestId(crypto.randomUUID());
+          }}
+        >
+          Record another payment
+        </button>
+      </div>
+    );
   return (
     <form
       data-ux-ready={ready}
       onSubmit={async (e) => {
         e.preventDefault();
+        if (submitting.current) return;
+        submitting.current = true;
         const f = new FormData(e.currentTarget);
         setPending(true);
         try {
@@ -262,13 +287,18 @@ export function InvoicePaymentForm({
             clientRequestId: requestId,
           });
           if (r.ok) {
-            setMessage("Payment recorded.");
-            setRequestId(crypto.randomUUID());
+            setRecorded(
+              new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: "USD",
+              }).format(Number(f.get("amount"))),
+            );
             router.refresh();
           } else setMessage(r.error.message);
         } catch {
           setMessage("Unable to record payment. Please try again.");
         } finally {
+          submitting.current = false;
           setPending(false);
         }
       }}
@@ -284,7 +314,6 @@ export function InvoicePaymentForm({
           step="0.01"
           min="0.01"
           max={balanceCents / 100}
-          key={balanceCents}
           defaultValue={(balanceCents / 100).toFixed(2)}
           required
         />

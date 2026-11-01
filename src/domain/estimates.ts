@@ -1,3 +1,4 @@
+import { partLineCents } from "./job-costing";
 import { sealShareToken } from "@/lib/share-token";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
@@ -148,7 +149,7 @@ export async function freezeEstimate(
       kind: "part" as const,
       quantity: p.quantity,
       unitPriceCents: p.unitPriceCents,
-      totalCents: p.quantity * p.unitPriceCents,
+      totalCents: partLineCents(p.quantity, p.unitPriceCents),
       taxable: p.taxable ?? shop.partsTaxableDefault,
     })),
     ...data.labor.map((l, i) => ({
