@@ -10,6 +10,7 @@ import { calculateJob } from "@/domain/job-costing";
 import type { JobInput } from "@/domain/jobs";
 import { CustomerPicker } from "./customer-picker";
 import { RepeatPicker } from "./repeat-picker";
+import { updateMediaAction } from "@/server/actions/job-media";
 import type { Repeat } from "@/lib/service-plans";
 export type JobOptions = {
   customers: { id: string; name: string }[];
@@ -45,6 +46,7 @@ export function JobEditor({
   canSaveCommon = false,
   today,
   defaultRepeats = false,
+  attachMediaId,
 }: {
   options: JobOptions;
   initial?: JobInput;
@@ -64,6 +66,9 @@ export function JobEditor({
   canSaveCommon?: boolean;
   today: string;
   defaultRepeats?: boolean;
+  // A "Found an issue" photo being quoted: attach it to the new job and
+  // show it to the customer on the estimate.
+  attachMediaId?: string;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
@@ -184,6 +189,13 @@ export function JobEditor({
           });
           if (r.ok) {
             setRequestId(crypto.randomUUID());
+            if (attachMediaId)
+              await updateMediaAction({
+                mediaId: attachMediaId,
+                jobId: (r.data as { id: string }).id,
+                showCustomer: "true",
+                clientRequestId: crypto.randomUUID(),
+              });
             router.push(
               `/app/jobs?job=${encodeURIComponent((r.data as { id: string }).id)}&saved=1`,
             );
@@ -198,6 +210,12 @@ export function JobEditor({
     >
       <fieldset className="hydration-fields" disabled={!ready}>
         <h2>Job details</h2>
+        {attachMediaId && (
+          <p className="notice" role="note">
+            📷 The issue photo will be attached to this job and shown to the
+            customer on the estimate.
+          </p>
+        )}
         {commonJobs.length > 0 && (
           <section>
             <label htmlFor="common-job">Start from a common job</label>
