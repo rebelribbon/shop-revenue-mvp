@@ -2,7 +2,12 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { listCommonJobs } from "@/domain/common-jobs";
 import { loadJobWorkflows, stageLabels } from "@/domain/job-workflow";
 import { JobWorkflow, WorkflowBadges } from "@/components/job-workflow";
-import { isAutomotive, workspaceLabels } from "@/lib/business-types";
+import {
+  isAutomotive,
+  recurringFirst,
+  workspaceLabels,
+} from "@/lib/business-types";
+import { localDateKey } from "@/lib/timezone";
 import { notFound } from "next/navigation";
 import { WorkNavigation } from "@/components/work-navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
@@ -199,6 +204,11 @@ export default async function JobsPage({
             options={data.options}
             recommendations={data.recommendations}
             initial={initial}
+            today={localDateKey(
+              new Date(),
+              data.profile?.timezone || "America/Chicago",
+            )}
+            defaultRepeats={recurringFirst(type)}
           />
         </>
       ) : selected ? (

@@ -41,7 +41,14 @@ export const setAppointmentStatusAction = defineShopAction({
   }),
   run: ({ tx, meta }, input) =>
     setAppointmentStatus(tx, meta, input.appointmentId, input.status),
-  persist: (row) => ({ id: row.id, message: "Appointment updated." }),
+  persist: (row) => ({
+    id: row.id,
+    message: row.billed
+      ? `Visit done. Invoice #${row.billed.number} is ready to send from Invoices.`
+      : row.servicePlanId && row.status === "cancelled"
+        ? "Visit skipped. The rest of the plan stays on the calendar."
+        : "Appointment updated.",
+  }),
 });
 
 export const rescheduleAppointmentAction = defineShopAction({

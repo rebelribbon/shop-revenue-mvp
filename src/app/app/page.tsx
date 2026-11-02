@@ -9,6 +9,7 @@ import { getOwnerMoney } from "@/domain/owner-money";
 import { formatMoney } from "@/components/estimate-document";
 import { redirect } from "next/navigation";
 import { withTenant } from "@/db/tenant";
+import { recurringRevenue } from "@/domain/service-plans";
 import { requireShopSession } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { listTodayTomorrow } from "@/domain/appointments";
@@ -38,10 +39,8 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, days, estimates, invoices, money, summary] = await withTenant(
-    s.businessId,
-    s.actor,
-    (tx) =>
+  const [profile, days, estimates, invoices, money, summary, recurring] =
+    await withTenant(s.businessId, s.actor, (tx) =>
       Promise.all([
         getBusinessProfile(tx),
         listTodayTomorrow(tx),
@@ -51,8 +50,9 @@ export default async function HomePage({
         s.role === "owner"
           ? getOwnerMoney(tx, undefined, new Date(), false)
           : null,
+        s.role === "owner" ? recurringRevenue(tx) : null,
       ]),
-  );
+    );
   const type = profile?.businessType ?? "automotive",
     auto = isAutomotive(type),
     labels = workspaceLabels(type);
@@ -104,6 +104,17 @@ export default async function HomePage({
           <Link href="/app/money" className="card overview-metric">
             <strong>{formatMoney(summary.owedCents)}</strong>
             <span>Customers owe you</span>
+          </Link>
+        </div>
+      )}
+      {recurring && recurring.plans > 0 && (
+        <div className="overview-metrics">
+          <Link href="/app/jobs?stage=plan" className="card overview-metric">
+            <strong>{formatMoney(recurring.monthlyCents)}/mo</strong>
+            <span>
+              Recurring from {recurring.plans} service plan
+              {recurring.plans === 1 ? "" : "s"}
+            </span>
           </Link>
         </div>
       )}

@@ -13,6 +13,8 @@ import {
   invoiceRefund,
   stripeConnection,
   shopSubscription,
+  servicePlan,
+  estimateAuthorization,
   recommendation,
   recoveryItem,
 } from "@/db/schema";
@@ -267,6 +269,41 @@ const builders: Record<string, Builder> = {
         .returning();
       return row.id;
     }),
+  "app.service_plan": async (t) => {
+    const e = await estimateFixture(t);
+    await signEstimate(e.token, "Fixture", ["part-0"], meta());
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [v] = await tx
+        .select()
+        .from(estimateVersion)
+        .where(eq(estimateVersion.id, e.id));
+      const [a] = await tx
+        .select()
+        .from(estimateAuthorization)
+        .where(eq(estimateAuthorization.versionId, e.id));
+      const [row] = await tx
+        .insert(servicePlan)
+        .values({
+          businessId: t.businessId,
+          customerId: v.customerId,
+          vehicleId: v.vehicleId,
+          quoteId: v.quoteId,
+          versionId: v.id,
+          authorizationId: a.id,
+          title: "RLS plan",
+          repeat: {
+            every: "week",
+            startOn: "2026-11-03",
+            until: { kind: "stopped" },
+            billing: "per_visit",
+          },
+          perVisitCents: 1000,
+          billing: "per_visit",
+        })
+        .returning();
+      return row.id;
+    });
+  },
   "app.shop_subscription": async (t) =>
     withTenant(t.businessId, t.owner.actor, async (tx) => {
       const [existing] = await tx

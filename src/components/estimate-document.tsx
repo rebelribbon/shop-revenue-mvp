@@ -44,8 +44,19 @@ export function EstimateDocument({
         %): {formatMoney(s.taxCents)}
       </p>
       <p>
-        <strong>Estimate total: {formatMoney(s.totalCents)}</strong>
+        <strong>
+          {s.repeat ? "Price per visit" : "Estimate total"}:{" "}
+          {formatMoney(s.totalCents)}
+        </strong>
       </p>
+      {s.repeatSummary && (
+        <div className="plan-summary" data-repeat-terms>
+          <p>
+            <strong>This is a repeating service.</strong>
+          </p>
+          <p>{s.repeatSummary}</p>
+        </div>
+      )}
       {s.terms && <p style={{ whiteSpace: "pre-wrap" }}>{s.terms}</p>}
     </section>
   );

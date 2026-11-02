@@ -9,6 +9,8 @@ import { saveCommonJobAction } from "@/server/actions/owner-tools";
 import { calculateJob } from "@/domain/job-costing";
 import type { JobInput } from "@/domain/jobs";
 import { CustomerPicker } from "./customer-picker";
+import { RepeatPicker } from "./repeat-picker";
+import type { Repeat } from "@/lib/service-plans";
 export type JobOptions = {
   customers: { id: string; name: string }[];
   vehicles: {
@@ -41,6 +43,8 @@ export function JobEditor({
   laborCostRateCents = 0,
   commonJobs = [],
   canSaveCommon = false,
+  today,
+  defaultRepeats = false,
 }: {
   options: JobOptions;
   initial?: JobInput;
@@ -58,6 +62,8 @@ export function JobEditor({
   laborCostRateCents?: number;
   commonJobs?: CommonJobChoice[];
   canSaveCommon?: boolean;
+  today: string;
+  defaultRepeats?: boolean;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
@@ -70,7 +76,20 @@ export function JobEditor({
     [message, setMessage] = useState(""),
     [pending, setPending] = useState(false),
     [requestId, setRequestId] = useState(() => crypto.randomUUID()),
-    [commonId, setCommonId] = useState("");
+    [commonId, setCommonId] = useState(""),
+    [repeat, setRepeat] = useState<Repeat | null>(
+      initial
+        ? (initial.repeat ?? null)
+        : defaultRepeats
+          ? {
+              every: "week",
+              startOn: today,
+              time: null,
+              until: { kind: "stopped" },
+              billing: "per_visit",
+            }
+          : null,
+    );
   const auto =
     !!initial?.vehicleId ||
     (!initial?.serviceAssetId && isAutomotive(businessType));
@@ -158,6 +177,7 @@ export function JobEditor({
             vehicleId: vehicleId || undefined,
             serviceAssetId: serviceAssetId || undefined,
             title,
+            repeat,
             parts,
             labor,
             clientRequestId: requestId,
@@ -228,6 +248,13 @@ export function JobEditor({
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
+        <RepeatPicker
+          value={repeat}
+          onChange={setRepeat}
+          today={today}
+          perVisitCents={totals?.subtotalCents ?? 0}
+          profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
+        />
         <CustomerPicker
           id="job-customer"
           options={options.customers}
@@ -565,7 +592,11 @@ export function JobEditor({
           className="btn primary"
           disabled={pending || !valid || (!parts.length && !labor.length)}
         >
-          {pending ? "Saving…" : "Save job sheet"}
+          {pending
+            ? "Saving…"
+            : repeat
+              ? "Save repeating job"
+              : "Save job sheet"}
         </button>
         <p role="status">{message}</p>
       </fieldset>

@@ -22,6 +22,7 @@ import { newToken, hashToken, isWellFormedToken } from "@/lib/tokens";
 import { AppError, notFound } from "@/lib/errors";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { estimateTotals } from "@/lib/estimate-tax";
+import { repeatSummary } from "@/lib/service-plans";
 import {
   completeDecisions,
   signatureSchema,
@@ -189,6 +190,9 @@ export async function freezeEstimate(
     taxCents,
     totalCents: subtotalCents + taxCents,
     terms: input.terms,
+    ...(data.repeat
+      ? { repeat: data.repeat, repeatSummary: repeatSummary(data.repeat) }
+      : {}),
     authorizationPolicy: {
       id: policy.id,
       version: policy.version,

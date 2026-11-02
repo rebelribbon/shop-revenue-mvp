@@ -39,6 +39,8 @@ export const invoice = app.table(
     voidedAt: timestamp("voided_at", { withTimezone: true }),
     voidReason: text("void_reason"),
     disputeOpen: text("dispute_open"),
+    // Set when a service plan billed this invoice (many per job).
+    servicePlanId: uuid("service_plan_id"),
     tokenHash: text("token_hash").notNull(),
     shareTokenCiphertext: text("share_token_ciphertext"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
