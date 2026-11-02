@@ -1,37 +1,25 @@
-import Link from "next/link";
 import type { CabinetItem } from "@/domain/documents";
-import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import {
   removeDocumentAction,
-  sendDocumentAction,
   voidDocumentAction,
 } from "@/server/actions/documents";
 import { ActionForm } from "./action-form";
 import { CopyLink } from "./copy-link";
-import { FileUploader } from "./file-uploader";
 
 // Every document for a job: what the app created, what was sent to sign, and
 // what someone added.
 export function FileCabinet({
   items,
-  templates,
-  jobId,
-  customerId,
   customerPhone,
   customerEmail,
   readOnly,
   timeZone,
-  isOwner,
 }: {
   items: CabinetItem[];
-  templates: { id: string; name: string }[];
-  jobId: string;
-  customerId: string;
   customerPhone: string | null;
   customerEmail: string | null;
   readOnly: boolean;
   timeZone: string;
-  isOwner: boolean;
 }) {
   const groups: CabinetItem["group"][] = [
     "Signed & sent",
@@ -50,39 +38,6 @@ export function FileCabinet({
   return (
     <section aria-label="File cabinet" id="file-cabinet">
       <h3>🗂 File cabinet</h3>
-      {!readOnly && (
-        <div className="card">
-          <h4>Send a document to sign</h4>
-          {templates.length ? (
-            <ActionForm
-              action={sendDocumentAction}
-              hidden={{ jobId }}
-              submitLabel="Send for signature"
-              variant="secondary"
-            >
-              <label htmlFor="send-template">Document</label>
-              <select id="send-template" name="templateId" required>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </ActionForm>
-          ) : (
-            <p className="muted">
-              No document templates yet.{" "}
-              {isOwner ? (
-                <Link href="/app/settings/documents">
-                  Set up your documents
-                </Link>
-              ) : (
-                "Ask the owner to add them in Settings."
-              )}
-            </p>
-          )}
-        </div>
-      )}
       {groups.map((g) => {
         const list = items.filter((i) => i.group === g);
         return (
@@ -153,14 +108,6 @@ export function FileCabinet({
           </div>
         );
       })}
-      {!readOnly && (
-        <FileUploader
-          customerId={customerId}
-          jobId={jobId}
-          categories={JOB_FILE_CATEGORIES}
-          buttonLabel="+ Add a file to this job"
-        />
-      )}
     </section>
   );
 }

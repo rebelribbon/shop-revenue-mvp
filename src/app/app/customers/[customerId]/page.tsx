@@ -44,7 +44,7 @@ import { ContactPermissions } from "@/components/contact-permissions";
 
 export default async function CustomerDetailPage(props: {
   params: Promise<{ customerId: string }>;
-  searchParams: Promise<{ view?: string; jobs?: string }>;
+  searchParams: Promise<{ view?: string; jobs?: string; add?: string }>;
 }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
@@ -81,7 +81,7 @@ export default async function CustomerDetailPage(props: {
     .join(", ");
   const readOnly = s.actor.type === "support";
   const c = data.customer;
-  const { view: requestedView } = await props.searchParams;
+  const { view: requestedView, add: adding } = await props.searchParams;
   const view = ["assets", "history", "details"].includes(requestedView ?? "")
     ? requestedView
     : "overview";
@@ -115,22 +115,85 @@ export default async function CustomerDetailPage(props: {
             <span className="pill pill-warn">Heads-up</span> {n.body}
           </p>
         ))}
-      {view === "overview" && (
-        <Link
-          className="btn primary"
-          data-page-primary
-          href={
-            assetCount
-              ? `/app/jobs?customerId=${customerId}`
-              : `${base}?view=assets`
-          }
-        >
-          {assetCount
-            ? "New job"
-            : auto
-              ? "Add vehicle"
-              : "Add property / equipment"}
-        </Link>
+      {view === "overview" && !readOnly && (
+        <div className="action-bar" role="group" aria-label="Add">
+          <Link
+            className="btn primary"
+            data-page-primary
+            href={
+              assetCount
+                ? `/app/jobs?customerId=${customerId}`
+                : `${base}?view=assets`
+            }
+          >
+            {assetCount ? "+ Job" : auto ? "+ Vehicle" : "+ Property"}
+          </Link>
+          <Link
+            className="btn secondary"
+            href={`${base}?add=note`}
+            aria-current={adding === "note" ? "true" : undefined}
+          >
+            + Note
+          </Link>
+          <Link
+            className="btn secondary"
+            href={`${base}?add=attachment`}
+            aria-current={adding === "attachment" ? "true" : undefined}
+          >
+            + Attachment
+          </Link>
+        </div>
+      )}
+      {view === "overview" && adding === "note" && !readOnly && (
+        <section className="card add-panel" aria-label="Add a note">
+          <h2>Add a note</h2>
+          <ActionForm
+            action={addNoteAction}
+            hidden={{ customerId }}
+            submitLabel="Save note"
+            variant="primary"
+          >
+            <fieldset className="chips">
+              <legend>Where should it go?</legend>
+              <label>
+                <input type="radio" name="kind" value="log" defaultChecked />
+                History (what happened)
+              </label>
+              <label>
+                <input type="radio" name="kind" value="profile" />
+                Pin to profile (who they are)
+              </label>
+            </fieldset>
+            <label htmlFor="new-note">Note</label>
+            <textarea
+              id="new-note"
+              name="body"
+              rows={3}
+              required
+              maxLength={5000}
+              placeholder="Called and sent the invoice · or · Referred by Maria Lopez"
+            />
+            <label>
+              <input type="checkbox" name="headsUp" />
+              Heads-up (pinned notes only): show it on their jobs and visits
+            </label>
+          </ActionForm>
+          <Link href={base}>Done</Link>
+        </section>
+      )}
+      {view === "overview" && adding === "attachment" && !readOnly && (
+        <section className="card add-panel" aria-label="Add an attachment">
+          <h2>Add an attachment</h2>
+          <p className="muted">
+            License, insurance, tax-exempt certificate. Private to your shop.
+          </p>
+          <FileUploader
+            customerId={customerId}
+            categories={ATTACHMENT_CATEGORIES}
+            buttonLabel="Choose file"
+          />
+          <Link href={base}>Done</Link>
+        </section>
       )}
       <nav className="section-tabs" aria-label="Customer sections">
         {(
@@ -226,10 +289,6 @@ export default async function CustomerDetailPage(props: {
           </section>
           <section className="card" aria-label="Attachments" id="attachments">
             <h2>Attachments</h2>
-            <p className="muted">
-              License, insurance, tax-exempt certificate. Private to your shop;
-              customers never see these.
-            </p>
             {!attachments.length && (
               <p className="muted">No attachments yet.</p>
             )}
@@ -258,13 +317,6 @@ export default async function CustomerDetailPage(props: {
                 )}
               </div>
             ))}
-            {!readOnly && (
-              <FileUploader
-                customerId={customerId}
-                categories={ATTACHMENT_CATEGORIES}
-                buttonLabel="+ Add attachment"
-              />
-            )}
           </section>
           <div className="overview-metrics">
             <div className="card overview-metric">
@@ -311,28 +363,6 @@ export default async function CustomerDetailPage(props: {
                 who are also customers, gate codes, how they like to be
                 contacted.
               </p>
-            )}
-            {!readOnly && (
-              <ActionForm
-                action={addNoteAction}
-                hidden={{ customerId, kind: "profile" }}
-                submitLabel="Add profile note"
-                variant="secondary"
-              >
-                <label htmlFor="profile-note">Add something to remember</label>
-                <textarea
-                  id="profile-note"
-                  name="body"
-                  rows={2}
-                  required
-                  maxLength={5000}
-                  placeholder="Referred by Maria Lopez · Spouse: Dan (also a customer)"
-                />
-                <label>
-                  <input type="checkbox" name="headsUp" />
-                  Heads-up: show this on their jobs and visits too
-                </label>
-              </ActionForm>
             )}
           </section>
           <section className="card" aria-label="Jobs" id="jobs">
@@ -439,23 +469,6 @@ export default async function CustomerDetailPage(props: {
           )}
           <section className="card" aria-label="Recent history">
             <h2>Recent history</h2>
-            {!readOnly && (
-              <ActionForm
-                action={addNoteAction}
-                hidden={{ customerId, kind: "log" }}
-                submitLabel="Add to history"
-                variant="secondary"
-              >
-                <label htmlFor="history-note">What happened?</label>
-                <input
-                  id="history-note"
-                  name="body"
-                  required
-                  maxLength={5000}
-                  placeholder="Called and sent the invoice"
-                />
-              </ActionForm>
-            )}
             {history.slice(0, 8).map((e) => (
               <HistoryRow key={e.id} item={e} timeZone={tz} />
             ))}
