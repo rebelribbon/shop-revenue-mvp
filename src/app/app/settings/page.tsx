@@ -21,7 +21,7 @@ export default async function SettingsPage() {
         {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/common-jobs">
             <strong>Common jobs</strong>
-            <span className="muted">Saved parts, prices and labor</span>
+            <span className="muted">Saved items, prices and labor</span>
           </Link>
         )}
         <Link className="card settings-link" href="/verify?next=/app/settings">
