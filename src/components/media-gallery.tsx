@@ -49,9 +49,9 @@ export function MediaGallery({
                 day: "numeric",
               })}
             </span>
-            {m.tag === "issue" && !m.jobId && quoteHref && !readOnly && (
+            {m.tag === "issue" && quoteHref && !readOnly && (
               <Link className="btn primary" href={quoteHref(m)}>
-                Quote this
+                Quote this as a new job
               </Link>
             )}
             {!readOnly && (

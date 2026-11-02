@@ -1,0 +1,166 @@
+import Link from "next/link";
+import type { CabinetItem } from "@/domain/documents";
+import { JOB_FILE_CATEGORIES } from "@/domain/documents";
+import {
+  removeDocumentAction,
+  sendDocumentAction,
+  voidDocumentAction,
+} from "@/server/actions/documents";
+import { ActionForm } from "./action-form";
+import { CopyLink } from "./copy-link";
+import { FileUploader } from "./file-uploader";
+
+// Every document for a job: what the app created, what was sent to sign, and
+// what someone added.
+export function FileCabinet({
+  items,
+  templates,
+  jobId,
+  customerId,
+  customerPhone,
+  customerEmail,
+  readOnly,
+  timeZone,
+  isOwner,
+}: {
+  items: CabinetItem[];
+  templates: { id: string; name: string }[];
+  jobId: string;
+  customerId: string;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  readOnly: boolean;
+  timeZone: string;
+  isOwner: boolean;
+}) {
+  const groups: CabinetItem["group"][] = [
+    "Signed & sent",
+    "Created for this job",
+    "Added files",
+  ];
+  const when = (d: Date) =>
+    d.toLocaleString("en-US", {
+      timeZone,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  return (
+    <section aria-label="File cabinet" id="file-cabinet">
+      <h3>🗂 File cabinet</h3>
+      {!readOnly && (
+        <div className="card">
+          <h4>Send a document to sign</h4>
+          {templates.length ? (
+            <ActionForm
+              action={sendDocumentAction}
+              hidden={{ jobId }}
+              submitLabel="Send for signature"
+              variant="secondary"
+            >
+              <label htmlFor="send-template">Document</label>
+              <select id="send-template" name="templateId" required>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </ActionForm>
+          ) : (
+            <p className="muted">
+              No document templates yet.{" "}
+              {isOwner ? (
+                <Link href="/app/settings/documents">
+                  Set up your documents
+                </Link>
+              ) : (
+                "Ask the owner to add them in Settings."
+              )}
+            </p>
+          )}
+        </div>
+      )}
+      {groups.map((g) => {
+        const list = items.filter((i) => i.group === g);
+        return (
+          <div key={g}>
+            <h4>{g}</h4>
+            {!list.length && <p className="muted">Nothing yet.</p>}
+            {list.map((i) => (
+              <div className="overview-row cabinet-row" key={i.id}>
+                <span>
+                  {i.href ? (
+                    <a
+                      href={i.href}
+                      target={i.href.startsWith("/app/") ? undefined : "_blank"}
+                      rel="noreferrer"
+                    >
+                      📄 {i.title}
+                    </a>
+                  ) : (
+                    <strong>📄 {i.title}</strong>
+                  )}
+                  <span className="muted">
+                    {" "}
+                    · {i.detail} · {when(i.at)}
+                  </span>
+                </span>
+                {i.status && (
+                  <span
+                    className={
+                      i.status === "Signed"
+                        ? "pill pill-ok"
+                        : i.status === "Waiting"
+                          ? "pill pill-warn"
+                          : "pill pill-muted"
+                    }
+                  >
+                    {i.status}
+                  </span>
+                )}
+                {i.signLink && !readOnly && (
+                  <span className="money-actions">
+                    <CopyLink
+                      path={i.signLink}
+                      label="Copy signing link"
+                      title={i.title}
+                      phone={customerPhone}
+                      email={customerEmail}
+                    />
+                    <ActionForm
+                      action={voidDocumentAction}
+                      hidden={{ documentId: i.documentId! }}
+                      submitLabel="Void"
+                      variant="danger"
+                      confirm="Void this document? The customer's link stops working."
+                    />
+                  </span>
+                )}
+                {g === "Added files" && !readOnly && i.documentId && (
+                  <ActionForm
+                    action={removeDocumentAction}
+                    hidden={{ documentId: i.documentId }}
+                    submitLabel="Remove"
+                    variant="danger"
+                    confirm={`Remove ${i.title}?`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      {!readOnly && (
+        <FileUploader
+          customerId={customerId}
+          jobId={jobId}
+          categories={JOB_FILE_CATEGORIES}
+          buttonLabel="+ Add a file to this job"
+        />
+      )}
+    </section>
+  );
+}

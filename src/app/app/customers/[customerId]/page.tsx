@@ -6,9 +6,13 @@ import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
 import { Notes } from "@/components/memory";
 import { RememberCustomer } from "@/components/recent-customers";
-import { MediaUploader } from "@/components/media-uploader";
-import { MediaGallery } from "@/components/media-gallery";
-import { listMedia } from "@/domain/job-media";
+import { FileUploader } from "@/components/file-uploader";
+import {
+  ATTACHMENT_CATEGORIES,
+  categoryLabel,
+  listAttachments,
+} from "@/domain/documents";
+import { removeDocumentAction } from "@/server/actions/documents";
 import type { HistoryItem } from "@/domain/customer-profile";
 import { listNotes } from "@/domain/memory";
 import Link from "next/link";
@@ -44,7 +48,7 @@ export default async function CustomerDetailPage(props: {
 }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
-  const [data, history, notes, profile, assets, jobs, money, media] =
+  const [data, history, notes, profile, assets, jobs, money, attachments] =
     await withTenant(s.businessId, s.actor, async (tx) =>
       Promise.all([
         getCustomerWithVehicles(tx, customerId),
@@ -54,7 +58,7 @@ export default async function CustomerDetailPage(props: {
         listServiceAssets(tx, customerId),
         listCustomerJobs(tx, customerId),
         customerMoney(tx, customerId),
-        listMedia(tx, { customerId }),
+        listAttachments(tx, customerId),
       ]),
     );
   const profileNotes = notes.filter((n) => n.kind === "profile");
@@ -66,6 +70,15 @@ export default async function CustomerDetailPage(props: {
     (filter.statuses as readonly string[]).includes(j.status),
   );
   const tz = profile?.timezone || "America/Chicago";
+  const address = [
+    data.customer.addressLine1,
+    data.customer.addressLine2,
+    data.customer.city,
+    data.customer.region,
+    data.customer.postalCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
   const readOnly = s.actor.type === "support";
   const c = data.customer;
   const { view: requestedView } = await props.searchParams;
@@ -95,18 +108,6 @@ export default async function CustomerDetailPage(props: {
       </p>
       <RememberCustomer id={customerId} name={c.displayName} />
       <h1>{c.displayName}</h1>
-      <p className="muted">
-        Customer since{" "}
-        {c.createdAt.toLocaleDateString("en-US", {
-          timeZone: tz,
-          month: "short",
-          year: "numeric",
-        })}
-        {assets[0]?.details &&
-        (assets[0].details as { addressLine1?: string }).addressLine1
-          ? ` · ${(assets[0].details as { addressLine1?: string }).addressLine1}`
-          : ""}
-      </p>
       {profileNotes
         .filter((n) => n.headsUp)
         .map((n) => (
@@ -151,26 +152,120 @@ export default async function CustomerDetailPage(props: {
       </nav>
       {view === "overview" && (
         <>
-          <div className="money-actions" aria-label="Contact">
-            {c.phoneE164 && (
-              <a className="btn secondary" href={`tel:${c.phoneE164}`}>
-                Call {formatPhone(c.phoneE164)}
-              </a>
+          <section className="card customer-bio" aria-label="Customer bio">
+            <dl className="bio-list">
+              <div>
+                <dt>Address</dt>
+                <dd>
+                  {address || (
+                    <Link href={`${base}?view=details`}>Add address</Link>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Phone</dt>
+                <dd>
+                  {c.phoneE164 ? (
+                    formatPhone(c.phoneE164)
+                  ) : (
+                    <Link href={`${base}?view=details`}>Add phone</Link>
+                  )}
+                  {c.textOptedOutAt && " (texts stopped)"}
+                </dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>
+                  {c.email ?? (
+                    <Link href={`${base}?view=details`}>Add email</Link>
+                  )}
+                  {c.email && c.emailOptedOutAt && " (emails stopped)"}
+                </dd>
+              </div>
+              <div>
+                <dt>Customer since</dt>
+                <dd>
+                  {c.createdAt.toLocaleDateString("en-US", {
+                    timeZone: tz,
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </dd>
+              </div>
+            </dl>
+            <div className="money-actions">
+              {c.phoneE164 && (
+                <a className="btn secondary" href={`tel:${c.phoneE164}`}>
+                  Call
+                </a>
+              )}
+              {c.phoneE164 && !c.textOptedOutAt && (
+                <a className="btn secondary" href={`sms:${c.phoneE164}`}>
+                  Text
+                </a>
+              )}
+              {c.email && !c.emailOptedOutAt && (
+                <a className="btn secondary" href={`mailto:${c.email}`}>
+                  Email
+                </a>
+              )}
+              {address && (
+                <a
+                  className="btn secondary"
+                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Map
+                </a>
+              )}
+              <Link className="btn secondary" href={`${base}?view=details`}>
+                Edit
+              </Link>
+            </div>
+          </section>
+          <section className="card" aria-label="Attachments" id="attachments">
+            <h2>Attachments</h2>
+            <p className="muted">
+              License, insurance, tax-exempt certificate. Private to your shop;
+              customers never see these.
+            </p>
+            {!attachments.length && (
+              <p className="muted">No attachments yet.</p>
             )}
-            {c.phoneE164 && !c.textOptedOutAt && (
-              <a className="btn secondary" href={`sms:${c.phoneE164}`}>
-                Text
-              </a>
+            {attachments.map((d) => (
+              <div className="overview-row" key={d.id}>
+                <a href={`/media/${d.fileId}`} target="_blank" rel="noreferrer">
+                  📎 {d.title}
+                </a>
+                <span className="muted">
+                  {categoryLabel(d.category)} ·{" "}
+                  {d.createdAt.toLocaleDateString("en-US", {
+                    timeZone: tz,
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+                {!readOnly && (
+                  <ActionForm
+                    action={removeDocumentAction}
+                    hidden={{ documentId: d.id }}
+                    submitLabel="Remove"
+                    variant="danger"
+                    confirm={`Remove ${d.title}?`}
+                  />
+                )}
+              </div>
+            ))}
+            {!readOnly && (
+              <FileUploader
+                customerId={customerId}
+                categories={ATTACHMENT_CATEGORIES}
+                buttonLabel="+ Add attachment"
+              />
             )}
-            {c.email && !c.emailOptedOutAt && (
-              <a className="btn secondary" href={`mailto:${c.email}`}>
-                Email
-              </a>
-            )}
-            {!c.phoneE164 && !c.email && (
-              <Link href={`${base}?view=details`}>Add a phone or email</Link>
-            )}
-          </div>
+          </section>
           <div className="overview-metrics">
             <div className="card overview-metric">
               <strong>{formatMoney(money.owedCents)}</strong>
@@ -342,34 +437,6 @@ export default async function CustomerDetailPage(props: {
               ))}
             </section>
           )}
-          <section className="card" aria-label="Photos and videos" id="photos">
-            <h2>Photos &amp; videos</h2>
-            {!readOnly && (
-              <MediaUploader
-                customerId={customerId}
-                defaultTag="issue"
-                vehicleId={
-                  data.vehicles.length === 1 ? data.vehicles[0].id : null
-                }
-                serviceAssetId={assets.length === 1 ? assets[0].id : null}
-              />
-            )}
-            <MediaGallery
-              items={media.slice(0, 24)}
-              readOnly={readOnly}
-              timeZone={tz}
-              quoteHref={(m) =>
-                `/app/jobs?${new URLSearchParams({
-                  customerId,
-                  ...(m.vehicleId ? { vehicleId: m.vehicleId } : {}),
-                  ...(m.serviceAssetId
-                    ? { serviceAssetId: m.serviceAssetId }
-                    : {}),
-                  fromMedia: m.id,
-                })}`
-              }
-            />
-          </section>
           <section className="card" aria-label="Recent history">
             <h2>Recent history</h2>
             {!readOnly && (
@@ -420,17 +487,7 @@ export default async function CustomerDetailPage(props: {
               ))}
             </div>
           </section>
-          <section className="card" aria-label="Contact details">
-            <h2>Contact details</h2>
-            <p>
-              {c.phoneE164 ? formatPhone(c.phoneE164) : "No phone recorded"} ·{" "}
-              {c.email
-                ? `${c.email}${c.emailOptedOutAt ? " (emails stopped)" : ""}`
-                : "No email recorded"}
-            </p>
-            <Link href={`${base}?view=details`}>Edit contact details</Link>
-            {permissions}
-          </section>
+          {permissions}
         </>
       )}
       {view === "details" && (
@@ -473,6 +530,43 @@ export default async function CustomerDetailPage(props: {
                 name="email"
                 type="email"
                 defaultValue={c.email ?? ""}
+              />
+              <label htmlFor="addressLine1">Street address</label>
+              <input
+                id="addressLine1"
+                name="addressLine1"
+                maxLength={200}
+                defaultValue={c.addressLine1 ?? ""}
+                autoComplete="street-address"
+              />
+              <label htmlFor="addressLine2">Apt, suite (optional)</label>
+              <input
+                id="addressLine2"
+                name="addressLine2"
+                maxLength={200}
+                defaultValue={c.addressLine2 ?? ""}
+              />
+              <label htmlFor="city">City</label>
+              <input
+                id="city"
+                name="city"
+                maxLength={100}
+                defaultValue={c.city ?? ""}
+              />
+              <label htmlFor="region">State</label>
+              <input
+                id="region"
+                name="region"
+                maxLength={50}
+                defaultValue={c.region ?? ""}
+              />
+              <label htmlFor="postalCode">ZIP</label>
+              <input
+                id="postalCode"
+                name="postalCode"
+                maxLength={20}
+                defaultValue={c.postalCode ?? ""}
+                inputMode="numeric"
               />
               <label htmlFor="notes">Notes</label>
               <textarea

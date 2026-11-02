@@ -11,6 +11,11 @@ export type CustomerInput = {
   email?: string | null;
   phoneE164?: string | null;
   notes?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  region?: string | null;
+  postalCode?: string | null;
   // Set when the owner confirmed a same-phone/email customer is a different person.
   allowDuplicate?: boolean;
 };
@@ -84,6 +89,11 @@ export async function createCustomer(
       phoneE164: input.phoneE164 ?? null,
       phoneDigits: phoneDigits(input.phoneE164),
       notes: input.notes ?? null,
+      addressLine1: input.addressLine1 ?? null,
+      addressLine2: input.addressLine2 ?? null,
+      city: input.city ?? null,
+      region: input.region ?? null,
+      postalCode: input.postalCode ?? null,
     })
     .returning();
   await audit(tx, meta, {
@@ -138,6 +148,11 @@ export async function updateCustomer(
       phoneE164: input.phoneE164 ?? null,
       phoneDigits: phoneDigits(input.phoneE164),
       notes: input.notes ?? null,
+      addressLine1: input.addressLine1 ?? null,
+      addressLine2: input.addressLine2 ?? null,
+      city: input.city ?? null,
+      region: input.region ?? null,
+      postalCode: input.postalCode ?? null,
     })
     .where(
       and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
