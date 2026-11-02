@@ -7,24 +7,15 @@ import { reconcileRevenue } from "@/domain/revenue";
 import { z } from "zod";
 import { withTenant, withGlobalWorker } from "@/db/tenant";
 import { closeExpiredSupportSessions } from "@/domain/support";
-import { applyStripeEvent } from "@/domain/stripe-payments";
+import { routeStripeEvent, STRIPE_EVENT_TYPES } from "@/domain/stripe-events";
 import type Stripe from "stripe";
 import { registerWebhookHandler } from "@/domain/webhooks";
 import { processWebhookEvent } from "@/domain/webhooks";
 import { logger } from "@/lib/logger";
 
-for (const eventType of [
-  "checkout.session.completed",
-  "checkout.session.async_payment_succeeded",
-  "checkout.session.async_payment_failed",
-  "checkout.session.expired",
-  "refund.created",
-  "refund.updated",
-  "refund.failed",
-  "account.updated",
-]) {
+for (const eventType of STRIPE_EVENT_TYPES) {
   registerWebhookHandler("stripe", eventType, async (row) =>
-    (await applyStripeEvent(row.payload as Stripe.Event))
+    (await routeStripeEvent(row.payload as Stripe.Event))
       ? "applied"
       : "ignored",
   );

@@ -98,6 +98,8 @@ export const setNextServiceAction = defineShopAction({
 });
 export const setDoNotContactAction = defineShopAction({
   name: "setDoNotContact",
+  // Opt-outs must be honored even when the subscription lapses.
+  allowWhenUnpaid: true,
   input: z.object({ customerId: z.uuid(), value: z.enum(["true", "false"]) }),
   run: ({ tx, meta }, input) =>
     setDoNotContact(tx, meta, input.customerId, input.value === "true"),

@@ -146,6 +146,8 @@ export const archiveVehicleAction = defineShopAction({
 
 export const setContactPermissionAction = defineShopAction({
   name: "setContactPermission",
+  // Opt-outs must be honored even when the subscription lapses.
+  allowWhenUnpaid: true,
   input: z.object({
     customerId: z.uuid(),
     channel: z.enum(["text", "email"]),

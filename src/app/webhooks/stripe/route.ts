@@ -4,15 +4,21 @@ import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { webhookEvent } from "@/db/schema";
 import { withGlobalWorker } from "@/db/tenant";
-import { applyStripeEvent } from "@/domain/stripe-payments";
+import { routeStripeEvent } from "@/domain/stripe-events";
 import { verifyStripeSignature } from "@/lib/webhooks/signatures";
 import { notConfigured, rejected, storeWebhook } from "@/lib/webhooks/ingest";
 import { logger } from "@/lib/logger";
 export async function POST(req: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) return notConfigured("stripe");
+  // Stripe signs connected-account events (shop invoice payments) and your own
+  // account's events (shop subscriptions) from separate endpoints/secrets.
+  const secrets = [
+    process.env.STRIPE_WEBHOOK_SECRET,
+    process.env.STRIPE_BILLING_WEBHOOK_SECRET,
+  ].filter((s): s is string => Boolean(s));
+  if (!secrets.length) return notConfigured("stripe");
   const body = await req.text();
-  if (!verifyStripeSignature(body, req.headers.get("stripe-signature"), secret))
+  const signature = req.headers.get("stripe-signature");
+  if (!secrets.some((s) => verifyStripeSignature(body, signature, s)))
     return rejected("stripe", "signature");
   let event: Stripe.Event;
   try {
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
     payload: event,
   });
   try {
-    const applied = await applyStripeEvent(event);
+    const applied = await routeStripeEvent(event);
     await withGlobalWorker((tx) =>
       tx
         .update(webhookEvent)

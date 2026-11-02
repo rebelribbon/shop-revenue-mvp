@@ -29,6 +29,14 @@ export default async function SettingsPage() {
           <span className="muted">Set up or verify your authenticator</span>
         </Link>
         {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/billing">
+            <strong>Billing</strong>
+            <span className="muted">
+              Your Shop Revenue subscription, card and receipts
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/export">
             <strong>Export shop data</strong>
             <span className="muted">
