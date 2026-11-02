@@ -201,7 +201,7 @@ export function JobEditor({
                 if (
                   (parts.length || labor.length) &&
                   !window.confirm(
-                    "Replace the current parts and labor with this common job?",
+                    `Replace the current ${auto ? "parts" : "materials"} and labor with this common job?`,
                   )
                 )
                   return;
@@ -315,7 +315,9 @@ export function JobEditor({
               ),
             )}
             <details>
-              <summary>Part costs &amp; quantity</summary>
+              <summary>
+                {auto ? "Part" : "Material"} costs &amp; quantity
+              </summary>
               {numberField("Quantity", Math.round(p.quantity * 100), (v) =>
                 setParts(
                   parts.map((x, n) =>

@@ -253,7 +253,9 @@ export default async function JobsPage({
                   </p>
                 </details>
                 <details>
-                  <summary>View parts, labor and costs</summary>
+                  <summary>
+                    View {auto ? "parts" : "materials"}, labor and costs
+                  </summary>
                   <ul>
                     {input.parts.map((part, i) => (
                       <li key={i}>
