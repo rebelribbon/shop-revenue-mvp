@@ -211,9 +211,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(
     page.getByRole("region", { name: "Job workflow" }),
   ).toContainText("Complete");
-  await expect(
-    page.getByRole("region", { name: "Job workflow" }),
-  ).toContainText("Work completed");
+  await page.getByRole("link", { name: "Timeline", exact: true }).click();
+  await expect(page.locator("ol.workflow-timeline")).toContainText(
+    "Work completed",
+  );
+  await page.getByRole("link", { name: "Work", exact: true }).click();
   await auditUX(page);
   await page.screenshot({
     path: `test-results/ux-job-workflow-${info.project.name}.png`,
