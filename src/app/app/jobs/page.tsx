@@ -4,7 +4,15 @@ import { ActionForm } from "@/components/action-form";
 import { cadenceText, untilText } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import { listCommonJobs } from "@/domain/common-jobs";
-import { loadJobWorkflows, stageLabels } from "@/domain/job-workflow";
+import { loadJobWorkflows } from "@/domain/job-workflow";
+import {
+  JOB_FILTERS,
+  JOB_STATUSES,
+  jobFilter,
+  jobStatus,
+  jobStatusLabels,
+  statusTone,
+} from "@/lib/job-status";
 import { JobWorkflow, WorkflowBadges } from "@/components/job-workflow";
 import {
   isAutomotive,
@@ -37,6 +45,8 @@ export default async function JobsPage({
     saved?: string;
     q?: string;
     stage?: string;
+    show?: string;
+    sort?: string;
     customerId?: string;
     vehicleId?: string;
     serviceAssetId?: string;
@@ -52,6 +62,8 @@ export default async function JobsPage({
     saved,
     q,
     stage,
+    show,
+    sort,
     customerId,
     vehicleId,
     serviceAssetId,
@@ -133,9 +145,34 @@ export default async function JobsPage({
     sourceRecoveryItemId ||
     sourceAppointmentId
   );
-  const rows = data.jobs.filter(
-    (j) => !stage || data.workflows.get(j.id)?.stage === stage,
+  const statusLabels = jobStatusLabels(type);
+  const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
+  // ?stage=plan (older links) shows recurring jobs.
+  const filter = jobFilter(
+    show ?? (stage?.startsWith("plan") ? "recurring" : undefined),
   );
+  const totalOf = (id: string) => {
+    const f = data.workflows.get(id)!;
+    return (
+      f.currentInvoice?.totalCents ??
+      f.latest?.estimate.snapshot.totalCents ??
+      0
+    );
+  };
+  const rows = data.jobs
+    .filter((j) =>
+      (filter.statuses as readonly string[]).includes(statusOf(j.id)),
+    )
+    .sort((a, b) =>
+      sort === "oldest"
+        ? a.createdAt.getTime() - b.createdAt.getTime()
+        : sort === "status"
+          ? JOB_STATUSES.indexOf(statusOf(a.id)) -
+            JOB_STATUSES.indexOf(statusOf(b.id))
+          : sort === "amount"
+            ? totalOf(b.id) - totalOf(a.id)
+            : 0,
+    );
   const chosenCustomer = data.options.customers.find(
     (c) => c.id === customerId,
   );
@@ -454,16 +491,32 @@ export default async function JobsPage({
               />
               <button className="btn secondary">Search</button>
             </div>
-            <label htmlFor="job-stage">Workflow stage</label>
-            <select id="job-stage" name="stage" defaultValue={stage ?? ""}>
-              <option value="">All stages</option>
-              {Object.entries(stageLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
+            <input type="hidden" name="show" value={filter.key} />
+            <label htmlFor="job-sort">Sort</label>
+            <select id="job-sort" name="sort" defaultValue={sort ?? "newest"}>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="status">By status</option>
+              <option value="amount">Biggest first</option>
             </select>
           </form>
+          <nav className="chip-links" aria-label="Show jobs">
+            {JOB_FILTERS.map((f) => (
+              <Link
+                key={f.key}
+                href={`/app/jobs?${new URLSearchParams({ show: f.key, ...(q ? { q } : {}), ...(sort ? { sort } : {}) })}`}
+                aria-current={filter.key === f.key ? "true" : undefined}
+              >
+                {f.label} (
+                {
+                  data.jobs.filter((j) =>
+                    (f.statuses as readonly string[]).includes(statusOf(j.id)),
+                  ).length
+                }
+                )
+              </Link>
+            ))}
+          </nav>
           <p className="muted">
             Up to 100 recent matching jobs. Search by job or customer name to
             find older work.
@@ -496,7 +549,7 @@ export default async function JobsPage({
                   <Link
                     className="card job-row"
                     href={`/app/jobs?job=${j.id}`}
-                    aria-label={`Open job: ${j.title} · ${stageLabels[data.workflows.get(j.id)!.stage]}`}
+                    aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
                   >
                     <div>
                       <h3>{j.title}</h3>
@@ -507,9 +560,10 @@ export default async function JobsPage({
                           )?.name
                         }
                       </p>
-                      <strong className="workflow-stage-label">
-                        {stageLabels[data.workflows.get(j.id)!.stage]}
-                      </strong>
+                      <span className={statusTone(statusOf(j.id))}>
+                        {input.repeat && "↻ "}
+                        {statusLabels[statusOf(j.id)]}
+                      </span>
                       <WorkflowBadges flow={data.workflows.get(j.id)!} />
                     </div>
                     <div className="job-row-meta">

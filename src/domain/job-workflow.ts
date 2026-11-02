@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import {
   activity,
+  appointment,
   estimateAuthorization,
   authorizationSummaryColumns,
   type AuthorizationSummary,
@@ -165,6 +166,30 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
     ]);
   };
   const plans = await listServicePlans(tx, { jobIds });
+  // Upcoming one-off visits, to tell "won" from "scheduled".
+  const customerIds = [
+    ...new Set(versions.map((v) => v.estimate.customerId)),
+  ];
+  const upcoming = customerIds.length
+    ? await tx
+        .select({
+          customerId: appointment.customerId,
+          vehicleId: appointment.vehicleId,
+          serviceAssetId: appointment.serviceAssetId,
+          startsAt: appointment.startsAt,
+        })
+        .from(appointment)
+        .where(
+          and(
+            eq(appointment.businessId, tx.businessId),
+            inArray(appointment.customerId, customerIds),
+            eq(appointment.status, "scheduled"),
+            isNull(appointment.servicePlanId),
+            gte(appointment.startsAt, new Date()),
+          ),
+        )
+        .orderBy(appointment.startsAt)
+    : [];
   const result = new Map<string, JobWorkflow>();
   for (const jobId of jobIds) {
     const plan = plans.find((p) => p.quoteId === jobId) ?? null;
@@ -335,6 +360,15 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       refundPending,
       timeline,
       changedSinceEstimate,
+      nextVisit:
+        upcoming.find(
+          (u) =>
+            latest &&
+            u.customerId === latest.estimate.customerId &&
+            (u.vehicleId ?? null) === (latest.estimate.vehicleId ?? null) &&
+            (u.serviceAssetId ?? null) ===
+              (latest.estimate.serviceAssetId ?? null),
+        )?.startsAt ?? null,
       plan,
       repeats: Boolean(latest?.estimate.snapshot.repeat),
       sharedEstimate: events.some(
@@ -385,6 +419,8 @@ type Projection = {
   // The job's parts/labor/prices were edited after the latest estimate was
   // published, so the customer hasn't seen (or approved) the changes.
   changedSinceEstimate: boolean;
+  // Next booked one-off visit for this customer and vehicle/property.
+  nextVisit: Date | null;
   // The latest service plan for this job, and whether the estimate repeats.
   plan: PlanSummary | null;
   repeats: boolean;

@@ -10,6 +10,7 @@ import {
 import type { TenantTx } from "@/db/tenant";
 import { loadJobWorkflows, stageLabels } from "./job-workflow";
 import { listCustomerTimeline } from "./customers";
+import { jobStatus } from "@/lib/job-status";
 
 export async function listCustomerJobs(tx: TenantTx, customerId: string) {
   const rows = await tx
@@ -65,6 +66,7 @@ export async function listCustomerJobs(tx: TenantTx, customerId: string) {
         updatedAt: r.updatedAt,
         stage: flow.stage,
         stageLabel: stageLabels[flow.stage],
+        status: jobStatus(flow),
         repeats: flow.repeats,
         amountCents: flow.plan
           ? flow.plan.perVisitCents
@@ -180,9 +182,11 @@ export async function customerHistory(
   return events
     .filter(
       (e) =>
-        !["note.updated", "note.deleted", "customer.contact_preference"].includes(
-          e.kind,
-        ),
+        ![
+          "note.updated",
+          "note.deleted",
+          "customer.contact_preference",
+        ].includes(e.kind),
     )
     .map((e) => {
       const d = (e.data ?? {}) as Record<string, string | undefined>;

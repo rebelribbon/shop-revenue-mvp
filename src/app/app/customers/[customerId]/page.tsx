@@ -21,6 +21,12 @@ import { addNoteAction, setNoteHeadsUpAction } from "@/server/actions/memory";
 import { formatMoney } from "@/components/estimate-document";
 import { cadenceText } from "@/lib/service-plans";
 import {
+  JOB_FILTERS,
+  jobFilter,
+  jobStatusLabels,
+  statusTone,
+} from "@/lib/job-status";
+import {
   archiveCustomerAction,
   createVehicleAction,
   updateCustomerAction,
@@ -30,7 +36,7 @@ import { ContactPermissions } from "@/components/contact-permissions";
 
 export default async function CustomerDetailPage(props: {
   params: Promise<{ customerId: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; jobs?: string }>;
 }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
@@ -51,6 +57,11 @@ export default async function CustomerDetailPage(props: {
   const profileNotes = notes.filter((n) => n.kind === "profile");
   const historyNotes = notes.filter((n) => n.kind === "log");
   const plans = jobs.filter((j) => j.plan && j.plan.status !== "ended");
+  const statusLabels = jobStatusLabels(profile?.businessType ?? "automotive");
+  const filter = jobFilter((await props.searchParams).jobs);
+  const shownJobs = jobs.filter((j) =>
+    (filter.statuses as readonly string[]).includes(j.status),
+  );
   const tz = profile?.timezone || "America/Chicago";
   const readOnly = s.actor.type === "support";
   const c = data.customer;
@@ -227,12 +238,37 @@ export default async function CustomerDetailPage(props: {
               </details>
             )}
           </section>
-          <section className="card" aria-label="Jobs">
-            <h2>Jobs</h2>
+          <section className="card" aria-label="Jobs" id="jobs">
+            <h2>Jobs ({jobs.length})</h2>
+            {jobs.length > 0 && (
+              <nav className="chip-links" aria-label="Show jobs">
+                {JOB_FILTERS.filter(
+                  (f) =>
+                    f.key === "all" ||
+                    jobs.some((j) =>
+                      (f.statuses as readonly string[]).includes(j.status),
+                    ),
+                ).map((f) => (
+                  <Link
+                    key={f.key}
+                    href={`${base}?jobs=${f.key}#jobs`}
+                    aria-current={filter.key === f.key ? "true" : undefined}
+                  >
+                    {f.label} (
+                    {
+                      jobs.filter((j) =>
+                        (f.statuses as readonly string[]).includes(j.status),
+                      ).length
+                    }
+                    )
+                  </Link>
+                ))}
+              </nav>
+            )}
             {!jobs.length && (
               <p className="muted">No jobs yet. Tap New job to quote one.</p>
             )}
-            {jobs.slice(0, 10).map((j) => (
+            {shownJobs.map((j) => (
               <Link
                 className="overview-row customer-job"
                 key={j.id}
@@ -255,27 +291,22 @@ export default async function CustomerDetailPage(props: {
                   </span>
                 </span>
                 <span>
-                  <span
-                    className={`pill${j.balanceCents > 0 ? " pill-warn" : ""}`}
-                  >
-                    {j.balanceCents > 0
-                      ? `Owes ${formatMoney(j.balanceCents)}`
-                      : j.stageLabel}
+                  <span className={statusTone(j.status)}>
+                    {statusLabels[j.status]}
                   </span>{" "}
-                  {j.amountCents !== null && (
-                    <span className="muted">
-                      {formatMoney(j.amountCents)}
-                      {j.plan ? "/visit" : ""}
-                    </span>
+                  {j.balanceCents > 0 ? (
+                    <strong>owes {formatMoney(j.balanceCents)}</strong>
+                  ) : (
+                    j.amountCents !== null && (
+                      <span className="muted">
+                        {formatMoney(j.amountCents)}
+                        {j.plan ? "/visit" : ""}
+                      </span>
+                    )
                   )}
                 </span>
               </Link>
             ))}
-            {jobs.length > 10 && (
-              <Link href={`/app/jobs?q=${encodeURIComponent(c.displayName)}`}>
-                See all {jobs.length} jobs
-              </Link>
-            )}
           </section>
           {plans.length > 0 && (
             <section className="card" aria-label="Service plans">
