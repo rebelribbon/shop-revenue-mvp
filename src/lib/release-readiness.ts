@@ -79,7 +79,9 @@ export function releaseConfiguration(
     },
     {
       key: "shop-billing",
-      ready: present("STRIPE_SUBSCRIPTION_PRICE_ID"),
+      ready:
+        present("STRIPE_SUBSCRIPTION_PRICE_ID") &&
+        present("STRIPE_BILLING_WEBHOOK_SECRET"),
       message:
         "Shop subscription price configured; shops must start a trial to make changes",
     },

@@ -16,7 +16,7 @@ import { createInternalUser, meta, seedTenant } from "../helpers/fixtures";
 
 const KEYS = [
   "STRIPE_SECRET_KEY",
-  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_BILLING_WEBHOOK_SECRET",
   "STRIPE_SUBSCRIPTION_PRICE_ID",
   "PAYMENTS_BASE_URL",
 ] as const;
@@ -24,7 +24,7 @@ let saved: Record<string, string | undefined> = {};
 beforeEach(() => {
   saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
   process.env.STRIPE_SECRET_KEY = "sk_test_synthetic";
-  process.env.STRIPE_WEBHOOK_SECRET = "whsec_synthetic";
+  process.env.STRIPE_BILLING_WEBHOOK_SECRET = "whsec_synthetic";
   process.env.STRIPE_SUBSCRIPTION_PRICE_ID = "price_synthetic";
   process.env.PAYMENTS_BASE_URL = "https://payments.example.test";
 });

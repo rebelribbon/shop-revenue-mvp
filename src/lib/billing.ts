@@ -27,7 +27,7 @@ export type BillingAccess =
 export function billingEnabled(env = process.env) {
   return Boolean(
     env.STRIPE_SECRET_KEY &&
-    env.STRIPE_WEBHOOK_SECRET &&
+    env.STRIPE_BILLING_WEBHOOK_SECRET &&
     env.STRIPE_SUBSCRIPTION_PRICE_ID &&
     (env.PAYMENTS_BASE_URL || env.APP_BASE_URL),
   );
