@@ -187,14 +187,9 @@ export default async function InvoicesPage({
               Job timeline, authorization &amp; work remaining
             </Link>
             {i.voidReason && <p>Void reason: {i.voidReason}</p>}
-            <details
-              className="record-details"
-              open={params.invoiceId === i.id}
-            >
-              <summary>View invoice &amp; payments</summary>
-              <InvoiceLink id={i.id} />
-              <details className="record-details">
-                <summary>Preview &amp; choose what the customer sees</summary>
+            {params.invoiceId === i.id ? (
+              <section className="record-details" id="preview">
+                <h3>Preview &amp; customize what the customer sees</h3>
                 <InvoiceDesigner
                   invoiceId={i.id}
                   invoice={{
@@ -213,7 +208,21 @@ export default async function InvoicesPage({
                     s.role === "owner" && s.actor.type !== "support"
                   }
                 />
-              </details>
+              </section>
+            ) : (
+              <Link
+                className="btn secondary"
+                href={`/app/invoices?invoiceId=${i.id}#preview`}
+              >
+                Preview &amp; customize
+              </Link>
+            )}
+            <details
+              className="record-details"
+              open={params.invoiceId === i.id}
+            >
+              <summary>View invoice &amp; payments</summary>
+              <InvoiceLink id={i.id} />
               {i.disputeOpen && (
                 <p className="notice">
                   Open dispute: {i.disputeOpen}. Follow-ups follow-up is paused.

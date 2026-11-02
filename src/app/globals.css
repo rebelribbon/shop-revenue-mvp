@@ -1578,3 +1578,9 @@ label.switch input[type="checkbox"]:checked::after {
 .media-tile figcaption details {
   width: 100%;
 }
+.visit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}

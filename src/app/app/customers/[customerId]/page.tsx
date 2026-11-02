@@ -218,28 +218,26 @@ export default async function CustomerDetailPage(props: {
               </p>
             )}
             {!readOnly && (
-              <details>
-                <summary>Add a profile note</summary>
-                <ActionForm
-                  action={addNoteAction}
-                  hidden={{ customerId, kind: "profile" }}
-                  submitLabel="Save profile note"
-                >
-                  <label htmlFor="profile-note">Note</label>
-                  <textarea
-                    id="profile-note"
-                    name="body"
-                    rows={3}
-                    required
-                    maxLength={5000}
-                    placeholder="Referred by Maria Lopez · Spouse: Dan (also a customer)"
-                  />
-                  <label>
-                    <input type="checkbox" name="headsUp" />
-                    Heads-up: show this on their jobs and visits too
-                  </label>
-                </ActionForm>
-              </details>
+              <ActionForm
+                action={addNoteAction}
+                hidden={{ customerId, kind: "profile" }}
+                submitLabel="Add profile note"
+                variant="secondary"
+              >
+                <label htmlFor="profile-note">Add something to remember</label>
+                <textarea
+                  id="profile-note"
+                  name="body"
+                  rows={2}
+                  required
+                  maxLength={5000}
+                  placeholder="Referred by Maria Lopez · Spouse: Dan (also a customer)"
+                />
+                <label>
+                  <input type="checkbox" name="headsUp" />
+                  Heads-up: show this on their jobs and visits too
+                </label>
+              </ActionForm>
             )}
           </section>
           <section className="card" aria-label="Jobs" id="jobs">
@@ -422,8 +420,8 @@ export default async function CustomerDetailPage(props: {
               ))}
             </div>
           </section>
-          <details className="card">
-            <summary>Contact details &amp; text/email preferences</summary>
+          <section className="card" aria-label="Contact details">
+            <h2>Contact details</h2>
             <p>
               {c.phoneE164 ? formatPhone(c.phoneE164) : "No phone recorded"} ·{" "}
               {c.email
@@ -432,7 +430,7 @@ export default async function CustomerDetailPage(props: {
             </p>
             <Link href={`${base}?view=details`}>Edit contact details</Link>
             {permissions}
-          </details>
+          </section>
         </>
       )}
       {view === "details" && (
