@@ -1,3 +1,6 @@
+import { FileUploader } from "@/components/file-uploader";
+import { JOB_FILE_CATEGORIES } from "@/domain/documents";
+import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
 import { jobCabinet, listTemplates } from "@/domain/documents";
 import { openShareToken } from "@/lib/share-token";
@@ -63,6 +66,7 @@ export default async function JobsPage({
     sourceContactActivityId?: string;
     sourceAppointmentId?: string;
     fromMedia?: string;
+    add?: string;
   }>;
 }) {
   const {
@@ -81,6 +85,7 @@ export default async function JobsPage({
     sourceContactActivityId,
     sourceAppointmentId,
     fromMedia,
+    add,
   } = await searchParams;
   const s = await requireShopSession("/app/jobs");
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
@@ -400,6 +405,125 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
+                {s.actor.type !== "support" && (
+                  <div className="action-bar" role="group" aria-label="Add">
+                    {(
+                      [
+                        ["note", "+ Note"],
+                        ["photo", "+ Photo / video"],
+                        ["file", "+ File"],
+                        ["sign", "✍ Send to sign"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <Link
+                        key={key}
+                        className="btn secondary"
+                        href={`/app/jobs?job=${selected.id}&add=${key}`}
+                        aria-current={add === key ? "true" : undefined}
+                      >
+                        {label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {s.actor.type !== "support" && add === "note" && (
+                  <section className="card add-panel" aria-label="Add a note">
+                    <h3>Note about this job</h3>
+                    <ActionForm
+                      action={addNoteAction}
+                      hidden={{
+                        customerId: input.customerId,
+                        jobId: selected.id,
+                        kind: "log",
+                      }}
+                      submitLabel="Save note"
+                      variant="primary"
+                    >
+                      <label htmlFor="job-note">Note</label>
+                      <textarea
+                        id="job-note"
+                        name="body"
+                        rows={3}
+                        required
+                        maxLength={5000}
+                        placeholder="Gate code 4412 · found a cracked rotor"
+                      />
+                    </ActionForm>
+                    <Link href={`/app/jobs?job=${selected.id}`}>Done</Link>
+                  </section>
+                )}
+                {s.actor.type !== "support" && add === "photo" && (
+                  <section className="card add-panel" aria-label="Add photos">
+                    <h3>Add photos or video</h3>
+                    <MediaUploader
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      vehicleId={input.vehicleId ?? null}
+                      serviceAssetId={input.serviceAssetId ?? null}
+                      defaultTag={flow?.currentInvoice ? "after" : "before"}
+                    />
+                    <Link href={`/app/jobs?job=${selected.id}#job-photos`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
+                {s.actor.type !== "support" && add === "file" && (
+                  <section className="card add-panel" aria-label="Add a file">
+                    <h3>Add a file to this job</h3>
+                    <FileUploader
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      categories={JOB_FILE_CATEGORIES}
+                      buttonLabel="Choose file"
+                    />
+                    <Link href={`/app/jobs?job=${selected.id}#file-cabinet`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
+                {s.actor.type !== "support" && add === "sign" && (
+                  <section
+                    className="card add-panel"
+                    aria-label="Send a document to sign"
+                  >
+                    <h3>Send a document to sign</h3>
+                    {data.templates.length ? (
+                      <ActionForm
+                        action={sendDocumentAction}
+                        hidden={{ jobId: selected.id }}
+                        submitLabel="Send for signature"
+                        variant="primary"
+                      >
+                        <label htmlFor="send-template">Document</label>
+                        <select id="send-template" name="templateId" required>
+                          {data.templates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      </ActionForm>
+                    ) : (
+                      <p className="muted">
+                        No documents yet.{" "}
+                        {s.role === "owner" ? (
+                          <Link href="/app/settings/documents">
+                            Set up your documents
+                          </Link>
+                        ) : (
+                          "Ask the owner to add them in Settings."
+                        )}
+                      </p>
+                    )}
+                    <p className="muted">
+                      The signing link appears in the file cabinet below, ready
+                      to text or email.
+                    </p>
+                    <Link href={`/app/jobs?job=${selected.id}#file-cabinet`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
                 {flow && (
                   <JobWorkflow
                     flow={flow}
@@ -414,15 +538,6 @@ export default async function JobsPage({
                     Photos switched to “Show the customer” appear on the next
                     estimate you send, and on the invoice.
                   </p>
-                  {s.actor.type !== "support" && (
-                    <MediaUploader
-                      customerId={input.customerId}
-                      jobId={selected.id}
-                      vehicleId={input.vehicleId ?? null}
-                      serviceAssetId={input.serviceAssetId ?? null}
-                      defaultTag={flow?.currentInvoice ? "after" : "before"}
-                    />
-                  )}
                   <MediaGallery
                     quoteHref={(m) =>
                       `/app/jobs?${new URLSearchParams({
@@ -443,9 +558,6 @@ export default async function JobsPage({
                 </section>
                 <FileCabinet
                   items={data.cabinet}
-                  templates={data.templates}
-                  jobId={selected.id}
-                  customerId={input.customerId}
                   customerPhone={
                     data.contact && !data.contact.textOff
                       ? data.contact.phone
@@ -458,7 +570,6 @@ export default async function JobsPage({
                   }
                   readOnly={s.actor.type === "support"}
                   timeZone={data.profile?.timezone || "America/Chicago"}
-                  isOwner={s.role === "owner"}
                 />
                 <section aria-label="Job notes">
                   <h3>Notes</h3>
@@ -485,27 +596,6 @@ export default async function JobsPage({
                     <p className="muted">
                       Gate codes, what you found, what the customer asked for.
                     </p>
-                  )}
-                  {s.actor.type !== "support" && (
-                    <ActionForm
-                      action={addNoteAction}
-                      hidden={{
-                        customerId: input.customerId,
-                        jobId: selected.id,
-                        kind: "log",
-                      }}
-                      submitLabel="Add note"
-                      variant="secondary"
-                    >
-                      <label htmlFor="job-note">Note about this job</label>
-                      <textarea
-                        id="job-note"
-                        name="body"
-                        rows={2}
-                        required
-                        maxLength={5000}
-                      />
-                    </ActionForm>
                   )}
                 </section>
                 <section aria-label="Job costs">
