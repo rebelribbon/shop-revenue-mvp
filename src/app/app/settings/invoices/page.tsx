@@ -27,6 +27,7 @@ export default async function InvoiceLayoutSettings() {
       </p>
       <InvoiceDesigner
         defaultOnly
+        startOpen
         canSaveDefault={s.actor.type !== "support"}
         template={template}
         override={null}

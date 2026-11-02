@@ -187,36 +187,26 @@ export default async function InvoicesPage({
               Job timeline, authorization &amp; work remaining
             </Link>
             {i.voidReason && <p>Void reason: {i.voidReason}</p>}
-            {params.invoiceId === i.id ? (
-              <section className="record-details" id="preview">
-                <h3>Preview &amp; customize what the customer sees</h3>
-                <InvoiceDesigner
-                  invoiceId={i.id}
-                  invoice={{
-                    number: i.number,
-                    snapshot: i.snapshot,
-                    issuedAt: i.createdAt,
-                    dueOn: i.dueOn,
-                    terms: i.invoiceTerms,
-                    voided: !!i.voidedAt,
-                    totalCents: i.totalCents,
-                    paidCents: i.paidCents,
-                  }}
-                  template={data.template}
-                  override={i.display}
-                  canSaveDefault={
-                    s.role === "owner" && s.actor.type !== "support"
-                  }
-                />
-              </section>
-            ) : (
-              <Link
-                className="btn secondary"
-                href={`/app/invoices?invoiceId=${i.id}#preview`}
-              >
-                Preview &amp; customize
-              </Link>
-            )}
+            <section className="record-details" id="preview">
+              <InvoiceDesigner
+                invoiceId={i.id}
+                invoice={{
+                  number: i.number,
+                  snapshot: i.snapshot,
+                  issuedAt: i.createdAt,
+                  dueOn: i.dueOn,
+                  terms: i.invoiceTerms,
+                  voided: !!i.voidedAt,
+                  totalCents: i.totalCents,
+                  paidCents: i.paidCents,
+                }}
+                template={data.template}
+                override={i.display}
+                canSaveDefault={
+                  s.role === "owner" && s.actor.type !== "support"
+                }
+              />
+            </section>
             <details
               className="record-details"
               open={params.invoiceId === i.id}

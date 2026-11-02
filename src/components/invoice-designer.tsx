@@ -26,6 +26,7 @@ export function InvoiceDesigner({
   override,
   canSaveDefault,
   defaultOnly = false,
+  startOpen = false,
 }: {
   invoice: InvoiceDocumentData;
   invoiceId?: string;
@@ -33,7 +34,9 @@ export function InvoiceDesigner({
   override: unknown;
   canSaveDefault: boolean;
   defaultOnly?: boolean;
+  startOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(startOpen);
   const ready = useActionHydration();
   const router = useRouter();
   const base = useMemo(() => effectiveDisplay(template, null), [template]);
@@ -58,6 +61,17 @@ export function InvoiceDesigner({
       setBusy(false);
     }
   };
+  if (!open)
+    return (
+      <button
+        type="button"
+        className="btn secondary"
+        data-ux-ready={ready}
+        onClick={() => setOpen(true)}
+      >
+        Preview &amp; customize
+      </button>
+    );
   return (
     <div className="invoice-designer" data-ux-ready={ready}>
       <fieldset className="chips">
