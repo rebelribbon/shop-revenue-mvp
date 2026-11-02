@@ -63,7 +63,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   const jobUrl = page.url();
   const card = page
     .getByRole("heading", { name: `Brakes ${info.project.name}`, exact: true })
-    .locator("..");
+    .locator("xpath=ancestor::article[1]");
   await card
     .getByRole("button", { name: "Send estimate", exact: true })
     .click();
