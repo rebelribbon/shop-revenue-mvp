@@ -10,6 +10,7 @@ import { z } from "zod";
 import { requestIdempotency } from "@/db/schema";
 import { withTenant, type TenantTx } from "@/db/tenant";
 import { assertOwner } from "@/domain/membership";
+import { assertCanMakeChanges } from "@/domain/billing";
 import { audit, type RequestMeta } from "@/domain/records";
 import { AppError, fromDatabaseError, type ErrorCode } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -33,6 +34,8 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
   name: string;
   input: S;
   ownerOnly?: boolean;
+  // Lets an action run while the shop's subscription is inactive (read-only).
+  allowWhenUnpaid?: boolean;
   run: (ctx: Ctx, input: z.infer<S>) => Promise<R>;
   // What is stored in request_idempotency and returned on a repeat. Use it to keep
   // secrets (for example a plaintext invite token) out of the database.
@@ -99,6 +102,7 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
         cfg.persist ?? ((r: R) => r),
         async (tx) => {
           if (cfg.ownerOnly) await assertOwner(tx);
+          if (!cfg.allowWhenUnpaid) await assertCanMakeChanges(tx);
           return cfg.run({ tx, meta, session }, input as z.infer<S>);
         },
       ).then((r) => {

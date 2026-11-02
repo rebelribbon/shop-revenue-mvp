@@ -12,7 +12,7 @@ test("customer and vehicle edits persist, and archive preserves history", async 
   await page.getByRole("button", { name: "Add customer" }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
   const customerUrl = page.url();
-  await page.getByRole("link", { name: "Details", exact: true }).click();
+  await page.getByRole("link", { name: "Edit details", exact: true }).click();
   await page.getByLabel("Last name").fill("Updated");
   await page
     .getByLabel("Notes", { exact: true })
@@ -95,7 +95,7 @@ test("customer and vehicle edits persist, and archive preserves history", async 
   await expect(
     page.getByText("Vehicle updated: 2024 BMW X5", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Details", exact: true }).click();
+  await page.getByRole("link", { name: "Edit details", exact: true }).click();
   await page.getByRole("button", { name: "Archive customer" }).click();
   await page.getByRole("button", { name: "Yes, continue" }).click();
   await expect(page).toHaveURL(/\/app\/customers$/);

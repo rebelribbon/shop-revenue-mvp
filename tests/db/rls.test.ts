@@ -1,3 +1,4 @@
+import { createCustomer } from "@/domain/customers";
 import { addExpense } from "@/domain/owner-money";
 import { saveCommonJob } from "@/domain/common-jobs";
 import { testPolicySnapshot } from "../helpers/policy";
@@ -12,6 +13,10 @@ import {
   invoiceCheckout,
   invoiceRefund,
   stripeConnection,
+  shopSubscription,
+  servicePlan,
+  jobMedia,
+  estimateAuthorization,
   recommendation,
   recoveryItem,
 } from "@/db/schema";
@@ -263,6 +268,84 @@ const builders: Record<string, Builder> = {
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
         })
+        .returning();
+      return row.id;
+    }),
+  "app.job_media": async (t) => {
+    const customerId = (
+      await withTenant(t.businessId, t.owner.actor, (tx) =>
+        createCustomer(tx, meta(), { firstName: "RLS", lastName: "Media" }),
+      )
+    ).id;
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const id = randomUUID();
+      await tx.insert(file).values({
+        id,
+        businessId: t.businessId,
+        storageKey: `b/${t.businessId}/job_media/${id}.jpg`,
+        kind: "job_media",
+        contentType: "image/jpeg",
+        byteSize: 4,
+        status: "ready",
+      });
+      const [row] = await tx
+        .insert(jobMedia)
+        .values({
+          businessId: t.businessId,
+          customerId,
+          fileId: id,
+          mediaType: "photo",
+          tag: "before",
+        })
+        .returning();
+      return row.id;
+    });
+  },
+  "app.service_plan": async (t) => {
+    const e = await estimateFixture(t);
+    await signEstimate(e.token, "Fixture", ["part-0"], meta());
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [v] = await tx
+        .select()
+        .from(estimateVersion)
+        .where(eq(estimateVersion.id, e.id));
+      const [a] = await tx
+        .select()
+        .from(estimateAuthorization)
+        .where(eq(estimateAuthorization.versionId, e.id));
+      const [row] = await tx
+        .insert(servicePlan)
+        .values({
+          businessId: t.businessId,
+          customerId: v.customerId,
+          vehicleId: v.vehicleId,
+          quoteId: v.quoteId,
+          versionId: v.id,
+          authorizationId: a.id,
+          title: "RLS plan",
+          repeat: {
+            every: "week",
+            startOn: "2026-11-03",
+            until: { kind: "stopped" },
+            billing: "per_visit",
+          },
+          perVisitCents: 1000,
+          billing: "per_visit",
+        })
+        .returning();
+      return row.id;
+    });
+  },
+  "app.shop_subscription": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [existing] = await tx
+        .select({ id: shopSubscription.id })
+        .from(shopSubscription)
+        .where(eq(shopSubscription.businessId, t.businessId));
+      if (existing) return existing.id;
+      const [row] = await tx
+        .insert(shopSubscription)
+        .values({ businessId: t.businessId })
         .returning();
       return row.id;
     }),

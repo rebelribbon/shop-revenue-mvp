@@ -4,6 +4,10 @@ export const businessTypes = [
   "plumbing",
   "home_improvement",
   "handyman",
+  "landscaping",
+  "cleaning",
+  "pool",
+  "pest_control",
   "other_home_service",
 ] as const;
 export type BusinessType = (typeof businessTypes)[number];
@@ -13,6 +17,10 @@ export const businessTypeLabels: Record<BusinessType, string> = {
   plumbing: "Plumbing",
   home_improvement: "Home improvement / remodeling",
   handyman: "Handyman",
+  landscaping: "Landscaping & lawn care",
+  cleaning: "Cleaning",
+  pool: "Pool service",
+  pest_control: "Pest control",
   other_home_service: "Other home services",
 };
 export function businessTypeLabel(type: string = "automotive") {
@@ -42,6 +50,18 @@ export function workspaceLabels(type: string) {
             ? "AC repair, seasonal tune-up, system installation"
             : type === "plumbing"
               ? "Leak repair, water heater, drain service"
-              : "Repair, installation, renovation",
+              : type === "landscaping"
+                ? "Weekly mowing, cleanups, planting"
+                : type === "cleaning"
+                  ? "Weekly cleaning, deep clean, move-out"
+                  : type === "pool"
+                    ? "Weekly pool service, repairs, openings"
+                    : type === "pest_control"
+                      ? "Quarterly treatment, inspections"
+                      : "Repair, installation, renovation",
       };
 }
+
+// Trades whose work is mostly recurring; their job form starts on "Repeats".
+export const recurringFirst = (type: string) =>
+  ["landscaping", "cleaning", "pool", "pest_control"].includes(type);

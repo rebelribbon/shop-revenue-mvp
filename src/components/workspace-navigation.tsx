@@ -3,25 +3,35 @@ import Link from "next/link";
 import { WorkspaceIcon } from "./workspace-icon";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  { href: "/app", label: "Home", mobile: "Home", icon: "home" },
+  { href: "/app", label: "Today", mobile: "Today", icon: "home", phone: true },
   {
     href: "/app/customers",
     label: "Customers",
     mobile: "Customers",
     icon: "customers",
+    phone: true,
   },
-  { href: "/app/work", label: "Jobs", mobile: "Jobs", icon: "work" },
+  {
+    href: "/app/work",
+    label: "Jobs",
+    mobile: "Jobs",
+    icon: "work",
+    phone: true,
+  },
   {
     href: "/app/schedule",
-    label: "Visits",
-    mobile: "Visits",
+    label: "Calendar",
+    mobile: "Calendar",
     icon: "schedule",
+    // On phones the calendar opens from Today.
+    phone: false,
   },
   {
     href: "/app/money",
     label: "Money",
     mobile: "Money",
     icon: "money",
+    phone: true,
   },
 ] as const;
 const workPaths = ["/app/jobs", "/app/estimates", "/app/invoices"];
@@ -42,6 +52,7 @@ export function WorkspaceNavigation({
     >
       {shopItems
         .filter((item) => canSeeMoney || item.href !== "/app/money")
+        .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link
             key={item.href}

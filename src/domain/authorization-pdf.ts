@@ -71,6 +71,8 @@ export async function authorizationPdf(input: {
   text(
     `Authorized subtotal ${money(totals.subtotalCents)}; tax ${money(totals.taxCents)} at ${e.snapshot.taxBps / 100}%; total ${money(totals.totalCents)}`,
   );
+  if (e.snapshot.repeatSummary)
+    text(`Repeating service: ${e.snapshot.repeatSummary}`);
   text(`Estimate terms: ${e.snapshot.terms}`);
   text(
     `Policy ${policy.id} · ${policy.jurisdictionCode} · version ${policy.version}`,

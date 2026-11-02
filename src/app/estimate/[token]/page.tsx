@@ -32,7 +32,7 @@ export default async function PublicEstimatePage({
         is saved for the shop; signing does not charge a card. Payment is
         requested separately by invoice.
       </p>
-      <EstimateDocument snapshot={e.snapshot} />
+      <EstimateDocument snapshot={e.snapshot} photoToken={token} />
       {e.authorization ? (
         <section className="card">
           <h2>Decision recorded</h2>
