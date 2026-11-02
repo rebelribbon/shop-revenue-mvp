@@ -24,6 +24,11 @@ const customerFields = z.object({
   email: z.string().max(254).optional().or(z.literal("")),
   phone: z.string().max(40).optional().or(z.literal("")),
   notes: z.string().max(5000).optional().or(z.literal("")),
+  addressLine1: z.string().max(200).optional(),
+  addressLine2: z.string().max(200).optional(),
+  city: z.string().max(100).optional(),
+  region: z.string().max(50).optional(),
+  postalCode: z.string().max(20).optional(),
 });
 
 const customerInput = (input: z.infer<typeof customerFields>) => ({
@@ -32,6 +37,11 @@ const customerInput = (input: z.infer<typeof customerFields>) => ({
   email: input.email ? normalizeEmail(input.email) : null,
   phoneE164: input.phone ? normalizePhone(input.phone) : null,
   notes: input.notes || null,
+  addressLine1: input.addressLine1 || null,
+  addressLine2: input.addressLine2 || null,
+  city: input.city || null,
+  region: input.region || null,
+  postalCode: input.postalCode || null,
 });
 
 export const createCustomerAction = defineShopAction({

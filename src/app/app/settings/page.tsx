@@ -29,6 +29,14 @@ export default async function SettingsPage() {
           <span className="muted">Set up or verify your authenticator</span>
         </Link>
         {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/documents">
+            <strong>Documents to sign</strong>
+            <span className="muted">
+              Agreements, waivers and change orders customers e-sign
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/invoices">
             <strong>Invoice layout</strong>
             <span className="muted">

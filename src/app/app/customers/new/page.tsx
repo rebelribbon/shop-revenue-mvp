@@ -38,6 +38,24 @@ export default async function NewCustomerPage() {
           <input id="phone" name="phone" type="tel" inputMode="tel" />
           <label htmlFor="email">Email</label>
           <input id="email" name="email" type="email" />
+          <label htmlFor="addressLine1">Street address (optional)</label>
+          <input
+            id="addressLine1"
+            name="addressLine1"
+            maxLength={200}
+            autoComplete="street-address"
+          />
+          <label htmlFor="city">City</label>
+          <input id="city" name="city" maxLength={100} />
+          <label htmlFor="region">State</label>
+          <input id="region" name="region" maxLength={50} />
+          <label htmlFor="postalCode">ZIP</label>
+          <input
+            id="postalCode"
+            name="postalCode"
+            maxLength={20}
+            inputMode="numeric"
+          />
           <label htmlFor="notes">Notes</label>
           <textarea id="notes" name="notes" rows={4} maxLength={5000} />
         </ActionForm>

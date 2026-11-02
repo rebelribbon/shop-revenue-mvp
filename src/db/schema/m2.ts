@@ -27,6 +27,12 @@ export const customer = app.table(
     phoneE164: text("phone_e164"),
     phoneDigits: text("phone_digits"),
     notes: text("notes"),
+    // Mailing / billing address (migration 0031).
+    addressLine1: text("address_line1"),
+    addressLine2: text("address_line2"),
+    city: text("city"),
+    region: text("region"),
+    postalCode: text("postal_code"),
     doNotContact: boolean("do_not_contact").notNull().default(false),
     // Null = allowed. Set when the customer asks to stop (e.g. replies STOP).
     textOptedOutAt: timestamp("text_opted_out_at", { withTimezone: true }),

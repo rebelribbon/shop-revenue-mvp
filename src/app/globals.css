@@ -1590,3 +1590,17 @@ a.overview-row + div.overview-row,
 div.overview-row + a.overview-row {
   margin-top: 8px;
 }
+/* Customer bio: label / value pairs. */
+.bio-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+}
+.bio-list dt {
+  color: var(--muted);
+}
+.bio-list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
