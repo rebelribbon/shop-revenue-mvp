@@ -2,6 +2,7 @@ import { repeatOption, type RepeatEvery } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
+import { headsUpNotes } from "@/domain/memory";
 import { requireShopSession } from "@/server/views/shop";
 import {
   listVisitsRange,
@@ -42,13 +43,17 @@ export default async function VisitsPage({
     const anchor = calendarDate.safeParse(p.week).success ? p.week! : today;
     const weekday = new Date(anchor + "T12:00:00Z").getUTCDay();
     const start = addLocalDays(anchor, -((weekday + 6) % 7));
+    const visits = await listVisitsRange(tx, start, addLocalDays(start, 7));
     return {
       profile,
       today,
       start,
       anchor,
       options: creating ? await listAppointmentChoices(tx) : null,
-      visits: await listVisitsRange(tx, start, addLocalDays(start, 7)),
+      visits,
+      headsUp: await headsUpNotes(tx, [
+        ...new Set(visits.rows.map((r) => r.customerId)),
+      ]),
     };
   });
   const dateLabel = (day: string) =>
@@ -148,6 +153,15 @@ export default async function VisitsPage({
                         <Link href={`/app/customers/${a.customerId}`}>
                           {a.customerName}
                         </Link>
+                        {data.headsUp
+                          .filter((n) => n.customerId === a.customerId)
+                          .slice(0, 1)
+                          .map((n, i) => (
+                            <p key={i} data-heads-up>
+                              <span className="pill pill-warn">Heads-up</span>{" "}
+                              {n.body}
+                            </p>
+                          ))}
                         <p>
                           {a.servicePlanId && (
                             <>

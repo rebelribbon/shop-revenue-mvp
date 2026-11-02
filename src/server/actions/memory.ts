@@ -1,6 +1,11 @@
 "use server";
 import { z } from "zod";
-import { addNote, changeNote, recordMileage } from "@/domain/memory";
+import {
+  addNote,
+  changeNote,
+  recordMileage,
+  setNoteHeadsUp,
+} from "@/domain/memory";
 import { defineShopAction } from "./define";
 const base = { customerId: z.uuid() };
 export const addNoteAction = defineShopAction({
@@ -8,9 +13,28 @@ export const addNoteAction = defineShopAction({
   input: z.object({
     ...base,
     vehicleId: z.uuid().optional(),
+    jobId: z.uuid().optional(),
+    kind: z.enum(["profile", "log"]).optional(),
+    headsUp: z.enum(["on", "true"]).optional(),
     body: z.string().min(1).max(5000),
   }),
-  run: ({ tx }, i) => addNote(tx, i.customerId, i.vehicleId ?? null, i.body),
+  run: ({ tx }, i) =>
+    addNote(tx, i.customerId, i.vehicleId ?? null, i.body, {
+      kind: i.kind,
+      headsUp: i.headsUp !== undefined,
+      jobId: i.jobId ?? null,
+    }),
+  persist: () => ({ message: "Note saved." }),
+});
+export const setNoteHeadsUpAction = defineShopAction({
+  name: "setNoteHeadsUp",
+  input: z.object({
+    ...base,
+    noteId: z.uuid(),
+    headsUp: z.enum(["true", "false"]),
+  }),
+  run: ({ tx }, i) =>
+    setNoteHeadsUp(tx, i.customerId, i.noteId, i.headsUp === "true"),
 });
 export const editNoteAction = defineShopAction({
   name: "editNote",
