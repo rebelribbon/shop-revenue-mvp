@@ -1,7 +1,13 @@
 import { boolean, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { app, tenantColumns } from "./common";
 
-export const MEDIA_TAGS = ["before", "after", "issue", "quote", "other"] as const;
+export const MEDIA_TAGS = [
+  "before",
+  "after",
+  "issue",
+  "quote",
+  "other",
+] as const;
 export type MediaTag = (typeof MEDIA_TAGS)[number];
 
 // A photo or video from the field (migration 0030).
