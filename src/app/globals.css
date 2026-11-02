@@ -1604,3 +1604,17 @@ div.overview-row + a.overview-row {
   margin: 0;
   overflow-wrap: anywhere;
 }
+/* "+ Job · + Note · + Attachment" bar at the top of a profile. */
+.action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.action-bar a[aria-current] {
+  border-color: var(--accent);
+  background: var(--hover);
+}
+.add-panel {
+  border-color: var(--accent);
+}
