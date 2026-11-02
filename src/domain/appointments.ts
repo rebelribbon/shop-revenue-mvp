@@ -6,6 +6,7 @@ import {
   business,
   customer,
   recoveryItem,
+  servicePlan,
   vehicle,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
@@ -23,6 +24,7 @@ import {
 } from "@/lib/timezone";
 import type { RequestMeta } from "./records";
 import { audit, recordActivity } from "./records";
+import { onPlanVisitStatus } from "./service-plans";
 
 async function shopTimezone(tx: TenantTx) {
   const [b] = await tx
@@ -227,7 +229,8 @@ export async function setAppointmentStatus(
     summary: `Visit marked ${visitStatusLabel(status).toLowerCase()}`,
     data: { appointmentId: row.id },
   });
-  return row;
+  const billed = await onPlanVisitStatus(tx, meta, row, before.status);
+  return { ...row, billed };
 }
 
 export const visitStatusLabel = (status: string) =>
@@ -327,6 +330,11 @@ export async function listVisitsRange(
       reason: appointment.reason,
       notes: appointment.notes,
       status: appointment.status,
+      servicePlanId: appointment.servicePlanId,
+      planJobId: servicePlan.quoteId,
+      planEvery: sql<string | null>`${servicePlan.repeat}->>'every'`,
+      planBilling: servicePlan.billing,
+      planInvoiceId: appointment.planInvoiceId,
       year: vehicle.year,
       make: vehicle.make,
       model: vehicle.model,
@@ -360,6 +368,13 @@ export async function listVisitsRange(
       and(
         eq(vehicle.businessId, appointment.businessId),
         eq(vehicle.id, appointment.vehicleId),
+      ),
+    )
+    .leftJoin(
+      servicePlan,
+      and(
+        eq(servicePlan.businessId, appointment.businessId),
+        eq(servicePlan.id, appointment.servicePlanId),
       ),
     )
     .where(

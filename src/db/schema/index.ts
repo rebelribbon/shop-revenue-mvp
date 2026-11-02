@@ -11,3 +11,4 @@ export * from "./m7";
 export * from "./m8";
 export * from "./owner-tools";
 export * from "./billing";
+export * from "./service-plans";

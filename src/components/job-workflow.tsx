@@ -9,6 +9,146 @@ import { DocumentShare } from "./document-share";
 import { RefreshJobStatus } from "./refresh-job-status";
 import { formatMoney } from "./estimate-document";
 import { estimateTotals } from "@/lib/estimate-tax";
+import {
+  billPlanNowAction,
+  setServicePlanStatusAction,
+  startServicePlanAction,
+} from "@/server/actions/service-plans";
+import type { PlanSummary } from "@/domain/service-plans";
+import {
+  cadenceText,
+  formatPlanDate,
+  untilText,
+  visitsPerMonth,
+} from "@/lib/service-plans";
+
+function PlanPanel({
+  plan,
+  timezone,
+  readOnly,
+}: {
+  plan: PlanSummary;
+  timezone: string;
+  readOnly: boolean;
+}) {
+  const r = plan.repeat;
+  const status =
+    plan.status === "active"
+      ? "Running"
+      : plan.status === "paused"
+        ? "Paused"
+        : "Ended";
+  return (
+    <div className="plan-summary" data-plan-status={plan.status}>
+      <p>
+        <span className="plan-badge">↻ {status}</span>
+      </p>
+      <p>
+        <strong>{cadenceText(r)}</strong>, {untilText(r)}.{" "}
+        {r.billing === "per_visit"
+          ? "An invoice is made when you mark each visit done."
+          : "Finished visits are billed together on the 1st of each month."}
+      </p>
+      <ul>
+        <li>
+          {plan.done} done · {plan.skipped} skipped ·{" "}
+          {formatMoney(plan.billedCents)} billed so far
+        </li>
+        {plan.status === "active" && (
+          <li>
+            Worth about{" "}
+            {formatMoney(
+              Math.round(plan.perVisitCents * visitsPerMonth(r.every)),
+            )}{" "}
+            a month
+          </li>
+        )}
+        {plan.unbilled > 0 && (
+          <li>
+            {plan.unbilled} finished visit{plan.unbilled === 1 ? "" : "s"} not
+            billed yet
+          </li>
+        )}
+        {plan.endReason && <li>Ended: {plan.endReason}</li>}
+      </ul>
+      {plan.next.length > 0 && (
+        <>
+          <h4>Coming up</h4>
+          <ul>
+            {plan.next.map((v) => (
+              <li key={v.id}>
+                {v.startsAt.toLocaleString("en-US", {
+                  timeZone: timezone,
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </li>
+            ))}
+          </ul>
+          <Link href="/app/schedule">Open Visits to mark them done</Link>
+        </>
+      )}
+      {plan.status === "paused" && plan.pausedAt && (
+        <p>
+          Paused since{" "}
+          {formatPlanDate(plan.pausedAt.toISOString().slice(0, 10))}.
+        </p>
+      )}
+      {!readOnly && (
+        <>
+          {plan.unbilled > 0 && (
+            <ActionForm
+              action={billPlanNowAction}
+              hidden={{ planId: plan.id }}
+              submitLabel="Bill finished visits now"
+              variant={plan.status === "active" ? "secondary" : "primary"}
+            />
+          )}
+          {plan.status === "active" && (
+            <ActionForm
+              action={setServicePlanStatusAction}
+              hidden={{ planId: plan.id, action: "pause" }}
+              submitLabel="Pause plan (e.g. for winter)"
+              variant="secondary"
+            />
+          )}
+          {plan.status === "paused" && (
+            <ActionForm
+              action={setServicePlanStatusAction}
+              hidden={{ planId: plan.id, action: "resume" }}
+              submitLabel="Resume plan"
+              variant="primary"
+            />
+          )}
+          {plan.status !== "ended" && (
+            <details>
+              <summary>End this plan</summary>
+              <ActionForm
+                action={setServicePlanStatusAction}
+                hidden={{ planId: plan.id, action: "end" }}
+                submitLabel="End plan"
+                variant="danger"
+                confirm="End this plan? Upcoming visits come off the calendar. Finished visits and invoices are kept."
+              >
+                <label htmlFor={`end-reason-${plan.id}`}>
+                  Reason (optional)
+                </label>
+                <input
+                  id={`end-reason-${plan.id}`}
+                  name="reason"
+                  maxLength={300}
+                />
+              </ActionForm>
+            </details>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 export function WorkflowBadges({ flow }: { flow: Workflow }) {
   return (
     <p className="muted" aria-label="Job balance">
@@ -44,21 +184,29 @@ export function JobWorkflow({
       ? `Estimate link expired. Send ${e.snapshot.customerName} a new one.`
       : flow.stage === "awaiting"
         ? `Waiting on ${e?.snapshot.customerName} to approve: ${formatMoney(e?.snapshot.totalCents ?? 0)}`
-        : flow.stage === "ready"
-          ? `${e?.snapshot.customerName} approved ${formatMoney(approvedTotal)}`
-          : flow.stage === "working"
-            ? `Work in progress: ${formatMoney(approvedTotal)}`
-            : flow.stage === "bill"
-              ? `Work finished: ${formatMoney(approvedTotal)} to bill`
-              : flow.stage === "paid"
-                ? `Paid in full: ${formatMoney(flow.paidCents)}`
-                : flow.stage === "payment"
-                  ? `${flow.paidCents > 0 ? "Partially paid" : "Waiting on payment"}: ${formatMoney(flow.balanceCents)} left`
-                  : flow.stage === "declined"
-                    ? "The customer declined this work."
-                    : flow.stage === "attention"
-                      ? "This payment needs a look."
-                      : "Estimate not sent yet";
+        : flow.stage === "ready" && flow.repeats
+          ? `${e?.snapshot.customerName} approved ${formatMoney(approvedTotal)} a visit`
+          : flow.stage === "plan" && flow.plan
+            ? `Service plan running: ${formatMoney(flow.plan.perVisitCents)} a visit`
+            : flow.stage === "plan_paused"
+              ? "Service plan paused"
+              : flow.stage === "plan_ended"
+                ? "Service plan ended"
+                : flow.stage === "ready"
+                  ? `${e?.snapshot.customerName} approved ${formatMoney(approvedTotal)}`
+                  : flow.stage === "working"
+                    ? `Work in progress: ${formatMoney(approvedTotal)}`
+                    : flow.stage === "bill"
+                      ? `Work finished: ${formatMoney(approvedTotal)} to bill`
+                      : flow.stage === "paid"
+                        ? `Paid in full: ${formatMoney(flow.paidCents)}`
+                        : flow.stage === "payment"
+                          ? `${flow.paidCents > 0 ? "Partially paid" : "Waiting on payment"}: ${formatMoney(flow.balanceCents)} left`
+                          : flow.stage === "declined"
+                            ? "The customer declined this work."
+                            : flow.stage === "attention"
+                              ? "This payment needs a look."
+                              : "Estimate not sent yet";
   const progress = (status: "in_progress" | "completed", label: string) =>
     !readOnly && e ? (
       <ActionForm
@@ -135,6 +283,18 @@ export function JobWorkflow({
           >
             Change estimate
           </Link>
+        ) : flow.plan ? (
+          <PlanPanel plan={flow.plan} timezone={timezone} readOnly={readOnly} />
+        ) : flow.stage === "ready" && flow.repeats ? (
+          !readOnly && (
+            <ActionForm
+              action={startServicePlanAction}
+              variant="primary"
+              hidden={{ jobId }}
+              submitLabel="Start service plan"
+              pendingLabel="Adding visits…"
+            />
+          )
         ) : flow.stage === "ready" ? (
           progress("in_progress", "Start job")
         ) : flow.stage === "working" ? (

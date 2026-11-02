@@ -1,3 +1,4 @@
+import { repeatOption, type RepeatEvery } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
@@ -148,14 +149,35 @@ export default async function VisitsPage({
                           {a.customerName}
                         </Link>
                         <p>
-                          {a.reason || "Visit"} · {visitStatusLabel(a.status)}
+                          {a.servicePlanId && (
+                            <>
+                              <span className="plan-badge">
+                                ↻{" "}
+                                {a.planEvery
+                                  ? repeatOption(a.planEvery as RepeatEvery)
+                                      .label
+                                  : "Repeats"}
+                              </span>{" "}
+                            </>
+                          )}
+                          {a.reason || "Visit"} ·{" "}
+                          {a.servicePlanId && a.status === "cancelled"
+                            ? "Skipped"
+                            : visitStatusLabel(a.status)}
+                          {a.planInvoiceId ? " · Billed" : ""}
                         </p>
                         {a.serviceAssetName && (
                           <p>
                             {a.serviceAssetName} · {a.serviceAddress}
                           </p>
                         )}
-                        {(a.vehicleId || a.serviceAssetId) &&
+                        {a.planJobId && (
+                          <Link href={`/app/jobs?job=${a.planJobId}`}>
+                            Open service plan
+                          </Link>
+                        )}
+                        {!a.servicePlanId &&
+                          (a.vehicleId || a.serviceAssetId) &&
                           a.status !== "cancelled" && (
                             <Link
                               href={`/app/jobs?${new URLSearchParams({ sourceAppointmentId: a.id, customerId: a.customerId, ...(a.vehicleId ? { vehicleId: a.vehicleId } : {}), ...(a.serviceAssetId ? { serviceAssetId: a.serviceAssetId } : {}) })}`}
@@ -174,9 +196,24 @@ export default async function VisitsPage({
                                 appointmentId: a.id,
                                 status: "completed",
                               }}
-                              submitLabel="Mark visit complete"
+                              submitLabel={
+                                a.servicePlanId && a.planBilling === "per_visit"
+                                  ? "Mark done & create invoice"
+                                  : "Mark visit done"
+                              }
                               variant="secondary"
                             />
+                            {a.servicePlanId && (
+                              <ActionForm
+                                action={setAppointmentStatusAction}
+                                hidden={{
+                                  appointmentId: a.id,
+                                  status: "cancelled",
+                                }}
+                                submitLabel="Skip this visit"
+                                variant="secondary"
+                              />
+                            )}
                             <ActionForm
                               action={setAppointmentStatusAction}
                               hidden={{
@@ -208,16 +245,18 @@ export default async function VisitsPage({
                                   .replace(" ", "T")}
                               />
                             </ActionForm>
-                            <ActionForm
-                              action={setAppointmentStatusAction}
-                              hidden={{
-                                appointmentId: a.id,
-                                status: "cancelled",
-                              }}
-                              submitLabel="Cancel visit"
-                              variant="danger"
-                              confirm="Cancel this visit?"
-                            />
+                            {!a.servicePlanId && (
+                              <ActionForm
+                                action={setAppointmentStatusAction}
+                                hidden={{
+                                  appointmentId: a.id,
+                                  status: "cancelled",
+                                }}
+                                submitLabel="Cancel visit"
+                                variant="danger"
+                                confirm="Cancel this visit?"
+                              />
+                            )}
                           </details>
                         )}
                       {a.status !== "scheduled" &&

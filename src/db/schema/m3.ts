@@ -1,3 +1,4 @@
+import type { Repeat } from "@/lib/service-plans";
 import {
   foreignKey,
   integer,
@@ -38,6 +39,9 @@ export type EstimateSnapshot = {
   totalCents: number;
   terms: string;
   authorizationPolicy?: AuthorizationPolicy;
+  // Recurring work the customer agreed to (one signature covers every visit).
+  repeat?: Repeat;
+  repeatSummary?: string;
 };
 export const estimateVersion = app.table(
   "estimate_version",
