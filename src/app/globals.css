@@ -1574,3 +1574,7 @@ label.switch input[type="checkbox"]:checked::after {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+.media-tile figcaption .btn,
+.media-tile figcaption details {
+  width: 100%;
+}

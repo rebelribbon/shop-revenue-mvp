@@ -189,7 +189,7 @@ export function MediaUploader({
         type="file"
         accept="image/*,video/*"
         multiple
-        hidden
+        style={{ display: "none" }}
         onChange={(e) => e.target.files?.length && upload(e.target.files)}
       />
       <button
