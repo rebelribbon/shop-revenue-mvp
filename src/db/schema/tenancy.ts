@@ -5,6 +5,7 @@ import {
   foreignKey,
   index,
   integer,
+  jsonb,
   text,
   timestamp,
   unique,
@@ -48,6 +49,8 @@ export const business = app.table(
       .default(false),
     // FK to file (business_id, id) is added in hand-written SQL (circular reference).
     logoFileId: uuid("logo_file_id"),
+    // Default invoice layout (src/lib/invoice-display.ts).
+    invoiceDisplay: jsonb("invoice_display"),
     status: text("status").notNull().default("active"),
     ...timestamps(),
   },

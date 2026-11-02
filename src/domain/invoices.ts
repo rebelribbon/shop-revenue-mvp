@@ -352,6 +352,8 @@ export type PublicInvoice = {
   totalCents: number;
   paidCents: number;
   onlinePaymentEnabled?: boolean;
+  displayTemplate?: unknown;
+  display?: unknown;
 };
 export async function readPublicInvoice(
   token: string,

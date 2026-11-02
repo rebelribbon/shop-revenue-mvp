@@ -1,9 +1,9 @@
 import { HydratedMain } from "@/components/hydrated-main";
-import { formatDateOnly } from "@/lib/timezone";
 import { StripeButton } from "@/components/stripe-controls";
 import { notFound } from "next/navigation";
 import { readPublicInvoice } from "@/domain/invoices";
-import { formatMoney } from "@/components/estimate-document";
+import { InvoiceDocument } from "@/components/invoice-document";
+import { effectiveDisplay } from "@/lib/invoice-display";
 import { PrintInvoice } from "@/components/invoice-controls";
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -18,83 +18,35 @@ export default async function InvoicePage({
   const { token } = await params;
   const i = await readPublicInvoice(token);
   if (!i) notFound();
-  const s = i.snapshot;
+  const display = effectiveDisplay(i.displayTemplate, i.display);
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Invoice #{i.number}</h1>
-      <section className="card">
-        <h2>{s.shopName}</h2>
-        <p>{s.shopAddress}</p>
-        <p>{s.shopPhone}</p>
-        <p>
-          {s.customerName} · {s.serviceLabel || s.vehicleLabel}
-        </p>
-        <h3>{s.title}</h3>
-        <p>
-          Issued:{" "}
-          {new Date(i.issuedAt).toLocaleDateString("en-US", {
-            timeZone: "America/Chicago",
-          })}
-          {i.dueOn
-            ? ` · Due: ${formatDateOnly(i.dueOn)}`
-            : i.terms.startsWith("Due on receipt.")
-              ? " · Due on receipt"
-              : " · Due date not specified"}
-        </p>
-        <ul>
-          {s.lines.map((l) => (
-            <li key={l.id}>
-              {l.description} — {l.quantity} × {formatMoney(l.unitPriceCents)} ={" "}
-              {formatMoney(l.totalCents)}
-              {l.taxable === false ? " · Not taxable" : ""}
-            </li>
-          ))}
-        </ul>
-        <p>
-          Subtotal: {formatMoney(s.subtotalCents)} · Sales tax ({s.taxBps / 100}
-          %): {formatMoney(s.taxCents)}
-        </p>
-        <p>
-          Total: <strong>{formatMoney(i.totalCents)}</strong> · Paid:{" "}
-          {formatMoney(i.paidCents)}
-        </p>
-        <p>
-          Balance due:{" "}
-          <strong>
-            {formatMoney(i.voided ? 0 : i.totalCents - i.paidCents)}
-          </strong>
-        </p>
-        <h2>
-          {i.voided
-            ? "Invoice void"
-            : i.paidCents === i.totalCents
-              ? "Paid in full"
-              : i.paidCents > 0
-                ? "Partially paid"
-                : "Payment due"}
-        </h2>
-        {i.terms && <p style={{ whiteSpace: "pre-wrap" }}>{i.terms}</p>}
-        {!i.voided && i.paidCents < i.totalCents && (
-          <>
-            {i.onlinePaymentEnabled &&
-            Boolean(
-              process.env.STRIPE_SECRET_KEY &&
-              process.env.STRIPE_WEBHOOK_SECRET &&
-              process.env.PAYMENTS_BASE_URL,
-            ) ? (
-              <>
-                <StripeButton kind="pay" token={token} />
-                <p className="muted">
-                  Payment is confirmed after Stripe verifies it. If you just
-                  paid, refresh this invoice shortly.
-                </p>
-              </>
-            ) : (
-              <p>Contact the shop to arrange payment.</p>
-            )}
-          </>
-        )}
-      </section>
+      <InvoiceDocument
+        invoice={i}
+        display={display}
+        payment={
+          !i.voided &&
+          i.paidCents < i.totalCents &&
+          (display.payOnline &&
+          i.onlinePaymentEnabled &&
+          Boolean(
+            process.env.STRIPE_SECRET_KEY &&
+            process.env.STRIPE_WEBHOOK_SECRET &&
+            process.env.PAYMENTS_BASE_URL,
+          ) ? (
+            <>
+              <StripeButton kind="pay" token={token} />
+              <p className="muted">
+                Payment is confirmed after Stripe verifies it. If you just paid,
+                refresh this invoice shortly.
+              </p>
+            </>
+          ) : (
+            <p>Contact the shop to arrange payment.</p>
+          ))
+        }
+      />
       <PrintInvoice />
     </HydratedMain>
   );
