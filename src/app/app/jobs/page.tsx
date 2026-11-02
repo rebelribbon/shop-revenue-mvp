@@ -67,6 +67,7 @@ export default async function JobsPage({
     sourceAppointmentId?: string;
     fromMedia?: string;
     add?: string;
+    tab?: string;
   }>;
 }) {
   const {
@@ -86,6 +87,7 @@ export default async function JobsPage({
     sourceAppointmentId,
     fromMedia,
     add,
+    tab: requestedTab,
   } = await searchParams;
   const s = await requireShopSession("/app/jobs");
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
@@ -335,75 +337,86 @@ export default async function JobsPage({
       ) : selected ? (
         (() => {
           const input = jobInput.parse(selected.data),
-            t = calculateJob(input.parts, input.labor);
+            t = calculateJob(input.parts, input.labor),
+            customerName =
+              data.options.customers.find((c) => c.id === input.customerId)
+                ?.name ?? "Customer",
+            tab = ["photos", "files", "notes", "timeline"].includes(
+              requestedTab ?? "",
+            )
+              ? requestedTab!
+              : "work";
           return (
             <>
               <p>
                 <Link href={`/app/customers/${input.customerId}`}>
-                  ←{" "}
-                  {data.options.customers.find((c) => c.id === input.customerId)
-                    ?.name ?? "Customer"}
+                  ← {customerName}
                 </Link>
               </p>
-              {data.headsUp.map((n, i) => (
-                <p className="notice banner" role="note" key={i} data-heads-up>
-                  <span className="pill pill-warn">Heads-up</span> {n.body}
-                </p>
-              ))}
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
                 </p>
               )}
-              <article className="card">
-                <h2>
-                  {input.repeat && "↻ "}
-                  {selected.title}
-                </h2>
-                <p>
-                  <Link href={`/app/customers/${input.customerId}`}>
-                    {
-                      data.options.customers.find(
-                        (c) => c.id === input.customerId,
-                      )?.name
-                    }
-                  </Link>
-                  {flow?.latest?.estimate.snapshot.serviceLabel ||
-                  flow?.latest?.estimate.snapshot.vehicleLabel
-                    ? ` · ${flow.latest.estimate.snapshot.serviceLabel || flow.latest.estimate.snapshot.vehicleLabel}`
-                    : ""}
-                </p>
-                {input.repeat && (
-                  <p className="muted">
-                    {cadenceText(input.repeat)} · {untilText(input.repeat)}
+              <article className="card job-profile">
+                <header className="profile-head">
+                  <div>
+                    <h2 className="profile-title">
+                      {input.repeat && "↻ "}
+                      {selected.title}
+                    </h2>
+                    <p className="muted">
+                      {[
+                        flow?.latest?.estimate.snapshot.serviceLabel ||
+                          flow?.latest?.estimate.snapshot.vehicleLabel,
+                        input.repeat &&
+                          `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || customerName}
+                    </p>
+                  </div>
+                  {flow && (
+                    <span className={statusTone(statusOf(selected.id))}>
+                      {statusLabels[statusOf(selected.id)]}
+                    </span>
+                  )}
+                </header>
+                {data.headsUp.map((n, i) => (
+                  <p
+                    className="heads-up-line"
+                    role="note"
+                    key={i}
+                    data-heads-up
+                  >
+                    ⚠ {n.body}
                   </p>
-                )}
+                ))}
                 {flow && (
-                  <div className="overview-metrics" aria-label="Job money">
-                    <div className="card overview-metric">
+                  <p className="stat-strip" aria-label="Job money">
+                    <span>
                       <strong>
                         {money(
                           flow.latest?.estimate.snapshot.totalCents ??
                             t.subtotalCents,
                         )}
-                      </strong>
-                      <span>{input.repeat ? "Per visit" : "Quoted"}</span>
-                    </div>
-                    <div className="card overview-metric">
+                      </strong>{" "}
+                      {input.repeat ? "per visit" : "quoted"}
+                    </span>
+                    <span>
                       <strong>
                         {money(
                           flow.plan ? flow.plan.billedCents : flow.paidCents,
                         )}
-                      </strong>
-                      <span>{flow.plan ? "Billed so far" : "Paid"}</span>
-                    </div>
+                      </strong>{" "}
+                      {flow.plan ? "billed so far" : "paid"}
+                    </span>
                     {flow.balanceCents > 0 && (
-                      <div className="card overview-metric">
-                        <strong>{money(flow.balanceCents)}</strong>
-                        <span>Still owed</span>
-                      </div>
+                      <span>
+                        <strong>{money(flow.balanceCents)}</strong> owed
+                      </span>
                     )}
-                  </div>
+                  </p>
                 )}
                 {s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
@@ -462,7 +475,7 @@ export default async function JobsPage({
                       serviceAssetId={input.serviceAssetId ?? null}
                       defaultTag={flow?.currentInvoice ? "after" : "before"}
                     />
-                    <Link href={`/app/jobs?job=${selected.id}#job-photos`}>
+                    <Link href={`/app/jobs?job=${selected.id}&tab=photos`}>
                       Done
                     </Link>
                   </section>
@@ -476,7 +489,7 @@ export default async function JobsPage({
                       categories={JOB_FILE_CATEGORIES}
                       buttonLabel="Choose file"
                     />
-                    <Link href={`/app/jobs?job=${selected.id}#file-cabinet`}>
+                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
                       Done
                     </Link>
                   </section>
@@ -519,158 +532,228 @@ export default async function JobsPage({
                       The signing link appears in the file cabinet below, ready
                       to text or email.
                     </p>
-                    <Link href={`/app/jobs?job=${selected.id}#file-cabinet`}>
+                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
                       Done
                     </Link>
                   </section>
                 )}
-                {flow && (
-                  <JobWorkflow
-                    flow={flow}
-                    jobId={selected.id}
-                    timezone={data.profile?.timezone || "America/Chicago"}
-                    readOnly={s.actor.type === "support"}
-                  />
-                )}
-                <section aria-label="Photos and videos" id="job-photos">
-                  <h3>Photos &amp; videos</h3>
-                  <p className="muted">
-                    Photos switched to “Show the customer” appear on the next
-                    estimate you send, and on the invoice.
-                  </p>
-                  <MediaGallery
-                    quoteHref={(m) =>
-                      `/app/jobs?${new URLSearchParams({
-                        customerId: input.customerId,
-                        ...(input.vehicleId
-                          ? { vehicleId: input.vehicleId }
-                          : {}),
-                        ...(input.serviceAssetId
-                          ? { serviceAssetId: input.serviceAssetId }
-                          : {}),
-                        fromMedia: m.id,
-                      })}`
-                    }
-                    items={data.jobMedia}
-                    readOnly={s.actor.type === "support"}
-                    timeZone={data.profile?.timezone || "America/Chicago"}
-                  />
-                </section>
-                <FileCabinet
-                  items={data.cabinet}
-                  customerPhone={
-                    data.contact && !data.contact.textOff
-                      ? data.contact.phone
-                      : null
-                  }
-                  customerEmail={
-                    data.contact && !data.contact.emailOff
-                      ? data.contact.email
-                      : null
-                  }
-                  readOnly={s.actor.type === "support"}
-                  timeZone={data.profile?.timezone || "America/Chicago"}
-                />
-                <section aria-label="Job notes">
-                  <h3>Notes</h3>
-                  {data.jobNotes.map((n) => (
-                    <p
-                      key={n.id}
-                      style={{
-                        whiteSpace: "pre-wrap",
-                        overflowWrap: "anywhere",
-                      }}
+                <nav className="section-tabs" aria-label="Job sections">
+                  {(
+                    [
+                      ["work", "Work"],
+                      [
+                        "photos",
+                        `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`,
+                      ],
+                      [
+                        "files",
+                        `Files${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
+                      ],
+                      [
+                        "notes",
+                        `Notes${data.jobNotes.length ? ` (${data.jobNotes.length})` : ""}`,
+                      ],
+                      ["timeline", "Timeline"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <Link
+                      key={key}
+                      href={`/app/jobs?job=${selected.id}${key === "work" ? "" : `&tab=${key}`}`}
+                      aria-current={tab === key ? "page" : undefined}
                     >
-                      📝 {n.body}{" "}
-                      <span className="muted">
-                        ·{" "}
-                        {n.createdAt.toLocaleDateString("en-US", {
-                          timeZone: data.profile?.timezone || "America/Chicago",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </p>
+                      {label}
+                    </Link>
                   ))}
-                  {!data.jobNotes.length && (
-                    <p className="muted">
-                      Gate codes, what you found, what the customer asked for.
-                    </p>
-                  )}
-                </section>
-                <section aria-label="Job costs">
-                  <h3>Costs &amp; profit</h3>
-                  <div className="money-actions">
-                    <Link href={`/app/jobs?edit=${selected.id}`}>
-                      Edit job / actual hours
-                    </Link>
-                    <Link href={`/app/customers/${input.customerId}`}>
-                      Customer details
-                    </Link>
-                    <Link href={`/app/estimates?jobId=${selected.id}`}>
-                      Estimate history
-                    </Link>
-                  </div>
-                  <p>
-                    Quoted: {money(t.subtotalCents)} · Estimated job profit:{" "}
-                    {t.estimatedGrossProfitCents === null
-                      ? "unknown until every cost is entered"
-                      : money(t.estimatedGrossProfitCents)}
-                  </p>
-                </section>
-                <section aria-label="Line items">
-                  <h3>{auto ? "Parts" : "Materials"} &amp; labor</h3>
-                  <ul>
-                    {input.parts.map((part, i) => (
-                      <li key={i}>
-                        {part.description} — {part.quantity} ×{" "}
-                        {money(part.unitPriceCents)} (unit cost{" "}
-                        {part.unitCostCents === null
-                          ? "not entered"
-                          : money(part.unitCostCents)}
-                        )
-                      </li>
-                    ))}
-                    {input.labor.map((line, i) => (
-                      <li key={i}>
-                        {line.description} —{" "}
-                        {line.estimatedHoursHundredths / 100} quoted hours;{" "}
-                        {line.actualHoursHundredths === null
-                          ? "actual time unknown"
-                          : `${line.actualHoursHundredths / 100} actual hours`}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-                <section className="record-details" id="job-estimate">
-                  <h3>Customer estimate</h3>
-                  {!flow?.currentInvoice &&
-                    s.actor.type !== "support" &&
-                    !data.profile?.taxRateConfirmedAt && (
-                      <p className="banner" role="note">
-                        Your sales tax rate isn’t confirmed yet (currently{" "}
-                        {(data.profile?.taxRateBps ?? 0) / 100}%).{" "}
-                        <Link href="/app/settings/business#taxPercent">
-                          Set your tax rate
-                        </Link>{" "}
-                        before sending estimates.
-                      </p>
+                </nav>
+                {tab === "work" && (
+                  <>
+                    {flow && (
+                      <JobWorkflow
+                        flow={flow}
+                        jobId={selected.id}
+                        timezone={data.profile?.timezone || "America/Chicago"}
+                        readOnly={s.actor.type === "support"}
+                      />
                     )}
-                  {!flow?.currentInvoice && s.actor.type !== "support" ? (
-                    <EstimatePublisher
-                      taxRateBps={data.profile?.taxRateBps}
-                      jobId={selected.id}
-                      version={selected.version}
-                      existingVersion={flow?.latest?.estimate.version}
-                      pendingChanges={flow?.changedSinceEstimate}
+                  </>
+                )}
+                {tab === "photos" && (
+                  <>
+                    <section aria-label="Photos and videos" id="job-photos">
+                      <h3>Photos &amp; videos</h3>
+                      <p className="muted">
+                        Photos switched to “Show the customer” appear on the
+                        next estimate you send, and on the invoice.
+                      </p>
+                      <MediaGallery
+                        quoteHref={(m) =>
+                          `/app/jobs?${new URLSearchParams({
+                            customerId: input.customerId,
+                            ...(input.vehicleId
+                              ? { vehicleId: input.vehicleId }
+                              : {}),
+                            ...(input.serviceAssetId
+                              ? { serviceAssetId: input.serviceAssetId }
+                              : {}),
+                            fromMedia: m.id,
+                          })}`
+                        }
+                        items={data.jobMedia}
+                        readOnly={s.actor.type === "support"}
+                        timeZone={data.profile?.timezone || "America/Chicago"}
+                      />
+                    </section>
+                  </>
+                )}
+                {tab === "files" && (
+                  <>
+                    <FileCabinet
+                      items={data.cabinet}
+                      customerPhone={
+                        data.contact && !data.contact.textOff
+                          ? data.contact.phone
+                          : null
+                      }
+                      customerEmail={
+                        data.contact && !data.contact.emailOff
+                          ? data.contact.email
+                          : null
+                      }
+                      readOnly={s.actor.type === "support"}
+                      timeZone={data.profile?.timezone || "America/Chicago"}
                     />
-                  ) : (
-                    <p>
-                      Issued invoice and authorization stay linked to this job.
-                      Use a separate job for additional billable work.
-                    </p>
-                  )}
-                </section>
+                  </>
+                )}
+                {tab === "notes" && (
+                  <>
+                    <section aria-label="Job notes">
+                      <h3>Notes</h3>
+                      {data.jobNotes.map((n) => (
+                        <p
+                          key={n.id}
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          📝 {n.body}{" "}
+                          <span className="muted">
+                            ·{" "}
+                            {n.createdAt.toLocaleDateString("en-US", {
+                              timeZone:
+                                data.profile?.timezone || "America/Chicago",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </span>
+                        </p>
+                      ))}
+                      {!data.jobNotes.length && (
+                        <p className="muted">
+                          Gate codes, what you found, what the customer asked
+                          for.
+                        </p>
+                      )}
+                    </section>
+                  </>
+                )}
+                {tab === "work" && (
+                  <>
+                    <section aria-label="Job costs">
+                      <h3>Costs &amp; profit</h3>
+                      <div className="money-actions">
+                        <Link href={`/app/jobs?edit=${selected.id}`}>
+                          Edit job / actual hours
+                        </Link>
+                        <Link href={`/app/customers/${input.customerId}`}>
+                          Customer details
+                        </Link>
+                        <Link href={`/app/estimates?jobId=${selected.id}`}>
+                          Estimate history
+                        </Link>
+                      </div>
+                      <p>
+                        Quoted: {money(t.subtotalCents)} · Estimated job profit:{" "}
+                        {t.estimatedGrossProfitCents === null
+                          ? "unknown until every cost is entered"
+                          : money(t.estimatedGrossProfitCents)}
+                      </p>
+                    </section>
+                    <section aria-label="Line items">
+                      <h3>{auto ? "Parts" : "Materials"} &amp; labor</h3>
+                      <ul>
+                        {input.parts.map((part, i) => (
+                          <li key={i}>
+                            {part.description} — {part.quantity} ×{" "}
+                            {money(part.unitPriceCents)} (unit cost{" "}
+                            {part.unitCostCents === null
+                              ? "not entered"
+                              : money(part.unitCostCents)}
+                            )
+                          </li>
+                        ))}
+                        {input.labor.map((line, i) => (
+                          <li key={i}>
+                            {line.description} —{" "}
+                            {line.estimatedHoursHundredths / 100} quoted hours;{" "}
+                            {line.actualHoursHundredths === null
+                              ? "actual time unknown"
+                              : `${line.actualHoursHundredths / 100} actual hours`}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                    <section className="record-details" id="job-estimate">
+                      <h3>Customer estimate</h3>
+                      {!flow?.currentInvoice &&
+                        s.actor.type !== "support" &&
+                        !data.profile?.taxRateConfirmedAt && (
+                          <p className="banner" role="note">
+                            Your sales tax rate isn’t confirmed yet (currently{" "}
+                            {(data.profile?.taxRateBps ?? 0) / 100}%).{" "}
+                            <Link href="/app/settings/business#taxPercent">
+                              Set your tax rate
+                            </Link>{" "}
+                            before sending estimates.
+                          </p>
+                        )}
+                      {!flow?.currentInvoice && s.actor.type !== "support" ? (
+                        <EstimatePublisher
+                          taxRateBps={data.profile?.taxRateBps}
+                          jobId={selected.id}
+                          version={selected.version}
+                          existingVersion={flow?.latest?.estimate.version}
+                          pendingChanges={flow?.changedSinceEstimate}
+                        />
+                      ) : (
+                        <p>
+                          Issued invoice and authorization stay linked to this
+                          job. Use a separate job for additional billable work.
+                        </p>
+                      )}
+                    </section>
+                  </>
+                )}
+                {tab === "timeline" && flow && (
+                  <ol className="workflow-timeline">
+                    {flow.timeline.map((e) => (
+                      <li key={e.id}>
+                        <strong>{e.text}</strong>{" "}
+                        <span className="muted">
+                          {e.at.toLocaleString("en-US", {
+                            timeZone:
+                              data.profile?.timezone || "America/Chicago",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </article>
             </>
           );
