@@ -78,6 +78,12 @@ export function releaseConfiguration(
         "Production payment configuration present; live verification remains required",
     },
     {
+      key: "shop-billing",
+      ready: present("STRIPE_SUBSCRIPTION_PRICE_ID"),
+      message:
+        "Shop subscription price configured; shops must start a trial to make changes",
+    },
+    {
       key: "no-setup-credentials",
       ready: !present("DEV_OWNER_TEMP_PASSWORD") && !present("DEV_OWNER_EMAIL"),
       message: "Temporary owner bootstrap credentials removed",

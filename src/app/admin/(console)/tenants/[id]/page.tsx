@@ -5,9 +5,11 @@ import { ActionForm } from "@/components/action-form";
 import { withAdmin, withAdminTenant } from "@/db/admin";
 import { business } from "@/db/schema";
 import { listTeam } from "@/domain/membership";
+import { getShopSubscription } from "@/domain/billing";
 import {
   resendOwnerInviteAction,
   resetStaffAction,
+  setShopCompedAction,
   startViewAsAction,
 } from "@/server/actions/admin";
 import { requireInternal } from "@/server/views/admin";
@@ -24,8 +26,13 @@ export default async function TenantDetail({
     tx.select().from(business).where(eq(business.id, id)),
   );
   if (!b) notFound();
-  const team = await withAdminTenant(b.id, { internalUserId: me.id }, (tx) =>
-    listTeam(tx),
+  const { team, sub } = await withAdminTenant(
+    b.id,
+    { internalUserId: me.id },
+    async (tx) => ({
+      team: await listTeam(tx),
+      sub: await getShopSubscription(tx),
+    }),
   );
   const name = b.dba || b.legalName;
   return (
@@ -78,6 +85,37 @@ export default async function TenantDetail({
             </tbody>
           </table>
         </div>
+      </div>
+      <div className="card">
+        <h2>Billing</h2>
+        <p>
+          Subscription: <span className="pill">{sub?.status ?? "none"}</span>
+          {sub?.comped && (
+            <>
+              {" "}
+              · <span className="pill">free access</span>{" "}
+              {sub.compedReason && <>({sub.compedReason})</>}
+            </>
+          )}
+        </p>
+        {sub?.comped ? (
+          <ActionForm
+            action={setShopCompedAction}
+            hidden={{ businessId: b.id, comped: "false" }}
+            submitLabel="End free access (bill normally)"
+            variant="secondary"
+          />
+        ) : (
+          <ActionForm
+            action={setShopCompedAction}
+            hidden={{ businessId: b.id, comped: "true" }}
+            submitLabel="Give free access"
+            variant="secondary"
+          >
+            <label htmlFor="comp-reason">Why (required)</label>
+            <input id="comp-reason" name="reason" required maxLength={500} />
+          </ActionForm>
+        )}
       </div>
       <div className="card">
         <h2>View as this shop (read-only, 60 minutes)</h2>

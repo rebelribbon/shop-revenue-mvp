@@ -12,6 +12,7 @@ import {
   invoiceCheckout,
   invoiceRefund,
   stripeConnection,
+  shopSubscription,
   recommendation,
   recoveryItem,
 } from "@/db/schema";
@@ -263,6 +264,19 @@ const builders: Record<string, Builder> = {
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
         })
+        .returning();
+      return row.id;
+    }),
+  "app.shop_subscription": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [existing] = await tx
+        .select({ id: shopSubscription.id })
+        .from(shopSubscription)
+        .where(eq(shopSubscription.businessId, t.businessId));
+      if (existing) return existing.id;
+      const [row] = await tx
+        .insert(shopSubscription)
+        .values({ businessId: t.businessId })
         .returning();
       return row.id;
     }),

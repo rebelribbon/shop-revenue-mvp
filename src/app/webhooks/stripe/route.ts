@@ -4,7 +4,7 @@ import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { webhookEvent } from "@/db/schema";
 import { withGlobalWorker } from "@/db/tenant";
-import { applyStripeEvent } from "@/domain/stripe-payments";
+import { routeStripeEvent } from "@/domain/stripe-events";
 import { verifyStripeSignature } from "@/lib/webhooks/signatures";
 import { notConfigured, rejected, storeWebhook } from "@/lib/webhooks/ingest";
 import { logger } from "@/lib/logger";
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     payload: event,
   });
   try {
-    const applied = await applyStripeEvent(event);
+    const applied = await routeStripeEvent(event);
     await withGlobalWorker((tx) =>
       tx
         .update(webhookEvent)

@@ -97,6 +97,8 @@ export const resendInviteAction = defineShopAction({
 
 export const removeStaffAction = defineShopAction({
   name: "removeStaff",
+  // Removing someone's access is always allowed.
+  allowWhenUnpaid: true,
   input: z.object({ membershipId: z.uuid() }),
   ownerOnly: true,
   run: async ({ tx, meta }, input) => {

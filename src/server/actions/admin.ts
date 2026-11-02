@@ -19,6 +19,7 @@ import {
 import { removeStaff, resendInvite } from "@/domain/membership";
 import { startSupportSession } from "@/domain/support";
 import { replayWebhookEvent } from "@/domain/webhooks";
+import { setShopComped } from "@/domain/billing";
 import { AppError } from "@/lib/errors";
 import { normalizeEmail, normalizePhone } from "@/lib/normalize";
 import { getInternalUser, signValue, VIEW_AS_COOKIE } from "../auth/session";
@@ -222,3 +223,29 @@ export async function signInWithGoogle() {
   if (error || !data.url) redirect("/admin/sign-in?error=google");
   redirect(data.url);
 }
+
+export const setShopCompedAction = defineAdminAction({
+  name: "setShopComped",
+  role: "admin",
+  input: z.object({
+    businessId: z.uuid(),
+    comped: z.enum(["true", "false"]),
+    reason: z.string().trim().max(500).optional(),
+  }),
+  run: async (actor, meta, i) => {
+    if (i.comped === "true" && (i.reason ?? "").length < 3)
+      throw new AppError("VALIDATION", "Say why this shop is free.", {
+        fields: { reason: "Required" },
+      });
+    const r = await setShopComped(actor, meta, {
+      businessId: i.businessId,
+      comped: i.comped === "true",
+      reason: i.reason ?? "",
+    });
+    return {
+      message: r.comped
+        ? "This shop now has free access."
+        : "This shop is billed normally again.",
+    };
+  },
+});
