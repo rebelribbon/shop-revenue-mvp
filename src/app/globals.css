@@ -720,10 +720,9 @@ details {
   .mobile-nav {
     height: calc(72px + var(--safe-bottom));
     display: grid;
-    grid-template-columns: minmax(56px, 1fr) minmax(64px, 1.2fr) minmax(
-        48px,
-        1fr
-      ) minmax(56px, 1fr) minmax(56px, 1fr);
+    grid-template-columns:
+      minmax(56px, 1fr) minmax(64px, 1.2fr) minmax(48px, 1fr)
+      minmax(56px, 1fr) minmax(56px, 1fr);
     gap: 8px;
     align-items: center;
     position: fixed;
@@ -1131,10 +1130,9 @@ body:has(.workspace-shell) [data-ux-primary] {
     display: inline;
   }
   .shop-mobile-nav {
-    grid-template-columns: minmax(56px, 1fr) minmax(104px, 1.4fr) minmax(
-        56px,
-        1fr
-      ) minmax(64px, 1fr);
+    grid-template-columns:
+      minmax(56px, 1fr) minmax(104px, 1.4fr) minmax(56px, 1fr)
+      minmax(64px, 1fr);
     padding-inline: 8px;
   }
   body:has(.workspace-shell) [data-ux-primary] {
@@ -1617,4 +1615,131 @@ div.overview-row + a.overview-row {
 }
 .add-panel {
   border-color: var(--accent);
+}
+/* Profile header: title and status on one line, details underneath. */
+.profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.profile-head > div {
+  min-width: 0;
+}
+.profile-title {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+.profile-head p {
+  margin: 8px 0 0;
+}
+.heads-up-line {
+  margin: 8px 0 0;
+  color: var(--warn-text);
+  font-weight: 600;
+}
+.pinned-note {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* One quiet line of money facts instead of a stack of cards. */
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 16px 0;
+}
+.stat-strip strong {
+  font-size: 1.25rem;
+}
+/* Clean list rows inside profile tabs. */
+.row-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row-list > li {
+  border-bottom: 1px solid var(--line);
+}
+.row-list > li > a:not(.card):not(.btn),
+.row-list > li > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 16px 0;
+  width: 100%;
+}
+.row-list .row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.row-list .row-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Contact facts under a profile name: plain wrapped items, no separators. */
+.profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--muted);
+}
+.profile-meta a:not(.card):not(.btn) {
+  padding: 0;
+  min-height: 0;
+}
+.pinned-note + .stat-strip,
+.heads-up-line + .stat-strip {
+  margin-top: 16px;
+}
+/* Rows read as one tappable line, not a column of underlined links. */
+.row-list > li > a:not(.card):not(.btn) {
+  margin: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+.row-list > li > a:not(.card):not(.btn) strong {
+  color: var(--accent);
+}
+.row-list > li > a:not(.card):not(.btn):hover strong {
+  text-decoration: underline;
+}
+.row-list > li:last-child {
+  border-bottom: 0;
+}
+.row-list.card {
+  padding: 0 16px;
+}
+/* Tabs as a single underlined strip that scrolls sideways on a phone. */
+.section-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+  scrollbar-width: none;
+}
+.section-tabs a {
+  flex: 0 0 auto;
+  min-height: 48px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+}
+.section-tabs a[aria-current="page"] {
+  background: none;
+  border-color: transparent;
+  border-bottom-color: var(--accent);
+}
+.section-tabs a:not(.card):not(.btn) {
+  padding: 0 8px;
 }

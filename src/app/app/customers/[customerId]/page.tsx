@@ -63,7 +63,6 @@ export default async function CustomerDetailPage(props: {
     );
   const profileNotes = notes.filter((n) => n.kind === "profile");
   const historyNotes = notes.filter((n) => n.kind === "log");
-  const plans = jobs.filter((j) => j.plan && j.plan.status !== "ended");
   const statusLabels = jobStatusLabels(profile?.businessType ?? "automotive");
   const filter = jobFilter((await props.searchParams).jobs);
   const shownJobs = jobs.filter((j) =>
@@ -82,9 +81,11 @@ export default async function CustomerDetailPage(props: {
   const readOnly = s.actor.type === "support";
   const c = data.customer;
   const { view: requestedView, add: adding } = await props.searchParams;
-  const view = ["assets", "history", "details"].includes(requestedView ?? "")
-    ? requestedView
-    : "overview";
+  const view = ["assets", "history", "details", "files"].includes(
+    requestedView ?? "",
+  )
+    ? requestedView!
+    : "jobs";
   const auto = isAutomotive(profile?.businessType ?? "automotive");
   const base = `/app/customers/${customerId}`;
   const permissions = (
@@ -101,21 +102,97 @@ export default async function CustomerDetailPage(props: {
   );
   const assetCount = data.vehicles.length + assets.length;
 
+  const when = (d: Date) =>
+    d.toLocaleDateString("en-US", {
+      timeZone: tz,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  const tabs = [
+    ["jobs", `Jobs${jobs.length ? ` (${jobs.length})` : ""}`],
+    ["history", "History"],
+    ["assets", auto ? "Vehicles" : "Properties"],
+    ["files", `Files${attachments.length ? ` (${attachments.length})` : ""}`],
+    ["details", "Details"],
+  ] as const;
+
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
+      <RememberCustomer id={customerId} name={c.displayName} />
       <p>
         <Link href="/app/customers">← Customers</Link>
       </p>
-      <RememberCustomer id={customerId} name={c.displayName} />
-      <h1>{c.displayName}</h1>
-      {profileNotes
-        .filter((n) => n.headsUp)
-        .map((n) => (
-          <p className="notice banner" role="note" key={n.id} data-heads-up>
-            <span className="pill pill-warn">Heads-up</span> {n.body}
+      <header className="profile-head">
+        <div>
+          <h1 className="profile-title">{c.displayName}</h1>
+          <p className="profile-meta">
+            {[
+              address ? (
+                <a
+                  key="a"
+                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {address}
+                </a>
+              ) : null,
+              c.phoneE164
+                ? `${formatPhone(c.phoneE164)}${c.textOptedOutAt ? " (no texts)" : ""}`
+                : null,
+              c.email
+                ? `${c.email}${c.emailOptedOutAt ? " (no emails)" : ""}`
+                : null,
+              `customer since ${c.createdAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", year: "numeric" })}`,
+            ]
+              .filter(Boolean)
+              .map((part, i) => (
+                <span key={i}>{part}</span>
+              ))}
           </p>
-        ))}
-      {view === "overview" && !readOnly && (
+        </div>
+        {(c.phoneE164 || c.email) && (
+          <div className="money-actions">
+            {c.phoneE164 && (
+              <a className="btn secondary" href={`tel:${c.phoneE164}`}>
+                Call
+              </a>
+            )}
+            {c.phoneE164 && !c.textOptedOutAt && (
+              <a className="btn secondary" href={`sms:${c.phoneE164}`}>
+                Text
+              </a>
+            )}
+            {c.email && !c.emailOptedOutAt && (
+              <a className="btn secondary" href={`mailto:${c.email}`}>
+                Email
+              </a>
+            )}
+          </div>
+        )}
+      </header>
+      {profileNotes.map((n) =>
+        n.headsUp ? (
+          <p className="heads-up-line" role="note" key={n.id} data-heads-up>
+            ⚠ {n.body}
+          </p>
+        ) : (
+          <p className="pinned-note" key={n.id}>
+            📌 {n.body}
+          </p>
+        ),
+      )}
+      {c.notes && <p className="pinned-note">📌 {c.notes}</p>}
+      <p className="stat-strip" aria-label="Money">
+        <span>
+          <strong>{formatMoney(money.owedCents)}</strong> owes you
+        </span>
+        <span>
+          <strong>{formatMoney(money.paidCents)}</strong> paid you, all time
+        </span>
+      </p>
+      {!readOnly && (
         <div className="action-bar" role="group" aria-label="Add">
           <Link
             className="btn primary"
@@ -130,21 +207,21 @@ export default async function CustomerDetailPage(props: {
           </Link>
           <Link
             className="btn secondary"
-            href={`${base}?add=note`}
+            href={`${base}?view=${view}&add=note`}
             aria-current={adding === "note" ? "true" : undefined}
           >
             + Note
           </Link>
           <Link
             className="btn secondary"
-            href={`${base}?add=attachment`}
+            href={`${base}?view=files&add=attachment`}
             aria-current={adding === "attachment" ? "true" : undefined}
           >
             + Attachment
           </Link>
         </div>
       )}
-      {view === "overview" && adding === "note" && !readOnly && (
+      {adding === "note" && !readOnly && (
         <section className="card add-panel" aria-label="Add a note">
           <h2>Add a note</h2>
           <ActionForm
@@ -161,7 +238,7 @@ export default async function CustomerDetailPage(props: {
               </label>
               <label>
                 <input type="radio" name="kind" value="profile" />
-                Pin to profile (who they are)
+                Pin under their info (who they are)
               </label>
             </fieldset>
             <label htmlFor="new-note">Note</label>
@@ -171,337 +248,153 @@ export default async function CustomerDetailPage(props: {
               rows={3}
               required
               maxLength={5000}
-              placeholder="Called and sent the invoice · or · Referred by Maria Lopez"
             />
             <label>
               <input type="checkbox" name="headsUp" />
-              Heads-up (pinned notes only): show it on their jobs and visits
+              Heads-up: show it as a warning on their jobs and visits (pinned
+              notes only)
             </label>
           </ActionForm>
-          <Link href={base}>Done</Link>
+          <Link href={`${base}?view=${view}`}>Done</Link>
         </section>
       )}
-      {view === "overview" && adding === "attachment" && !readOnly && (
+      {adding === "attachment" && !readOnly && (
         <section className="card add-panel" aria-label="Add an attachment">
           <h2>Add an attachment</h2>
-          <p className="muted">
-            License, insurance, tax-exempt certificate. Private to your shop.
-          </p>
           <FileUploader
             customerId={customerId}
             categories={ATTACHMENT_CATEGORIES}
             buttonLabel="Choose file"
           />
-          <Link href={base}>Done</Link>
+          <Link href={`${base}?view=files`}>Done</Link>
         </section>
       )}
       <nav className="section-tabs" aria-label="Customer sections">
-        {(
-          [
-            ["overview", "Profile"],
-            ["assets", auto ? "Vehicles" : "Properties"],
-            ["history", "History"],
-            ["details", "Edit details"],
-          ] as const
-        ).map(([key, label]) => (
+        {tabs.map(([key, label]) => (
           <Link
             key={key}
-            href={`${base}?view=${key}`}
+            href={`${base}${key === "jobs" ? "" : `?view=${key}`}`}
             aria-current={view === key ? "page" : undefined}
           >
             {label}
           </Link>
         ))}
       </nav>
-      {view === "overview" && (
-        <>
-          <section className="card customer-bio" aria-label="Customer bio">
-            <dl className="bio-list">
-              <div>
-                <dt>Address</dt>
-                <dd>
-                  {address || (
-                    <Link href={`${base}?view=details`}>Add address</Link>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>Phone</dt>
-                <dd>
-                  {c.phoneE164 ? (
-                    formatPhone(c.phoneE164)
-                  ) : (
-                    <Link href={`${base}?view=details`}>Add phone</Link>
-                  )}
-                  {c.textOptedOutAt && " (texts stopped)"}
-                </dd>
-              </div>
-              <div>
-                <dt>Email</dt>
-                <dd>
-                  {c.email ?? (
-                    <Link href={`${base}?view=details`}>Add email</Link>
-                  )}
-                  {c.email && c.emailOptedOutAt && " (emails stopped)"}
-                </dd>
-              </div>
-              <div>
-                <dt>Customer since</dt>
-                <dd>
-                  {c.createdAt.toLocaleDateString("en-US", {
-                    timeZone: tz,
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </dd>
-              </div>
-            </dl>
-            <div className="money-actions">
-              {c.phoneE164 && (
-                <a className="btn secondary" href={`tel:${c.phoneE164}`}>
-                  Call
-                </a>
-              )}
-              {c.phoneE164 && !c.textOptedOutAt && (
-                <a className="btn secondary" href={`sms:${c.phoneE164}`}>
-                  Text
-                </a>
-              )}
-              {c.email && !c.emailOptedOutAt && (
-                <a className="btn secondary" href={`mailto:${c.email}`}>
-                  Email
-                </a>
-              )}
-              {address && (
-                <a
-                  className="btn secondary"
-                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Map
-                </a>
-              )}
-              <Link className="btn secondary" href={`${base}?view=details`}>
-                Edit
-              </Link>
-            </div>
-          </section>
-          <section className="card" aria-label="Attachments" id="attachments">
-            <h2>Attachments</h2>
-            {!attachments.length && (
-              <p className="muted">No attachments yet.</p>
-            )}
-            {attachments.map((d) => (
-              <div className="overview-row" key={d.id}>
-                <a href={`/media/${d.fileId}`} target="_blank" rel="noreferrer">
-                  📎 {d.title}
-                </a>
-                <span className="muted">
-                  {categoryLabel(d.category)} ·{" "}
-                  {d.createdAt.toLocaleDateString("en-US", {
-                    timeZone: tz,
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-                {!readOnly && (
-                  <ActionForm
-                    action={removeDocumentAction}
-                    hidden={{ documentId: d.id }}
-                    submitLabel="Remove"
-                    variant="danger"
-                    confirm={`Remove ${d.title}?`}
-                  />
-                )}
-              </div>
-            ))}
-          </section>
-          <div className="overview-metrics">
-            <div className="card overview-metric">
-              <strong>{formatMoney(money.owedCents)}</strong>
-              <span>Owes you</span>
-            </div>
-            <div className="card overview-metric">
-              <strong>{formatMoney(money.paidCents)}</strong>
-              <span>Paid you, all time</span>
-            </div>
-          </div>
-          <section className="card" aria-label="Profile notes">
-            <h2>About this customer</h2>
-            {c.notes && <p style={{ whiteSpace: "pre-wrap" }}>{c.notes}</p>}
-            {profileNotes.map((n) => (
-              <div className="overview-row" key={n.id}>
-                <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>
-                  {n.headsUp && (
-                    <>
-                      <span className="pill pill-warn">Heads-up</span>{" "}
-                    </>
-                  )}
-                  {n.body}
-                </p>
-                {!readOnly && (
-                  <ActionForm
-                    action={setNoteHeadsUpAction}
-                    hidden={{
-                      customerId,
-                      noteId: n.id,
-                      headsUp: n.headsUp ? "false" : "true",
-                    }}
-                    submitLabel={
-                      n.headsUp ? "Remove heads-up" : "Make it a heads-up"
-                    }
-                    variant="secondary"
-                  />
-                )}
-              </div>
-            ))}
-            {!c.notes && !profileNotes.length && (
-              <p className="muted">
-                Things to remember about them: who referred them, family members
-                who are also customers, gate codes, how they like to be
-                contacted.
-              </p>
-            )}
-          </section>
-          <section className="card" aria-label="Jobs" id="jobs">
-            <h2>Jobs ({jobs.length})</h2>
-            {jobs.length > 0 && (
-              <div className="chip-links" role="group" aria-label="Show jobs">
-                {JOB_FILTERS.filter(
-                  (f) =>
-                    f.key === "all" ||
-                    jobs.some((j) =>
-                      (f.statuses as readonly string[]).includes(j.status),
-                    ),
-                ).map((f) => (
-                  <Link
-                    key={f.key}
-                    href={`${base}?jobs=${f.key}#jobs`}
-                    aria-current={filter.key === f.key ? "true" : undefined}
-                  >
-                    {f.label} (
-                    {
-                      jobs.filter((j) =>
-                        (f.statuses as readonly string[]).includes(j.status),
-                      ).length
-                    }
-                    )
-                  </Link>
-                ))}
-              </div>
-            )}
-            {!jobs.length && (
-              <p className="muted">No jobs yet. Tap New job to quote one.</p>
-            )}
-            {shownJobs.map((j) => (
-              <Link
-                className="overview-row customer-job"
-                key={j.id}
-                href={`/app/jobs?job=${j.id}`}
-              >
-                <span>
-                  <strong>
-                    {j.repeats && "↻ "}
-                    {j.title}
-                  </strong>
-                  <span className="muted">
-                    {" "}
-                    ·{" "}
-                    {j.createdAt.toLocaleDateString("en-US", {
-                      timeZone: tz,
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                </span>
-                <span>
-                  <span className={statusTone(j.status)}>
-                    {statusLabels[j.status]}
-                  </span>{" "}
-                  {j.balanceCents > 0 ? (
-                    <strong>owes {formatMoney(j.balanceCents)}</strong>
-                  ) : (
-                    j.amountCents !== null && (
-                      <span className="muted">
-                        {formatMoney(j.amountCents)}
-                        {j.plan ? "/visit" : ""}
-                      </span>
-                    )
-                  )}
-                </span>
-              </Link>
-            ))}
-          </section>
-          {plans.length > 0 && (
-            <section className="card" aria-label="Service plans">
-              <h2>Service plans</h2>
-              {plans.map((j) => (
+      {view === "jobs" && (
+        <section aria-label="Jobs" id="jobs">
+          {jobs.length > 1 && (
+            <div className="chip-links" role="group" aria-label="Show jobs">
+              {JOB_FILTERS.filter(
+                (f) =>
+                  f.key === "all" ||
+                  jobs.some((j) =>
+                    (f.statuses as readonly string[]).includes(j.status),
+                  ),
+              ).map((f) => (
                 <Link
-                  className="overview-row"
-                  key={j.id}
-                  href={`/app/jobs?job=${j.id}`}
+                  key={f.key}
+                  href={`${base}?jobs=${f.key}`}
+                  aria-current={filter.key === f.key ? "true" : undefined}
                 >
-                  <span>
-                    <strong>↻ {j.title}</strong>{" "}
-                    <span className="muted">{cadenceText(j.plan!.repeat)}</span>
-                  </span>
-                  <span className="muted">
-                    {j.plan!.status === "paused"
-                      ? "Paused"
-                      : j.plan!.next[0]
-                        ? `Next: ${j.plan!.next[0].startsAt.toLocaleDateString(
-                            "en-US",
-                            {
-                              timeZone: tz,
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                            },
-                          )}`
-                        : "No visits scheduled"}
-                  </span>
-                </Link>
-              ))}
-            </section>
-          )}
-          <section className="card" aria-label="Recent history">
-            <h2>Recent history</h2>
-            {history.slice(0, 8).map((e) => (
-              <HistoryRow key={e.id} item={e} timeZone={tz} />
-            ))}
-            {!history.length && <p className="muted">No history yet.</p>}
-            {history.length > 8 && (
-              <Link href={`${base}?view=history`}>See full history</Link>
-            )}
-          </section>
-          <section className="card">
-            <h2>{auto ? "Vehicles" : "Properties & equipment"}</h2>
-            {!assetCount && (
-              <p className="muted">
-                {auto
-                  ? "Add a vehicle before quoting repairs."
-                  : "Add a property or equipment item before quoting work."}
-              </p>
-            )}
-            <div className="record-shortcuts">
-              {data.vehicles.map((v) => (
-                <Link key={v.id} href={`${base}/vehicles/${v.id}`}>
-                  {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
-                    "Vehicle"}
-                </Link>
-              ))}
-              {assets.map((a) => (
-                <Link key={a.id} href={`${base}?view=assets#asset-${a.id}`}>
-                  {a.displayName}
+                  {f.label}
                 </Link>
               ))}
             </div>
-          </section>
-          {permissions}
-        </>
+          )}
+          {!jobs.length && (
+            <p className="muted">No jobs yet. Tap + Job to quote one.</p>
+          )}
+          <ul className="row-list">
+            {shownJobs.map((j) => (
+              <li key={j.id}>
+                <Link href={`/app/jobs?job=${j.id}`}>
+                  <span className="row-main">
+                    <strong>
+                      {j.repeats && "↻ "}
+                      {j.title}
+                    </strong>
+                    <span className="muted">
+                      {j.plan && j.plan.status !== "ended"
+                        ? cadenceText(j.plan.repeat)
+                        : when(j.createdAt)}
+                    </span>
+                  </span>
+                  <span className="row-side">
+                    {j.balanceCents > 0 ? (
+                      <strong>owes {formatMoney(j.balanceCents)}</strong>
+                    ) : (
+                      j.amountCents !== null && (
+                        <span>
+                          {formatMoney(j.amountCents)}
+                          {j.plan ? "/visit" : ""}
+                        </span>
+                      )
+                    )}
+                    <span className={statusTone(j.status)}>
+                      {statusLabels[j.status]}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {view === "history" && (
+        <section aria-label="History">
+          <ul className="row-list">
+            {history.map((e) => (
+              <li key={e.id}>
+                <HistoryRow item={e} timeZone={tz} />
+              </li>
+            ))}
+          </ul>
+          {!history.length && <p className="muted">No history yet.</p>}
+          {historyNotes.length > 0 && !readOnly && (
+            <details>
+              <summary>Edit or remove history notes</summary>
+              <Notes customerId={customerId} notes={historyNotes} />
+            </details>
+          )}
+        </section>
+      )}
+      {view === "files" && (
+        <section aria-label="Files">
+          {!attachments.length && (
+            <p className="muted">
+              No files yet. Tap + Attachment to add a license, insurance card or
+              tax-exempt certificate. Only your shop can see these.
+            </p>
+          )}
+          <ul className="row-list">
+            {attachments.map((d) => (
+              <li key={d.id}>
+                <div>
+                  <a
+                    className="row-main"
+                    href={`/media/${d.fileId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <strong>📎 {d.title}</strong>
+                    <span className="muted">
+                      {categoryLabel(d.category)} · {when(d.createdAt)}
+                    </span>
+                  </a>
+                  {!readOnly && (
+                    <ActionForm
+                      action={removeDocumentAction}
+                      hidden={{ documentId: d.id }}
+                      submitLabel="Remove"
+                      variant="secondary"
+                      confirm={`Remove ${d.title}?`}
+                    />
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {view === "details" && (
         <>
@@ -600,8 +493,33 @@ export default async function CustomerDetailPage(props: {
           </div>
         </>
       )}
-      {view === "history" && (
-        <Notes customerId={customerId} notes={historyNotes} />
+      {view === "details" && profileNotes.length > 0 && (
+        <section className="card" aria-label="Pinned notes">
+          <h2>Pinned notes</h2>
+          {profileNotes.map((n) => (
+            <div className="overview-row" key={n.id}>
+              <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>
+                {n.headsUp ? "⚠ " : "📌 "}
+                {n.body}
+              </p>
+              {!readOnly && (
+                <ActionForm
+                  action={setNoteHeadsUpAction}
+                  hidden={{
+                    customerId,
+                    noteId: n.id,
+                    headsUp: n.headsUp ? "false" : "true",
+                  }}
+                  submitLabel={
+                    n.headsUp ? "Remove heads-up" : "Make it a heads-up"
+                  }
+                  variant="secondary"
+                />
+              )}
+            </div>
+          ))}
+          {!readOnly && <Notes customerId={customerId} notes={profileNotes} />}
+        </section>
       )}
       {view === "assets" && (
         <>
@@ -616,75 +534,69 @@ export default async function CustomerDetailPage(props: {
           {(isAutomotive(profile?.businessType ?? "automotive") ||
             data.vehicles.length > 0) && (
             <>
-              <h2>Vehicles</h2>
-              <div className="card table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Vehicle</th>
-                      <th>VIN</th>
-                      <th>Plate</th>
-                      <th>Mileage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.vehicles.map((v) => (
-                      <tr key={v.id}>
-                        <td>
-                          <Link
-                            href={`/app/customers/${customerId}/vehicles/${v.id}`}
-                          >
-                            <strong>
-                              {[v.year, v.make, v.model, v.trim]
-                                .filter(Boolean)
-                                .join(" ") || "Vehicle"}
-                            </strong>
-                          </Link>
-                        </td>
-                        <td>{v.vin ?? "—"}</td>
-                        <td>{v.plate ?? "—"}</td>
-                        <td>
-                          {v.mileage == null ? "—" : v.mileage.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                    {!data.vehicles.length && (
-                      <tr>
-                        <td colSpan={4} className="muted">
-                          No vehicles yet.
-                        </td>
-                      </tr>
+              {data.vehicles.length > 0 && (
+                <ul className="row-list card">
+                  {data.vehicles.map((v) => (
+                    <li key={v.id}>
+                      <Link
+                        href={`/app/customers/${customerId}/vehicles/${v.id}`}
+                      >
+                        <span className="row-main">
+                          <strong>
+                            {[v.year, v.make, v.model, v.trim]
+                              .filter(Boolean)
+                              .join(" ") || "Vehicle"}
+                          </strong>
+                          <span className="muted">
+                            {[
+                              v.plate && `Plate ${v.plate}`,
+                              v.vin && `VIN ${v.vin}`,
+                            ]
+                              .filter(Boolean)
+                              .join(", ") || "No plate or VIN yet"}
+                          </span>
+                        </span>
+                        <span className="row-side muted">
+                          {v.mileage == null
+                            ? ""
+                            : `${v.mileage.toLocaleString()} mi`}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!readOnly &&
+                (data.vehicles.length === 0 || adding === "vehicle" ? (
+                  <section
+                    className="card add-panel"
+                    id="new-vehicle"
+                    aria-label="Add a vehicle"
+                  >
+                    <h2>Add a vehicle</h2>
+                    <ActionForm
+                      action={createVehicleAction}
+                      hidden={{ customerId }}
+                      submitLabel="Add vehicle"
+                    >
+                      <VehicleFields />
+                    </ActionForm>
+                    {data.vehicles.length > 0 && (
+                      <Link href={`${base}?view=assets`}>Done</Link>
                     )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="card" id="new-vehicle">
-                <h2 style={{ marginTop: 0 }}>Add vehicle</h2>
-                <ActionForm
-                  action={createVehicleAction}
-                  hidden={{ customerId }}
-                  submitLabel="Add vehicle"
-                >
-                  <VehicleFields />
-                </ActionForm>
-              </div>
+                  </section>
+                ) : (
+                  <p>
+                    <Link
+                      className="btn secondary"
+                      href={`${base}?view=assets&add=vehicle#new-vehicle`}
+                    >
+                      + Add another vehicle
+                    </Link>
+                  </p>
+                ))}
             </>
           )}
-        </>
-      )}
-      {view === "history" && (
-        <>
-          <h2>History</h2>
-          <div className="card">
-            {history.length ? (
-              history.map((e) => (
-                <HistoryRow key={e.id} item={e} timeZone={tz} />
-              ))
-            ) : (
-              <p className="muted">No history yet.</p>
-            )}
-          </div>
         </>
       )}
     </HydratedMain>
@@ -718,11 +630,5 @@ function HistoryRow({
       <span className="muted">{when}</span>
     </>
   );
-  return item.href ? (
-    <Link className="overview-row" href={item.href}>
-      {body}
-    </Link>
-  ) : (
-    <div className="overview-row">{body}</div>
-  );
+  return item.href ? <Link href={item.href}>{body}</Link> : <div>{body}</div>;
 }

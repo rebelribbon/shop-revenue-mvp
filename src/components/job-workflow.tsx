@@ -428,19 +428,6 @@ export function JobWorkflow({
           </ActionForm>
         </details>
       )}
-      <details className="record-details">
-        <summary>Job history</summary>
-        <ol className="workflow-timeline">
-          {flow.timeline.map((event) => (
-            <li key={event.id}>
-              <strong>{event.text}</strong>
-              <time dateTime={event.at.toISOString()}>
-                {event.at.toLocaleString("en-US", { timeZone: timezone })}
-              </time>
-            </li>
-          ))}
-        </ol>
-      </details>
     </section>
   );
 }
