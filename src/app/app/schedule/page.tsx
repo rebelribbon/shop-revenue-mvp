@@ -1,6 +1,8 @@
+import { repeatOption, type RepeatEvery } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
+import { headsUpNotes } from "@/domain/memory";
 import { requireShopSession } from "@/server/views/shop";
 import {
   listVisitsRange,
@@ -41,13 +43,17 @@ export default async function VisitsPage({
     const anchor = calendarDate.safeParse(p.week).success ? p.week! : today;
     const weekday = new Date(anchor + "T12:00:00Z").getUTCDay();
     const start = addLocalDays(anchor, -((weekday + 6) % 7));
+    const visits = await listVisitsRange(tx, start, addLocalDays(start, 7));
     return {
       profile,
       today,
       start,
       anchor,
       options: creating ? await listAppointmentChoices(tx) : null,
-      visits: await listVisitsRange(tx, start, addLocalDays(start, 7)),
+      visits,
+      headsUp: await headsUpNotes(tx, [
+        ...new Set(visits.rows.map((r) => r.customerId)),
+      ]),
     };
   });
   const dateLabel = (day: string) =>
@@ -147,15 +153,45 @@ export default async function VisitsPage({
                         <Link href={`/app/customers/${a.customerId}`}>
                           {a.customerName}
                         </Link>
+                        {data.headsUp
+                          .filter((n) => n.customerId === a.customerId)
+                          .slice(0, 1)
+                          .map((n, i) => (
+                            <p key={i} data-heads-up>
+                              <span className="pill pill-warn">Heads-up</span>{" "}
+                              {n.body}
+                            </p>
+                          ))}
                         <p>
-                          {a.reason || "Visit"} · {visitStatusLabel(a.status)}
+                          {a.servicePlanId && (
+                            <>
+                              <span className="plan-badge">
+                                ↻{" "}
+                                {a.planEvery
+                                  ? repeatOption(a.planEvery as RepeatEvery)
+                                      .label
+                                  : "Repeats"}
+                              </span>{" "}
+                            </>
+                          )}
+                          {a.reason || "Visit"} ·{" "}
+                          {a.servicePlanId && a.status === "cancelled"
+                            ? "Skipped"
+                            : visitStatusLabel(a.status)}
+                          {a.planInvoiceId ? " · Billed" : ""}
                         </p>
                         {a.serviceAssetName && (
                           <p>
                             {a.serviceAssetName} · {a.serviceAddress}
                           </p>
                         )}
-                        {(a.vehicleId || a.serviceAssetId) &&
+                        {a.planJobId && (
+                          <Link href={`/app/jobs?job=${a.planJobId}`}>
+                            Open service plan
+                          </Link>
+                        )}
+                        {!a.servicePlanId &&
+                          (a.vehicleId || a.serviceAssetId) &&
                           a.status !== "cancelled" && (
                             <Link
                               href={`/app/jobs?${new URLSearchParams({ sourceAppointmentId: a.id, customerId: a.customerId, ...(a.vehicleId ? { vehicleId: a.vehicleId } : {}), ...(a.serviceAssetId ? { serviceAssetId: a.serviceAssetId } : {}) })}`}
@@ -166,74 +202,90 @@ export default async function VisitsPage({
                       </div>
                       {a.status === "scheduled" &&
                         s.actor.type !== "support" && (
-                          <details>
-                            <summary>Update visit</summary>
+                          <div className="visit-actions">
                             <ActionForm
                               action={setAppointmentStatusAction}
                               hidden={{
                                 appointmentId: a.id,
                                 status: "completed",
                               }}
-                              submitLabel="Mark visit complete"
-                              variant="secondary"
+                              submitLabel={
+                                a.servicePlanId && a.planBilling === "per_visit"
+                                  ? "Mark done & create invoice"
+                                  : "Mark visit done"
+                              }
+                              variant="primary"
                             />
-                            <ActionForm
-                              action={setAppointmentStatusAction}
-                              hidden={{
-                                appointmentId: a.id,
-                                status: "no_show",
-                              }}
-                              submitLabel="Customer didn’t show"
-                              variant="secondary"
-                            />
-                            <ActionForm
-                              action={rescheduleAppointmentAction}
-                              hidden={{ appointmentId: a.id }}
-                              submitLabel="Move visit"
-                              variant="secondary"
-                            >
-                              <label htmlFor={`move-${a.id}`}>
-                                New date and time
-                              </label>
-                              <input
-                                id={`move-${a.id}`}
-                                name="startsAt"
-                                type="datetime-local"
-                                required
-                                defaultValue={a.startsAt
-                                  .toLocaleString("sv-SE", {
-                                    timeZone: data.visits.timezone,
-                                  })
-                                  .slice(0, 16)
-                                  .replace(" ", "T")}
+                            {a.servicePlanId && (
+                              <ActionForm
+                                action={setAppointmentStatusAction}
+                                hidden={{
+                                  appointmentId: a.id,
+                                  status: "cancelled",
+                                }}
+                                submitLabel="Skip this visit"
+                                variant="secondary"
                               />
-                            </ActionForm>
-                            <ActionForm
-                              action={setAppointmentStatusAction}
-                              hidden={{
-                                appointmentId: a.id,
-                                status: "cancelled",
-                              }}
-                              submitLabel="Cancel visit"
-                              variant="danger"
-                              confirm="Cancel this visit?"
-                            />
-                          </details>
+                            )}
+                            <details>
+                              <summary>Move, no-show or cancel</summary>
+                              <ActionForm
+                                action={setAppointmentStatusAction}
+                                hidden={{
+                                  appointmentId: a.id,
+                                  status: "no_show",
+                                }}
+                                submitLabel="Customer didn’t show"
+                                variant="secondary"
+                              />
+                              <ActionForm
+                                action={rescheduleAppointmentAction}
+                                hidden={{ appointmentId: a.id }}
+                                submitLabel="Move visit"
+                                variant="secondary"
+                              >
+                                <label htmlFor={`move-${a.id}`}>
+                                  New date and time
+                                </label>
+                                <input
+                                  id={`move-${a.id}`}
+                                  name="startsAt"
+                                  type="datetime-local"
+                                  required
+                                  defaultValue={a.startsAt
+                                    .toLocaleString("sv-SE", {
+                                      timeZone: data.visits.timezone,
+                                    })
+                                    .slice(0, 16)
+                                    .replace(" ", "T")}
+                                />
+                              </ActionForm>
+                              {!a.servicePlanId && (
+                                <ActionForm
+                                  action={setAppointmentStatusAction}
+                                  hidden={{
+                                    appointmentId: a.id,
+                                    status: "cancelled",
+                                  }}
+                                  submitLabel="Cancel visit"
+                                  variant="danger"
+                                  confirm="Cancel this visit?"
+                                />
+                              )}
+                            </details>
+                          </div>
                         )}
                       {a.status !== "scheduled" &&
                         s.actor.type !== "support" && (
-                          <details>
-                            <summary>Undo</summary>
-                            <ActionForm
-                              action={setAppointmentStatusAction}
-                              hidden={{
-                                appointmentId: a.id,
-                                status: "scheduled",
-                              }}
-                              submitLabel="Put back on the schedule"
-                              variant="secondary"
-                            />
-                          </details>
+                          <ActionForm
+                            action={setAppointmentStatusAction}
+                            hidden={{
+                              appointmentId: a.id,
+                              status: "scheduled",
+                            }}
+                            submitLabel="Undo"
+                            variant="secondary"
+                          />
                         )}
                     </article>
                   ))}

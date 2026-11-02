@@ -16,6 +16,7 @@ import { audit, recordActivity, type RequestMeta } from "./records";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { lockRevenue, reconcileRevenue } from "./revenue";
 import { assertOwner } from "./membership";
+import { releasePlanInvoice } from "./service-plans";
 export async function issueInvoice(
   tx: TenantTx,
   meta: RequestMeta,
@@ -308,6 +309,7 @@ export async function voidInvoice(
     .set({ voidedAt: new Date(), voidReason: reason })
     .where(and(eq(invoice.businessId, tx.businessId), eq(invoice.id, id)))
     .returning();
+  if (row.servicePlanId) await releasePlanInvoice(tx, id);
   await audit(tx, meta, {
     action: "invoice.voided",
     targetType: "invoice",
@@ -350,6 +352,9 @@ export type PublicInvoice = {
   totalCents: number;
   paidCents: number;
   onlinePaymentEnabled?: boolean;
+  displayTemplate?: unknown;
+  display?: unknown;
+  photos?: NonNullable<InvoiceSnapshot["photos"]>;
 };
 export async function readPublicInvoice(
   token: string,

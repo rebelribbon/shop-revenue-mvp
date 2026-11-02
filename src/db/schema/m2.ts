@@ -206,6 +206,11 @@ export const appointment = app.table(
     reason: text("reason"),
     notes: text("notes"),
     status: text("status").notNull().default("scheduled"),
+    // Recurring visits (migration 0027): the plan, its calendar day, and the
+    // invoice that billed this visit.
+    servicePlanId: uuid("service_plan_id"),
+    planVisitOn: date("plan_visit_on", { mode: "string" }),
+    planInvoiceId: uuid("plan_invoice_id"),
   },
   (t) => [
     unique("appointment_business_id_id_key").on(t.businessId, t.id),
@@ -288,6 +293,10 @@ export const note = app.table(
     vehicleId: uuid("vehicle_id"),
     body: text("body").notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // "profile" notes are pinned to the customer; "log" notes are history.
+    kind: text("kind").$type<"profile" | "log">().notNull().default("log"),
+    headsUp: boolean("heads_up").notNull().default(false),
+    jobId: uuid("job_id"),
   },
   (t) => [
     unique("note_business_id_id_key").on(t.businessId, t.id),

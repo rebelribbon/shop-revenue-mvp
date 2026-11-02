@@ -198,6 +198,30 @@ describe("webhook routes", () => {
     expect(await stored("twilio", sid)).toHaveLength(1);
   });
 
+  it("stripe: accepts your-account (subscription) events signed with the billing secret", async () => {
+    process.env.STRIPE_BILLING_WEBHOOK_SECRET = "whsec_billing_test";
+    const { POST } = await import("@/app/webhooks/stripe/route");
+    const id = `evt_${randomUUID()}`;
+    // An event type billing ignores, so no Stripe API call is made.
+    const body = JSON.stringify({
+      id,
+      type: "charge.succeeded",
+      livemode: false,
+    });
+    const ok = await POST(
+      new Request("https://app.example.test/webhooks/stripe", {
+        method: "POST",
+        body,
+        headers: {
+          "stripe-signature": stripeHeader(body, "whsec_billing_test"),
+        },
+      }),
+    );
+    expect(ok.status).toBe(200);
+    expect(await stored("stripe", id)).toHaveLength(1);
+    delete process.env.STRIPE_BILLING_WEBHOOK_SECRET;
+  });
+
   it("refuses to accept events when the secret is not configured", async () => {
     const saved = process.env.STRIPE_WEBHOOK_SECRET;
     delete process.env.STRIPE_WEBHOOK_SECRET;

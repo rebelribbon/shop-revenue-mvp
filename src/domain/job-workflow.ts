@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import {
   activity,
+  appointment,
   estimateAuthorization,
   authorizationSummaryColumns,
   type AuthorizationSummary,
@@ -15,6 +16,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { activeCheckoutStates } from "./payments";
+import { listServicePlans, type PlanSummary } from "./service-plans";
 import { sql } from "drizzle-orm";
 
 export type WorkStatus = "not_recorded" | "in_progress" | "completed";
@@ -28,6 +30,9 @@ export const stageLabels = {
   payment: "Payment due",
   paid: "Paid & work complete",
   attention: "Payment review needed",
+  plan: "Service plan running",
+  plan_paused: "Service plan paused",
+  plan_ended: "Service plan ended",
 } as const;
 
 export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
@@ -145,6 +150,7 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
     const j = parsed.data;
     return JSON.stringify([
       j.title,
+      j.repeat ?? null,
       j.parts.map((p) => [
         p.description,
         p.quantity,
@@ -159,8 +165,34 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       ]),
     ]);
   };
+  const plans = await listServicePlans(tx, { jobIds });
+  // Upcoming one-off visits, to tell "won" from "scheduled".
+  const customerIds = [
+    ...new Set(versions.map((v) => v.estimate.customerId)),
+  ];
+  const upcoming = customerIds.length
+    ? await tx
+        .select({
+          customerId: appointment.customerId,
+          vehicleId: appointment.vehicleId,
+          serviceAssetId: appointment.serviceAssetId,
+          startsAt: appointment.startsAt,
+        })
+        .from(appointment)
+        .where(
+          and(
+            eq(appointment.businessId, tx.businessId),
+            inArray(appointment.customerId, customerIds),
+            eq(appointment.status, "scheduled"),
+            isNull(appointment.servicePlanId),
+            gte(appointment.startsAt, new Date()),
+          ),
+        )
+        .orderBy(appointment.startsAt)
+    : [];
   const result = new Map<string, JobWorkflow>();
   for (const jobId of jobIds) {
+    const plan = plans.find((p) => p.quoteId === jobId) ?? null;
     const estimates = versions.filter((v) => v.estimate.quoteId === jobId);
     const latest = estimates[0] ?? null;
     const approved =
@@ -206,7 +238,11 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       !!current &&
       current.id !== frozenFrom.id &&
       customerFacing(current.data) !== customerFacing(frozenFrom.data);
-    const issued = invoices.filter((i) => i.quoteId === jobId);
+    // Plan invoices are billed per visit/month; the job's own invoice is the
+    // one-time bill.
+    const issued = invoices.filter(
+      (i) => i.quoteId === jobId && !i.servicePlanId,
+    );
     const currentInvoice = issued.find((i) => !i.voidedAt) ?? null;
     const entries = payments.filter((p) => p.invoiceId === currentInvoice?.id);
     const paidCents = entries.reduce((sum, p) => sum + p.amountCents, 0);
@@ -232,25 +268,31 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
           : latest.estimate.expiresAt <= new Date()
             ? "Link expired"
             : "Awaiting customer";
-    const stage: keyof typeof stageLabels = !latest
-      ? "draft"
-      : !latest.authorization
-        ? "awaiting"
-        : !approved.length
-          ? "declined"
-          : work === "not_recorded"
-            ? "ready"
-            : work === "in_progress"
-              ? "working"
-              : !currentInvoice
-                ? "bill"
-                : refundPending ||
-                    currentInvoice.disputeOpen ||
-                    balanceCents < 0
-                  ? "attention"
-                  : balanceCents > 0
-                    ? "payment"
-                    : "paid";
+    const stage: keyof typeof stageLabels = plan
+      ? plan.status === "active"
+        ? "plan"
+        : plan.status === "paused"
+          ? "plan_paused"
+          : "plan_ended"
+      : !latest
+        ? "draft"
+        : !latest.authorization
+          ? "awaiting"
+          : !approved.length
+            ? "declined"
+            : work === "not_recorded"
+              ? "ready"
+              : work === "in_progress"
+                ? "working"
+                : !currentInvoice
+                  ? "bill"
+                  : refundPending ||
+                      currentInvoice.disputeOpen ||
+                      balanceCents < 0
+                    ? "attention"
+                    : balanceCents > 0
+                      ? "payment"
+                      : "paid";
     const timeline = events
       .filter((e) => e.subjectId === jobId)
       .map((e, index) => ({
@@ -318,6 +360,17 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       refundPending,
       timeline,
       changedSinceEstimate,
+      nextVisit:
+        upcoming.find(
+          (u) =>
+            latest &&
+            u.customerId === latest.estimate.customerId &&
+            (u.vehicleId ?? null) === (latest.estimate.vehicleId ?? null) &&
+            (u.serviceAssetId ?? null) ===
+              (latest.estimate.serviceAssetId ?? null),
+        )?.startsAt ?? null,
+      plan,
+      repeats: Boolean(latest?.estimate.snapshot.repeat),
       sharedEstimate: events.some(
         (e) =>
           e.subjectId === jobId &&
@@ -366,6 +419,11 @@ type Projection = {
   // The job's parts/labor/prices were edited after the latest estimate was
   // published, so the customer hasn't seen (or approved) the changes.
   changedSinceEstimate: boolean;
+  // Next booked one-off visit for this customer and vehicle/property.
+  nextVisit: Date | null;
+  // The latest service plan for this job, and whether the estimate repeats.
+  plan: PlanSummary | null;
+  repeats: boolean;
   sharedEstimate: boolean;
   sharedInvoice: boolean;
 };

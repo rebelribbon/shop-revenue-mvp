@@ -1,8 +1,30 @@
+import { z } from "zod";
+import { MediaUploader } from "@/components/media-uploader";
+import { MediaGallery } from "@/components/media-gallery";
+import { listMedia } from "@/domain/job-media";
+import { jobMedia as jobMediaTable } from "@/db/schema";
+import { headsUpNotes, listNotes } from "@/domain/memory";
+import { addNoteAction } from "@/server/actions/memory";
+import { ActionForm } from "@/components/action-form";
+import { cadenceText, untilText } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import { listCommonJobs } from "@/domain/common-jobs";
-import { loadJobWorkflows, stageLabels } from "@/domain/job-workflow";
+import { loadJobWorkflows } from "@/domain/job-workflow";
+import {
+  JOB_FILTERS,
+  JOB_STATUSES,
+  jobFilter,
+  jobStatus,
+  jobStatusLabels,
+  statusTone,
+} from "@/lib/job-status";
 import { JobWorkflow, WorkflowBadges } from "@/components/job-workflow";
-import { isAutomotive, workspaceLabels } from "@/lib/business-types";
+import {
+  isAutomotive,
+  recurringFirst,
+  workspaceLabels,
+} from "@/lib/business-types";
+import { localDateKey } from "@/lib/timezone";
 import { notFound } from "next/navigation";
 import { WorkNavigation } from "@/components/work-navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
@@ -28,12 +50,15 @@ export default async function JobsPage({
     saved?: string;
     q?: string;
     stage?: string;
+    show?: string;
+    sort?: string;
     customerId?: string;
     vehicleId?: string;
     serviceAssetId?: string;
     sourceRecoveryItemId?: string;
     sourceContactActivityId?: string;
     sourceAppointmentId?: string;
+    fromMedia?: string;
   }>;
 }) {
   const {
@@ -43,12 +68,15 @@ export default async function JobsPage({
     saved,
     q,
     stage,
+    show,
+    sort,
     customerId,
     vehicleId,
     serviceAssetId,
     sourceRecoveryItemId,
     sourceContactActivityId,
     sourceAppointmentId,
+    fromMedia,
   } = await searchParams;
   const s = await requireShopSession("/app/jobs");
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
@@ -90,8 +118,36 @@ export default async function JobsPage({
           )[0]
         : undefined,
     };
+    const selectedCustomer = page.selected
+      ? (page.selected.data as { customerId?: string }).customerId
+      : undefined;
     return {
       ...page,
+      jobMedia: page.selected
+        ? await listMedia(tx, { jobId: page.selected.id })
+        : [],
+      fromMedia:
+        fromMedia && z.uuid().safeParse(fromMedia).success
+          ? (
+              await tx
+                .select()
+                .from(jobMediaTable)
+                .where(
+                  and(
+                    eq(jobMediaTable.businessId, tx.businessId),
+                    eq(jobMediaTable.id, fromMedia),
+                  ),
+                )
+            )[0]
+          : undefined,
+      jobNotes: selectedCustomer
+        ? await listNotes(tx, selectedCustomer, undefined, {
+            jobId: page.selected!.id,
+          })
+        : [],
+      headsUp: selectedCustomer
+        ? await headsUpNotes(tx, [selectedCustomer])
+        : [],
       workflows: await loadJobWorkflows(tx, [
         ...new Set([
           ...page.jobs.map((j) => j.id),
@@ -113,9 +169,34 @@ export default async function JobsPage({
     sourceRecoveryItemId ||
     sourceAppointmentId
   );
-  const rows = data.jobs.filter(
-    (j) => !stage || data.workflows.get(j.id)?.stage === stage,
+  const statusLabels = jobStatusLabels(type);
+  const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
+  // ?stage=plan (older links) shows recurring jobs.
+  const filter = jobFilter(
+    show ?? (stage?.startsWith("plan") ? "recurring" : undefined),
   );
+  const totalOf = (id: string) => {
+    const f = data.workflows.get(id)!;
+    return (
+      f.currentInvoice?.totalCents ??
+      f.latest?.estimate.snapshot.totalCents ??
+      0
+    );
+  };
+  const rows = data.jobs
+    .filter((j) =>
+      (filter.statuses as readonly string[]).includes(statusOf(j.id)),
+    )
+    .sort((a, b) =>
+      sort === "oldest"
+        ? a.createdAt.getTime() - b.createdAt.getTime()
+        : sort === "status"
+          ? JOB_STATUSES.indexOf(statusOf(a.id)) -
+            JOB_STATUSES.indexOf(statusOf(b.id))
+          : sort === "amount"
+            ? totalOf(b.id) - totalOf(a.id)
+            : 0,
+    );
   const chosenCustomer = data.options.customers.find(
     (c) => c.id === customerId,
   );
@@ -147,7 +228,10 @@ export default async function JobsPage({
           customerId: chosenCustomer.id,
           vehicleId: chosenVehicle?.id,
           serviceAssetId: chosenAsset?.id,
-          title: "",
+          title:
+            data.fromMedia?.customerId === chosenCustomer.id
+              ? (data.fromMedia.caption ?? "").slice(0, 200)
+              : "",
           parts: [],
           labor: [],
         }
@@ -199,6 +283,16 @@ export default async function JobsPage({
             options={data.options}
             recommendations={data.recommendations}
             initial={initial}
+            today={localDateKey(
+              new Date(),
+              data.profile?.timezone || "America/Chicago",
+            )}
+            defaultRepeats={recurringFirst(type)}
+            attachMediaId={
+              data.fromMedia && data.fromMedia.customerId === customerId
+                ? data.fromMedia.id
+                : undefined
+            }
           />
         </>
       ) : selected ? (
@@ -208,22 +302,72 @@ export default async function JobsPage({
           return (
             <>
               <p>
-                <Link href="/app/jobs">← All jobs</Link>
+                <Link href={`/app/customers/${input.customerId}`}>
+                  ←{" "}
+                  {data.options.customers.find((c) => c.id === input.customerId)
+                    ?.name ?? "Customer"}
+                </Link>
               </p>
+              {data.headsUp.map((n, i) => (
+                <p className="notice banner" role="note" key={i} data-heads-up>
+                  <span className="pill pill-warn">Heads-up</span> {n.body}
+                </p>
+              ))}
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
                 </p>
               )}
               <article className="card">
-                <h2>{selected.title}</h2>
+                <h2>
+                  {input.repeat && "↻ "}
+                  {selected.title}
+                </h2>
                 <p>
-                  {
-                    data.options.customers.find(
-                      (c) => c.id === input.customerId,
-                    )?.name
-                  }
+                  <Link href={`/app/customers/${input.customerId}`}>
+                    {
+                      data.options.customers.find(
+                        (c) => c.id === input.customerId,
+                      )?.name
+                    }
+                  </Link>
+                  {flow?.latest?.estimate.snapshot.serviceLabel ||
+                  flow?.latest?.estimate.snapshot.vehicleLabel
+                    ? ` · ${flow.latest.estimate.snapshot.serviceLabel || flow.latest.estimate.snapshot.vehicleLabel}`
+                    : ""}
                 </p>
+                {input.repeat && (
+                  <p className="muted">
+                    {cadenceText(input.repeat)} · {untilText(input.repeat)}
+                  </p>
+                )}
+                {flow && (
+                  <div className="overview-metrics" aria-label="Job money">
+                    <div className="card overview-metric">
+                      <strong>
+                        {money(
+                          flow.latest?.estimate.snapshot.totalCents ??
+                            t.subtotalCents,
+                        )}
+                      </strong>
+                      <span>{input.repeat ? "Per visit" : "Quoted"}</span>
+                    </div>
+                    <div className="card overview-metric">
+                      <strong>
+                        {money(
+                          flow.plan ? flow.plan.billedCents : flow.paidCents,
+                        )}
+                      </strong>
+                      <span>{flow.plan ? "Billed so far" : "Paid"}</span>
+                    </div>
+                    {flow.balanceCents > 0 && (
+                      <div className="card overview-metric">
+                        <strong>{money(flow.balanceCents)}</strong>
+                        <span>Still owed</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {flow && (
                   <JobWorkflow
                     flow={flow}
@@ -232,8 +376,77 @@ export default async function JobsPage({
                     readOnly={s.actor.type === "support"}
                   />
                 )}
-                <details>
-                  <summary>Change job or view costs</summary>
+                <section aria-label="Photos and videos" id="job-photos">
+                  <h3>Photos &amp; videos</h3>
+                  <p className="muted">
+                    Photos switched to “Show the customer” appear on the next
+                    estimate you send, and on the invoice.
+                  </p>
+                  {s.actor.type !== "support" && (
+                    <MediaUploader
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      vehicleId={input.vehicleId ?? null}
+                      serviceAssetId={input.serviceAssetId ?? null}
+                      defaultTag={flow?.currentInvoice ? "after" : "before"}
+                    />
+                  )}
+                  <MediaGallery
+                    items={data.jobMedia}
+                    readOnly={s.actor.type === "support"}
+                    timeZone={data.profile?.timezone || "America/Chicago"}
+                  />
+                </section>
+                <section aria-label="Job notes">
+                  <h3>Notes</h3>
+                  {data.jobNotes.map((n) => (
+                    <p
+                      key={n.id}
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      📝 {n.body}{" "}
+                      <span className="muted">
+                        ·{" "}
+                        {n.createdAt.toLocaleDateString("en-US", {
+                          timeZone: data.profile?.timezone || "America/Chicago",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </p>
+                  ))}
+                  {!data.jobNotes.length && (
+                    <p className="muted">
+                      Gate codes, what you found, what the customer asked for.
+                    </p>
+                  )}
+                  {s.actor.type !== "support" && (
+                    <ActionForm
+                      action={addNoteAction}
+                      hidden={{
+                        customerId: input.customerId,
+                        jobId: selected.id,
+                        kind: "log",
+                      }}
+                      submitLabel="Add note"
+                      variant="secondary"
+                    >
+                      <label htmlFor="job-note">Note about this job</label>
+                      <textarea
+                        id="job-note"
+                        name="body"
+                        rows={2}
+                        required
+                        maxLength={5000}
+                      />
+                    </ActionForm>
+                  )}
+                </section>
+                <section aria-label="Job costs">
+                  <h3>Costs &amp; profit</h3>
                   <div className="money-actions">
                     <Link href={`/app/jobs?edit=${selected.id}`}>
                       Edit job / actual hours
@@ -251,9 +464,9 @@ export default async function JobsPage({
                       ? "unknown until every cost is entered"
                       : money(t.estimatedGrossProfitCents)}
                   </p>
-                </details>
-                <details>
-                  <summary>View parts, labor and costs</summary>
+                </section>
+                <section aria-label="Line items">
+                  <h3>{auto ? "Parts" : "Materials"} &amp; labor</h3>
                   <ul>
                     {input.parts.map((part, i) => (
                       <li key={i}>
@@ -275,7 +488,7 @@ export default async function JobsPage({
                       </li>
                     ))}
                   </ul>
-                </details>
+                </section>
                 <section className="record-details" id="job-estimate">
                   <h3>Customer estimate</h3>
                   {!flow?.currentInvoice &&
@@ -331,16 +544,32 @@ export default async function JobsPage({
               />
               <button className="btn secondary">Search</button>
             </div>
-            <label htmlFor="job-stage">Workflow stage</label>
-            <select id="job-stage" name="stage" defaultValue={stage ?? ""}>
-              <option value="">All stages</option>
-              {Object.entries(stageLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
+            <input type="hidden" name="show" value={filter.key} />
+            <label htmlFor="job-sort">Sort</label>
+            <select id="job-sort" name="sort" defaultValue={sort ?? "newest"}>
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="status">By status</option>
+              <option value="amount">Biggest first</option>
             </select>
           </form>
+          <div className="chip-links" role="group" aria-label="Show jobs">
+            {JOB_FILTERS.map((f) => (
+              <Link
+                key={f.key}
+                href={`/app/jobs?${new URLSearchParams({ show: f.key, ...(q ? { q } : {}), ...(sort ? { sort } : {}) })}`}
+                aria-current={filter.key === f.key ? "true" : undefined}
+              >
+                {f.label} (
+                {
+                  data.jobs.filter((j) =>
+                    (f.statuses as readonly string[]).includes(statusOf(j.id)),
+                  ).length
+                }
+                )
+              </Link>
+            ))}
+          </div>
           <p className="muted">
             Up to 100 recent matching jobs. Search by job or customer name to
             find older work.
@@ -373,7 +602,7 @@ export default async function JobsPage({
                   <Link
                     className="card job-row"
                     href={`/app/jobs?job=${j.id}`}
-                    aria-label={`Open job: ${j.title} · ${stageLabels[data.workflows.get(j.id)!.stage]}`}
+                    aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
                   >
                     <div>
                       <h3>{j.title}</h3>
@@ -384,9 +613,10 @@ export default async function JobsPage({
                           )?.name
                         }
                       </p>
-                      <strong className="workflow-stage-label">
-                        {stageLabels[data.workflows.get(j.id)!.stage]}
-                      </strong>
+                      <span className={statusTone(statusOf(j.id))}>
+                        {input.repeat && "↻ "}
+                        {statusLabels[statusOf(j.id)]}
+                      </span>
                       <WorkflowBadges flow={data.workflows.get(j.id)!} />
                     </div>
                     <div className="job-row-meta">

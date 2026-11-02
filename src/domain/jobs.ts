@@ -17,6 +17,7 @@ import { recordActivity } from "./records";
 import { getCustomerWithVehicles, getVehicle } from "./customers";
 import { serviceAssetLabel } from "./service-assets";
 import { calculateJob } from "./job-costing";
+import { repeatInput } from "@/lib/service-plans";
 const amount = z.number().int().min(0).max(100000000);
 export const jobInput = z.object({
   jobId: z.uuid().optional(),
@@ -28,6 +29,8 @@ export const jobInput = z.object({
   vehicleId: z.uuid().optional(),
   serviceAssetId: z.uuid().optional(),
   title: z.string().trim().min(1).max(200),
+  // Recurring work; absent for a one-time job.
+  repeat: repeatInput.nullable().optional(),
   parts: z
     .array(
       z.object({

@@ -1,19 +1,17 @@
 import { HydratedMain } from "@/components/hydrated-main";
-import {
-  isAutomotive,
-  workspaceLabels,
-  businessTypeLabel,
-} from "@/lib/business-types";
+import { workspaceLabels, businessTypeLabel } from "@/lib/business-types";
+import { todayAgenda } from "@/domain/today";
+import { RecentCustomers } from "@/components/recent-customers";
+import { ActionForm } from "@/components/action-form";
+import { setAppointmentStatusAction } from "@/server/actions/appointments";
 import Link from "next/link";
 import { getOwnerMoney } from "@/domain/owner-money";
 import { formatMoney } from "@/components/estimate-document";
 import { redirect } from "next/navigation";
 import { withTenant } from "@/db/tenant";
+import { recurringRevenue } from "@/domain/service-plans";
 import { requireShopSession } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
-import { listTodayTomorrow } from "@/domain/appointments";
-import { listEstimates } from "@/domain/estimates";
-import { listInvoices } from "@/domain/invoices";
 import { getMoneyFinder } from "@/domain/money-finder";
 
 export default async function HomePage({
@@ -38,38 +36,38 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, days, estimates, invoices, money, summary] = await withTenant(
+  const [profile, agenda, money, summary, recurring] = await withTenant(
     s.businessId,
     s.actor,
-    (tx) =>
+    async (tx) =>
       Promise.all([
         getBusinessProfile(tx),
-        listTodayTomorrow(tx),
-        listEstimates(tx),
-        listInvoices(tx),
+        todayAgenda(tx),
         getMoneyFinder(tx, { view: "active", page: 1, query: "" }),
         s.role === "owner"
           ? getOwnerMoney(tx, undefined, new Date(), false)
           : null,
+        s.role === "owner" ? recurringRevenue(tx) : null,
       ]),
   );
   const type = profile?.businessType ?? "automotive",
-    auto = isAutomotive(type),
     labels = workspaceLabels(type);
-  const latest = estimates.filter(
-    (e, i, a) => a.findIndex((x) => x.quoteId === e.quoteId) === i,
-  );
-  const waiting = latest.filter(
-    (e) => !e.authorization && !e.revokedAt && e.expiresAt > new Date(),
-  );
-  const unpaid = invoices.filter((i) => !i.voidedAt && i.balanceCents > 0);
-  const visits = days.today.filter((a) => a.status === "scheduled");
+  const tz = agenda.visits.timezone;
+  const today = agenda.visits.today;
+  const open = today.filter((a) => a.status === "scheduled");
   const date = new Date().toLocaleDateString("en-US", {
-    timeZone: days.timezone,
+    timeZone: tz,
     weekday: "long",
     month: "long",
     day: "numeric",
   });
+  const time = (d: Date) =>
+    d.toLocaleTimeString("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  const light = open.length + agenda.items.length < 4;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       {params.denied && (
@@ -78,9 +76,9 @@ export default async function HomePage({
         </p>
       )}
       <div className="page-heading">
-        <h1>Home</h1>
+        <h1>Today</h1>
         <p className="muted">
-          {businessTypeLabel(type)} · {date}
+          {date} · {businessTypeLabel(type)}
         </p>
       </div>
       <Link className="btn primary" data-page-primary href="/app/jobs?new=1">
@@ -105,99 +103,133 @@ export default async function HomePage({
             <strong>{formatMoney(summary.owedCents)}</strong>
             <span>Customers owe you</span>
           </Link>
+          {recurring && recurring.plans > 0 && (
+            <Link
+              href="/app/jobs?show=recurring"
+              className="card overview-metric"
+            >
+              <strong>{formatMoney(recurring.monthlyCents)}/mo</strong>
+              <span>
+                Recurring from {recurring.plans} service plan
+                {recurring.plans === 1 ? "" : "s"}
+              </span>
+            </Link>
+          )}
         </div>
       )}
-      <div className="overview-metrics">
-        <Link className="card overview-metric" href="/app/schedule">
-          <strong>{visits.length}</strong>
-          <span>Scheduled today</span>
-        </Link>
-        <Link className="card overview-metric" href="/app/opportunities">
-          <strong>{money.total}</strong>
-          <span>Follow-ups</span>
-        </Link>
-      </div>
-      <div className="overview-columns">
-        <section className="card">
-          <div className="section-heading">
-            <h2>Today’s visits</h2>
-            <Link href="/app/schedule">Full schedule</Link>
-          </div>
-          {!visits.length && (
-            <p className="muted">
-              Nothing scheduled for today. Add a visit or start a job when a
-              customer arrives.
-            </p>
-          )}
-          {visits.slice(0, 5).map((a) => (
-            <div className="overview-row" key={a.id}>
-              <strong>
-                {a.startsAt.toLocaleTimeString("en-US", {
-                  timeZone: days.timezone,
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-              </strong>
-              <div>
-                <Link href={`/app/customers/${a.customerId}`}>
-                  {a.customerName}
-                </Link>
-                <p>{a.reason || "Visit"}</p>
-                {a.serviceAssetName && (
-                  <p className="muted">
-                    {a.serviceAssetName} · {a.serviceAddress}
-                  </p>
+      <section className="card" aria-label="Today’s visits">
+        <div className="section-heading">
+          <h2>Visits today{open.length ? ` (${open.length})` : ""}</h2>
+          <Link href="/app/schedule">Week calendar</Link>
+        </div>
+        {!today.length && <p className="muted">Nothing booked today.</p>}
+        {today.map((a) => (
+          <div className="overview-row" key={a.id}>
+            <Link
+              href={
+                a.planJobId
+                  ? `/app/jobs?job=${a.planJobId}`
+                  : `/app/customers/${a.customerId}`
+              }
+            >
+              <strong>{time(a.startsAt)}</strong>{" "}
+              {a.servicePlanId && <span className="plan-badge">↻</span>}{" "}
+              {a.customerName} · {a.reason || "Visit"}
+              {a.serviceAssetName && (
+                <span className="muted">
+                  {" "}
+                  · {a.serviceAddress || a.serviceAssetName}
+                </span>
+              )}
+            </Link>
+            {a.status === "scheduled" && s.actor.type !== "support" ? (
+              <span className="visit-actions">
+                <ActionForm
+                  action={setAppointmentStatusAction}
+                  hidden={{ appointmentId: a.id, status: "completed" }}
+                  submitLabel={
+                    a.servicePlanId && a.planBilling === "per_visit"
+                      ? "Done & bill"
+                      : "Done"
+                  }
+                  variant="secondary"
+                />
+                {a.servicePlanId && (
+                  <ActionForm
+                    action={setAppointmentStatusAction}
+                    hidden={{ appointmentId: a.id, status: "cancelled" }}
+                    submitLabel="Skip"
+                    variant="secondary"
+                  />
                 )}
-              </div>
-            </div>
-          ))}
-          <Link className="btn secondary" href="/app/schedule?new=1">
-            Book visit
+              </span>
+            ) : (
+              <span
+                className={a.status === "completed" ? "pill pill-ok" : "pill"}
+              >
+                {a.status === "completed"
+                  ? "Done"
+                  : a.status === "cancelled"
+                    ? "Skipped"
+                    : a.status === "no_show"
+                      ? "No-show"
+                      : "To do"}
+              </span>
+            )}
+          </div>
+        ))}
+        {agenda.visits.tomorrow.length > 0 && (
+          <p className="muted">
+            Tomorrow: {agenda.visits.tomorrow.length} visit
+            {agenda.visits.tomorrow.length === 1 ? "" : "s"}, first at{" "}
+            {time(agenda.visits.tomorrow[0].startsAt)}.
+          </p>
+        )}
+        <Link className="btn secondary" href="/app/schedule?new=1">
+          Book a visit
+        </Link>
+      </section>
+      <section className="card" aria-label="Needs you today">
+        <h2>
+          Needs you{agenda.items.length ? ` (${agenda.items.length})` : ""}
+        </h2>
+        {!agenda.items.length && <p>You’re all caught up. 🎉</p>}
+        {agenda.items.slice(0, 15).map((i) => (
+          <Link className="overview-row today-item" key={i.id} href={i.href}>
+            <span>
+              <strong>{i.title}</strong>
+              <span className="muted"> · {i.detail}</span>
+            </span>
+            <span>
+              {i.amountCents !== null && (
+                <strong>{formatMoney(i.amountCents)} </strong>
+              )}
+              <span className={i.urgent ? "pill pill-warn" : "pill"}>
+                {i.action}
+              </span>
+            </span>
           </Link>
-        </section>
-        <section className="card">
-          <h2>Next steps on recent work</h2>
-          <p className="muted">Pick up where you left off.</p>
-          <div className="overview-row">
-            <div>
-              <strong>{waiting.length} awaiting customer approval</strong>
-              <p>Review estimates and their latest decisions.</p>
-            </div>
-            <Link href="/app/estimates">See estimates</Link>
-          </div>
-          <div className="overview-row">
-            <div>
+        ))}
+        {money.total > 0 && (
+          <Link className="overview-row" href="/app/opportunities">
+            <span>
               <strong>
-                {summary ? formatMoney(summary.owedCents) : unpaid.length}{" "}
-                {summary ? "owed by customers" : "invoices waiting for payment"}
+                {money.total} follow-up{money.total === 1 ? "" : "s"}
               </strong>
-              <p>Review payments and outstanding amounts.</p>
-            </div>
-            <Link href="/app/invoices">See invoices</Link>
-          </div>
-          <div className="overview-row">
-            <div>
-              <strong>
-                {auto ? "Jobs and labor costs" : "Jobs and labor costs"}
-              </strong>
-              <p>
-                Track customer approval, authorized work, completion, invoices
-                and payment in one job timeline.
-              </p>
-            </div>
-            <Link href="/app/jobs">See all {labels.jobs.toLowerCase()}</Link>
-          </div>
-        </section>
-      </div>
+              <span className="muted">
+                {" "}
+                · declined work, service due and customers to check on
+              </span>
+            </span>
+            <span className="pill">Open follow-ups</span>
+          </Link>
+        )}
+      </section>
+      {light && <RecentCustomers />}
       <section className="card">
-        <h2>Start with a customer</h2>
-        <p>
-          {auto
-            ? "Find contact details, vehicles, repair history and notes in one place."
-            : "Find contact details, properties, equipment, work history and notes in one place."}
-        </p>
+        <h2>Find a customer</h2>
         <div className="money-actions">
-          <Link href="/app/customers">Find a customer</Link>
+          <Link href="/app/customers">Customer list</Link>
           <Link href="/app/customers/new">Add a customer</Link>
         </div>
       </section>

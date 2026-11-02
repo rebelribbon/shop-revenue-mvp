@@ -21,13 +21,29 @@ export default async function SettingsPage() {
         {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/common-jobs">
             <strong>Common jobs</strong>
-            <span className="muted">Saved parts, prices and labor</span>
+            <span className="muted">Saved items, prices and labor</span>
           </Link>
         )}
         <Link className="card settings-link" href="/verify?next=/app/settings">
           <strong>Authenticator security</strong>
           <span className="muted">Set up or verify your authenticator</span>
         </Link>
+        {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/invoices">
+            <strong>Invoice layout</strong>
+            <span className="muted">
+              Choose what customers see on every invoice
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/billing">
+            <strong>Billing</strong>
+            <span className="muted">
+              Your Shop Revenue subscription, card and receipts
+            </span>
+          </Link>
+        )}
         {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/export">
             <strong>Export shop data</strong>
