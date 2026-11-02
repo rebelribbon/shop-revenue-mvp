@@ -553,7 +553,7 @@ export default async function JobsPage({
               <option value="amount">Biggest first</option>
             </select>
           </form>
-          <nav className="chip-links" aria-label="Show jobs">
+          <div className="chip-links" role="group" aria-label="Show jobs">
             {JOB_FILTERS.map((f) => (
               <Link
                 key={f.key}
@@ -569,7 +569,7 @@ export default async function JobsPage({
                 )
               </Link>
             ))}
-          </nav>
+          </div>
           <p className="muted">
             Up to 100 recent matching jobs. Search by job or customer name to
             find older work.

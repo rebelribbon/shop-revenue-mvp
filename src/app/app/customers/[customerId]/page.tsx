@@ -243,7 +243,7 @@ export default async function CustomerDetailPage(props: {
           <section className="card" aria-label="Jobs" id="jobs">
             <h2>Jobs ({jobs.length})</h2>
             {jobs.length > 0 && (
-              <nav className="chip-links" aria-label="Show jobs">
+              <div className="chip-links" role="group" aria-label="Show jobs">
                 {JOB_FILTERS.filter(
                   (f) =>
                     f.key === "all" ||
@@ -265,7 +265,7 @@ export default async function CustomerDetailPage(props: {
                     )
                   </Link>
                 ))}
-              </nav>
+              </div>
             )}
             {!jobs.length && (
               <p className="muted">No jobs yet. Tap New job to quote one.</p>

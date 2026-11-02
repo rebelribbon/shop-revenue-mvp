@@ -84,7 +84,7 @@ export default async function ReportsPage({
       >
         Download {info.title} (CSV)
       </a>
-      <nav className="chip-links" aria-label="Report">
+      <div className="chip-links" role="group" aria-label="Report">
         {REPORTS.map((r) => (
           <Link
             key={r.key}
@@ -99,8 +99,8 @@ export default async function ReportsPage({
             {r.title}
           </Link>
         ))}
-      </nav>
-      <nav className="chip-links" aria-label="Dates">
+      </div>
+      <div className="chip-links" role="group" aria-label="Dates">
         {PRESETS.map(([value, label]) => (
           <Link
             key={value}
@@ -110,7 +110,7 @@ export default async function ReportsPage({
             {label}
           </Link>
         ))}
-      </nav>
+      </div>
       <form method="get" className="card">
         <input type="hidden" name="report" value={key} />
         <label htmlFor="report-from">From</label>
