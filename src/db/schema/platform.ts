@@ -178,7 +178,7 @@ export const file = app.table(
     unique("file_storage_key_key").on(t.storageKey),
     check(
       "file_kind_check",
-      sql`${t.kind} IN ('estimate_photo', 'signature', 'estimate_pdf', 'invoice_pdf', 'authorization_pdf', 'logo', 'import_source', 'export', 'job_media')`,
+      sql`${t.kind} IN ('estimate_photo', 'signature', 'estimate_pdf', 'invoice_pdf', 'authorization_pdf', 'logo', 'import_source', 'export', 'job_media', 'document')`,
     ),
     check(
       "file_status_check",

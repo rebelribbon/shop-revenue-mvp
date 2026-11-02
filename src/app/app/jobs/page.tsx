@@ -1,3 +1,7 @@
+import { FileCabinet } from "@/components/file-cabinet";
+import { jobCabinet, listTemplates } from "@/domain/documents";
+import { openShareToken } from "@/lib/share-token";
+import { customer as customerTable } from "@/db/schema";
 import { z } from "zod";
 import { MediaUploader } from "@/components/media-uploader";
 import { MediaGallery } from "@/components/media-gallery";
@@ -123,6 +127,34 @@ export default async function JobsPage({
       : undefined;
     return {
       ...page,
+      cabinet: page.selected
+        ? await jobCabinet(tx, page.selected.id, (c) => {
+            try {
+              return c ? openShareToken(c) : null;
+            } catch {
+              return null;
+            }
+          })
+        : [],
+      templates: page.selected ? await listTemplates(tx) : [],
+      contact: selectedCustomer
+        ? (
+            await tx
+              .select({
+                phone: customerTable.phoneE164,
+                email: customerTable.email,
+                textOff: customerTable.textOptedOutAt,
+                emailOff: customerTable.emailOptedOutAt,
+              })
+              .from(customerTable)
+              .where(
+                and(
+                  eq(customerTable.businessId, tx.businessId),
+                  eq(customerTable.id, selectedCustomer),
+                ),
+              )
+          )[0]
+        : undefined,
       jobMedia: page.selected
         ? await listMedia(tx, { jobId: page.selected.id })
         : [],
@@ -392,11 +424,42 @@ export default async function JobsPage({
                     />
                   )}
                   <MediaGallery
+                    quoteHref={(m) =>
+                      `/app/jobs?${new URLSearchParams({
+                        customerId: input.customerId,
+                        ...(input.vehicleId
+                          ? { vehicleId: input.vehicleId }
+                          : {}),
+                        ...(input.serviceAssetId
+                          ? { serviceAssetId: input.serviceAssetId }
+                          : {}),
+                        fromMedia: m.id,
+                      })}`
+                    }
                     items={data.jobMedia}
                     readOnly={s.actor.type === "support"}
                     timeZone={data.profile?.timezone || "America/Chicago"}
                   />
                 </section>
+                <FileCabinet
+                  items={data.cabinet}
+                  templates={data.templates}
+                  jobId={selected.id}
+                  customerId={input.customerId}
+                  customerPhone={
+                    data.contact && !data.contact.textOff
+                      ? data.contact.phone
+                      : null
+                  }
+                  customerEmail={
+                    data.contact && !data.contact.emailOff
+                      ? data.contact.email
+                      : null
+                  }
+                  readOnly={s.actor.type === "support"}
+                  timeZone={data.profile?.timezone || "America/Chicago"}
+                  isOwner={s.role === "owner"}
+                />
                 <section aria-label="Job notes">
                   <h3>Notes</h3>
                   {data.jobNotes.map((n) => (

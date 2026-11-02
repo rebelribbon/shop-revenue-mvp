@@ -16,6 +16,8 @@ import {
   shopSubscription,
   servicePlan,
   jobMedia,
+  documentTemplate,
+  document,
   estimateAuthorization,
   recommendation,
   recoveryItem,
@@ -271,6 +273,45 @@ const builders: Record<string, Builder> = {
         .returning();
       return row.id;
     }),
+  "app.document_template": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(documentTemplate)
+        .values({ businessId: t.businessId, name: "RLS", body: "Body" })
+        .returning();
+      return row.id;
+    }),
+  "app.document": async (t) => {
+    const customerId = (
+      await withTenant(t.businessId, t.owner.actor, (tx) =>
+        createCustomer(tx, meta(), { firstName: "RLS", lastName: "Doc" }),
+      )
+    ).id;
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const id = randomUUID();
+      await tx.insert(file).values({
+        id,
+        businessId: t.businessId,
+        storageKey: `b/${t.businessId}/document/${id}.pdf`,
+        kind: "document",
+        contentType: "application/pdf",
+        byteSize: 4,
+        status: "ready",
+      });
+      const [row] = await tx
+        .insert(document)
+        .values({
+          businessId: t.businessId,
+          customerId,
+          kind: "upload",
+          category: "other",
+          title: "RLS",
+          fileId: id,
+        })
+        .returning();
+      return row.id;
+    });
+  },
   "app.job_media": async (t) => {
     const customerId = (
       await withTenant(t.businessId, t.owner.actor, (tx) =>
