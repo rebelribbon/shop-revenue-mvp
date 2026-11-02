@@ -5,6 +5,7 @@ import { listServiceAssets } from "@/domain/service-assets";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
 import { Notes } from "@/components/memory";
+import { RememberCustomer } from "@/components/recent-customers";
 import { MediaUploader } from "@/components/media-uploader";
 import { MediaGallery } from "@/components/media-gallery";
 import { listMedia } from "@/domain/job-media";
@@ -92,6 +93,7 @@ export default async function CustomerDetailPage(props: {
       <p>
         <Link href="/app/customers">← Customers</Link>
       </p>
+      <RememberCustomer id={customerId} name={c.displayName} />
       <h1>{c.displayName}</h1>
       <p className="muted">
         Customer since{" "}
