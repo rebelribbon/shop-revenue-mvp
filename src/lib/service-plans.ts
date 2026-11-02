@@ -10,31 +10,70 @@ export const REPEAT_OPTIONS = [
   { value: "6months", label: "Every 6 months", unit: "month", count: 6 },
   { value: "year", label: "Every year", unit: "month", count: 12 },
 ] as const;
-export type RepeatEvery = (typeof REPEAT_OPTIONS)[number]["value"];
+export type RepeatEvery = (typeof REPEAT_OPTIONS)[number]["value"] | "custom";
+export const CUSTOM_UNITS = ["day", "week", "month"] as const;
+export type CustomUnit = (typeof CUSTOM_UNITS)[number];
+const customInput = z.object({
+  count: z.number().int().min(1).max(365),
+  unit: z.enum(CUSTOM_UNITS),
+});
+export type CustomInterval = z.infer<typeof customInput>;
 
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a date.");
-export const repeatInput = z.object({
-  every: z.enum(REPEAT_OPTIONS.map((o) => o.value) as [RepeatEvery]),
-  startOn: day,
-  time: z
-    .string()
-    .regex(/^\d{2}:\d{2}$/)
-    .nullable()
-    .optional(),
-  until: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("stopped") }),
-    z.object({ kind: z.literal("date"), on: day }),
-    z.object({
-      kind: z.literal("visits"),
-      count: z.number().int().min(1).max(520),
-    }),
-  ]),
-  billing: z.enum(["per_visit", "monthly"]),
-});
+export const repeatInput = z
+  .object({
+    every: z.enum([...REPEAT_OPTIONS.map((o) => o.value), "custom"] as [
+      RepeatEvery,
+    ]),
+    // Only for every: "custom" — "every 10 days", "every 5 weeks".
+    custom: customInput.optional(),
+    startOn: day,
+    time: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable()
+      .optional(),
+    until: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("stopped") }),
+      z.object({ kind: z.literal("date"), on: day }),
+      z.object({
+        kind: z.literal("visits"),
+        count: z.number().int().min(1).max(520),
+      }),
+    ]),
+    billing: z.enum(["per_visit", "monthly"]),
+  })
+  .refine((r) => r.every !== "custom" || !!r.custom, {
+    message: "Choose how many days, weeks or months between visits.",
+    path: ["custom"],
+  });
 export type Repeat = z.infer<typeof repeatInput>;
 
-export const repeatOption = (every: RepeatEvery) =>
+type Every = Pick<Repeat, "every" | "custom">;
+
+export const repeatOption = (every: Exclude<RepeatEvery, "custom">) =>
   REPEAT_OPTIONS.find((o) => o.value === every)!;
+
+// The gap between visits as one unit and count, presets and custom alike.
+export function interval(r: Every): { unit: CustomUnit; count: number } {
+  if (r.every === "custom") return r.custom ?? { unit: "week", count: 1 };
+  const o = repeatOption(r.every);
+  return { unit: o.unit, count: o.count };
+}
+
+const UNIT_WORDS: Record<CustomUnit, [string, string]> = {
+  day: ["day", "days"],
+  week: ["week", "weeks"],
+  month: ["month", "months"],
+};
+// "Every week", "Every 10 days", "Every 5 weeks".
+export function everyLabel(r: Every) {
+  if (r.every !== "custom") return repeatOption(r.every).label;
+  const { unit, count } = interval(r);
+  return count === 1
+    ? `Every ${UNIT_WORDS[unit][0]}`
+    : `Every ${count} ${UNIT_WORDS[unit][1]}`;
+}
 
 const parse = (key: string) => {
   const [y, m, d] = key.split("-").map(Number);
@@ -47,9 +86,13 @@ const daysInMonth = (y: number, m: number) =>
 
 // The nth visit date (0-based). Monthly plans keep the start day, clamped to
 // short months (Jan 31 -> Feb 28 -> Mar 31).
-export function visitDate(r: Pick<Repeat, "every" | "startOn">, n: number) {
-  const o = repeatOption(r.every);
+export function visitDate(
+  r: Pick<Repeat, "every" | "custom" | "startOn">,
+  n: number,
+) {
+  const o = interval(r);
   const { y, m, d } = parse(r.startOn);
+  if (o.unit === "day") return fmt(y, m, d + n * o.count);
   if (o.unit === "week") return fmt(y, m, d + n * 7 * o.count);
   const total = m - 1 + n * o.count;
   const yy = y + Math.floor(total / 12),
@@ -79,9 +122,13 @@ export function totalVisits(r: Repeat): number | null {
 }
 
 // Average visits per month, used for "about $X a month" and recurring revenue.
-export function visitsPerMonth(every: RepeatEvery) {
-  const o = repeatOption(every);
-  return o.unit === "week" ? 52 / 12 / o.count : 1 / o.count;
+export function visitsPerMonth(r: Every) {
+  const o = interval(r);
+  return o.unit === "day"
+    ? 365.25 / 12 / o.count
+    : o.unit === "week"
+      ? 52 / 12 / o.count
+      : 1 / o.count;
 }
 
 const money = (cents: number) =>
@@ -113,13 +160,17 @@ const clock = (t: string) => {
 };
 
 // "Every week on Tuesdays", "Every 3 months on the 15th".
-export function cadenceText(r: Pick<Repeat, "every" | "startOn" | "time">) {
-  const o = repeatOption(r.every);
+export function cadenceText(
+  r: Pick<Repeat, "every" | "custom" | "startOn" | "time">,
+) {
+  const o = interval(r);
   const on =
-    o.unit === "week"
-      ? `on ${weekday(r.startOn)}s`
-      : `on the ${ordinal(parse(r.startOn).d)}`;
-  return `${o.label} ${on}${r.time ? ` around ${clock(r.time)}` : ""}`;
+    o.unit === "day"
+      ? ""
+      : o.unit === "week"
+        ? ` on ${weekday(r.startOn)}s`
+        : ` on the ${ordinal(parse(r.startOn).d)}`;
+  return `${everyLabel(r)}${on}${r.time ? ` around ${clock(r.time)}` : ""}`;
 }
 
 export function untilText(r: Repeat) {
@@ -147,11 +198,11 @@ export function repeatSummary(r: Repeat, perVisitCents?: number) {
 
 // Owner-facing numbers: per month, per year, and for the whole plan.
 export function repeatValue(r: Repeat, perVisitCents: number) {
-  const monthly = Math.round(perVisitCents * visitsPerMonth(r.every));
+  const monthly = Math.round(perVisitCents * visitsPerMonth(r));
   const visits = totalVisits(r);
   return {
     monthlyCents: monthly,
-    yearlyCents: Math.round(perVisitCents * visitsPerMonth(r.every) * 12),
+    yearlyCents: Math.round(perVisitCents * visitsPerMonth(r) * 12),
     totalCents: visits === null ? null : visits * perVisitCents,
     visits,
   };

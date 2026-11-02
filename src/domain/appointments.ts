@@ -332,7 +332,7 @@ export async function listVisitsRange(
       status: appointment.status,
       servicePlanId: appointment.servicePlanId,
       planJobId: servicePlan.quoteId,
-      planEvery: sql<string | null>`${servicePlan.repeat}->>'every'`,
+      planRepeat: sql<Record<string, unknown> | null>`${servicePlan.repeat}`,
       planBilling: servicePlan.billing,
       planInvoiceId: appointment.planInvoiceId,
       year: vehicle.year,

@@ -18,6 +18,8 @@ import {
   startServicePlan,
 } from "@/domain/service-plans";
 import {
+  cadenceText,
+  repeatInput,
   repeatSummary,
   repeatValue,
   visitDate,
@@ -50,6 +52,58 @@ describe("schedule math", () => {
     expect(visitDate({ every: "year", startOn: "2028-02-29" }, 1)).toBe(
       "2029-02-28",
     );
+  });
+  it("supports a custom gap in days, weeks or months", () => {
+    const tenDays = {
+      every: "custom" as const,
+      custom: { count: 10, unit: "day" as const },
+      startOn: "2026-12-28",
+    };
+    expect([0, 1, 2].map((n) => visitDate(tenDays, n))).toEqual([
+      "2026-12-28",
+      "2027-01-07",
+      "2027-01-17",
+    ]);
+    expect(cadenceText({ ...tenDays, time: null })).toBe("Every 10 days");
+    const fiveWeeks = {
+      every: "custom" as const,
+      custom: { count: 5, unit: "week" as const },
+      startOn: "2026-11-03",
+      time: "09:30",
+    };
+    expect(visitDate(fiveWeeks, 1)).toBe("2026-12-08");
+    expect(cadenceText(fiveWeeks)).toBe(
+      "Every 5 weeks on Tuesdays around 9:30 a.m.",
+    );
+    const twoMonths = {
+      every: "custom" as const,
+      custom: { count: 2, unit: "month" as const },
+      startOn: "2026-12-31",
+    };
+    expect(visitDate(twoMonths, 1)).toBe("2027-02-28");
+    // 10 days apart is about 3 visits a month.
+    expect(
+      repeatValue(
+        { ...tenDays, until: { kind: "stopped" }, billing: "per_visit" },
+        10000,
+      ).monthlyCents,
+    ).toBe(30438);
+    expect(
+      repeatInput.safeParse({
+        every: "custom",
+        startOn: "2026-11-03",
+        until: { kind: "stopped" },
+        billing: "per_visit",
+      }).success,
+    ).toBe(false);
+    expect(
+      repeatInput.safeParse({
+        ...tenDays,
+        until: { kind: "stopped" },
+        billing: "per_visit",
+        custom: { count: 0, unit: "day" },
+      }).success,
+    ).toBe(false);
   });
   it("stops at the visit count or end date", () => {
     expect(visitsThrough(weekly, "2027-12-31").map((v) => v.on)).toEqual([
