@@ -89,9 +89,9 @@ test("UX standards across public, shop, detail and admin pages", async ({
     fullPage: true,
   });
   await expect(page.getByLabel("First name", { exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Details", exact: true }).click();
+  await page.getByRole("link", { name: "Edit details", exact: true }).click();
   await expect(
-    page.getByRole("link", { name: "Details", exact: true }),
+    page.getByRole("link", { name: "Edit details", exact: true }),
   ).toHaveAttribute("aria-current", "page");
   await auditPage(page);
   await page.getByRole("link", { name: "History", exact: true }).click();

@@ -1584,3 +1584,9 @@ label.switch input[type="checkbox"]:checked::after {
   gap: 8px;
   align-items: flex-start;
 }
+/* Stacked tappable rows (Today, profiles) keep an 8px gap between targets. */
+a.overview-row + a.overview-row,
+a.overview-row + div.overview-row,
+div.overview-row + a.overview-row {
+  margin-top: 8px;
+}
