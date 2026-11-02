@@ -17,9 +17,9 @@ export function mediaDriver(env = process.env): Driver | null {
     env.MEDIA_BUCKET
   )
     return "supabase";
-  return env.APP_ENV === "production" || env.APP_ENV === "staging"
-    ? null
-    : "local";
+  // Only a developer machine or the test suite may keep files on local disk;
+  // hosted servers lose them, so they need the bucket configured.
+  return ["local", "test"].includes(env.APP_ENV ?? "local") ? "local" : null;
 }
 export const mediaConfigured = () => mediaDriver() !== null;
 
