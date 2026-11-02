@@ -124,7 +124,7 @@ test("home-service setup creates a real property and equipment job without vehic
         name: `AC repair ${info.project.name}`,
         exact: true,
       })
-      .locator("..");
+      .locator("xpath=ancestor::article[1]");
     await expect(saved).toBeVisible();
     await saved
       .getByRole("button", { name: "Send estimate", exact: true })
