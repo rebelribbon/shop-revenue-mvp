@@ -1,3 +1,5 @@
+import { InvoiceDesigner } from "@/components/invoice-designer";
+import { getInvoiceTemplate } from "@/domain/invoice-display";
 import { HydratedMain } from "@/components/hydrated-main";
 import { z } from "zod";
 import { notFound } from "next/navigation";
@@ -55,6 +57,7 @@ export default async function InvoicesPage({
       : [];
     return {
       profile: await getBusinessProfile(tx),
+      template: await getInvoiceTemplate(tx),
       invoices: await listInvoices(tx, params.invoiceId),
       estimates: await listEstimates(tx, requested?.quoteId),
       checkouts: await tx
@@ -190,6 +193,27 @@ export default async function InvoicesPage({
             >
               <summary>View invoice &amp; payments</summary>
               <InvoiceLink id={i.id} />
+              <details className="record-details">
+                <summary>Preview &amp; choose what the customer sees</summary>
+                <InvoiceDesigner
+                  invoiceId={i.id}
+                  invoice={{
+                    number: i.number,
+                    snapshot: i.snapshot,
+                    issuedAt: i.createdAt,
+                    dueOn: i.dueOn,
+                    terms: i.invoiceTerms,
+                    voided: !!i.voidedAt,
+                    totalCents: i.totalCents,
+                    paidCents: i.paidCents,
+                  }}
+                  template={data.template}
+                  override={i.display}
+                  canSaveDefault={
+                    s.role === "owner" && s.actor.type !== "support"
+                  }
+                />
+              </details>
               {i.disputeOpen && (
                 <p className="notice">
                   Open dispute: {i.disputeOpen}. Follow-ups follow-up is paused.
