@@ -293,6 +293,10 @@ export const note = app.table(
     vehicleId: uuid("vehicle_id"),
     body: text("body").notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // "profile" notes are pinned to the customer; "log" notes are history.
+    kind: text("kind").$type<"profile" | "log">().notNull().default("log"),
+    headsUp: boolean("heads_up").notNull().default(false),
+    jobId: uuid("job_id"),
   },
   (t) => [
     unique("note_business_id_id_key").on(t.businessId, t.id),

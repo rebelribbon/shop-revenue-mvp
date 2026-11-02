@@ -197,6 +197,13 @@
       "when": 1793718931998,
       "tag": "0027_service_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793805331998,
+      "tag": "0028_profile_and_history_notes",
+      "breakpoints": true
     }
   ]
 }

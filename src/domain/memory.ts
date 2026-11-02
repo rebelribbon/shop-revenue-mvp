@@ -1,5 +1,11 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
-import { assetReading, note, vehicle, vinDecodeCache } from "@/db/schema";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import {
+  activity,
+  assetReading,
+  note,
+  vehicle,
+  vinDecodeCache,
+} from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { getCustomerWithVehicles, getVehicle } from "./customers";
@@ -9,6 +15,7 @@ export async function listNotes(
   tx: TenantTx,
   customerId: string,
   vehicleId?: string,
+  filter: { kind?: "profile" | "log"; jobId?: string } = {},
 ) {
   return tx
     .select()
@@ -17,21 +24,66 @@ export async function listNotes(
       and(
         eq(note.businessId, tx.businessId),
         eq(note.customerId, customerId),
-        vehicleId ? eq(note.vehicleId, vehicleId) : isNull(note.vehicleId),
+        filter.jobId
+          ? eq(note.jobId, filter.jobId)
+          : vehicleId
+            ? eq(note.vehicleId, vehicleId)
+            : isNull(note.vehicleId),
+        filter.kind ? eq(note.kind, filter.kind) : undefined,
         isNull(note.deletedAt),
       ),
     )
-    .orderBy(desc(note.createdAt), desc(note.id))
+    .orderBy(desc(note.headsUp), desc(note.createdAt), desc(note.id))
     .limit(100);
+}
+// Heads-up profile notes, shown wherever this customer appears.
+export async function headsUpNotes(tx: TenantTx, customerIds: string[]) {
+  if (!customerIds.length) return [];
+  return tx
+    .select({ customerId: note.customerId, body: note.body })
+    .from(note)
+    .where(
+      and(
+        eq(note.businessId, tx.businessId),
+        inArray(note.customerId, customerIds),
+        eq(note.headsUp, true),
+        isNull(note.deletedAt),
+      ),
+    )
+    .orderBy(desc(note.createdAt));
 }
 export async function addNote(
   tx: TenantTx,
   customerId: string,
   vehicleId: string | null,
   body: string,
+  options: {
+    kind?: "profile" | "log";
+    headsUp?: boolean;
+    jobId?: string | null;
+  } = {},
 ) {
   await getCustomerWithVehicles(tx, customerId);
   if (vehicleId) await getVehicle(tx, customerId, vehicleId);
+  const kind = options.kind ?? "log";
+  if (options.jobId) {
+    const [job] = await tx
+      .select({ data: activity.data })
+      .from(activity)
+      .where(
+        and(
+          eq(activity.businessId, tx.businessId),
+          eq(activity.kind, "job.costed"),
+          eq(activity.subjectId, options.jobId),
+        ),
+      )
+      .limit(1);
+    if (
+      (job?.data as { customerId?: string } | undefined)?.customerId !==
+      customerId
+    )
+      throw notFound("That job");
+  }
   const [row] = await tx
     .insert(note)
     .values({
@@ -40,15 +92,50 @@ export async function addNote(
       customerId,
       vehicleId,
       body,
+      kind,
+      headsUp: kind === "profile" && !!options.headsUp,
+      jobId: options.jobId ?? null,
     })
     .returning();
   await recordActivity(tx, {
     kind: "note.created",
     subjectType: vehicleId ? "vehicle" : "customer",
     subjectId: vehicleId ?? customerId,
-    summary: "Note added",
-    data: { noteId: row.id, text: body },
+    summary:
+      kind === "profile"
+        ? row.headsUp
+          ? "Heads-up added to profile"
+          : "Profile note added"
+        : `Note: ${body.length > 140 ? `${body.slice(0, 137)}…` : body}`,
+    data: {
+      noteId: row.id,
+      text: body,
+      noteKind: kind,
+      ...(options.jobId ? { jobId: options.jobId } : {}),
+    },
   });
+  return { id: row.id };
+}
+export async function setNoteHeadsUp(
+  tx: TenantTx,
+  customerId: string,
+  noteId: string,
+  headsUp: boolean,
+) {
+  const [row] = await tx
+    .update(note)
+    .set({ headsUp })
+    .where(
+      and(
+        eq(note.businessId, tx.businessId),
+        eq(note.customerId, customerId),
+        eq(note.id, noteId),
+        eq(note.kind, "profile"),
+        isNull(note.deletedAt),
+      ),
+    )
+    .returning({ id: note.id });
+  if (!row) throw notFound("That profile note");
   return { id: row.id };
 }
 export async function changeNote(

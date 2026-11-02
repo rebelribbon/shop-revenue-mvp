@@ -1,3 +1,7 @@
+import { headsUpNotes, listNotes } from "@/domain/memory";
+import { addNoteAction } from "@/server/actions/memory";
+import { ActionForm } from "@/components/action-form";
+import { cadenceText, untilText } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import { listCommonJobs } from "@/domain/common-jobs";
 import { loadJobWorkflows, stageLabels } from "@/domain/job-workflow";
@@ -95,8 +99,19 @@ export default async function JobsPage({
           )[0]
         : undefined,
     };
+    const selectedCustomer = page.selected
+      ? (page.selected.data as { customerId?: string }).customerId
+      : undefined;
     return {
       ...page,
+      jobNotes: selectedCustomer
+        ? await listNotes(tx, selectedCustomer, undefined, {
+            jobId: page.selected!.id,
+          })
+        : [],
+      headsUp: selectedCustomer
+        ? await headsUpNotes(tx, [selectedCustomer])
+        : [],
       workflows: await loadJobWorkflows(tx, [
         ...new Set([
           ...page.jobs.map((j) => j.id),
@@ -218,22 +233,72 @@ export default async function JobsPage({
           return (
             <>
               <p>
-                <Link href="/app/jobs">← All jobs</Link>
+                <Link href={`/app/customers/${input.customerId}`}>
+                  ←{" "}
+                  {data.options.customers.find((c) => c.id === input.customerId)
+                    ?.name ?? "Customer"}
+                </Link>
               </p>
+              {data.headsUp.map((n, i) => (
+                <p className="notice banner" role="note" key={i} data-heads-up>
+                  <span className="pill pill-warn">Heads-up</span> {n.body}
+                </p>
+              ))}
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
                 </p>
               )}
               <article className="card">
-                <h2>{selected.title}</h2>
+                <h2>
+                  {input.repeat && "↻ "}
+                  {selected.title}
+                </h2>
                 <p>
-                  {
-                    data.options.customers.find(
-                      (c) => c.id === input.customerId,
-                    )?.name
-                  }
+                  <Link href={`/app/customers/${input.customerId}`}>
+                    {
+                      data.options.customers.find(
+                        (c) => c.id === input.customerId,
+                      )?.name
+                    }
+                  </Link>
+                  {flow?.latest?.estimate.snapshot.serviceLabel ||
+                  flow?.latest?.estimate.snapshot.vehicleLabel
+                    ? ` · ${flow.latest.estimate.snapshot.serviceLabel || flow.latest.estimate.snapshot.vehicleLabel}`
+                    : ""}
                 </p>
+                {input.repeat && (
+                  <p className="muted">
+                    {cadenceText(input.repeat)} · {untilText(input.repeat)}
+                  </p>
+                )}
+                {flow && (
+                  <div className="overview-metrics" aria-label="Job money">
+                    <div className="card overview-metric">
+                      <strong>
+                        {money(
+                          flow.latest?.estimate.snapshot.totalCents ??
+                            t.subtotalCents,
+                        )}
+                      </strong>
+                      <span>{input.repeat ? "Per visit" : "Quoted"}</span>
+                    </div>
+                    <div className="card overview-metric">
+                      <strong>
+                        {money(
+                          flow.plan ? flow.plan.billedCents : flow.paidCents,
+                        )}
+                      </strong>
+                      <span>{flow.plan ? "Billed so far" : "Paid"}</span>
+                    </div>
+                    {flow.balanceCents > 0 && (
+                      <div className="card overview-metric">
+                        <strong>{money(flow.balanceCents)}</strong>
+                        <span>Still owed</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {flow && (
                   <JobWorkflow
                     flow={flow}
@@ -242,6 +307,54 @@ export default async function JobsPage({
                     readOnly={s.actor.type === "support"}
                   />
                 )}
+                <section aria-label="Job notes">
+                  <h3>Notes</h3>
+                  {data.jobNotes.map((n) => (
+                    <p
+                      key={n.id}
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      📝 {n.body}{" "}
+                      <span className="muted">
+                        ·{" "}
+                        {n.createdAt.toLocaleDateString("en-US", {
+                          timeZone: data.profile?.timezone || "America/Chicago",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </p>
+                  ))}
+                  {!data.jobNotes.length && (
+                    <p className="muted">
+                      Gate codes, what you found, what the customer asked for.
+                    </p>
+                  )}
+                  {s.actor.type !== "support" && (
+                    <ActionForm
+                      action={addNoteAction}
+                      hidden={{
+                        customerId: input.customerId,
+                        jobId: selected.id,
+                        kind: "log",
+                      }}
+                      submitLabel="Add note"
+                      variant="secondary"
+                    >
+                      <label htmlFor="job-note">Note about this job</label>
+                      <textarea
+                        id="job-note"
+                        name="body"
+                        rows={2}
+                        required
+                        maxLength={5000}
+                      />
+                    </ActionForm>
+                  )}
+                </section>
                 <details>
                   <summary>Change job or view costs</summary>
                   <div className="money-actions">
