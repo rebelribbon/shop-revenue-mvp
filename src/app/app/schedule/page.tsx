@@ -202,8 +202,7 @@ export default async function VisitsPage({
                       </div>
                       {a.status === "scheduled" &&
                         s.actor.type !== "support" && (
-                          <details>
-                            <summary>Update visit</summary>
+                          <div className="visit-actions">
                             <ActionForm
                               action={setAppointmentStatusAction}
                               hidden={{
@@ -215,7 +214,7 @@ export default async function VisitsPage({
                                   ? "Mark done & create invoice"
                                   : "Mark visit done"
                               }
-                              variant="secondary"
+                              variant="primary"
                             />
                             {a.servicePlanId && (
                               <ActionForm
@@ -228,65 +227,65 @@ export default async function VisitsPage({
                                 variant="secondary"
                               />
                             )}
-                            <ActionForm
-                              action={setAppointmentStatusAction}
-                              hidden={{
-                                appointmentId: a.id,
-                                status: "no_show",
-                              }}
-                              submitLabel="Customer didn’t show"
-                              variant="secondary"
-                            />
-                            <ActionForm
-                              action={rescheduleAppointmentAction}
-                              hidden={{ appointmentId: a.id }}
-                              submitLabel="Move visit"
-                              variant="secondary"
-                            >
-                              <label htmlFor={`move-${a.id}`}>
-                                New date and time
-                              </label>
-                              <input
-                                id={`move-${a.id}`}
-                                name="startsAt"
-                                type="datetime-local"
-                                required
-                                defaultValue={a.startsAt
-                                  .toLocaleString("sv-SE", {
-                                    timeZone: data.visits.timezone,
-                                  })
-                                  .slice(0, 16)
-                                  .replace(" ", "T")}
-                              />
-                            </ActionForm>
-                            {!a.servicePlanId && (
+                            <details>
+                              <summary>Move, no-show or cancel</summary>
                               <ActionForm
                                 action={setAppointmentStatusAction}
                                 hidden={{
                                   appointmentId: a.id,
-                                  status: "cancelled",
+                                  status: "no_show",
                                 }}
-                                submitLabel="Cancel visit"
-                                variant="danger"
-                                confirm="Cancel this visit?"
+                                submitLabel="Customer didn’t show"
+                                variant="secondary"
                               />
-                            )}
-                          </details>
+                              <ActionForm
+                                action={rescheduleAppointmentAction}
+                                hidden={{ appointmentId: a.id }}
+                                submitLabel="Move visit"
+                                variant="secondary"
+                              >
+                                <label htmlFor={`move-${a.id}`}>
+                                  New date and time
+                                </label>
+                                <input
+                                  id={`move-${a.id}`}
+                                  name="startsAt"
+                                  type="datetime-local"
+                                  required
+                                  defaultValue={a.startsAt
+                                    .toLocaleString("sv-SE", {
+                                      timeZone: data.visits.timezone,
+                                    })
+                                    .slice(0, 16)
+                                    .replace(" ", "T")}
+                                />
+                              </ActionForm>
+                              {!a.servicePlanId && (
+                                <ActionForm
+                                  action={setAppointmentStatusAction}
+                                  hidden={{
+                                    appointmentId: a.id,
+                                    status: "cancelled",
+                                  }}
+                                  submitLabel="Cancel visit"
+                                  variant="danger"
+                                  confirm="Cancel this visit?"
+                                />
+                              )}
+                            </details>
+                          </div>
                         )}
                       {a.status !== "scheduled" &&
                         s.actor.type !== "support" && (
-                          <details>
-                            <summary>Undo</summary>
-                            <ActionForm
-                              action={setAppointmentStatusAction}
-                              hidden={{
-                                appointmentId: a.id,
-                                status: "scheduled",
-                              }}
-                              submitLabel="Put back on the schedule"
-                              variant="secondary"
-                            />
-                          </details>
+                          <ActionForm
+                            action={setAppointmentStatusAction}
+                            hidden={{
+                              appointmentId: a.id,
+                              status: "scheduled",
+                            }}
+                            submitLabel="Undo"
+                            variant="secondary"
+                          />
                         )}
                     </article>
                   ))}

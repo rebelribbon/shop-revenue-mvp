@@ -55,19 +55,21 @@ export function MediaGallery({
               </Link>
             )}
             {!readOnly && (
+              <ActionForm
+                action={updateMediaAction}
+                hidden={{
+                  mediaId: m.id,
+                  showCustomer: m.showCustomer ? "false" : "true",
+                }}
+                submitLabel={
+                  m.showCustomer ? "Hide from customer" : "Show the customer"
+                }
+                variant="secondary"
+              />
+            )}
+            {!readOnly && (
               <details>
-                <summary>Edit</summary>
-                <ActionForm
-                  action={updateMediaAction}
-                  hidden={{
-                    mediaId: m.id,
-                    showCustomer: m.showCustomer ? "false" : "true",
-                  }}
-                  submitLabel={
-                    m.showCustomer ? "Hide from customer" : "Show the customer"
-                  }
-                  variant="secondary"
-                />
+                <summary>Change note, tag or remove</summary>
                 <ActionForm
                   action={updateMediaAction}
                   hidden={{ mediaId: m.id }}

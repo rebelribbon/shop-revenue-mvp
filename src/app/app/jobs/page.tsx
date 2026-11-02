@@ -445,8 +445,8 @@ export default async function JobsPage({
                     </ActionForm>
                   )}
                 </section>
-                <details>
-                  <summary>Change job or view costs</summary>
+                <section aria-label="Job costs">
+                  <h3>Costs &amp; profit</h3>
                   <div className="money-actions">
                     <Link href={`/app/jobs?edit=${selected.id}`}>
                       Edit job / actual hours
@@ -464,9 +464,9 @@ export default async function JobsPage({
                       ? "unknown until every cost is entered"
                       : money(t.estimatedGrossProfitCents)}
                   </p>
-                </details>
-                <details>
-                  <summary>View parts, labor and costs</summary>
+                </section>
+                <section aria-label="Line items">
+                  <h3>{auto ? "Parts" : "Materials"} &amp; labor</h3>
                   <ul>
                     {input.parts.map((part, i) => (
                       <li key={i}>
@@ -488,7 +488,7 @@ export default async function JobsPage({
                       </li>
                     ))}
                   </ul>
-                </details>
+                </section>
                 <section className="record-details" id="job-estimate">
                   <h3>Customer estimate</h3>
                   {!flow?.currentInvoice &&
@@ -553,7 +553,7 @@ export default async function JobsPage({
               <option value="amount">Biggest first</option>
             </select>
           </form>
-          <nav className="chip-links" aria-label="Show jobs">
+          <div className="chip-links" role="group" aria-label="Show jobs">
             {JOB_FILTERS.map((f) => (
               <Link
                 key={f.key}
@@ -569,7 +569,7 @@ export default async function JobsPage({
                 )
               </Link>
             ))}
-          </nav>
+          </div>
           <p className="muted">
             Up to 100 recent matching jobs. Search by job or customer name to
             find older work.

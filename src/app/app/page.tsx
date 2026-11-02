@@ -2,6 +2,8 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { workspaceLabels, businessTypeLabel } from "@/lib/business-types";
 import { todayAgenda } from "@/domain/today";
 import { RecentCustomers } from "@/components/recent-customers";
+import { ActionForm } from "@/components/action-form";
+import { setAppointmentStatusAction } from "@/server/actions/appointments";
 import Link from "next/link";
 import { getOwnerMoney } from "@/domain/owner-money";
 import { formatMoney } from "@/components/estimate-document";
@@ -122,15 +124,15 @@ export default async function HomePage({
         </div>
         {!today.length && <p className="muted">Nothing booked today.</p>}
         {today.map((a) => (
-          <Link
-            className="overview-row"
-            key={a.id}
-            href={
-              a.planJobId ? "/app/schedule" : `/app/customers/${a.customerId}`
-            }
-          >
-            <strong>{time(a.startsAt)}</strong>
-            <span>
+          <div className="overview-row" key={a.id}>
+            <Link
+              href={
+                a.planJobId
+                  ? `/app/jobs?job=${a.planJobId}`
+                  : `/app/customers/${a.customerId}`
+              }
+            >
+              <strong>{time(a.startsAt)}</strong>{" "}
               {a.servicePlanId && <span className="plan-badge">↻</span>}{" "}
               {a.customerName} · {a.reason || "Visit"}
               {a.serviceAssetName && (
@@ -139,19 +141,42 @@ export default async function HomePage({
                   · {a.serviceAddress || a.serviceAssetName}
                 </span>
               )}
-            </span>
-            <span
-              className={a.status === "scheduled" ? "pill" : "pill pill-ok"}
-            >
-              {a.status === "scheduled"
-                ? "To do"
-                : a.status === "completed"
+            </Link>
+            {a.status === "scheduled" && s.actor.type !== "support" ? (
+              <span className="visit-actions">
+                <ActionForm
+                  action={setAppointmentStatusAction}
+                  hidden={{ appointmentId: a.id, status: "completed" }}
+                  submitLabel={
+                    a.servicePlanId && a.planBilling === "per_visit"
+                      ? "Done & bill"
+                      : "Done"
+                  }
+                  variant="secondary"
+                />
+                {a.servicePlanId && (
+                  <ActionForm
+                    action={setAppointmentStatusAction}
+                    hidden={{ appointmentId: a.id, status: "cancelled" }}
+                    submitLabel="Skip"
+                    variant="secondary"
+                  />
+                )}
+              </span>
+            ) : (
+              <span
+                className={a.status === "completed" ? "pill pill-ok" : "pill"}
+              >
+                {a.status === "completed"
                   ? "Done"
                   : a.status === "cancelled"
                     ? "Skipped"
-                    : "No-show"}
-            </span>
-          </Link>
+                    : a.status === "no_show"
+                      ? "No-show"
+                      : "To do"}
+              </span>
+            )}
+          </div>
         ))}
         {agenda.visits.tomorrow.length > 0 && (
           <p className="muted">

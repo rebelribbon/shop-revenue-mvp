@@ -44,7 +44,7 @@ test("home-service setup creates a real property and equipment job without vehic
       page.getByRole("heading", { name: "Vehicles", exact: true }),
     ).not.toBeVisible();
     await page
-      .getByRole("link", { name: "Properties & equipment", exact: true })
+      .getByRole("link", { name: "Properties", exact: true })
       .click();
     const property = page.locator("#new-property");
     await property
