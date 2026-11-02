@@ -167,9 +167,7 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
   };
   const plans = await listServicePlans(tx, { jobIds });
   // Upcoming one-off visits, to tell "won" from "scheduled".
-  const customerIds = [
-    ...new Set(versions.map((v) => v.estimate.customerId)),
-  ];
+  const customerIds = [...new Set(versions.map((v) => v.estimate.customerId))];
   const upcoming = customerIds.length
     ? await tx
         .select({
