@@ -239,8 +239,10 @@ describe("service plans", () => {
     ]);
     expect(inv.snapshot.title).toMatch(/2 visits/);
     expect(await f.run((tx) => billPlanVisits(tx, meta(), plan.id))).toBeNull();
-    // Running the daily job twice adds nothing new and never double-bills.
-    await runServicePlanMaintenance();
+    // The daily job finds this shop, adds nothing new and never double-bills.
+    const daily = await runServicePlanMaintenance();
+    expect(daily.businesses).toBeGreaterThanOrEqual(1);
+    expect(daily.failed).toBe(0);
     await runServicePlanMaintenance();
     expect((await f.visits(plan.id)).length).toBe(vs.length);
   });

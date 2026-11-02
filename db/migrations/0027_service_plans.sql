@@ -61,6 +61,9 @@ CREATE UNIQUE INDEX invoice_one_active_quote ON app.invoice(business_id, quote_i
 --> statement-breakpoint
 CREATE INDEX invoice_plan_idx ON app.invoice(business_id, service_plan_id) WHERE service_plan_id IS NOT NULL;
 --> statement-breakpoint
+-- Lets the scheduler lookup below (SECURITY DEFINER) see plans.
+CREATE POLICY plan_scheduler ON app.service_plan FOR SELECT TO migration_owner USING (true);
+--> statement-breakpoint
 -- Businesses with active plans, for the daily scheduler (no tenant data returned).
 CREATE FUNCTION app.service_plan_businesses() RETURNS SETOF uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog AS $$
  SELECT DISTINCT business_id FROM app.service_plan WHERE status = 'active'
