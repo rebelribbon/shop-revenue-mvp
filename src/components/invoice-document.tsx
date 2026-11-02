@@ -3,6 +3,7 @@ import type { InvoiceSnapshot } from "@/db/schema";
 import type { InvoiceDisplay } from "@/lib/invoice-display";
 import { formatDateOnly } from "@/lib/timezone";
 import { formatMoney } from "./estimate-document";
+import { CustomerPhotos } from "./media-gallery";
 
 export type InvoiceDocumentData = {
   number: number;
@@ -21,10 +22,14 @@ export function InvoiceDocument({
   invoice: i,
   display: d,
   payment,
+  photos = [],
+  photoToken,
 }: {
   invoice: InvoiceDocumentData;
   display: InvoiceDisplay;
   payment?: ReactNode;
+  photos?: NonNullable<InvoiceSnapshot["photos"]>;
+  photoToken?: string;
 }) {
   const s = i.snapshot;
   const balance = i.voided ? 0 : i.totalCents - i.paidCents;
@@ -92,6 +97,7 @@ export function InvoiceDocument({
       {d.terms && i.terms && (
         <p style={{ whiteSpace: "pre-wrap" }}>{i.terms}</p>
       )}
+      {d.photos && <CustomerPhotos photos={photos} token={photoToken} />}
       {payment}
       {d.thankYou && d.thankYouText && <p>{d.thankYouText}</p>}
     </section>

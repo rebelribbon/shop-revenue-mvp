@@ -22,6 +22,7 @@ export const INVOICE_FIELDS = [
     label: "“Taxable / not taxable” on each line",
     group: "The work",
   },
+  { key: "photos", label: "Photos you chose to show", group: "The work" },
   { key: "dueDate", label: "Due date", group: "Payment" },
   { key: "paidSoFar", label: "Amount already paid", group: "Payment" },
   {
@@ -53,6 +54,7 @@ export const DEFAULT_INVOICE_DISPLAY: InvoiceDisplay = {
   serviceLabel: true,
   lineDetail: true,
   taxableLabels: false,
+  photos: true,
   dueDate: true,
   paidSoFar: true,
   payOnline: true,

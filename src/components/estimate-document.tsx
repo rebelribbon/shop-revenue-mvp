@@ -1,13 +1,17 @@
 import type { EstimateSnapshot } from "@/db/schema/m3";
 import { estimateTotals } from "@/lib/estimate-tax";
+import { CustomerPhotos } from "./media-gallery";
 export const formatMoney = (c: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     c / 100,
   );
 export function EstimateDocument({
   snapshot: s,
+  photoToken,
 }: {
   snapshot: EstimateSnapshot;
+  // The customer's link token, so their browser may open the photos.
+  photoToken?: string;
 }) {
   return (
     <section className="card">
@@ -57,6 +61,7 @@ export function EstimateDocument({
           <p>{s.repeatSummary}</p>
         </div>
       )}
+      {s.photos && <CustomerPhotos photos={s.photos} token={photoToken} />}
       {s.terms && <p style={{ whiteSpace: "pre-wrap" }}>{s.terms}</p>}
     </section>
   );

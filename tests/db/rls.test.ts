@@ -1,3 +1,4 @@
+import { createCustomer } from "@/domain/customers";
 import { addExpense } from "@/domain/owner-money";
 import { saveCommonJob } from "@/domain/common-jobs";
 import { testPolicySnapshot } from "../helpers/policy";
@@ -14,6 +15,7 @@ import {
   stripeConnection,
   shopSubscription,
   servicePlan,
+  jobMedia,
   estimateAuthorization,
   recommendation,
   recoveryItem,
@@ -269,6 +271,36 @@ const builders: Record<string, Builder> = {
         .returning();
       return row.id;
     }),
+  "app.job_media": async (t) => {
+    const customerId = (
+      await withTenant(t.businessId, t.owner.actor, (tx) =>
+        createCustomer(tx, meta(), { firstName: "RLS", lastName: "Media" }),
+      )
+    ).id;
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const id = randomUUID();
+      await tx.insert(file).values({
+        id,
+        businessId: t.businessId,
+        storageKey: `b/${t.businessId}/job_media/${id}.jpg`,
+        kind: "job_media",
+        contentType: "image/jpeg",
+        byteSize: 4,
+        status: "ready",
+      });
+      const [row] = await tx
+        .insert(jobMedia)
+        .values({
+          businessId: t.businessId,
+          customerId,
+          fileId: id,
+          mediaType: "photo",
+          tag: "before",
+        })
+        .returning();
+      return row.id;
+    });
+  },
   "app.service_plan": async (t) => {
     const e = await estimateFixture(t);
     await signEstimate(e.token, "Fixture", ["part-0"], meta());

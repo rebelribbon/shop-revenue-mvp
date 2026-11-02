@@ -5,6 +5,9 @@ import { listServiceAssets } from "@/domain/service-assets";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
 import { Notes } from "@/components/memory";
+import { MediaUploader } from "@/components/media-uploader";
+import { MediaGallery } from "@/components/media-gallery";
+import { listMedia } from "@/domain/job-media";
 import type { HistoryItem } from "@/domain/customer-profile";
 import { listNotes } from "@/domain/memory";
 import Link from "next/link";
@@ -40,10 +43,8 @@ export default async function CustomerDetailPage(props: {
 }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
-  const [data, history, notes, profile, assets, jobs, money] = await withTenant(
-    s.businessId,
-    s.actor,
-    async (tx) =>
+  const [data, history, notes, profile, assets, jobs, money, media] =
+    await withTenant(s.businessId, s.actor, async (tx) =>
       Promise.all([
         getCustomerWithVehicles(tx, customerId),
         customerHistory(tx, customerId),
@@ -52,8 +53,9 @@ export default async function CustomerDetailPage(props: {
         listServiceAssets(tx, customerId),
         listCustomerJobs(tx, customerId),
         customerMoney(tx, customerId),
+        listMedia(tx, { customerId }),
       ]),
-  );
+    );
   const profileNotes = notes.filter((n) => n.kind === "profile");
   const historyNotes = notes.filter((n) => n.kind === "log");
   const plans = jobs.filter((j) => j.plan && j.plan.status !== "ended");
@@ -340,6 +342,34 @@ export default async function CustomerDetailPage(props: {
               ))}
             </section>
           )}
+          <section className="card" aria-label="Photos and videos" id="photos">
+            <h2>Photos &amp; videos</h2>
+            {!readOnly && (
+              <MediaUploader
+                customerId={customerId}
+                defaultTag="issue"
+                vehicleId={
+                  data.vehicles.length === 1 ? data.vehicles[0].id : null
+                }
+                serviceAssetId={assets.length === 1 ? assets[0].id : null}
+              />
+            )}
+            <MediaGallery
+              items={media.slice(0, 24)}
+              readOnly={readOnly}
+              timeZone={tz}
+              quoteHref={(m) =>
+                `/app/jobs?${new URLSearchParams({
+                  customerId,
+                  ...(m.vehicleId ? { vehicleId: m.vehicleId } : {}),
+                  ...(m.serviceAssetId
+                    ? { serviceAssetId: m.serviceAssetId }
+                    : {}),
+                  fromMedia: m.id,
+                })}`
+              }
+            />
+          </section>
           <section className="card" aria-label="Recent history">
             <h2>Recent history</h2>
             {!readOnly && (

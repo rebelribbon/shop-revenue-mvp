@@ -23,6 +23,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { repeatSummary } from "@/lib/service-plans";
+import { estimatePhotos } from "./job-media";
 import {
   completeDecisions,
   signatureSchema,
@@ -175,6 +176,7 @@ export async function freezeEstimate(
   )
     throw new AppError("VALIDATION", "Enter a tax rate between 0% and 20%.");
   const { subtotalCents, taxCents } = estimateTotals(lines, input.taxBps);
+  const photos = await estimatePhotos(tx, input.jobId);
   const snapshot: EstimateSnapshot = {
     title: data.title,
     shopName: shop.dba || shop.legalName,
@@ -193,6 +195,7 @@ export async function freezeEstimate(
     ...(data.repeat
       ? { repeat: data.repeat, repeatSummary: repeatSummary(data.repeat) }
       : {}),
+    ...(photos.length ? { photos } : {}),
     authorizationPolicy: {
       id: policy.id,
       version: policy.version,

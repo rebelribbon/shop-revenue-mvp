@@ -354,6 +354,7 @@ export type PublicInvoice = {
   onlinePaymentEnabled?: boolean;
   displayTemplate?: unknown;
   display?: unknown;
+  photos?: NonNullable<InvoiceSnapshot["photos"]>;
 };
 export async function readPublicInvoice(
   token: string,

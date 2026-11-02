@@ -25,6 +25,8 @@ export default async function InvoicePage({
       <InvoiceDocument
         invoice={i}
         display={display}
+        photos={i.photos ?? []}
+        photoToken={token}
         payment={
           !i.voided &&
           i.paidCents < i.totalCents &&

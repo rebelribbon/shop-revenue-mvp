@@ -1538,3 +1538,39 @@ label.switch input[type="checkbox"]:checked::after {
   background: var(--hover);
   font-weight: 600;
 }
+/* Photo and video grids. */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(144px, 1fr));
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+.media-tile {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.media-tile img,
+.media-tile video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--hover);
+}
+.media-tile a {
+  padding: 0;
+}
+.media-tile figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+}
+@media print {
+  .media-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}

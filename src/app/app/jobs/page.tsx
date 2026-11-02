@@ -1,3 +1,8 @@
+import { z } from "zod";
+import { MediaUploader } from "@/components/media-uploader";
+import { MediaGallery } from "@/components/media-gallery";
+import { listMedia } from "@/domain/job-media";
+import { jobMedia as jobMediaTable } from "@/db/schema";
 import { headsUpNotes, listNotes } from "@/domain/memory";
 import { addNoteAction } from "@/server/actions/memory";
 import { ActionForm } from "@/components/action-form";
@@ -53,6 +58,7 @@ export default async function JobsPage({
     sourceRecoveryItemId?: string;
     sourceContactActivityId?: string;
     sourceAppointmentId?: string;
+    fromMedia?: string;
   }>;
 }) {
   const {
@@ -70,6 +76,7 @@ export default async function JobsPage({
     sourceRecoveryItemId,
     sourceContactActivityId,
     sourceAppointmentId,
+    fromMedia,
   } = await searchParams;
   const s = await requireShopSession("/app/jobs");
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
@@ -116,6 +123,23 @@ export default async function JobsPage({
       : undefined;
     return {
       ...page,
+      jobMedia: page.selected
+        ? await listMedia(tx, { jobId: page.selected.id })
+        : [],
+      fromMedia:
+        fromMedia && z.uuid().safeParse(fromMedia).success
+          ? (
+              await tx
+                .select()
+                .from(jobMediaTable)
+                .where(
+                  and(
+                    eq(jobMediaTable.businessId, tx.businessId),
+                    eq(jobMediaTable.id, fromMedia),
+                  ),
+                )
+            )[0]
+          : undefined,
       jobNotes: selectedCustomer
         ? await listNotes(tx, selectedCustomer, undefined, {
             jobId: page.selected!.id,
@@ -204,7 +228,10 @@ export default async function JobsPage({
           customerId: chosenCustomer.id,
           vehicleId: chosenVehicle?.id,
           serviceAssetId: chosenAsset?.id,
-          title: "",
+          title:
+            data.fromMedia?.customerId === chosenCustomer.id
+              ? (data.fromMedia.caption ?? "").slice(0, 200)
+              : "",
           parts: [],
           labor: [],
         }
@@ -261,6 +288,11 @@ export default async function JobsPage({
               data.profile?.timezone || "America/Chicago",
             )}
             defaultRepeats={recurringFirst(type)}
+            attachMediaId={
+              data.fromMedia && data.fromMedia.customerId === customerId
+                ? data.fromMedia.id
+                : undefined
+            }
           />
         </>
       ) : selected ? (
@@ -344,6 +376,27 @@ export default async function JobsPage({
                     readOnly={s.actor.type === "support"}
                   />
                 )}
+                <section aria-label="Photos and videos" id="job-photos">
+                  <h3>Photos &amp; videos</h3>
+                  <p className="muted">
+                    Photos switched to “Show the customer” appear on the next
+                    estimate you send, and on the invoice.
+                  </p>
+                  {s.actor.type !== "support" && (
+                    <MediaUploader
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      vehicleId={input.vehicleId ?? null}
+                      serviceAssetId={input.serviceAssetId ?? null}
+                      defaultTag={flow?.currentInvoice ? "after" : "before"}
+                    />
+                  )}
+                  <MediaGallery
+                    items={data.jobMedia}
+                    readOnly={s.actor.type === "support"}
+                    timeZone={data.profile?.timezone || "America/Chicago"}
+                  />
+                </section>
                 <section aria-label="Job notes">
                   <h3>Notes</h3>
                   {data.jobNotes.map((n) => (

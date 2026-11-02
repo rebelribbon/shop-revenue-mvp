@@ -50,3 +50,6 @@ supabase/.temp
 !.env.example
 /.dev-inbox
 .env.dev-hosted
+
+# Local photo/video storage for development
+.local-media/
