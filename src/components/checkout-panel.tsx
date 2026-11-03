@@ -44,9 +44,13 @@ export function CheckoutPanel({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-  const [done, setDone] = useState<{ paid: number; change: number } | null>(
-    null,
-  );
+  // Captured when the payment is taken: the page refreshes right after,
+  // so the balance passed in will already include this payment.
+  const [done, setDone] = useState<{
+    paid: number;
+    change: number;
+    remaining: number;
+  } | null>(null);
   const charge = Math.min(toCents(amount), dueCents);
   const change =
     method === "cash" && received ? Math.max(0, toCents(received) - charge) : 0;
@@ -62,12 +66,12 @@ export function CheckoutPanel({
           <p className="checkout-change">Give back {fmt(done.change)} change</p>
         )}
         <p>
-          {dueCents - done.paid > 0
-            ? `${fmt(dueCents - done.paid)} is still due on this invoice.`
+          {done.remaining > 0
+            ? `${fmt(done.remaining)} is still due on this invoice.`
             : "Paid in full."}
         </p>
         <div className="checkout-after">
-          {dueCents - done.paid > 0 ? (
+          {done.remaining > 0 ? (
             <button
               className="btn primary"
               type="button"
@@ -148,7 +152,11 @@ export function CheckoutPanel({
                 clientRequestId: requestId,
               });
               if (r.ok) {
-                setDone({ paid: charge, change });
+                setDone({
+                  paid: charge,
+                  change,
+                  remaining: dueCents - charge,
+                });
                 router.refresh();
               } else setMessage(r.error.message);
             } catch {
