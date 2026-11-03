@@ -17,11 +17,14 @@ import {
   type MoneyCategory,
 } from "./money-finder";
 import { audit, type RequestMeta } from "./records";
+import { todayAgenda } from "./today";
 
 export type TaskRow = {
   key: string;
-  source: "rule" | "manual";
-  category: MoneyCategory | "manual";
+  source: "rule" | "manual" | "work";
+  category: MoneyCategory | "manual" | "work";
+  // Work tasks: the one button that finishes them (e.g. "Create invoice").
+  action?: { label: string; href: string };
   kindLabel: string;
   subjectId: string;
   customerId: string | null;
@@ -60,6 +63,8 @@ function titleFor(category: MoneyCategory, name: string, label: string | null) {
       return `Follow up with ${name} on declined work`;
     case "service_due":
       return `Remind ${name}: service due${label ? ` (${label})` : ""}`;
+    case "visit_confirm":
+      return `Confirm ${name}’s visit`;
   }
 }
 
@@ -71,11 +76,15 @@ function hrefFor(
   if (category === "unpaid_invoice")
     return `/app/invoices?invoiceId=${subjectId}`;
   if (category === "job_update") return `/app/jobs?job=${subjectId}`;
+  if (category === "visit_confirm") return "/app/schedule";
   return `/app/customers/${customerId}`;
 }
 
 export async function listTasks(tx: TenantTx, now = new Date()) {
-  const f = await listFollowUpItems(tx, now);
+  const [f, agenda] = await Promise.all([
+    listFollowUpItems(tx, now),
+    todayAgenda(tx, now),
+  ]);
   const due: TaskRow[] = [];
   const later: TaskRow[] = [];
   for (const i of f.items) {
@@ -114,6 +123,28 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       ),
     };
     (row.dueOn <= f.today ? due : later).push(row);
+  }
+  // Work that's waiting on the shop: it leaves the list once it's done.
+  for (const w of agenda.items) {
+    if (!["unbilled", "schedule", "plan", "expired"].includes(w.kind)) continue;
+    due.push({
+      key: `work:${w.id}`,
+      source: "work",
+      category: "work",
+      kindLabel: "Work",
+      subjectId: w.id,
+      customerId: null,
+      customerName: w.detail,
+      title: w.title,
+      detail: w.kind === "plan" ? w.detail : null,
+      amountCents: w.amountCents,
+      phone: null,
+      email: null,
+      href: w.href,
+      action: { label: w.action, href: w.href },
+      dueOn: f.today,
+      overdueDays: w.urgent ? 1 : 0,
+    });
   }
   const mine = await tx
     .select({

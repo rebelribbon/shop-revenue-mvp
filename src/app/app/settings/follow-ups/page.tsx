@@ -15,6 +15,7 @@ const MAX: Record<string, number> = {
   pastCustomer: 24,
   declined: 365,
   serviceDue: 90,
+  confirmVisit: 7,
 };
 
 export default async function FollowUpRulesPage() {

@@ -594,6 +594,85 @@ describe("Tasks and follow-up rules", () => {
     ).toBe(false);
   });
 
+  it("reminds the shop to confirm tomorrow's visits until it's done", async () => {
+    const f = await fixture();
+    const tomorrow = addLocalDays(today, 1);
+    const visit = await run(f, (tx) =>
+      createAppointment(tx, meta(), {
+        customerId: f.customerId,
+        vehicleId: f.vehicleId,
+        localStartsAt: `${tomorrow}T10:00`,
+        reason: "Brake check",
+      }),
+    );
+    await run(f, (tx) =>
+      createAppointment(tx, meta(), {
+        customerId: f.customerId,
+        vehicleId: f.vehicleId,
+        localStartsAt: `${addLocalDays(today, 5)}T10:00`,
+      }),
+    );
+    let t = await tasksFor(f);
+    const confirm = t.due.filter((r) => r.category === "visit_confirm");
+    expect(confirm.map((r) => r.subjectId)).toEqual([visit.id]);
+    expect(confirm[0].title).toBe("Confirm Real History’s visit");
+    expect(confirm[0].detail).toMatch(/Brake check$/);
+    await run(f, (tx) =>
+      updateRecovery(tx, meta(), {
+        category: "visit_confirm",
+        subjectId: visit.id,
+        action: "contact",
+        method: "phone",
+        deliveryConfirmed: true,
+      }),
+    );
+    t = await tasksFor(f);
+    expect(t.due.some((r) => r.category === "visit_confirm")).toBe(false);
+    await setRules(f, { confirmVisit: { on: true, daysBefore: 5 } });
+    const g = await fixture();
+    await run(g, (tx) =>
+      createAppointment(tx, meta(), {
+        customerId: g.customerId,
+        vehicleId: g.vehicleId,
+        localStartsAt: `${addLocalDays(today, 3)}T10:00`,
+      }),
+    );
+    expect(
+      (await tasksFor(g)).due.some((r) => r.category === "visit_confirm"),
+    ).toBe(false);
+    await setRules(g, { confirmVisit: { on: true, daysBefore: 3 } });
+    expect(
+      (await tasksFor(g)).due.some((r) => r.category === "visit_confirm"),
+    ).toBe(true);
+  });
+
+  it("puts finished-but-unbilled work on the list with the button to bill it", async () => {
+    const f = await fixture();
+    const e = await estimate(f, 5, 30, ["part-0", "labor-0"]);
+    await run(f, (tx) =>
+      tx.insert(activity).values({
+        businessId: f.businessId,
+        kind: "job.costed",
+        subjectType: "job",
+        subjectId: e.quoteId,
+        actorType: "user",
+        actorId: f.owner.actor.id,
+        summary: "Brake repair",
+        occurredAt: daysAgo(6),
+        data: {
+          customerId: f.customerId,
+          vehicleId: f.vehicleId,
+          parts: [],
+          labor: [],
+        },
+      }),
+    );
+    const t = await tasksFor(f);
+    const work = t.due.filter((r) => r.source === "work");
+    expect(work.length).toBeGreaterThan(0);
+    expect(work.every((r) => r.action?.href.startsWith("/app/"))).toBe(true);
+  });
+
   it("keeps the shop's own tasks with a due date", async () => {
     const f = await fixture();
     const { id } = await run(f, (tx) =>
