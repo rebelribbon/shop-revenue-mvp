@@ -36,6 +36,8 @@ test("UX standards across public, shop, detail and admin pages", async ({
     "/app/settings/follow-ups",
     "/app/jobs",
     "/app/jobs?new=1",
+    "/app/jobs?view=board",
+    "/app/create",
     "/app/estimates",
     "/app/invoices",
     "/app/invoices?new=1",

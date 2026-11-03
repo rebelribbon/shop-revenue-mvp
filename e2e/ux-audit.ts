@@ -92,7 +92,7 @@ export async function auditUX(page: Page, collect = false) {
       const r = effective(e).getBoundingClientRect();
       if (r.width < 47.9 || r.height < 47.9)
         issues.push(
-          `${tag(e)} has a ${r.width.toFixed(1)}×${r.height.toFixed(1)} target`,
+          `${tag(e)} "${(e.textContent ?? "").trim().slice(0, 24)}" has a ${r.width.toFixed(1)}×${r.height.toFixed(1)} target`,
         );
     }
     for (const e of Array.from(

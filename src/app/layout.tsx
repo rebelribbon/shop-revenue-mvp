@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/public-sans";
 import "./globals.css";
 import { PageActions } from "@/components/page-actions";
 

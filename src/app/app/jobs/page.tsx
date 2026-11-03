@@ -41,6 +41,7 @@ import { EstimatePublisher } from "@/components/estimate-publisher";
 import Link from "next/link";
 import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
+import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
@@ -67,6 +68,7 @@ export default async function JobsPage({
     fromMedia?: string;
     add?: string;
     tab?: string;
+    view?: string;
   }>;
 }) {
   const {
@@ -87,7 +89,9 @@ export default async function JobsPage({
     fromMedia,
     add,
     tab: requestedTab,
+    view,
   } = await searchParams;
+  const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
     const page = {
@@ -96,6 +100,7 @@ export default async function JobsPage({
       commonJobs: await listCommonJobs(tx),
       options: await listAppointmentChoices(tx),
       jobs: await listJobs(tx, q ?? ""),
+      pipeline: boardView ? await loadPipeline(tx) : null,
       recommendations: await tx
         .select({
           id: recommendation.id,
@@ -747,126 +752,237 @@ export default async function JobsPage({
           >
             {labels.newJob}
           </Link>
-          <form className="inline-search job-search" method="get" role="search">
-            <input type="hidden" name="show" value={filter.key} />
-            <div className="job-search-fields">
-              <div>
-                <label htmlFor="job-search">Find a job</label>
-                <div className="search-controls">
-                  <input
-                    id="job-search"
-                    name="q"
-                    type="search"
-                    defaultValue={q ?? ""}
-                    maxLength={100}
-                    placeholder="Job or customer name"
-                  />
-                  <button className="btn secondary">Search</button>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="job-sort">Sort</label>
-                <select
-                  id="job-sort"
-                  name="sort"
-                  defaultValue={sort ?? "newest"}
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="status">By status</option>
-                  <option value="amount">Biggest first</option>
-                </select>
-              </div>
-            </div>
-          </form>
-          <div className="chip-links" role="group" aria-label="Show jobs">
-            {JOB_FILTERS.map((f) => (
-              <Link
-                key={f.key}
-                href={`/app/jobs?${new URLSearchParams({ show: f.key, ...(q ? { q } : {}), ...(sort ? { sort } : {}) })}`}
-                aria-current={filter.key === f.key ? "true" : undefined}
-              >
-                {f.label} (
-                {
-                  data.jobs.filter((j) =>
-                    (f.statuses as readonly string[]).includes(statusOf(j.id)),
-                  ).length
-                }
-                )
-              </Link>
-            ))}
+          <div className="view-toggle" role="group" aria-label="Show jobs as">
+            <Link
+              href="/app/jobs?view=board"
+              aria-current={data.pipeline ? "true" : undefined}
+            >
+              Board
+            </Link>
+            <Link
+              href="/app/jobs"
+              aria-current={data.pipeline ? undefined : "true"}
+            >
+              List
+            </Link>
           </div>
-          {!rows.length ? (
-            <div className="empty-records">
-              <h2>
-                {q
-                  ? "No matching jobs"
-                  : auto
-                    ? "No repair jobs yet"
-                    : "No jobs yet"}
-              </h2>
-              <p className="muted">
-                {q
-                  ? "Try another name. Only the 100 most recent matches show here."
-                  : "Start a new job from a customer, add the work, then send the estimate."}
-              </p>
-            </div>
-          ) : (
-            <ul className="row-list card" aria-label="Jobs">
-              {rows.map((j) => {
-                const input = jobInput.parse(j.data),
-                  t = calculateJob(input.parts, input.labor),
-                  flow = data.workflows.get(j.id),
-                  owes =
-                    flow?.currentInvoice && flow.balanceCents > 0
-                      ? flow.balanceCents
-                      : 0,
-                  customer = data.options.customers.find(
-                    (c) => c.id === input.customerId,
-                  )?.name;
+          {data.pipeline ? (
+            <div className="job-board" aria-label="Jobs board">
+              {STAGES.map((stage) => {
+                const cards = data.pipeline!.columns[stage.key as StageKey];
+                const total = data.pipeline!.totals[stage.key as StageKey];
                 return (
-                  <li key={j.id}>
-                    <Link
-                      href={`/app/jobs?job=${j.id}`}
-                      aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
-                    >
-                      <span className="row-main">
-                        <strong>
-                          {input.repeat && "↻ "}
-                          {j.title}
-                        </strong>
+                  <section
+                    key={stage.key}
+                    className="board-column"
+                    aria-label={BOARD_TITLES(auto)[stage.key as StageKey]}
+                  >
+                    <h2>
+                      {BOARD_TITLES(auto)[stage.key as StageKey]}{" "}
+                      <span className="muted">{total.count}</span>
+                      <span className="board-total">{money(total.cents)}</span>
+                    </h2>
+                    {cards.length === 0 && (
+                      <p className="muted board-empty">Nothing here</p>
+                    )}
+                    {cards.map((c) => (
+                      <Link
+                        key={c.id}
+                        href={`/app/jobs?job=${c.id}`}
+                        className="board-card"
+                        aria-label={`Open job: ${c.title} · ${statusLabels[c.status]}`}
+                      >
+                        <span className="board-card-top">
+                          <strong>
+                            {c.repeats && "↻ "}
+                            {c.title}
+                          </strong>
+                          <strong>{money(c.amountCents)}</strong>
+                        </span>
                         <span className="muted">
-                          {[
-                            customer,
-                            j.createdAt.toLocaleDateString("en-US", {
-                              timeZone:
-                                data.profile?.timezone || "America/Chicago",
-                              month: "short",
-                              day: "numeric",
-                            }),
-                          ]
+                          {[c.customerName, c.label]
                             .filter(Boolean)
-                            .join(", ")}
+                            .join(" · ")}
                         </span>
-                      </span>
-                      <span className="row-side">
-                        {owes > 0 ? (
-                          <strong>owes {money(owes)}</strong>
-                        ) : (
-                          <span>{money(t.subtotalCents)}</span>
-                        )}
-                        <span className={statusTone(statusOf(j.id))}>
-                          {statusLabels[statusOf(j.id)]}
+                        <span className={boardTone(c.status, c.ageDays)}>
+                          {boardNote(c, statusLabels[c.status])}
                         </span>
-                      </span>
-                    </Link>
-                  </li>
+                      </Link>
+                    ))}
+                  </section>
                 );
               })}
-            </ul>
+            </div>
+          ) : (
+            <>
+              <form
+                className="inline-search job-search"
+                method="get"
+                role="search"
+              >
+                <input type="hidden" name="show" value={filter.key} />
+                <div className="job-search-fields">
+                  <div>
+                    <label htmlFor="job-search">Find a job</label>
+                    <div className="search-controls">
+                      <input
+                        id="job-search"
+                        name="q"
+                        type="search"
+                        defaultValue={q ?? ""}
+                        maxLength={100}
+                        placeholder="Job or customer name"
+                      />
+                      <button className="btn secondary">Search</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="job-sort">Sort</label>
+                    <select
+                      id="job-sort"
+                      name="sort"
+                      defaultValue={sort ?? "newest"}
+                    >
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="status">By status</option>
+                      <option value="amount">Biggest first</option>
+                    </select>
+                  </div>
+                </div>
+              </form>
+              <div className="chip-links" role="group" aria-label="Show jobs">
+                {JOB_FILTERS.map((f) => (
+                  <Link
+                    key={f.key}
+                    href={`/app/jobs?${new URLSearchParams({ show: f.key, ...(q ? { q } : {}), ...(sort ? { sort } : {}) })}`}
+                    aria-current={filter.key === f.key ? "true" : undefined}
+                  >
+                    {f.label} (
+                    {
+                      data.jobs.filter((j) =>
+                        (f.statuses as readonly string[]).includes(
+                          statusOf(j.id),
+                        ),
+                      ).length
+                    }
+                    )
+                  </Link>
+                ))}
+              </div>
+              {!rows.length ? (
+                <div className="empty-records">
+                  <h2>
+                    {q
+                      ? "No matching jobs"
+                      : auto
+                        ? "No repair jobs yet"
+                        : "No jobs yet"}
+                  </h2>
+                  <p className="muted">
+                    {q
+                      ? "Try another name. Only the 100 most recent matches show here."
+                      : "Start a new job from a customer, add the work, then send the estimate."}
+                  </p>
+                </div>
+              ) : (
+                <ul className="row-list card" aria-label="Jobs">
+                  {rows.map((j) => {
+                    const input = jobInput.parse(j.data),
+                      t = calculateJob(input.parts, input.labor),
+                      flow = data.workflows.get(j.id),
+                      owes =
+                        flow?.currentInvoice && flow.balanceCents > 0
+                          ? flow.balanceCents
+                          : 0,
+                      customer = data.options.customers.find(
+                        (c) => c.id === input.customerId,
+                      )?.name;
+                    return (
+                      <li key={j.id}>
+                        <Link
+                          href={`/app/jobs?job=${j.id}`}
+                          aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
+                        >
+                          <span className="row-main">
+                            <strong>
+                              {input.repeat && "↻ "}
+                              {j.title}
+                            </strong>
+                            <span className="muted">
+                              {[
+                                customer,
+                                j.createdAt.toLocaleDateString("en-US", {
+                                  timeZone:
+                                    data.profile?.timezone || "America/Chicago",
+                                  month: "short",
+                                  day: "numeric",
+                                }),
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </span>
+                          </span>
+                          <span className="row-side">
+                            {owes > 0 ? (
+                              <strong>owes {money(owes)}</strong>
+                            ) : (
+                              <span>{money(t.subtotalCents)}</span>
+                            )}
+                            <span className={statusTone(statusOf(j.id))}>
+                              {statusLabels[statusOf(j.id)]}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </>
       )}
     </HydratedMain>
   );
+}
+
+const BOARD_TITLES = (auto: boolean): Record<StageKey, string> => ({
+  estimate: auto ? "Estimates" : "Bids",
+  approved: auto ? "Approved" : "Won",
+  working: auto ? "In the shop" : "In progress",
+  invoice: "Ready to invoice",
+  unpaid: "Unpaid",
+});
+
+// The one line on a board card that says what's going on and for how long.
+function boardNote(
+  c: { status: string; ageDays: number; nextVisit: Date | null },
+  label: string,
+) {
+  const age =
+    c.ageDays === 0 ? "today" : `${c.ageDays} day${c.ageDays === 1 ? "" : "s"}`;
+  if (c.status === "draft") return "Not sent yet";
+  if (c.status === "sent")
+    return `Sent ${age === "today" ? "today" : `${age} ago`}`;
+  if (c.status === "won") return "Not scheduled";
+  if (c.status === "scheduled" && c.nextVisit)
+    return `Booked ${c.nextVisit.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+  if (c.status === "invoiced")
+    return c.ageDays >= 14
+      ? `Overdue · ${age}`
+      : `Invoice sent ${age === "today" ? "today" : `${age} ago`}`;
+  return label;
+}
+function boardTone(status: string, ageDays: number) {
+  if (status === "invoiced" && ageDays >= 14) return "board-note bad";
+  if (
+    status === "draft" ||
+    status === "won" ||
+    status === "unbilled" ||
+    status === "invoiced"
+  )
+    return "board-note warn";
+  if (status === "in_progress") return "board-note info";
+  return "board-note";
 }
