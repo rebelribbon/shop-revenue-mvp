@@ -1901,7 +1901,7 @@ div.overview-row + a.overview-row {
   max-width: none;
 }
 .task-item .row-main strong > a:not(.card):not(.btn) {
-  margin-left: -8px;
+  padding-left: 0;
 }
 .add-panel a.panel-close:not(.card):not(.btn) {
   margin-top: 8px;
