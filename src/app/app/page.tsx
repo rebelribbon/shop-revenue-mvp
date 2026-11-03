@@ -15,6 +15,7 @@ import { requireShopSession } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { listTasks } from "@/domain/tasks";
 import { loadPipeline } from "@/domain/pipeline";
+import { listRevenue } from "@/domain/revenue";
 import { buildReport, listSavedReports } from "@/domain/report-builder";
 import { presetRange } from "@/domain/reports";
 import { localDateKey } from "@/lib/timezone";
@@ -42,7 +43,7 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, agenda, tasks, summary, recurring, pipe, pinned] =
+  const [profile, agenda, tasks, summary, recurring, pipe, pinned, won] =
     await withTenant(s.businessId, s.actor, async (tx) =>
       Promise.all([
         getBusinessProfile(tx),
@@ -54,6 +55,7 @@ export default async function HomePage({
         s.role === "owner" ? recurringRevenue(tx) : null,
         loadPipeline(tx),
         s.role === "owner" ? pinnedReports(tx) : [],
+        s.role === "owner" ? listRevenue(tx) : null,
       ]),
     );
   const type = profile?.businessType ?? "automotive",
@@ -176,6 +178,14 @@ export default async function HomePage({
             Collected this month{" "}
             <strong>{formatMoney(summary.collectedCents)}</strong>
           </Link>
+          {won && Number(won.direct) + Number(won.influenced) > 0 && (
+            <Link href="/app/revenue" className="won-back">
+              Won back this month{" "}
+              <strong>
+                {formatMoney(Number(won.direct) + Number(won.influenced))}
+              </strong>
+            </Link>
+          )}
           {recurring && recurring.plans > 0 && (
             <Link href="/app/jobs?show=recurring">
               Recurring{" "}
