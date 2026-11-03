@@ -133,10 +133,10 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await page.getByRole("button", { name: "Save expense", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("Expense saved");
   await expect(
-    page.getByRole("heading", {
-      name: `Shop rent ${name} · $125.00`,
-      exact: true,
-    }),
+    page
+      .getByRole("listitem")
+      .filter({ hasText: `Shop rent ${name}` })
+      .filter({ hasText: "$125.00" }),
   ).toBeVisible();
   await auditUX(page);
   await page.screenshot({
