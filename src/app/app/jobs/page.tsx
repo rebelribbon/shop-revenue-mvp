@@ -25,7 +25,7 @@ import {
   jobStatusLabels,
   statusTone,
 } from "@/lib/job-status";
-import { JobWorkflow, WorkflowBadges } from "@/components/job-workflow";
+import { JobWorkflow } from "@/components/job-workflow";
 import {
   isAutomotive,
   recurringFirst,
@@ -39,7 +39,6 @@ import { and, eq } from "drizzle-orm";
 import { appointment, estimateVersion, recommendation } from "@/db/schema";
 import { EstimatePublisher } from "@/components/estimate-publisher";
 import Link from "next/link";
-import { WorkspaceIcon } from "@/components/workspace-icon";
 import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { withTenant } from "@/db/tenant";
@@ -283,14 +282,9 @@ export default async function JobsPage({
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>{editing ? (selected ? "Edit job" : labels.newJob) : labels.jobs}</h1>
-      <WorkNavigation current="jobs" businessType={type} />
-      <p className="muted">
-        {editing
-          ? "Add the work and save. Send the estimate next."
-          : selected
-            ? ""
-            : "Open a job to review pricing, labor hours and costs."}
-      </p>
+      {!editing && !selected && (
+        <WorkNavigation current="jobs" businessType={type} />
+      )}
       {editing ? (
         <>
           <p>
@@ -665,9 +659,6 @@ export default async function JobsPage({
                         <Link href={`/app/jobs?edit=${selected.id}`}>
                           Edit job / actual hours
                         </Link>
-                        <Link href={`/app/customers/${input.customerId}`}>
-                          Customer details
-                        </Link>
                         <Link href={`/app/estimates?jobId=${selected.id}`}>
                           Estimate history
                         </Link>
@@ -705,18 +696,6 @@ export default async function JobsPage({
                     </section>
                     <section className="record-details" id="job-estimate">
                       <h3>Customer estimate</h3>
-                      {!flow?.currentInvoice &&
-                        s.actor.type !== "support" &&
-                        !data.profile?.taxRateConfirmedAt && (
-                          <p className="banner" role="note">
-                            Your sales tax rate isn’t confirmed yet (currently{" "}
-                            {(data.profile?.taxRateBps ?? 0) / 100}%).{" "}
-                            <Link href="/app/settings/business#taxPercent">
-                              Set your tax rate
-                            </Link>{" "}
-                            before sending estimates.
-                          </p>
-                        )}
                       {!flow?.currentInvoice && s.actor.type !== "support" ? (
                         <EstimatePublisher
                           taxRateBps={data.profile?.taxRateBps}
@@ -768,26 +747,37 @@ export default async function JobsPage({
           >
             {labels.newJob}
           </Link>
-          <form className="card" method="get">
-            <label htmlFor="job-search">Find a job</label>
-            <div className="search-controls">
-              <input
-                id="job-search"
-                name="q"
-                defaultValue={q ?? ""}
-                maxLength={100}
-                placeholder="Job or customer name"
-              />
-              <button className="btn secondary">Search</button>
-            </div>
+          <form className="inline-search job-search" method="get" role="search">
             <input type="hidden" name="show" value={filter.key} />
-            <label htmlFor="job-sort">Sort</label>
-            <select id="job-sort" name="sort" defaultValue={sort ?? "newest"}>
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="status">By status</option>
-              <option value="amount">Biggest first</option>
-            </select>
+            <div className="job-search-fields">
+              <div>
+                <label htmlFor="job-search">Find a job</label>
+                <div className="search-controls">
+                  <input
+                    id="job-search"
+                    name="q"
+                    type="search"
+                    defaultValue={q ?? ""}
+                    maxLength={100}
+                    placeholder="Job or customer name"
+                  />
+                  <button className="btn secondary">Search</button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="job-sort">Sort</label>
+                <select
+                  id="job-sort"
+                  name="sort"
+                  defaultValue={sort ?? "newest"}
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="status">By status</option>
+                  <option value="amount">Biggest first</option>
+                </select>
+              </div>
+            </div>
           </form>
           <div className="chip-links" role="group" aria-label="Show jobs">
             {JOB_FILTERS.map((f) => (
@@ -806,70 +796,75 @@ export default async function JobsPage({
               </Link>
             ))}
           </div>
-          <p className="muted">
-            Up to 100 recent matching jobs. Search by job or customer name to
-            find older work.
-          </p>
-          <h2>{auto ? "Recent repair jobs" : "Recent job sheets"}</h2>
-          {!rows.length && (
-            <div className="card">
-              <h3>
+          {!rows.length ? (
+            <div className="empty-records">
+              <h2>
                 {q
                   ? "No matching jobs"
                   : auto
                     ? "No repair jobs yet"
                     : "No jobs yet"}
-              </h3>
-              <p>
+              </h2>
+              <p className="muted">
                 {q
-                  ? "Try another name."
-                  : auto
-                    ? "Start with a customer and vehicle, add parts and labor, then save the repair job."
-                    : "Start with a customer, add materials and labor, then save the job."}
+                  ? "Try another name. Only the 100 most recent matches show here."
+                  : "Start a new job from a customer, add the work, then send the estimate."}
               </p>
             </div>
+          ) : (
+            <ul className="row-list card" aria-label="Jobs">
+              {rows.map((j) => {
+                const input = jobInput.parse(j.data),
+                  t = calculateJob(input.parts, input.labor),
+                  flow = data.workflows.get(j.id),
+                  owes =
+                    flow?.currentInvoice && flow.balanceCents > 0
+                      ? flow.balanceCents
+                      : 0,
+                  customer = data.options.customers.find(
+                    (c) => c.id === input.customerId,
+                  )?.name;
+                return (
+                  <li key={j.id}>
+                    <Link
+                      href={`/app/jobs?job=${j.id}`}
+                      aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
+                    >
+                      <span className="row-main">
+                        <strong>
+                          {input.repeat && "↻ "}
+                          {j.title}
+                        </strong>
+                        <span className="muted">
+                          {[
+                            customer,
+                            j.createdAt.toLocaleDateString("en-US", {
+                              timeZone:
+                                data.profile?.timezone || "America/Chicago",
+                              month: "short",
+                              day: "numeric",
+                            }),
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      </span>
+                      <span className="row-side">
+                        {owes > 0 ? (
+                          <strong>owes {money(owes)}</strong>
+                        ) : (
+                          <span>{money(t.subtotalCents)}</span>
+                        )}
+                        <span className={statusTone(statusOf(j.id))}>
+                          {statusLabels[statusOf(j.id)]}
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-          <div className="job-list">
-            {rows.map((j) => {
-              const input = jobInput.parse(j.data),
-                t = calculateJob(input.parts, input.labor);
-              return (
-                <article key={j.id}>
-                  <Link
-                    className="card job-row"
-                    href={`/app/jobs?job=${j.id}`}
-                    aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
-                  >
-                    <div>
-                      <h3>{j.title}</h3>
-                      <p className="muted">
-                        {
-                          data.options.customers.find(
-                            (c) => c.id === input.customerId,
-                          )?.name
-                        }
-                      </p>
-                      <span className={statusTone(statusOf(j.id))}>
-                        {input.repeat && "↻ "}
-                        {statusLabels[statusOf(j.id)]}
-                      </span>
-                      <WorkflowBadges flow={data.workflows.get(j.id)!} />
-                    </div>
-                    <div className="job-row-meta">
-                      <strong>{money(t.subtotalCents)} quoted</strong>
-                      <span className="muted">
-                        Updated{" "}
-                        {j.createdAt.toLocaleDateString("en-US", {
-                          timeZone: data.profile?.timezone || "America/Chicago",
-                        })}
-                      </span>
-                    </div>
-                    <WorkspaceIcon name="arrow" />
-                  </Link>
-                </article>
-              );
-            })}
-          </div>
         </>
       )}
     </HydratedMain>

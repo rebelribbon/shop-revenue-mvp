@@ -73,8 +73,21 @@ export function JobEditor({
   const ready = useActionHydration();
   const router = useRouter();
   const [customerId, setCustomer] = useState(initial?.customerId ?? ""),
-    [vehicleId, setVehicle] = useState(initial?.vehicleId ?? ""),
-    [serviceAssetId, setServiceAsset] = useState(initial?.serviceAssetId ?? ""),
+    [vehicleId, setVehicle] = useState(() => {
+      if (initial?.vehicleId) return initial.vehicleId;
+      // One vehicle on file: pick it so there's nothing to choose.
+      const own = options.vehicles.filter(
+        (v) => v.customerId === initial?.customerId,
+      );
+      return own.length === 1 && !initial?.serviceAssetId ? own[0].id : "";
+    }),
+    [serviceAssetId, setServiceAsset] = useState(() => {
+      if (initial?.serviceAssetId) return initial.serviceAssetId;
+      const own = options.serviceAssets.filter(
+        (a) => a.customerId === initial?.customerId,
+      );
+      return own.length === 1 && !initial?.vehicleId ? own[0].id : "";
+    }),
     [title, setTitle] = useState(initial?.title ?? ""),
     [parts, setParts] = useState<JobInput["parts"]>(initial?.parts ?? []),
     [labor, setLabor] = useState<JobInput["labor"]>(initial?.labor ?? []),
@@ -257,24 +270,9 @@ export function JobEditor({
             </button>
           </section>
         )}
-        <label>
-          Job name
-          <input
-            required
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <RepeatPicker
-          value={repeat}
-          onChange={setRepeat}
-          today={today}
-          perVisitCents={totals?.subtotalCents ?? 0}
-          profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
-        />
         <CustomerPicker
           id="job-customer"
+          fixed={!!initial?.customerId}
           options={options.customers}
           value={customerId}
           onChange={(id) => {
@@ -317,13 +315,35 @@ export function JobEditor({
                   </option>
                 ))}
         </select>
-        {customerId && (
-          <p>
-            <Link href={`/app/customers/${customerId}?view=assets`}>
-              Manage {auto ? "vehicles" : "properties & equipment"}
-            </Link>
-          </p>
-        )}
+        {customerId &&
+          !(auto
+            ? options.vehicles.some((v) => v.customerId === customerId)
+            : options.serviceAssets.some(
+                (a) => a.customerId === customerId,
+              )) && (
+            <p>
+              <Link href={`/app/customers/${customerId}?view=assets`}>
+                Add {auto ? "a vehicle" : "a property or equipment"} for this
+                customer first
+              </Link>
+            </p>
+          )}
+        <label>
+          Job name
+          <input
+            required
+            maxLength={200}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <RepeatPicker
+          value={repeat}
+          onChange={setRepeat}
+          today={today}
+          perVisitCents={totals?.subtotalCents ?? 0}
+          profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
+        />
         <h3>{auto ? "Parts" : "Materials"}</h3>
         {parts.map((p, i) => (
           <fieldset key={`part-${i}`}>

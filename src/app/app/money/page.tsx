@@ -10,6 +10,20 @@ import {
   addExpenseAction,
   reverseExpenseAction,
 } from "@/server/actions/owner-tools";
+// "2026-11" ± n months.
+function shiftMonth(month: string, n: number) {
+  const [y, mo] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, mo - 1 + n, 1));
+  return d.toISOString().slice(0, 7);
+}
+function monthName(month: string, withYear: boolean) {
+  return new Date(`${month}-15T12:00:00Z`).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: withYear ? "long" : "short",
+    ...(withYear ? { year: "numeric" } : {}),
+  });
+}
+
 export default async function MoneyPage({
   searchParams,
 }: {
@@ -34,37 +48,44 @@ export default async function MoneyPage({
           Add expense
         </Link>
       )}
-      <form method="get" className="card">
-        <label htmlFor="money-month">Month</label>
-        <input
-          id="money-month"
-          type="month"
-          name="month"
-          defaultValue={m.month}
-          required
-        />
-        <button className="btn secondary">Show month</button>
-      </form>
-      <div className="overview-metrics">
-        {[
-          ["Collected this month", m.collectedCents],
-          ["Customers owe you", m.owedCents],
-          ["Sales tax collected (set aside for the state)", m.salesTaxCents],
-          ["Expenses this month", m.expenseCents],
-          ["Cash left this month", m.cashLeftCents],
-        ].map(([label, value]) => (
-          <section key={String(label)} className="card overview-metric">
-            <strong>{formatMoney(Number(value))}</strong>
-            <span>{label}</span>
-          </section>
-        ))}
+      <div className="month-step" role="group" aria-label="Choose month">
+        <Link href={`/app/money?month=${shiftMonth(m.month, -1)}`}>
+          ‹ {monthName(shiftMonth(m.month, -1), false)}
+        </Link>
+        <strong>{monthName(m.month, true)}</strong>
+        {m.month < m.today.slice(0, 7) && (
+          <Link href={`/app/money?month=${shiftMonth(m.month, 1)}`}>
+            {monthName(shiftMonth(m.month, 1), false)} ›
+          </Link>
+        )}
       </div>
-      <p className="muted">
-        Collected includes sales tax and subtracts refunds and corrections.
-        Sales tax collected is not your money; set it aside to pay the state.
-        Owed includes every unpaid invoice, not just this month. Cash left is
-        collected minus sales tax minus expenses.
-      </p>
+      <section className="card money-sheet" aria-label="This month">
+        <dl>
+          <div>
+            <dt>Collected</dt>
+            <dd>{formatMoney(m.collectedCents)}</dd>
+          </div>
+          <div>
+            <dt>Expenses</dt>
+            <dd>− {formatMoney(m.expenseCents)}</dd>
+          </div>
+          <div>
+            <dt>
+              Sales tax <span className="muted">(set aside for the state)</span>
+            </dt>
+            <dd>− {formatMoney(m.salesTaxCents)}</dd>
+          </div>
+          <div className="money-sheet-total">
+            <dt>Cash left</dt>
+            <dd>{formatMoney(m.cashLeftCents)}</dd>
+          </div>
+        </dl>
+        <p className="money-sheet-side">
+          <Link href="/app/invoices">
+            Customers owe you <strong>{formatMoney(m.owedCents)}</strong>
+          </Link>
+        </p>
+      </section>
       <section className="card">
         <h2>Estimated profit</h2>
         <strong className="money-total">
@@ -72,15 +93,10 @@ export default async function MoneyPage({
             ? "Job costs missing"
             : formatMoney(m.estimatedProfitCents)}
         </strong>
-        <p>
-          Sales before tax {formatMoney(m.salesCents)} − quoted job costs{" "}
-          {formatMoney(m.costCents)} − other logged expenses.
-        </p>
         <p className="muted">
-          An estimate based on this month’s invoices and job costs at quoting.
-          Labor uses quoted hours. It excludes income tax, unrecorded costs and
-          processor fees. Unpaid sales are included. Expenses marked as already
-          on a job are not deducted twice.
+          Sales before tax {formatMoney(m.salesCents)} − job costs{" "}
+          {formatMoney(m.costCents)} − other expenses. Uses quoted hours;
+          excludes income tax and card fees.
         </p>
         {m.unknownCostJobs > 0 && (
           <p className="notice">
@@ -90,7 +106,6 @@ export default async function MoneyPage({
             paid.
           </p>
         )}
-        <Link href="/app/invoices">See unpaid invoices</Link>
       </section>
       {p.new === "1" && !readOnly && (
         <section id="expense-form" className="card">
@@ -150,49 +165,62 @@ export default async function MoneyPage({
           </ActionForm>
         </section>
       )}
-      <section className="card">
-        <h2>Expenses</h2>
-        {!m.expenses.length && <p>No expenses recorded for this month.</p>}
-        {m.expenses.map((e) => (
-          <article className="expense-row" key={e.id}>
-            <h3>
-              {e.description} · {formatMoney(e.amountCents)}
-            </h3>
-            <p>
-              {e.spentOn} · {e.category}
-              {e.corrected
-                ? " · Corrected"
-                : e.reversesExpenseId
-                  ? " · Correction"
-                  : ""}
-            </p>
-            {e.amountCents > 0 && !e.corrected && !readOnly && (
-              <details>
-                <summary>Correct this expense</summary>
-                <p>
-                  The original stays in history. Remove it here, then add the
-                  correct expense.
-                </p>
-                <ActionForm
-                  action={reverseExpenseAction}
-                  hidden={{ id: e.id }}
-                  submitLabel="Remove incorrect expense"
-                  variant="danger"
-                  confirm="Remove this expense from totals? Its history will be kept."
-                >
-                  <label htmlFor={`reason-${e.id}`}>Reason</label>
-                  <input
-                    id={`reason-${e.id}`}
-                    name="reason"
-                    required
-                    maxLength={1000}
-                  />
-                </ActionForm>
-              </details>
-            )}
-          </article>
-        ))}
-      </section>
+      <h2>Expenses</h2>
+      {!m.expenses.length ? (
+        <p className="muted">No expenses recorded for this month.</p>
+      ) : (
+        <ul className="row-list card" aria-label="Expenses">
+          {m.expenses.map((e) => (
+            <li key={e.id}>
+              <div>
+                <span className="row-main">
+                  <strong>{e.description}</strong>
+                  <span className="muted">
+                    {[
+                      e.spentOn,
+                      e.category,
+                      e.corrected
+                        ? "corrected"
+                        : e.reversesExpenseId
+                          ? "correction"
+                          : "",
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </span>
+                </span>
+                <span className="row-side">
+                  <strong>{formatMoney(e.amountCents)}</strong>
+                </span>
+              </div>
+              {e.amountCents > 0 && !e.corrected && !readOnly && (
+                <details className="row-fix">
+                  <summary>Fix this expense</summary>
+                  <p className="muted">
+                    The original stays in history. Remove it here, then add the
+                    correct expense.
+                  </p>
+                  <ActionForm
+                    action={reverseExpenseAction}
+                    hidden={{ id: e.id }}
+                    submitLabel="Remove incorrect expense"
+                    variant="danger"
+                    confirm="Remove this expense from totals? Its history will be kept."
+                  >
+                    <label htmlFor={`reason-${e.id}`}>Reason</label>
+                    <input
+                      id={`reason-${e.id}`}
+                      name="reason"
+                      required
+                      maxLength={1000}
+                    />
+                  </ActionForm>
+                </details>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </HydratedMain>
   );
 }

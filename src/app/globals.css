@@ -961,16 +961,14 @@ details {
   min-height: 0;
   overflow-y: auto;
 }
-.workspace-brand {
-  padding: 0 8px;
-}
-.workspace-brand p {
-  margin: 0 0 8px;
-  color: var(--accent);
-  font-weight: 700;
-}
-.workspace-brand strong {
+.workspace-sidebar a.workspace-brand:not(.btn) {
   display: block;
+  margin: 0;
+  padding: 0 8px;
+  color: var(--text);
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-decoration: none;
 }
 .workspace-sidebar .workspace-nav {
   display: flex;
@@ -985,9 +983,6 @@ details {
   margin: 0;
   color: var(--text);
   text-decoration: none;
-}
-.workspace-nav a:last-child {
-  margin-top: auto;
 }
 .workspace-nav a[aria-current="page"] {
   background: var(--hover);
@@ -1008,6 +1003,7 @@ details {
   background: var(--surface);
 }
 .workspace-mobile-brand,
+.workspace-header a.workspace-mobile-brand:not(.btn),
 .workspace-mobile-settings {
   display: none;
 }
@@ -1109,7 +1105,8 @@ body:has(.workspace-shell) [data-ux-primary] {
   .workspace-header {
     padding: 8px 16px;
   }
-  .workspace-mobile-brand {
+  .workspace-mobile-brand,
+  .workspace-header a.workspace-mobile-brand:not(.btn) {
     display: block;
     flex: 1;
     min-width: 0;
@@ -1752,4 +1749,111 @@ div.overview-row + a.overview-row {
 }
 .custom-interval input[type="number"] {
   width: 8ch;
+}
+
+.setup-line {
+  margin: 0 0 16px;
+}
+.inline-search {
+  max-width: 640px;
+  margin: 0 0 16px;
+}
+.inline-search .search-controls {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.inline-search .search-controls > a {
+  margin: 0;
+}
+.job-search {
+  max-width: none;
+}
+/* Single-column form: search, then sort underneath. */
+.job-search-fields {
+  max-width: 560px;
+}
+.job-search-fields select {
+  max-width: 240px;
+}
+.job-search-fields .search-controls {
+  margin: 8px 0 16px;
+}
+.job-search .search-controls {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.fixed-choice > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0 16px;
+}
+.fixed-choice > div > .btn {
+  margin: 0;
+}
+/* Money: step through months instead of a date picker form. */
+.month-step {
+  display: flex;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+}
+.month-step strong {
+  font-size: 1.125rem;
+}
+/* Money: one small ledger — collected, minus costs, equals cash left. */
+.money-sheet dl {
+  margin: 0;
+  max-width: 480px;
+}
+.money-sheet dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.money-sheet dt,
+.money-sheet dd {
+  margin: 0;
+}
+.money-sheet dd {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.money-sheet .money-sheet-total {
+  border-bottom: 0;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+.money-sheet-side {
+  margin: 8px 0 0;
+}
+.row-list > li > details.row-fix {
+  margin: 0 0 16px;
+}
+.fixed-choice select[hidden] {
+  display: none;
+}
+/* Filter chips stay on one line and slide sideways on a phone. */
+@media (max-width: 599px) {
+  .chip-links {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 8px;
+  }
+  .chip-links > a {
+    flex: 0 0 auto;
+  }
+}
+.chip-links a:not(.card):not(.btn) {
+  margin: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+/* Header controls sit inside the bar so page content never touches them. */
+.workspace-header > .btn,
+.workspace-header > button,
+.workspace-header > a {
+  margin: 0;
 }
