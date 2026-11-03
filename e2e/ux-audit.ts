@@ -186,8 +186,11 @@ export async function auditUX(page: Page, collect = false) {
           y = b.getBoundingClientRect();
         const dx = Math.max(x.left - y.right, y.left - x.right, 0),
           dy = Math.max(x.top - y.bottom, y.top - x.bottom, 0);
-        if (dx < 7.9 && dy < 7.9)
-          issues.push(`${tag(a)} / ${tag(b)} need an 8px target gap`);
+        if (dx < 7.9 && dy < 7.9) {
+          const say = (e: Element, r: DOMRect) =>
+            `${tag(e)} "${(e.textContent ?? "").trim().slice(0, 24)}" @${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`;
+          issues.push(`${say(a, x)} / ${say(b, y)} need an 8px target gap`);
+        }
       }
     return [...new Set(issues)].slice(0, 30);
   });
