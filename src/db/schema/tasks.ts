@@ -32,6 +32,8 @@ export const timeEntry = app.table("time_entry", {
   ...tenantColumns(),
   jobId: uuid("job_id").notNull(),
   userId: uuid("user_id").notNull(),
-  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
 });
