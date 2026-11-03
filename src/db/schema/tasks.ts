@@ -54,3 +54,11 @@ export const savedReport = app.table("saved_report", {
   pinned: boolean("pinned").notNull().default(false),
   archivedAt: timestamp("archived_at", { withTimezone: true }),
 });
+
+// A job's inspection checklist (migration 0037).
+export const inspection = app.table("inspection", {
+  ...tenantColumns(),
+  jobId: uuid("job_id").notNull(),
+  items: jsonb("items").notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+});

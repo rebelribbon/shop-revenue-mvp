@@ -211,10 +211,24 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(
     page.getByRole("region", { name: "Job workflow" }),
   ).toContainText("Complete");
-  await page.getByRole("link", { name: "Timeline", exact: true }).click();
+  await page.getByRole("link", { name: "History", exact: true }).click();
   await expect(page.locator("ol.workflow-timeline")).toContainText(
     "Work completed",
   );
+  // Inspection: mark an item, save, and send it to the estimate.
+  await page.getByRole("link", { name: /^Inspection/ }).click();
+  const brakes = page.getByRole("group", { name: "Front brakes" });
+  await brakes.getByLabel("Needs work").check();
+  await brakes.getByLabel("What did you find?").fill("pads at 2 mm");
+  await page
+    .getByRole("button", { name: "Save inspection", exact: true })
+    .click();
+  await expect(page.getByText("1 need work")).toBeVisible();
+  await auditUX(page);
+  await page.screenshot({
+    path: `test-results/ux-inspection-${info.project.name}.png`,
+    fullPage: true,
+  });
   await page.getByRole("link", { name: "Work", exact: true }).click();
   // Profit sits at the top of the job; the clock is one tap.
   await expect(page.locator(".profit-chip")).toBeVisible();

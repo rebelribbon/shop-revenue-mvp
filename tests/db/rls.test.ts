@@ -21,6 +21,7 @@ import {
   registerClose,
   timeEntry,
   savedReport,
+  inspection,
   document,
   estimateAuthorization,
   recommendation,
@@ -274,6 +275,14 @@ const builders: Record<string, Builder> = {
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
         })
+        .returning();
+      return row.id;
+    }),
+  "app.inspection": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(inspection)
+        .values({ businessId: t.businessId, jobId: randomUUID(), items: [] })
         .returning();
       return row.id;
     }),
