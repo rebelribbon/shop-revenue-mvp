@@ -1,4 +1,4 @@
-import { repeatOption, type RepeatEvery } from "@/lib/service-plans";
+import { everyLabel, type Repeat } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
@@ -167,9 +167,10 @@ export default async function VisitsPage({
                             <>
                               <span className="plan-badge">
                                 ↻{" "}
-                                {a.planEvery
-                                  ? repeatOption(a.planEvery as RepeatEvery)
-                                      .label
+                                {a.planRepeat
+                                  ? everyLabel(
+                                      a.planRepeat as unknown as Repeat,
+                                    )
                                   : "Repeats"}
                               </span>{" "}
                             </>

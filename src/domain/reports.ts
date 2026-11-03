@@ -11,7 +11,7 @@ import {
   servicePlan,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
-import { visitsPerMonth } from "@/lib/service-plans";
+import { everyLabel, visitsPerMonth } from "@/lib/service-plans";
 import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
 import { assertOwner } from "./membership";
 
@@ -399,10 +399,10 @@ export async function runReport(
         : p.status === "paused"
           ? "Paused"
           : "Ended",
-      p.repeat.every,
+      everyLabel(p.repeat),
       p.perVisitCents,
       p.status === "active"
-        ? Math.round(p.perVisitCents * visitsPerMonth(p.repeat.every))
+        ? Math.round(p.perVisitCents * visitsPerMonth(p.repeat))
         : 0,
       day(p.createdAt),
     ]);
