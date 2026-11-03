@@ -1851,3 +1851,9 @@ div.overview-row + a.overview-row {
   color: var(--text);
   text-decoration: none;
 }
+/* Header controls sit inside the bar so page content never touches them. */
+.workspace-header > .btn,
+.workspace-header > button,
+.workspace-header > a {
+  margin: 0;
+}

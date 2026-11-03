@@ -30,7 +30,13 @@ export function PageActions() {
       const main =
         document.querySelector("dialog[open]") ??
         document.querySelector("main");
-      if (!main || main.getAttribute("aria-busy") === "true") {
+      // Still loading or hydrating: choose nothing yet, and don't flash a
+      // fallback button that the real primary would replace a frame later.
+      if (
+        !main ||
+        main.getAttribute("aria-busy") === "true" ||
+        main.getAttribute("data-ux-ready") === "false"
+      ) {
         selected?.removeAttribute("data-ux-primary");
         setFallback(false);
         return;
