@@ -74,7 +74,7 @@ function hrefFor(
   customerId: string,
 ) {
   if (category === "unpaid_invoice")
-    return `/app/invoices?invoiceId=${subjectId}`;
+    return `/app/checkout?invoiceId=${subjectId}`;
   if (category === "job_update") return `/app/jobs?job=${subjectId}`;
   if (category === "visit_confirm") return "/app/schedule";
   return `/app/customers/${customerId}`;

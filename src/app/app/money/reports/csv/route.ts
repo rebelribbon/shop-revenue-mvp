@@ -8,6 +8,7 @@ import {
   type ReportKey,
 } from "@/domain/reports";
 import { localDateKey } from "@/lib/timezone";
+import { buildReport, readConfig } from "@/domain/report-builder";
 import { getSessionState } from "@/server/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,29 @@ export async function GET(req: Request) {
   if (state.kind !== "shop" || state.session.role === "staff")
     return new Response("Not found", { status: 404 });
   const q = new URL(req.url).searchParams;
+  if (q.get("custom") === "1") {
+    const config = readConfig(Object.fromEntries(q));
+    const out = await withTenant(
+      state.session.businessId,
+      state.session.actor,
+      async (tx) => {
+        const profile = await getBusinessProfile(tx);
+        const today = localDateKey(
+          new Date(),
+          profile?.timezone || "America/Chicago",
+        );
+        const range = presetRange(config.range, today);
+        return { csv: reportCsv(await buildReport(tx, config, range)), range };
+      },
+    );
+    return new Response("\uFEFF" + out.csv, {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="report-${config.source}-by-${config.group}-${out.range.from}-to-${out.range.to}.csv"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
   const key = REPORTS.find((r) => r.key === q.get("report"))?.key as
     ReportKey | undefined;
   if (!key) return new Response("Not found", { status: 404 });
