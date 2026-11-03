@@ -1743,3 +1743,13 @@ div.overview-row + a.overview-row {
 .section-tabs a:not(.card):not(.btn) {
   padding: 0 8px;
 }
+/* "Every [10] [days]" on one line where it fits. */
+.custom-interval {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: flex-end;
+}
+.custom-interval input[type="number"] {
+  width: 8ch;
+}

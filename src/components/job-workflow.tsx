@@ -57,10 +57,8 @@ function PlanPanel({
         {plan.status === "active" && (
           <li>
             Worth about{" "}
-            {formatMoney(
-              Math.round(plan.perVisitCents * visitsPerMonth(r.every)),
-            )}{" "}
-            a month
+            {formatMoney(Math.round(plan.perVisitCents * visitsPerMonth(r)))} a
+            month
           </li>
         )}
         {plan.unbilled > 0 && (

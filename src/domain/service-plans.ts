@@ -603,7 +603,7 @@ export async function recurringRevenue(tx: TenantTx) {
     plans: plans.length,
     monthlyCents: Math.round(
       plans.reduce(
-        (sum, p) => sum + p.perVisitCents * visitsPerMonth(p.repeat.every),
+        (sum, p) => sum + p.perVisitCents * visitsPerMonth(p.repeat),
         0,
       ),
     ),

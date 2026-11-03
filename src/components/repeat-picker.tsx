@@ -1,5 +1,6 @@
 "use client";
 import {
+  CUSTOM_UNITS,
   REPEAT_OPTIONS,
   cadenceText,
   formatPlanDate,
@@ -74,7 +75,73 @@ export function RepeatPicker({
                 {o.label}
               </label>
             ))}
+            <label>
+              <input
+                type="radio"
+                name="repeat-every"
+                checked={r.every === "custom"}
+                onChange={() =>
+                  set({
+                    every: "custom",
+                    custom: r.custom ?? { count: 10, unit: "day" },
+                  })
+                }
+              />
+              Custom
+            </label>
           </fieldset>
+          {r.every === "custom" && (
+            <div
+              className="custom-interval"
+              role="group"
+              aria-label="Custom gap between visits"
+            >
+              <label>
+                Every
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={365}
+                  step={1}
+                  required
+                  value={r.custom?.count ?? 10}
+                  onChange={(e) =>
+                    set({
+                      custom: {
+                        unit: r.custom?.unit ?? "day",
+                        count: Math.max(
+                          1,
+                          Math.min(
+                            365,
+                            Math.round(Number(e.target.value) || 1),
+                          ),
+                        ),
+                      },
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Days, weeks or months
+                <select
+                  value={r.custom?.unit ?? "day"}
+                  onChange={(e) =>
+                    set({
+                      custom: {
+                        count: r.custom?.count ?? 10,
+                        unit: e.target.value as (typeof CUSTOM_UNITS)[number],
+                      },
+                    })
+                  }
+                >
+                  <option value="day">days</option>
+                  <option value="week">weeks</option>
+                  <option value="month">months</option>
+                </select>
+              </label>
+            </div>
+          )}
           <label>
             First visit
             <input
