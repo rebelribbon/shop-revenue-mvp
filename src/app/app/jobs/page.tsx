@@ -419,6 +419,16 @@ export default async function JobsPage({
                 )}
                 {s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
+                    {flow?.currentInvoice &&
+                      !flow.currentInvoice.voidedAt &&
+                      flow.balanceCents > 0 && (
+                        <Link
+                          className="btn secondary"
+                          href={`/app/checkout?invoiceId=${flow.currentInvoice.id}`}
+                        >
+                          Check out · {money(flow.balanceCents)}
+                        </Link>
+                      )}
                     {(
                       [
                         ["note", "+ Note"],

@@ -126,7 +126,7 @@ export default async function HomePage({
       label: "Unpaid",
       count: t.unpaid.count,
       detail: formatMoney(t.unpaid.cents),
-      href: "/app/jobs?view=board",
+      href: "/app/checkout",
       warn: t.unpaid.count > 0,
     },
   ];

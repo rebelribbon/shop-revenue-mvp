@@ -18,6 +18,7 @@ import {
   jobMedia,
   documentTemplate,
   task,
+  registerClose,
   document,
   estimateAuthorization,
   recommendation,
@@ -270,6 +271,21 @@ const builders: Record<string, Builder> = {
         .onConflictDoUpdate({
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.register_close": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(registerClose)
+        .values({
+          businessId: t.businessId,
+          day: "2026-11-03",
+          startingCashCents: 0,
+          expectedCashCents: 0,
+          countedCashCents: 0,
+          takenCents: 0,
         })
         .returning();
       return row.id;

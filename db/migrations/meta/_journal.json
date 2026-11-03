@@ -239,6 +239,13 @@
       "when": 1794237331998,
       "tag": "0033_visit_confirm_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794323731998,
+      "tag": "0034_register_close",
+      "breakpoints": true
     }
   ]
 }

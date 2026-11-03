@@ -19,7 +19,8 @@ import { withTenant } from "@/db/tenant";
 import { createCustomer, createVehicle } from "@/domain/customers";
 import { createJob } from "@/domain/jobs";
 import { createAppointment } from "@/domain/appointments";
-import { setInvoiceDispute } from "@/domain/invoices";
+import { recordInvoicePayment, setInvoiceDispute } from "@/domain/invoices";
+import { closeRegister, registerDay } from "@/domain/register";
 import { freezeEstimate } from "@/domain/estimates";
 import {
   startRecoveryWork,
@@ -694,5 +695,56 @@ describe("Tasks and follow-up rules", () => {
     await run(f, (tx) => updateTask(tx, meta(), { id, action: "done" }));
     t = await tasksFor(f);
     expect([...t.due, ...t.later].some((r) => r.subjectId === id)).toBe(false);
+  });
+});
+
+describe("Checkout register", () => {
+  it("totals the day by payment method and closes out the drawer", async () => {
+    const f = await fixture();
+    const inv = await bill(f, 0, 0);
+    await run(f, (tx) =>
+      recordInvoicePayment(tx, meta(), {
+        invoiceId: inv.id,
+        amountCents: 4000,
+        method: "cash",
+        reference: "Received $50.00",
+      }),
+    );
+    await run(f, (tx) =>
+      recordInvoicePayment(tx, meta(), {
+        invoiceId: inv.id,
+        amountCents: 3000,
+        method: "external_card",
+        reference: "4417",
+      }),
+    );
+    const day = await run(f, (tx) => registerDay(tx));
+    expect(day.methods.map((m) => [m.method, m.cents])).toEqual([
+      ["external_card", 3000],
+      ["cash", 4000],
+    ]);
+    expect(day.taken).toBe(7000);
+    expect(day.cashCents).toBe(4000);
+    const closed = await run(f, (tx) =>
+      closeRegister(tx, meta(), {
+        day: day.day,
+        startingCashCents: 20000,
+        countedCashCents: 23500,
+      }),
+    );
+    // Expected $200 + $40 = $240; counted $235 → $5 short.
+    expect(closed.differenceCents).toBe(-500);
+    await expect(
+      run(f, (tx) =>
+        closeRegister(tx, meta(), {
+          day: day.day,
+          startingCashCents: 0,
+          countedCashCents: 0,
+        }),
+      ),
+    ).rejects.toThrow(/already closed/);
+    expect(
+      (await run(f, (tx) => registerDay(tx))).closed?.countedCashCents,
+    ).toBe(23500);
   });
 });

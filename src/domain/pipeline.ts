@@ -28,6 +28,8 @@ export type BoardCard = {
   // How long it has sat here, in days (estimate sent, invoice sent, …).
   ageDays: number;
   nextVisit: Date | null;
+  // Latest estimate version (to create the invoice from).
+  versionId: string | null;
 };
 
 const DAY = 86400000;
@@ -96,6 +98,7 @@ export async function loadPipeline(tx: TenantTx, now = new Date()) {
       repeats: flow.repeats,
       ageDays: Math.max(0, Math.floor((now.getTime() - since.getTime()) / DAY)),
       nextVisit: flow.nextVisit,
+      versionId: flow.latest?.estimate.id ?? null,
     });
   }
   for (const k of Object.keys(columns) as StageKey[])
