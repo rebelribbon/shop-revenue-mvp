@@ -1906,3 +1906,13 @@ div.overview-row + a.overview-row {
 .add-panel a.panel-close:not(.card):not(.btn) {
   margin-top: 8px;
 }
+.task-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 16px 0;
+}
+.task-footer > a {
+  margin: 0;
+}

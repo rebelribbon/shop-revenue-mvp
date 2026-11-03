@@ -24,6 +24,7 @@ export const moneyCategories = [
   "service_due",
   "new_lead",
   "job_update",
+  "visit_confirm",
 ] as const;
 export type MoneyCategory = (typeof moneyCategories)[number];
 export const categoryLabels: Record<MoneyCategory, string> = {
@@ -34,6 +35,7 @@ export const categoryLabels: Record<MoneyCategory, string> = {
   service_due: "Service due",
   new_lead: "New leads",
   job_update: "Work updates",
+  visit_confirm: "Confirm visits",
 };
 export type MoneyItem = {
   category: MoneyCategory;
@@ -201,15 +203,26 @@ function candidates(
     WHERE ${rules.jobUpdate.on} AND p.work='in_progress' AND (e.vehicle_id IS NULL OR v.id IS NOT NULL)
       AND p.occurred_at<=s.as_of-make_interval(days=>${rules.jobUpdate.days}::int)
       AND NOT EXISTS(SELECT 1 FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.quote_id=p.job_id AND i.voided_at IS NULL)
+  ), visit_confirms AS (
+    SELECT 'visit_confirm'::text AS category,a.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
+      c.display_name AS customer_name,coalesce(v.label,sa.label) AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
+      'Visit ' || to_char(a.starts_at AT TIME ZONE s.zone,'Dy Mon FMDD at FMHH12:MI AM') || coalesce(': ' || NULLIF(a.reason,''),'') AS reason,
+      NULL::numeric AS amount_cents,a.starts_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
+    FROM app.appointment a JOIN contacts c ON c.id=a.customer_id LEFT JOIN vehicles v ON v.id=a.vehicle_id
+      LEFT JOIN service_assets sa ON sa.id=a.service_asset_id CROSS JOIN settings s
+    WHERE ${rules.confirmVisit.on} AND a.business_id=${tx.businessId} AND a.status='scheduled'
+      AND (a.starts_at AT TIME ZONE s.zone)::date>s.today
+      AND (a.starts_at AT TIME ZONE s.zone)::date<=s.today+${rules.confirmVisit.daysBefore}::int
   ), sources AS (
     SELECT * FROM declines UNION ALL SELECT * FROM open_estimates UNION ALL SELECT * FROM unpaid
     UNION ALL SELECT * FROM lapsed UNION ALL SELECT * FROM service_due UNION ALL SELECT * FROM home_service_due
-    UNION ALL SELECT * FROM new_leads UNION ALL SELECT * FROM job_updates
+    UNION ALL SELECT * FROM new_leads UNION ALL SELECT * FROM job_updates UNION ALL SELECT * FROM visit_confirms
   ), items AS (
     SELECT src.*,CASE
       WHEN src.category='service_due' AND src.vehicle_id IS NULL THEN src.subject_id
       WHEN src.category='open_estimate' THEN (SELECT e.service_asset_id FROM app.estimate_version e WHERE e.business_id=${tx.businessId} AND e.id=src.subject_id)
       WHEN src.category='unpaid_invoice' THEN (SELECT i.service_asset_id FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.id=src.subject_id)
+      WHEN src.category='visit_confirm' THEN (SELECT a.service_asset_id FROM app.appointment a WHERE a.business_id=${tx.businessId} AND a.id=src.subject_id)
       WHEN src.category='job_update' THEN (SELECT e.service_asset_id FROM latest_estimates e WHERE e.quote_id=src.subject_id)
       ELSE NULL::uuid END AS service_asset_id,r.id AS recovery_id,coalesce(r.status,'open') AS status,r.snoozed_until,r.dismissed_reason,
       r.last_contact_at,r.last_contact_method FROM sources src

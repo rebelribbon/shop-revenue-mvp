@@ -35,15 +35,6 @@ export default async function TasksPage(props: {
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Tasks</h1>
       <TasksNavigation current={view} />
-      {!readOnly && (
-        <Link
-          className="btn primary"
-          data-page-primary
-          href={`/app/tasks?add=1${p.customerId ? `&customerId=${p.customerId}` : ""}`}
-        >
-          + Task
-        </Link>
-      )}
       {p.add && !readOnly && (
         <section className="card add-panel" aria-label="Add a task">
           <h2>Add a task</h2>
@@ -92,18 +83,16 @@ export default async function TasksPage(props: {
           <h2>{view === "due" ? "All caught up" : "Nothing coming up"}</h2>
           <p className="muted">
             {view === "due"
-              ? "Follow-ups show up here when your rules say it’s time."
+              ? "Tasks fill in on their own from your jobs, invoices, visits and follow-up rules."
               : "Snoozed and finished follow-ups come back here before they’re due."}{" "}
-            {s.role === "owner" && (
-              <Link href="/app/settings/follow-ups">Follow-up rules</Link>
-            )}
           </p>
         </div>
       ) : (
         <ul className="row-list card task-list" aria-label="Tasks">
-          {rows.map((t) => (
+          {rows.map((t, n) => (
             <TaskItem
               key={t.key}
+              first={n === 0}
               t={t}
               today={data.today}
               later={view === "later"}
@@ -112,21 +101,34 @@ export default async function TasksPage(props: {
           ))}
         </ul>
       )}
-      {s.role === "owner" && rows.length > 0 && (
-        <p className="muted">
-          <Link href="/app/settings/follow-ups">Change follow-up rules</Link>
-        </p>
-      )}
+      <div className="task-footer">
+        {!readOnly && !p.add && (
+          <Link
+            className={`btn ${rows.length && view === "due" ? "secondary" : "primary"}`}
+            {...(rows.length && view === "due"
+              ? {}
+              : { "data-page-primary": true })}
+            href={`/app/tasks?add=1${p.customerId ? `&customerId=${p.customerId}` : ""}`}
+          >
+            + Add your own task
+          </Link>
+        )}
+        {s.role === "owner" && (
+          <Link href="/app/settings/follow-ups">Follow-up rules</Link>
+        )}
+      </div>
     </HydratedMain>
   );
 }
 
 function TaskItem({
   t,
+  first,
   today,
   later,
   readOnly,
 }: {
+  first: boolean;
   t: TaskRow;
   today: string;
   later: boolean;
@@ -159,11 +161,26 @@ function TaskItem({
           </span>
         )}
       </div>
-      {!later && !readOnly && (
+      {!later && !readOnly && t.action && (
+        <div className="task-actions">
+          <Link
+            className="btn secondary"
+            href={t.action.href}
+            {...(first ? { "data-page-primary": true } : {})}
+          >
+            {t.action.label}
+          </Link>
+        </div>
+      )}
+      {!later && !readOnly && !t.action && (
         <div className="task-actions">
           {t.phone && (
             <>
-              <a className="btn secondary" href={`tel:${t.phone}`}>
+              <a
+                className="btn secondary"
+                href={`tel:${t.phone}`}
+                {...(first ? { "data-page-primary": true } : {})}
+              >
                 Call {formatPhone(t.phone)}
               </a>
               <a className="btn secondary" href={`sms:${t.phone}`}>
