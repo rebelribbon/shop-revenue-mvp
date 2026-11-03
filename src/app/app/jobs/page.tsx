@@ -42,6 +42,8 @@ import Link from "next/link";
 import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
+import { jobProfit, myClock } from "@/domain/job-profit";
+import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
 import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
@@ -191,6 +193,11 @@ export default async function JobsPage({
       headsUp: selectedCustomer
         ? await headsUpNotes(tx, [selectedCustomer])
         : [],
+      profit:
+        page.selected && s.role === "owner"
+          ? await jobProfit(tx, page.selected.id)
+          : null,
+      clock: await myClock(tx),
       workflows: await loadJobWorkflows(tx, [
         ...new Set([
           ...page.jobs.map((j) => j.id),
@@ -415,10 +422,51 @@ export default async function JobsPage({
                         <strong>{money(flow.balanceCents)}</strong> owed
                       </span>
                     )}
+                    {data.profit && (
+                      <span
+                        className={
+                          data.profit.profitCents === null
+                            ? "profit-chip muted"
+                            : data.profit.belowTarget
+                              ? "profit-chip low"
+                              : "profit-chip good"
+                        }
+                      >
+                        {data.profit.profitCents === null ? (
+                          <>Profit: {data.profit.missing[0]}</>
+                        ) : (
+                          <>
+                            <strong>{money(data.profit.profitCents)}</strong>{" "}
+                            profit · {(data.profit.marginBps! / 100).toFixed(0)}
+                            %
+                            {data.profit.belowTarget &&
+                              ` (target ${(data.profit.targetBps / 100).toFixed(0)}%)`}
+                          </>
+                        )}
+                      </span>
+                    )}
                   </p>
                 )}
                 {s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
+                    {data.clock?.jobId === selected.id ? (
+                      <ActionForm
+                        action={stopClockAction}
+                        submitLabel={`■ Stop clock · ${clockText(data.clock.startedAt)}`}
+                        variant="secondary"
+                      />
+                    ) : (
+                      <ActionForm
+                        action={startClockAction}
+                        hidden={{ jobId: selected.id }}
+                        submitLabel={
+                          data.clock
+                            ? "▶ Switch clock to this job"
+                            : "▶ Start clock"
+                        }
+                        variant="secondary"
+                      />
+                    )}
                     {flow?.currentInvoice &&
                       !flow.currentInvoice.voidedAt &&
                       flow.balanceCents > 0 && (
@@ -678,12 +726,53 @@ export default async function JobsPage({
                           Estimate history
                         </Link>
                       </div>
-                      <p>
-                        Quoted: {money(t.subtotalCents)} · Estimated job profit:{" "}
-                        {t.estimatedGrossProfitCents === null
-                          ? "unknown until every cost is entered"
-                          : money(t.estimatedGrossProfitCents)}
-                      </p>
+                      {data.profit ? (
+                        <>
+                          <dl className="profit-sheet">
+                            <dt>Sales before tax</dt>
+                            <dd>{money(data.profit.salesCents)}</dd>
+                            <dt>
+                              Costs{" "}
+                              <span className="muted">
+                                (parts, labor{" "}
+                                {data.profit.laborBasis === "clocked"
+                                  ? `from ${Math.floor(data.profit.clockedMinutes / 60)}h ${data.profit.clockedMinutes % 60}m clocked`
+                                  : data.profit.laborBasis === "actual"
+                                    ? "from actual hours"
+                                    : "from quoted hours"}
+                                {data.profit.cardFeesCents ? ", card fees" : ""}
+                                )
+                              </span>
+                            </dt>
+                            <dd>
+                              {data.profit.costCents === null
+                                ? "—"
+                                : `− ${money(data.profit.costCents)}`}
+                            </dd>
+                            <dt className="profit-total">Profit</dt>
+                            <dd className="profit-total">
+                              {data.profit.profitCents === null
+                                ? "—"
+                                : `${money(data.profit.profitCents)} · ${(data.profit.marginBps! / 100).toFixed(0)}%`}
+                            </dd>
+                          </dl>
+                          {data.profit.missing.length > 0 && (
+                            <p className="muted">
+                              To see profit: {data.profit.missing.join("; ")}.
+                            </p>
+                          )}
+                          {data.profit.belowTarget && (
+                            <p className="heads-up-line">
+                              ⚠ Below your{" "}
+                              {(data.profit.targetBps / 100).toFixed(0)}%
+                              target. Check part prices or labor hours before
+                              you send it.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p>Quoted: {money(t.subtotalCents)}</p>
+                      )}
                     </section>
                     <section aria-label="Line items">
                       <h3>{auto ? "Parts" : "Materials"} &amp; labor</h3>
@@ -995,4 +1084,10 @@ function boardTone(status: string, ageDays: number) {
     return "board-note warn";
   if (status === "in_progress") return "board-note info";
   return "board-note";
+}
+
+// "0:42" since the clock started.
+function clockText(started: Date) {
+  const m = Math.max(0, Math.floor((Date.now() - started.getTime()) / 60000));
+  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
 }
