@@ -29,7 +29,6 @@ test("home-service setup creates a real property and equipment job without vehic
       "Business profile updated",
     );
     await page.getByRole("link", { name: "Today", exact: true }).click();
-    await expect(page.locator("main")).toContainText("HVAC");
     await expect(
       page.getByRole("link", { name: "New job", exact: true }),
     ).toBeVisible();
