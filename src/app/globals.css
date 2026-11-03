@@ -1767,24 +1767,15 @@ div.overview-row + a.overview-row {
 .job-search {
   max-width: none;
 }
+/* Single-column form: search, then sort underneath. */
 .job-search-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  align-items: flex-end;
-}
-.job-search-fields > div:first-child {
-  flex: 1 1 320px;
   max-width: 560px;
 }
-.job-search-fields > div:last-child {
-  flex: 0 1 200px;
+.job-search-fields select {
+  max-width: 240px;
 }
 .job-search-fields .search-controls {
-  margin: 8px 0 0;
-}
-.job-search-fields select {
-  margin: 8px 0 0;
+  margin: 8px 0 16px;
 }
 .job-search .search-controls {
   grid-template-columns: minmax(0, 1fr) auto;

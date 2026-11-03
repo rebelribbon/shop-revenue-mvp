@@ -48,7 +48,7 @@ export default async function MoneyPage({
           Add expense
         </Link>
       )}
-      <nav className="month-step" aria-label="Choose month">
+      <div className="month-step" role="group" aria-label="Choose month">
         <Link href={`/app/money?month=${shiftMonth(m.month, -1)}`}>
           ‹ {monthName(shiftMonth(m.month, -1), false)}
         </Link>
@@ -58,7 +58,7 @@ export default async function MoneyPage({
             {monthName(shiftMonth(m.month, 1), false)} ›
           </Link>
         )}
-      </nav>
+      </div>
       <section className="card money-sheet" aria-label="This month">
         <dl>
           <div>

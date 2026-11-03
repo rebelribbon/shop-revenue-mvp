@@ -232,7 +232,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     page.getByRole("link", {
       name: new RegExp(`^Open job: Brakes ${info.project.name}`),
     }),
-  ).toContainText("Partially paid");
+  ).toContainText("owes $150.00");
   await page.goto(invoiceUrl);
   await invoice.getByText("Correct this entry", { exact: true }).click();
   await invoice
