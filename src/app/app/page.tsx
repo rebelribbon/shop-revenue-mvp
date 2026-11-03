@@ -13,6 +13,8 @@ import { recurringRevenue } from "@/domain/service-plans";
 import { requireShopSession } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { listTasks } from "@/domain/tasks";
+import { loadPipeline } from "@/domain/pipeline";
+import { isAutomotive } from "@/lib/business-types";
 
 export default async function HomePage({
   searchParams,
@@ -36,7 +38,7 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, agenda, tasks, summary, recurring] = await withTenant(
+  const [profile, agenda, tasks, summary, recurring, pipe] = await withTenant(
     s.businessId,
     s.actor,
     async (tx) =>
@@ -48,6 +50,7 @@ export default async function HomePage({
           ? getOwnerMoney(tx, undefined, new Date(), false)
           : null,
         s.role === "owner" ? recurringRevenue(tx) : null,
+        loadPipeline(tx),
       ]),
   );
   const type = profile?.businessType ?? "automotive",
@@ -67,7 +70,66 @@ export default async function HomePage({
       hour: "numeric",
       minute: "2-digit",
     });
-  const light = open.length + agenda.items.length < 4;
+  const light = open.length + tasks.due.length < 4;
+  const auto = isAutomotive(type);
+  const leads = tasks.due.filter((t) => t.category === "new_lead").length;
+  const t = pipe.totals;
+  const notScheduled = pipe.columns.approved.filter(
+    (c) => c.status === "won",
+  ).length;
+  const notSent = pipe.columns.estimate.filter(
+    (c) => c.status === "draft",
+  ).length;
+  const strip: {
+    label: string;
+    count: number;
+    detail: string;
+    href: string;
+    warn?: boolean;
+  }[] = [
+    {
+      label: "New leads",
+      count: leads,
+      detail: leads ? "to call today" : "all called",
+      href: "/app/tasks",
+    },
+    {
+      label: auto ? "Estimates" : "Bids",
+      count: t.estimate.count,
+      detail: notSent ? `${notSent} not sent` : formatMoney(t.estimate.cents),
+      href: "/app/jobs?view=board",
+      warn: notSent > 0,
+    },
+    {
+      label: auto ? "Approved" : "Won",
+      count: t.approved.count,
+      detail: notScheduled
+        ? `${notScheduled} not scheduled`
+        : formatMoney(t.approved.cents),
+      href: "/app/jobs?view=board",
+      warn: notScheduled > 0,
+    },
+    {
+      label: auto ? "In the shop" : "In progress",
+      count: t.working.count,
+      detail: formatMoney(t.working.cents),
+      href: "/app/jobs?view=board",
+    },
+    {
+      label: "Ready to invoice",
+      count: t.invoice.count,
+      detail: formatMoney(t.invoice.cents),
+      href: "/app/jobs?view=board",
+      warn: t.invoice.count > 0,
+    },
+    {
+      label: "Unpaid",
+      count: t.unpaid.count,
+      detail: formatMoney(t.unpaid.cents),
+      href: "/app/jobs?view=board",
+      warn: t.unpaid.count > 0,
+    },
+  ];
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       {params.denied && (
@@ -92,146 +154,141 @@ export default async function HomePage({
             </Link>
           </p>
         )}
-      {summary && (
-        <div className="overview-metrics">
-          <Link href="/app/money" className="card overview-metric">
-            <strong>{formatMoney(summary.collectedCents)}</strong>
-            <span>Collected this month</span>
+      <div className="pipeline-strip" aria-label="Where your jobs are">
+        {strip.map((c) => (
+          <Link
+            key={c.label}
+            href={c.href}
+            className={`pipeline-cell${c.warn ? " warn" : ""}`}
+          >
+            <span>{c.label}</span>
+            <strong>{c.count}</strong>
+            <span>{c.detail}</span>
           </Link>
-          <Link href="/app/money" className="card overview-metric">
-            <strong>{formatMoney(summary.owedCents)}</strong>
-            <span>Customers owe you</span>
+        ))}
+      </div>
+      {summary && (
+        <p className="money-line">
+          <Link href="/app/money">
+            Collected this month{" "}
+            <strong>{formatMoney(summary.collectedCents)}</strong>
           </Link>
           {recurring && recurring.plans > 0 && (
-            <Link
-              href="/app/jobs?show=recurring"
-              className="card overview-metric"
-            >
+            <Link href="/app/jobs?show=recurring">
+              Recurring{" "}
               <strong>{formatMoney(recurring.monthlyCents)}/mo</strong>
-              <span>
-                Recurring from {recurring.plans} service plan
-                {recurring.plans === 1 ? "" : "s"}
-              </span>
             </Link>
           )}
-        </div>
+        </p>
       )}
-      <section className="card" aria-label="Today’s visits">
-        <div className="section-heading">
-          <h2>Visits today{open.length ? ` (${open.length})` : ""}</h2>
-          <Link href="/app/schedule">Week calendar</Link>
-        </div>
-        {!today.length && <p className="muted">Nothing booked today.</p>}
-        {today.map((a) => (
-          <div className="overview-row" key={a.id}>
-            <Link
-              href={
-                a.planJobId
-                  ? `/app/jobs?job=${a.planJobId}`
-                  : `/app/customers/${a.customerId}`
-              }
-            >
-              <strong>{time(a.startsAt)}</strong>{" "}
-              {a.servicePlanId && <span className="plan-badge">↻</span>}{" "}
-              {a.customerName} · {a.reason || "Visit"}
-              {a.serviceAssetName && (
-                <span className="muted">
-                  {" "}
-                  · {a.serviceAddress || a.serviceAssetName}
-                </span>
-              )}
-            </Link>
-            {a.status === "scheduled" && s.actor.type !== "support" ? (
-              <span className="visit-actions">
-                <ActionForm
-                  action={setAppointmentStatusAction}
-                  hidden={{ appointmentId: a.id, status: "completed" }}
-                  submitLabel={
-                    a.servicePlanId && a.planBilling === "per_visit"
-                      ? "Done & bill"
-                      : "Done"
-                  }
-                  variant="secondary"
-                />
-                {a.servicePlanId && (
+      <div className="home-columns">
+        <section className="card" aria-label="Today’s visits">
+          <div className="section-heading">
+            <h2>Visits today{open.length ? ` (${open.length})` : ""}</h2>
+            <Link href="/app/schedule">Week calendar</Link>
+          </div>
+          {!today.length && <p className="muted">Nothing booked today.</p>}
+          {today.map((a) => (
+            <div className="overview-row" key={a.id}>
+              <Link
+                href={
+                  a.planJobId
+                    ? `/app/jobs?job=${a.planJobId}`
+                    : `/app/customers/${a.customerId}`
+                }
+              >
+                <strong>{time(a.startsAt)}</strong>{" "}
+                {a.servicePlanId && <span className="plan-badge">↻</span>}{" "}
+                {a.customerName} · {a.reason || "Visit"}
+                {a.serviceAssetName && (
+                  <span className="muted">
+                    {" "}
+                    · {a.serviceAddress || a.serviceAssetName}
+                  </span>
+                )}
+              </Link>
+              {a.status === "scheduled" && s.actor.type !== "support" ? (
+                <span className="visit-actions">
                   <ActionForm
                     action={setAppointmentStatusAction}
-                    hidden={{ appointmentId: a.id, status: "cancelled" }}
-                    submitLabel="Skip"
+                    hidden={{ appointmentId: a.id, status: "completed" }}
+                    submitLabel={
+                      a.servicePlanId && a.planBilling === "per_visit"
+                        ? "Done & bill"
+                        : "Done"
+                    }
                     variant="secondary"
                   />
-                )}
-              </span>
-            ) : (
-              <span
-                className={a.status === "completed" ? "pill pill-ok" : "pill"}
-              >
-                {a.status === "completed"
-                  ? "Done"
-                  : a.status === "cancelled"
-                    ? "Skipped"
-                    : a.status === "no_show"
-                      ? "No-show"
-                      : "To do"}
-              </span>
-            )}
-          </div>
-        ))}
-        {agenda.visits.tomorrow.length > 0 && (
-          <p className="muted">
-            Tomorrow: {agenda.visits.tomorrow.length} visit
-            {agenda.visits.tomorrow.length === 1 ? "" : "s"}, first at{" "}
-            {time(agenda.visits.tomorrow[0].startsAt)}.
-          </p>
-        )}
-        <Link className="btn secondary" href="/app/schedule?new=1">
-          Book a visit
-        </Link>
-      </section>
-      <section className="card" aria-label="Needs you today">
-        <h2>
-          Needs you{agenda.items.length ? ` (${agenda.items.length})` : ""}
-        </h2>
-        {!agenda.items.length && !tasks.due.length && (
-          <p>You’re all caught up. 🎉</p>
-        )}
-        {agenda.items.slice(0, 15).map((i) => (
-          <Link className="overview-row today-item" key={i.id} href={i.href}>
-            <span>
-              <strong>{i.title}</strong>
-              <span className="muted"> · {i.detail}</span>
-            </span>
-            <span>
-              {i.amountCents !== null && (
-                <strong>{formatMoney(i.amountCents)} </strong>
+                  {a.servicePlanId && (
+                    <ActionForm
+                      action={setAppointmentStatusAction}
+                      hidden={{ appointmentId: a.id, status: "cancelled" }}
+                      submitLabel="Skip"
+                      variant="secondary"
+                    />
+                  )}
+                </span>
+              ) : (
+                <span
+                  className={a.status === "completed" ? "pill pill-ok" : "pill"}
+                >
+                  {a.status === "completed"
+                    ? "Done"
+                    : a.status === "cancelled"
+                      ? "Skipped"
+                      : a.status === "no_show"
+                        ? "No-show"
+                        : "To do"}
+                </span>
               )}
-              <span className={i.urgent ? "pill pill-warn" : "pill"}>
-                {i.action}
-              </span>
-            </span>
+            </div>
+          ))}
+          {agenda.visits.tomorrow.length > 0 && (
+            <p className="muted">
+              Tomorrow: {agenda.visits.tomorrow.length} visit
+              {agenda.visits.tomorrow.length === 1 ? "" : "s"}, first at{" "}
+              {time(agenda.visits.tomorrow[0].startsAt)}.
+            </p>
+          )}
+          <Link className="btn secondary" href="/app/schedule?new=1">
+            Book a visit
           </Link>
-        ))}
-        {tasks.due.length > 0 && (
-          <Link className="overview-row" href="/app/tasks">
-            <span>
-              <strong>
-                {tasks.due.length} follow-up
-                {tasks.due.length === 1 ? "" : "s"} due
-              </strong>
-              <span className="muted">
-                {" "}
-                ·{" "}
-                {tasks.due
-                  .slice(0, 2)
-                  .map((t) => t.title)
-                  .join(", ")}
-                {tasks.due.length > 2 ? "…" : ""}
-              </span>
-            </span>
-            <span className="pill">Open tasks</span>
-          </Link>
-        )}
-      </section>
+        </section>
+        <section className="card" aria-label="Tasks due">
+          <div className="section-heading">
+            <h2>
+              Tasks due
+              {tasks.due.length ? (
+                <span className="count-warn"> {tasks.due.length}</span>
+              ) : null}
+            </h2>
+            <Link href="/app/tasks">All tasks</Link>
+          </div>
+          {!tasks.due.length && <p>You’re all caught up.</p>}
+          <ul className="row-list">
+            {tasks.due.slice(0, 6).map((task) => (
+              <li key={task.key}>
+                <Link href={task.action?.href ?? task.href ?? "/app/tasks"}>
+                  <span className="row-main">
+                    <strong>{task.title}</strong>
+                    <span className="muted">
+                      {task.action?.label ?? task.detail ?? task.kindLabel}
+                    </span>
+                  </span>
+                  {task.amountCents !== null && task.amountCents > 0 && (
+                    <span className="row-side">
+                      {formatMoney(task.amountCents)}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {tasks.due.length > 6 && (
+            <Link href="/app/tasks">{tasks.due.length - 6} more in Tasks</Link>
+          )}
+        </section>
+      </div>
       {light && <RecentCustomers />}
     </HydratedMain>
   );

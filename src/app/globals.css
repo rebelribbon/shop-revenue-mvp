@@ -6,15 +6,19 @@
   --space-3: 24px;
   --space-4: 32px;
   --space-8: 64px;
-  --bg: #f6f7f9;
+  --bg: #eef1f4;
   --surface: #ffffff;
-  --text: #16181d;
-  --muted: #5b6270;
-  --line: #a8b0bd;
-  --accent: #1d5fd1;
+  --text: #17212b;
+  --muted: #536170;
+  --line: #a9b4bf;
+  --accent: #0b6b4f;
   --accent-text: #ffffff;
-  --accent-hover: #174ca8;
-  --hover: #edf2fa;
+  --accent-hover: #08513c;
+  --hover: #e6f3ed;
+  /* Sidebar: deep ink, like the shop floor at night. */
+  --ink: #15202b;
+  --ink-raised: #22313f;
+  --ink-text: #c9d3dd;
   --danger: #b42318;
   --ok: #067647;
   --warn-bg: #fff4d6;
@@ -24,15 +28,18 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #111317;
-    --surface: #1a1d23;
-    --text: #eceef2;
-    --muted: #b4bdcc;
-    --line: #667184;
-    --accent: #8bb5ff;
-    --accent-text: #0b0d10;
-    --accent-hover: #accaff;
-    --hover: #272e3b;
+    --bg: #10161c;
+    --surface: #18212a;
+    --text: #eceff2;
+    --muted: #b1bcc8;
+    --line: #5f6d7b;
+    --accent: #5fd3a8;
+    --accent-text: #08130e;
+    --accent-hover: #86e2bf;
+    --hover: #1f3a31;
+    --ink: #0b1117;
+    --ink-raised: #1a2631;
+    --ink-text: #c9d3dd;
     --danger: #ff9b94;
     --ok: #69dfa0;
     --warn-bg: #3a2f10;
@@ -60,16 +67,18 @@ body {
   background: var(--bg);
   color: var(--text);
   font:
-    16px/24px system-ui,
+    16px/24px "Public Sans Variable",
+    system-ui,
     -apple-system,
     "Segoe UI",
     sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 main {
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 1152px;
+  max-width: 1344px;
   margin: 0 auto calc(var(--primary-space) + 32px);
   padding: 32px 24px;
   overflow-y: auto;
@@ -956,19 +965,34 @@ details {
   flex-direction: column;
   gap: 24px;
   padding: 24px 16px;
-  border-right: 1px solid var(--line);
-  background: var(--surface);
+  border-right: 0;
+  background: var(--ink);
+  color: var(--ink-text);
   min-height: 0;
   overflow-y: auto;
 }
 .workspace-sidebar a.workspace-brand:not(.btn) {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   padding: 0 8px;
-  color: var(--text);
-  font-size: 1.125rem;
+  color: #ffffff;
+  font-size: 1.0625rem;
   font-weight: 700;
   text-decoration: none;
+}
+.workspace-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: #0e8a63;
+  color: #ffffff;
+  font-weight: 800;
 }
 .workspace-sidebar .workspace-nav {
   display: flex;
@@ -984,11 +1008,37 @@ details {
   color: var(--text);
   text-decoration: none;
 }
+.workspace-sidebar .workspace-nav a:not(.card):not(.btn) {
+  color: var(--ink-text);
+  padding: 8px 16px;
+}
+.workspace-sidebar .workspace-nav a:hover {
+  background: var(--ink-raised);
+  color: #ffffff;
+}
 .workspace-nav a[aria-current="page"] {
   background: var(--hover);
   color: var(--accent);
   border-color: var(--accent);
   font-weight: 700;
+}
+.workspace-sidebar .workspace-nav a[aria-current="page"]:not(.card):not(.btn) {
+  background: var(--ink-raised);
+  color: #ffffff;
+  border-color: transparent;
+}
+/* Count of what's waiting (Tasks due). */
+.nav-count {
+  margin-left: auto;
+  min-width: 24px;
+  padding: 0 8px;
+  border-radius: 16px;
+  background: #c2410c;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
 }
 .workspace-nav svg {
   flex-shrink: 0;
@@ -1915,4 +1965,297 @@ div.overview-row + a.overview-row {
 }
 .task-footer > a {
   margin: 0;
+}
+/* Top bar: the one place to add anything. */
+.workspace-header > a.btn.new-button {
+  margin-left: auto;
+  background: #0e8a63;
+  border-color: #0e8a63;
+  color: #ffffff;
+  font-weight: 700;
+}
+.workspace-header > a.btn.new-button:hover {
+  background: #0b6b4f;
+}
+.create-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+a.card.create-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 24px;
+  color: var(--text);
+  text-decoration: none;
+}
+a.card.create-tile strong {
+  font-size: 1.25rem;
+}
+a.card.create-tile:hover {
+  border-color: var(--accent);
+}
+/* Home: where every job stands, left to right. */
+.pipeline-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.pipeline-strip a.pipeline-cell:not(.card):not(.btn) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.pipeline-strip a.pipeline-cell:hover {
+  background: var(--hover);
+}
+.pipeline-cell > span {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.pipeline-cell > strong {
+  font-size: 1.75rem;
+  line-height: 40px;
+}
+.pipeline-strip a.pipeline-cell.warn:not(.card):not(.btn) {
+  background: #fff4ec;
+}
+.pipeline-cell.warn > span,
+.pipeline-cell.warn > strong {
+  color: #9a3f00;
+}
+@media (prefers-color-scheme: dark) {
+  .pipeline-strip a.pipeline-cell.warn:not(.card):not(.btn) {
+    background: #3a2414;
+  }
+  .pipeline-cell.warn > span,
+  .pipeline-cell.warn > strong {
+    color: #ffb27a;
+  }
+}
+@media (max-width: 899px) {
+  .pipeline-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .pipeline-strip a.pipeline-cell:not(.card):not(.btn) {
+    padding: 8px 16px;
+  }
+  .pipeline-cell > strong {
+    font-size: 1.375rem;
+    line-height: 32px;
+  }
+}
+.money-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0 0 16px;
+}
+.money-line a:not(.card):not(.btn) {
+  padding-left: 0;
+  color: var(--muted);
+  text-decoration: none;
+}
+.money-line strong {
+  color: var(--text);
+  margin-left: 8px;
+}
+/* Schedule and tasks side by side on a wide screen. */
+.home-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.home-columns > .card {
+  margin: 0;
+}
+.count-warn {
+  color: #c2410c;
+}
+/* Board / List switch. */
+.view-toggle {
+  display: inline-flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.view-toggle a:not(.card):not(.btn) {
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.view-toggle a[aria-current]:not(.card):not(.btn) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+/* Jobs board: one column per stage, cards oldest first. */
+.job-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(200px, 1fr));
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 8px 8px;
+  border-radius: 16px;
+  background: #e2e8ee;
+}
+.board-column h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 8px 8px;
+  font-size: 1rem;
+}
+.board-total {
+  margin-left: auto;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.board-empty {
+  margin: 0 8px;
+}
+.board-column a.board-card:not(.card):not(.btn) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+}
+.board-column a.board-card:hover {
+  border-color: var(--accent);
+}
+.board-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.board-note {
+  align-self: flex-start;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: #eef1f4;
+  color: #3b4b5b;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 24px;
+}
+.board-note.warn {
+  background: #fff1e3;
+  color: #8a3a00;
+}
+.board-note.bad {
+  background: #fdeceb;
+  color: #a4251b;
+}
+.board-note.info {
+  background: #e8f0ff;
+  color: #1f4fb8;
+}
+@media (prefers-color-scheme: dark) {
+  .board-column {
+    background: #0c1218;
+  }
+  .board-note {
+    background: #22313f;
+    color: #c9d3dd;
+  }
+  .board-note.warn {
+    background: #3a2414;
+    color: #ffb27a;
+  }
+  .board-note.bad {
+    background: #3d1715;
+    color: #ff9b94;
+  }
+  .board-note.info {
+    background: #16284a;
+    color: #9cc0ff;
+  }
+}
+/* Customer page: who they are on the left, what's happened on the right. */
+.profile-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+.profile-layout > .profile-card {
+  flex: 1 1 320px;
+  max-width: 400px;
+  margin: 0;
+}
+.profile-layout > .profile-main {
+  flex: 999 1 520px;
+  min-width: 0;
+}
+.profile-card .profile-head {
+  flex-direction: column;
+}
+.profile-card .money-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+}
+.profile-card .stat-strip {
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.profile-card .profile-meta {
+  flex-direction: column;
+  gap: 8px;
+}
+.profile-main > .action-bar:first-child {
+  margin-top: 0;
+}
+@media (max-width: 899px) {
+  .profile-layout > .profile-card {
+    max-width: none;
+  }
+}
+.workspace-header > a.btn.new-button {
+  gap: 8px;
+}
+@media (max-width: 599px) {
+  .workspace-header .new-label {
+    display: none;
+  }
+  .workspace-header > a.btn.new-button {
+    min-width: 48px;
+    padding: 0 16px;
+    font-size: 1.25rem;
+  }
+  .workspace-header a.workspace-mobile-brand:not(.btn) {
+    min-width: 48px;
+  }
 }

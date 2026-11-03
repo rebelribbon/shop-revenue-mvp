@@ -9,6 +9,7 @@ import { withTenant } from "@/db/tenant";
 import { requireShopSession } from "@/server/views/shop";
 import { shopBillingAccess } from "@/domain/billing";
 import { daysUntil } from "@/lib/billing";
+import { listTasks } from "@/domain/tasks";
 
 export default async function ShopLayout({
   children,
@@ -16,7 +17,7 @@ export default async function ShopLayout({
   children: React.ReactNode;
 }) {
   const s = await requireShopSession("/app");
-  const { b, billing, now } = await withTenant(
+  const { b, billing, now, tasksDue } = await withTenant(
     s.businessId,
     s.actor,
     async (tx) => {
@@ -29,7 +30,12 @@ export default async function ShopLayout({
         })
         .from(business)
         .where(eq(business.id, s.businessId));
-      return { b, billing: await shopBillingAccess(tx, now), now };
+      return {
+        b,
+        billing: await shopBillingAccess(tx, now),
+        now,
+        tasksDue: (await listTasks(tx, now)).due.length,
+      };
     },
   );
   const owner = s.role === "owner";
@@ -58,9 +64,15 @@ export default async function ShopLayout({
       <div className="workspace-shell">
         <aside className="workspace-sidebar">
           <Link href="/app" className="workspace-brand">
+            <span className="workspace-brand-mark" aria-hidden="true">
+              {(b?.dba || b?.legalName || "S").trim().charAt(0).toUpperCase()}
+            </span>
             {b?.dba || b?.legalName}
           </Link>
-          <WorkspaceNavigation canSeeMoney={s.role === "owner"} />
+          <WorkspaceNavigation
+            canSeeMoney={s.role === "owner"}
+            counts={{ "/app/tasks": tasksDue }}
+          />
         </aside>
         <header className="workspace-header">
           <Link
@@ -73,6 +85,12 @@ export default async function ShopLayout({
           <QuickFind
             automotive={isAutomotive(b?.businessType ?? "automotive")}
           />
+          <Link className="btn new-button" href="/app/create" aria-label="New">
+            <span aria-hidden="true">+</span>
+            <span className="new-label" aria-hidden="true">
+              New
+            </span>
+          </Link>
           <Link
             className="btn secondary icon-button"
             href="/app/settings"
@@ -128,7 +146,11 @@ export default async function ShopLayout({
             )}
           {children}
         </div>
-        <WorkspaceNavigation mobile canSeeMoney={s.role === "owner"} />
+        <WorkspaceNavigation
+          mobile
+          canSeeMoney={s.role === "owner"}
+          counts={{ "/app/tasks": tasksDue }}
+        />
       </div>
     </>
   );
