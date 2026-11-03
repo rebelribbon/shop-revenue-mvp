@@ -26,3 +26,12 @@ export const registerClose = app.table("register_close", {
   takenCents: bigint("taken_cents", { mode: "number" }).notNull(),
   note: text("note"),
 });
+
+// A tech's clocked time on a job (migration 0035).
+export const timeEntry = app.table("time_entry", {
+  ...tenantColumns(),
+  jobId: uuid("job_id").notNull(),
+  userId: uuid("user_id").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  endedAt: timestamp("ended_at", { withTimezone: true }),
+});

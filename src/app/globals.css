@@ -2426,3 +2426,43 @@ a.card.create-tile:hover {
   margin-top: 0;
   color: #c9d3dd;
 }
+/* Profit on the job: green when on target, orange when below. */
+.profit-chip {
+  padding: 0 8px;
+  border-radius: 8px;
+  line-height: 32px;
+}
+.profit-chip.good {
+  background: #e6f3ed;
+  color: #0b5a42;
+}
+.profit-chip.low {
+  background: #fff1e3;
+  color: #8a3a00;
+}
+@media (prefers-color-scheme: dark) {
+  .profit-chip.good {
+    background: #16372c;
+    color: #8fe0c1;
+  }
+  .profit-chip.low {
+    background: #3a2414;
+    color: #ffb27a;
+  }
+}
+.profit-sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 24px;
+  max-width: 560px;
+  margin: 0 0 8px;
+}
+.profit-sheet dd {
+  margin: 0;
+  text-align: right;
+}
+.profit-sheet .profit-total {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-weight: 800;
+}

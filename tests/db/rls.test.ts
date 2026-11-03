@@ -19,6 +19,7 @@ import {
   documentTemplate,
   task,
   registerClose,
+  timeEntry,
   document,
   estimateAuthorization,
   recommendation,
@@ -275,6 +276,26 @@ const builders: Record<string, Builder> = {
         .returning();
       return row.id;
     }),
+  "app.time_entry": async (t) => {
+    const customerId = (
+      await withTenant(t.businessId, t.owner.actor, (tx) =>
+        createCustomer(tx, meta(), { firstName: "RLS", lastName: "Clock" }),
+      )
+    ).id;
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(timeEntry)
+        .values({
+          businessId: t.businessId,
+          jobId: customerId,
+          userId: t.owner.actor.id!,
+          startedAt: new Date(Date.now() - 3600000),
+          endedAt: new Date(Date.now() - 1800000),
+        })
+        .returning();
+      return row.id;
+    });
+  },
   "app.register_close": async (t) =>
     withTenant(t.businessId, t.owner.actor, async (tx) => {
       const [row] = await tx

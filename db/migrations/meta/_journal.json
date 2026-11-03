@@ -246,6 +246,13 @@
       "when": 1794323731998,
       "tag": "0034_register_close",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794410131998,
+      "tag": "0035_job_profit_time_clock",
+      "breakpoints": true
     }
   ]
 }

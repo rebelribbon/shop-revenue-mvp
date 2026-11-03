@@ -6,6 +6,7 @@ import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { updateBusinessProfileAction } from "@/server/actions/business";
+import { setTargetMarginAction } from "@/server/actions/job-profit";
 import { requireShopSession } from "@/server/views/shop";
 
 const zones = [
@@ -255,6 +256,34 @@ export default async function BusinessSettingsPage() {
           </div>
         )}
       </div>
+      {s.role === "owner" && s.actor.type !== "support" && (
+        <section className="card" aria-label="Target profit">
+          <h2>Target profit per job</h2>
+          <p className="muted">
+            Jobs below this show a warning before you send the estimate.
+          </p>
+          <ActionForm
+            action={setTargetMarginAction}
+            submitLabel="Save target"
+            variant="secondary"
+          >
+            <label htmlFor="target-margin">Target profit (%)</label>
+            <input
+              id="target-margin"
+              name="percent"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={95}
+              step={1}
+              required
+              defaultValue={(
+                (profile?.targetMarginBps ?? 4000) / 100
+              ).toString()}
+            />
+          </ActionForm>
+        </section>
+      )}
     </HydratedMain>
   );
 }

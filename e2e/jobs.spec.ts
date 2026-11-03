@@ -216,6 +216,18 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     "Work completed",
   );
   await page.getByRole("link", { name: "Work", exact: true }).click();
+  // Profit sits at the top of the job; the clock is one tap.
+  await expect(page.locator(".profit-chip")).toBeVisible();
+  await page
+    .getByRole("button", { name: "▶ Start clock", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: /^■ Stop clock/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /^■ Stop clock/ }).click();
+  await expect(
+    page.getByRole("button", { name: "▶ Start clock", exact: true }),
+  ).toBeVisible();
   await auditUX(page);
   await page.screenshot({
     path: `test-results/ux-job-workflow-${info.project.name}.png`,

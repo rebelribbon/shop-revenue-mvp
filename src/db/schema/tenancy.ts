@@ -53,6 +53,8 @@ export const business = app.table(
     invoiceDisplay: jsonb("invoice_display"),
     // Which follow-up reminders run, and when (src/lib/follow-up-rules.ts).
     followUpRules: jsonb("follow_up_rules").notNull().default({}),
+    // Profit the shop aims for on a job, in basis points (4000 = 40%).
+    targetMarginBps: integer("target_margin_bps").notNull().default(4000),
     status: text("status").notNull().default("active"),
     ...timestamps(),
   },
