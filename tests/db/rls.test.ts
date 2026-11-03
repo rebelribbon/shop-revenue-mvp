@@ -17,6 +17,7 @@ import {
   servicePlan,
   jobMedia,
   documentTemplate,
+  task,
   document,
   estimateAuthorization,
   recommendation,
@@ -270,6 +271,14 @@ const builders: Record<string, Builder> = {
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
         })
+        .returning();
+      return row.id;
+    }),
+  "app.task": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(task)
+        .values({ businessId: t.businessId, title: "RLS", dueOn: "2026-11-03" })
         .returning();
       return row.id;
     }),

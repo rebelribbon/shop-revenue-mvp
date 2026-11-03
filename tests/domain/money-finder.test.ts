@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   activity,
   appointment,
+  customer,
   estimateAuthorization,
   estimateVersion,
   invoice,
@@ -28,6 +29,16 @@ import {
   updateRecovery,
 } from "@/domain/money-finder";
 import { localDateKey, addLocalDays } from "@/lib/timezone";
+import {
+  addTask,
+  listTasks,
+  saveFollowUpRules,
+  updateTask,
+} from "@/domain/tasks";
+import {
+  DEFAULT_FOLLOW_UP_RULES,
+  type FollowUpRules,
+} from "@/lib/follow-up-rules";
 import { newToken } from "@/lib/tokens";
 import { meta, seedTenant } from "../helpers/fixtures";
 
@@ -299,8 +310,21 @@ describe("Money Finder live list rules", () => {
   it("shows invoice balances after three days, including manual deposits, and excludes paid invoices", async () => {
     const f = await fixture();
     const due = await bill(f, 3, 2500);
-    await bill(f, 2, 0);
+    const twoDays = await bill(f, 2, 0);
     await bill(f, 5, 10000);
+    // Default rule: follow up on unpaid invoices every day.
+    expect(
+      (await dashboard(f, { category: "unpaid_invoice" })).items
+        .map((i) => i.subjectId)
+        .sort(),
+    ).toEqual([due.id, twoDays.id].sort());
+    // The owner can set it to every 3 days instead.
+    await run(f, (tx) =>
+      saveFollowUpRules(tx, meta(), {
+        ...DEFAULT_FOLLOW_UP_RULES,
+        unpaid: { on: true, days: 3 },
+      }),
+    );
     const data = await dashboard(f, { category: "unpaid_invoice" });
     expect(data.items).toHaveLength(1);
     expect(data.items[0]).toMatchObject({
@@ -479,5 +503,117 @@ describe("Money Finder live list rules", () => {
         }),
       ),
     ).rejects.toThrow(/method/);
+  });
+});
+
+describe("Tasks and follow-up rules", () => {
+  const tasksFor = (f: Fixture, at = now) => run(f, (tx) => listTasks(tx, at));
+  const setRules = (f: Fixture, patch: Partial<FollowUpRules>) =>
+    run(f, (tx) =>
+      saveFollowUpRules(tx, meta(), { ...DEFAULT_FOLLOW_UP_RULES, ...patch }),
+    );
+  async function lead(f: Fixture, age: number) {
+    return run(f, async (tx) => {
+      const [c] = await tx
+        .insert(customer)
+        .values({
+          businessId: f.businessId,
+          firstName: "New",
+          lastName: `Lead ${age}`,
+          displayName: `New Lead ${age}`,
+          phoneE164: "+15125550199",
+          createdAt: daysAgo(age),
+        })
+        .returning();
+      return c;
+    });
+  }
+
+  it("reminds about new leads every day until they have a job, on the owner's schedule", async () => {
+    const f = await fixture();
+    const fresh = await lead(f, 0);
+    const old = await lead(f, 2);
+    let t = await tasksFor(f);
+    const leads = t.due.filter((r) => r.category === "new_lead");
+    expect(leads.map((r) => r.customerId)).toEqual([old.id]);
+    expect(leads[0].title).toBe(`Call new lead ${old.displayName}`);
+    expect(leads.map((r) => r.customerId)).not.toContain(fresh.id);
+    // Done: off the list today, back tomorrow (daily), until they book.
+    await run(f, (tx) =>
+      updateRecovery(tx, meta(), {
+        category: "new_lead",
+        subjectId: old.id,
+        action: "contact",
+        method: "phone",
+        deliveryConfirmed: true,
+      }),
+    );
+    t = await tasksFor(f);
+    expect(t.due.some((r) => r.customerId === old.id)).toBe(false);
+    expect(t.later.find((r) => r.customerId === old.id)?.dueOn).toBe(
+      addLocalDays(today, 1),
+    );
+    // Owner sets "every 3 days": the 2-day-old lead isn't due yet.
+    const g = await fixture();
+    await lead(g, 2);
+    await setRules(g, { newLead: { on: true, days: 3 } });
+    expect(
+      (await tasksFor(g)).due.filter((r) => r.category === "new_lead"),
+    ).toEqual([]);
+    // Switched off: no lead reminders at all.
+    await setRules(f, { newLead: { on: false, days: 1 } });
+    const off = await tasksFor(f);
+    expect(
+      [...off.due, ...off.later].some((r) => r.category === "new_lead"),
+    ).toBe(false);
+  });
+
+  it("asks for a customer update while work is in progress", async () => {
+    const f = await fixture();
+    const e = await estimate(f, 5, 30, ["part-0", "labor-0"]);
+    await run(f, (tx) =>
+      tx.insert(activity).values({
+        businessId: f.businessId,
+        kind: "job.progress",
+        subjectType: "job",
+        subjectId: e.quoteId,
+        actorType: "user",
+        actorId: f.owner.actor.id,
+        summary: "Work started · estimate v1",
+        occurredAt: daysAgo(3),
+        data: { versionId: e.id, status: "in_progress" },
+      }),
+    );
+    const t = await tasksFor(f);
+    const update = t.due.find((r) => r.category === "job_update");
+    expect(update?.subjectId).toBe(e.quoteId);
+    expect(update?.title).toMatch(/^Update Real History on their Honda Civic/);
+    await setRules(f, { jobUpdate: { on: true, days: 5 } });
+    expect(
+      (await tasksFor(f)).due.some((r) => r.category === "job_update"),
+    ).toBe(false);
+  });
+
+  it("keeps the shop's own tasks with a due date", async () => {
+    const f = await fixture();
+    const { id } = await run(f, (tx) =>
+      addTask(tx, meta(), {
+        title: "Order tires for Real",
+        dueOn: today,
+        customerId: f.customerId,
+      }),
+    );
+    await run(f, (tx) =>
+      addTask(tx, meta(), {
+        title: "Call supplier",
+        dueOn: addLocalDays(today, 3),
+      }),
+    );
+    let t = await tasksFor(f);
+    expect(t.due.find((r) => r.subjectId === id)?.phone).toBe("+15125550123");
+    expect(t.later.map((r) => r.title)).toContain("Call supplier");
+    await run(f, (tx) => updateTask(tx, meta(), { id, action: "done" }));
+    t = await tasksFor(f);
+    expect([...t.due, ...t.later].some((r) => r.subjectId === id)).toBe(false);
   });
 });

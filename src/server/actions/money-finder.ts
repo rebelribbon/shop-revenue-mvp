@@ -34,14 +34,14 @@ export const updateRecoveryAction = defineShopAction({
     deliveryConfirmed: z.enum(["true", "false"]).optional(),
     method: z.enum(["phone", "email", "in_person", "other"]).optional(),
     note: z.string().max(1000).optional(),
-    days: z.enum(["30", "90"]).optional(),
+    days: z.enum(["1", "7", "30", "90"]).optional(),
     reason: z.string().max(1000).optional(),
   }),
   run: ({ tx, meta }, input) =>
     updateRecovery(tx, meta, {
       ...input,
       deliveryConfirmed: input.deliveryConfirmed === "true",
-      days: input.days ? (Number(input.days) as 30 | 90) : undefined,
+      days: input.days ? (Number(input.days) as 1 | 7 | 30 | 90) : undefined,
     }),
   persist: (r) => ({
     ...r,
