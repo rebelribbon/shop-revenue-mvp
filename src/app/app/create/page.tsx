@@ -8,6 +8,7 @@ export default async function CreatePage() {
   const items = [
     ["/app/jobs?new=1", "Job", "Parts, labor and an estimate"],
     ["/app/customers/new", "Customer", "Name, phone and vehicle or address"],
+    ["/app/checkout", "Payment", "Check someone out: card, cash or check"],
     ["/app/schedule?new=1", "Visit", "Book a time on the calendar"],
     ["/app/tasks?add=1", "Task", "A reminder for you or the shop"],
     ...(s.role === "owner"

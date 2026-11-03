@@ -2259,3 +2259,170 @@ a.card.create-tile:hover {
     min-width: 48px;
   }
 }
+/* Checkout: the bill on the left, taking the money on the right. */
+.checkout-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+.checkout-layout > .checkout-ticket {
+  flex: 3 1 520px;
+  min-width: 0;
+  margin: 0;
+}
+.checkout-layout > .checkout-side {
+  flex: 2 1 360px;
+  min-width: 0;
+}
+.checkout-who {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.checkout-who h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.checkout-who p {
+  margin: 8px 0 0;
+}
+.checkout-lines td:nth-child(n + 2),
+.checkout-lines th:nth-child(n + 2) {
+  text-align: right;
+}
+.checkout-totals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 24px;
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.checkout-totals dt {
+  color: var(--muted);
+}
+.checkout-totals dd {
+  margin: 0;
+  text-align: right;
+}
+.checkout-totals .checkout-due {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+.checkout-paid {
+  margin-top: 16px;
+}
+/* The payment panel: dark, like a terminal. */
+.checkout-pay {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: #ffffff;
+}
+.checkout-pay a:not(.btn) {
+  color: #8fe0c1;
+}
+.checkout-label {
+  margin: 0;
+  color: #a9b6c2;
+  font-weight: 600;
+}
+.checkout-amount {
+  font-size: 2.75rem;
+  line-height: 56px;
+  font-weight: 800;
+}
+.checkout-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.checkout-methods legend {
+  margin-bottom: 8px;
+  color: #a9b6c2;
+  font-weight: 600;
+}
+.checkout-pay label.checkout-method {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #3a4a5a;
+  border-radius: 8px;
+  background: var(--ink-raised);
+  color: #ffffff;
+  cursor: pointer;
+}
+.checkout-pay label.checkout-method:has(input:checked) {
+  border-color: #5fd3a8;
+  background: #1c3a31;
+}
+.checkout-method > span {
+  display: flex;
+  flex-direction: column;
+}
+.checkout-method > span > span {
+  color: #a9b6c2;
+  font-size: 0.8125rem;
+}
+.checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.checkout-pay label:not(.checkout-method),
+.checkout-sub {
+  color: #c9d3dd;
+  font-weight: 600;
+}
+.checkout-pay .muted {
+  color: #a9b6c2;
+}
+.checkout-pay input:not([type="radio"]) {
+  margin: 0;
+}
+.checkout-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.checkout-quick .btn {
+  margin: 0;
+}
+.checkout-quick .btn[aria-pressed="true"] {
+  border-color: #5fd3a8;
+  background: #1c3a31;
+  color: #ffffff;
+}
+.checkout-change {
+  margin: 0;
+  color: #8fe0c1;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.checkout-short {
+  margin: 0;
+  color: #ffb27a;
+  font-weight: 700;
+}
+.checkout-after {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.checkout-after .btn {
+  margin: 0;
+}
+.checkout-link p {
+  margin-top: 0;
+  color: #c9d3dd;
+}

@@ -251,4 +251,23 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   );
   await expect(page.locator("body")).not.toContainText("unit cost");
   await expect(page.locator("main")).toContainText("Dec 1, 2026");
+
+  // Checkout: take part of the balance in cash at the counter.
+  await page.goto(
+    `/app/checkout?invoiceId=${new URL(invoiceUrl).searchParams.get("invoiceId")}`,
+  );
+  await expect(page.locator(".checkout-amount")).toHaveText("$150.00");
+  await page.getByRole("radio", { name: /^Cash/ }).check();
+  await page.getByLabel(/^Amount to take/).fill("20");
+  await page.getByRole("button", { name: "$20.00", exact: true }).click();
+  await expect(page.getByText("Change due: $0.00")).toBeVisible();
+  await auditUX(page);
+  await page.screenshot({
+    path: `test-results/ux-checkout-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Take $20.00", exact: true }).click();
+  await expect(page.getByText("Payment taken")).toBeVisible();
+  await expect(page.getByText("$130.00 is still due")).toBeVisible();
+  await auditUX(page);
 });
