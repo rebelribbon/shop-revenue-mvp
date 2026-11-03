@@ -20,6 +20,7 @@ import {
   task,
   registerClose,
   timeEntry,
+  savedReport,
   document,
   estimateAuthorization,
   recommendation,
@@ -273,6 +274,14 @@ const builders: Record<string, Builder> = {
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
         })
+        .returning();
+      return row.id;
+    }),
+  "app.saved_report": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(savedReport)
+        .values({ businessId: t.businessId, name: "RLS", config: {} })
         .returning();
       return row.id;
     }),

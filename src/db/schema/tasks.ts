@@ -1,4 +1,12 @@
-import { bigint, date, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  boolean,
+  date,
+  jsonb,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { app, tenantColumns } from "./common";
 
 // A follow-up the shop writes itself ("Call Maria Friday about tires").
@@ -36,4 +44,13 @@ export const timeEntry = app.table("time_entry", {
     .notNull()
     .defaultNow(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
+});
+
+// A report the owner built and saved (migration 0036).
+export const savedReport = app.table("saved_report", {
+  ...tenantColumns(),
+  name: text("name").notNull(),
+  config: jsonb("config").notNull(),
+  pinned: boolean("pinned").notNull().default(false),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
 });

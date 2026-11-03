@@ -21,6 +21,14 @@ import { createJob } from "@/domain/jobs";
 import { createAppointment } from "@/domain/appointments";
 import { recordInvoicePayment, setInvoiceDispute } from "@/domain/invoices";
 import { closeRegister, registerDay } from "@/domain/register";
+import {
+  buildReport,
+  listSavedReports,
+  readConfig,
+  saveReport,
+  updateSavedReport,
+} from "@/domain/report-builder";
+import { presetRange } from "@/domain/reports";
 import { freezeEstimate } from "@/domain/estimates";
 import {
   startRecoveryWork,
@@ -748,3 +756,55 @@ describe("Checkout register", () => {
     ).toBe(23500);
   });
 });
+
+describe("Report builder", () => {
+  it("groups the same numbers as the ready-made reports, and saves reports", async () => {
+    const f = await fixture();
+    const inv = await bill(f, 0, 0);
+    for (const [amountCents, method] of [
+      [4000, "cash"],
+      [3000, "external_card"],
+      [1000, "cash"],
+    ] as const)
+      await run(f, (tx) =>
+        recordInvoicePayment(tx, meta(), {
+          invoiceId: inv.id,
+          amountCents,
+          method,
+          reference: "",
+        }),
+      );
+    const config = readConfig({
+      source: "payments",
+      group: "method",
+      measures: "count,amount",
+      range: "month",
+    });
+    const r = await run(f, (tx) =>
+      buildReport(tx, config, presetRange("month", today)),
+    );
+    // Biggest first, totals match every payment.
+    expect(r.rows.map((row) => [row[1], row[2]])).toEqual([
+      [2, 5000],
+      [1, 3000],
+    ]);
+    expect(r.totals?.slice(1)).toEqual([3, 8000]);
+    expect(r.headline).toBe("Cash leads with 2 payments.");
+    // Bad input falls back instead of failing.
+    expect(
+      readConfig({ source: "nope", group: "x", measures: "zzz" }),
+    ).toMatchObject({ source: "profit", group: "month" });
+    const { id } = await run(f, (tx) => saveReportAction_domain(tx, config));
+    const saved = await run(f, (tx) => listSavedReports(tx));
+    expect(saved).toMatchObject([{ id, name: "By method", pinned: true }]);
+    await run(f, (tx) =>
+      updateSavedReport(tx, meta(), { id, action: "remove" }),
+    );
+    expect(await run(f, (tx) => listSavedReports(tx))).toEqual([]);
+  });
+});
+
+const saveReportAction_domain = (
+  tx: Parameters<typeof saveReport>[0],
+  config: ReturnType<typeof readConfig>,
+) => saveReport(tx, meta(), { name: "By method", config, pinned: true });
