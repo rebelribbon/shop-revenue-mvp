@@ -8,12 +8,16 @@ import Link from "next/link";
 import { getOwnerMoney } from "@/domain/owner-money";
 import { formatMoney } from "@/components/estimate-document";
 import { redirect } from "next/navigation";
+import { sql } from "drizzle-orm";
 import { withTenant } from "@/db/tenant";
 import { recurringRevenue } from "@/domain/service-plans";
 import { requireShopSession } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { listTasks } from "@/domain/tasks";
 import { loadPipeline } from "@/domain/pipeline";
+import { buildReport, listSavedReports } from "@/domain/report-builder";
+import { presetRange } from "@/domain/reports";
+import { localDateKey } from "@/lib/timezone";
 import { isAutomotive } from "@/lib/business-types";
 
 export default async function HomePage({
@@ -38,10 +42,8 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, agenda, tasks, summary, recurring, pipe] = await withTenant(
-    s.businessId,
-    s.actor,
-    async (tx) =>
+  const [profile, agenda, tasks, summary, recurring, pipe, pinned] =
+    await withTenant(s.businessId, s.actor, async (tx) =>
       Promise.all([
         getBusinessProfile(tx),
         todayAgenda(tx),
@@ -51,8 +53,9 @@ export default async function HomePage({
           : null,
         s.role === "owner" ? recurringRevenue(tx) : null,
         loadPipeline(tx),
+        s.role === "owner" ? pinnedReports(tx) : [],
       ]),
-  );
+    );
   const type = profile?.businessType ?? "automotive",
     labels = workspaceLabels(type);
   const tz = agenda.visits.timezone;
@@ -289,7 +292,76 @@ export default async function HomePage({
           )}
         </section>
       </div>
+      {pinned.length > 0 && (
+        <div className="home-columns">
+          {pinned.map((r) => (
+            <section
+              className="card pinned-report"
+              key={r.id}
+              aria-label={r.name}
+            >
+              <div className="section-heading">
+                <h2>{r.name}</h2>
+                <Link href={`/app/money/reports/build?saved=${r.id}`}>
+                  Open
+                </Link>
+              </div>
+              <p className="report-headline">{r.headline}</p>
+              <ul className="row-list">
+                {r.rows.map((row, i) => (
+                  <li key={i}>
+                    <div>
+                      <span className="row-main">{row.label}</span>
+                      <strong className="row-side">{row.value}</strong>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
       {light && <RecentCustomers />}
     </HydratedMain>
+  );
+}
+
+// The owner's pinned reports, top five rows each, for Home.
+async function pinnedReports(tx: Parameters<typeof listSavedReports>[0]) {
+  const saved = (await listSavedReports(tx))
+    .filter((r) => r.pinned)
+    .slice(0, 4);
+  if (!saved.length) return [];
+  const tz = String(
+    (
+      await tx.execute(
+        sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`,
+      )
+    ).rows[0]?.timezone || "America/Chicago",
+  );
+  const today = localDateKey(new Date(), tz);
+  return Promise.all(
+    saved.map(async (r) => {
+      const built = await buildReport(
+        tx,
+        r.config,
+        presetRange(r.config.range, today),
+      );
+      const first = built.columns[1];
+      return {
+        id: r.id,
+        name: r.name,
+        headline: built.headline,
+        rows: built.rows.slice(0, 5).map((row) => ({
+          label: String(row[0]),
+          value:
+            row[1] === null
+              ? "—"
+              : first?.money
+                ? formatMoney(Number(row[1]))
+                : String(row[1]),
+        })),
+      };
+    }),
   );
 }

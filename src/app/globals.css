@@ -2466,3 +2466,82 @@ a.card.create-tile:hover {
   border-top: 1px solid var(--line);
   font-weight: 800;
 }
+/* Reports: saved and ready-made on the left, the builder and result on the right. */
+.report-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+.report-layout > .report-list {
+  flex: 1 1 240px;
+  max-width: 280px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.report-list h2 {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.report-list a:not(.card):not(.btn) {
+  margin: 0;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+.report-list a[aria-current]:not(.card):not(.btn) {
+  background: var(--hover);
+  color: var(--accent);
+  font-weight: 700;
+}
+.report-layout > .report-main {
+  flex: 999 1 560px;
+  min-width: 0;
+}
+.report-main > .card {
+  margin: 0 0 16px;
+}
+.report-form select {
+  max-width: 400px;
+}
+.report-headline {
+  margin: 0 0 16px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.report-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+.report-bar {
+  display: grid;
+  grid-template-columns: minmax(96px, 160px) minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+.report-bar > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-bar-track {
+  height: 24px;
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.report-bar-track > span {
+  display: block;
+  height: 24px;
+  border-radius: 8px;
+  background: #0e8a63;
+}
+.report-build-link {
+  margin: 0 0 16px;
+  font-weight: 600;
+}

@@ -12,6 +12,7 @@ import {
 } from "@/domain/reports";
 import { localDateKey } from "@/lib/timezone";
 import { requireOwnerView } from "@/server/views/shop";
+import { listSavedReports } from "@/domain/report-builder";
 
 const PRESETS = [
   ["month", "This month"],
@@ -44,7 +45,7 @@ export default async function ReportsPage({
   const p = await searchParams;
   const key = (REPORTS.find((r) => r.key === p.report)?.key ??
     "sales") as ReportKey;
-  const { report, range, preset } = await withTenant(
+  const { report, range, preset, saved } = await withTenant(
     s.businessId,
     s.actor,
     async (tx) => {
@@ -59,7 +60,12 @@ export default async function ReportsPage({
       const range = custom
         ? { from: p.from!, to: p.to! }
         : presetRange(preset, today);
-      return { report: await runReport(tx, key, range), range, preset };
+      return {
+        report: await runReport(tx, key, range),
+        range,
+        preset,
+        saved: await listSavedReports(tx),
+      };
     },
   );
   const info = REPORTS.find((r) => r.key === key)!;
@@ -84,6 +90,22 @@ export default async function ReportsPage({
       >
         Download {info.title} (CSV)
       </a>
+      <p className="report-build-link">
+        <Link href="/app/money/reports/build">
+          Build your own report: group by month, customer, tech or job, and save
+          it
+        </Link>
+      </p>
+      {saved.length > 0 && (
+        <div className="chip-links" role="group" aria-label="Your reports">
+          {saved.map((r) => (
+            <Link key={r.id} href={`/app/money/reports/build?saved=${r.id}`}>
+              {r.pinned ? "★ " : ""}
+              {r.name}
+            </Link>
+          ))}
+        </div>
+      )}
       <div className="chip-links" role="group" aria-label="Report">
         {REPORTS.map((r) => (
           <Link
