@@ -89,8 +89,8 @@ export function QuickFind({ automotive }: { automotive: boolean }) {
               ["/app/jobs", "Jobs"],
               ["/app/estimates", "Estimates"],
               ["/app/invoices", "Invoices"],
+              ["/app/tasks", "Tasks"],
               ["/app/money", "Money"],
-              ["/app/opportunities", "Follow-ups"],
             ] as const
           ).map(([href, label]) => (
             <Link

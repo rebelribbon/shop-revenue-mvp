@@ -117,8 +117,8 @@ test("M2 mobile navigation reaches focused job and customer creation without ove
   await page.goto("/app/customers");
   const nav = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(nav).toBeVisible();
-  // Today, Customers, Jobs, Money (the calendar opens from Today).
-  await expect(nav.getByRole("link")).toHaveCount(4);
+  // Today, Customers, Jobs, Tasks, Money (the calendar opens from Today).
+  await expect(nav.getByRole("link")).toHaveCount(5);
   await nav.getByRole("link", { name: "Jobs", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Jobs", exact: true }),

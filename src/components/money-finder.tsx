@@ -240,9 +240,10 @@ export function MoneyFinder({
         <div className="card">
           <h3>Nothing here right now</h3>
           <p>
-            Lists fill from signed declines, unsigned estimates after 2 days,
-            unpaid invoices after 3 days, paid visits 6–24 months ago, and
-            entered service dates.
+            Lists fill from your{" "}
+            <Link href="/app/settings/follow-ups">follow-up rules</Link>: new
+            leads, estimates, unpaid invoices, work in progress, declined work,
+            past customers and service dates.
           </p>
           <p>
             Add declined work or a next-service date from a{" "}

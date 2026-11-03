@@ -9,6 +9,7 @@ import {
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
+import { readFollowUpRules, type FollowUpRules } from "@/lib/follow-up-rules";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { getVehicle } from "./customers";
 
@@ -21,6 +22,8 @@ export const moneyCategories = [
   "unpaid_invoice",
   "lapsed",
   "service_due",
+  "new_lead",
+  "job_update",
 ] as const;
 export type MoneyCategory = (typeof moneyCategories)[number];
 export const categoryLabels: Record<MoneyCategory, string> = {
@@ -29,6 +32,8 @@ export const categoryLabels: Record<MoneyCategory, string> = {
   unpaid_invoice: "Unpaid invoices",
   lapsed: "Not back in 6+ months",
   service_due: "Service due",
+  new_lead: "New leads",
+  job_update: "Work updates",
 };
 export type MoneyItem = {
   category: MoneyCategory;
@@ -70,7 +75,12 @@ export type MoneyDashboard = {
 
 // All five lists use current source records, in one tenant-scoped request. Only
 // workflow preferences and manual-contact evidence are stored in recovery_item.
-function candidates(tx: TenantTx, now: Date) {
+function candidates(
+  tx: TenantTx,
+  now: Date,
+  rules: FollowUpRules = readFollowUpRules({}),
+) {
+  const asOf = now.toISOString();
   return sql`WITH settings AS (
     SELECT ${now.toISOString()}::timestamptz AS as_of, timezone AS zone,
       (${now.toISOString()}::timestamptz AT TIME ZONE timezone)::date AS today
@@ -105,10 +115,11 @@ function candidates(tx: TenantTx, now: Date) {
     FROM app.recommendation r LEFT JOIN vehicles v ON v.id=r.vehicle_id JOIN contacts c ON c.id=r.customer_id
     CROSS JOIN settings s LEFT JOIN app.recovery_item state ON state.business_id=${tx.businessId}
       AND state.category='declined' AND state.subject_id=coalesce(v.id,c.id)
-    WHERE r.business_id=${tx.businessId} AND (r.vehicle_id IS NULL OR v.id IS NOT NULL) AND r.declined_at BETWEEN s.as_of-interval '18 months' AND s.as_of
+    WHERE ${rules.declined.on} AND r.business_id=${tx.businessId} AND (r.vehicle_id IS NULL OR v.id IS NOT NULL) AND r.declined_at BETWEEN s.as_of-interval '18 months' AND s.as_of
       AND (r.status='open' OR (r.status='dismissed' AND state.status='dismissed'
         AND state.dismissed_recommendation_ids ? r.id::text))
     GROUP BY v.id,c.id,c.display_name,v.label,c.phone_e164,c.email,c.email_opted_out_at
+    HAVING max(r.declined_at)<=${asOf}::timestamptz-make_interval(days=>${rules.declined.days}::int)
   ), latest_estimates AS (
     SELECT DISTINCT ON(quote_id) * FROM app.estimate_version WHERE business_id=${tx.businessId}
     ORDER BY quote_id,version DESC
@@ -118,7 +129,7 @@ function candidates(tx: TenantTx, now: Date) {
       'Unsigned estimate: ' || (e.snapshot->>'title') AS reason,(e.snapshot->>'subtotalCents')::numeric AS amount_cents,
       e.created_at AS occurred_at,e.expires_at<=s.as_of AS renew_first,0::numeric AS lifetime
     FROM latest_estimates e JOIN contacts c ON c.id=e.customer_id LEFT JOIN vehicles v ON v.id=e.vehicle_id CROSS JOIN settings s
-    WHERE (e.vehicle_id IS NULL OR v.id IS NOT NULL) AND e.revoked_at IS NULL AND e.created_at<=s.as_of-interval '2 days' AND e.expires_at>=s.as_of-interval '60 days'
+    WHERE ${rules.estimate.on} AND (e.vehicle_id IS NULL OR v.id IS NOT NULL) AND e.revoked_at IS NULL AND e.created_at<=s.as_of-make_interval(days=>${rules.estimate.days}::int) AND e.expires_at>=s.as_of-interval '60 days'
       AND NOT EXISTS(SELECT 1 FROM app.estimate_authorization a WHERE a.business_id=${tx.businessId} AND a.version_id=e.id)
   ), unpaid AS (
     SELECT 'unpaid_invoice'::text AS category,i.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
@@ -126,7 +137,7 @@ function candidates(tx: TenantTx, now: Date) {
       'Balance due on invoice #' || i.number::text AS reason,(i.total_cents-i.paid)::numeric AS amount_cents,
       i.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
     FROM balances i JOIN contacts c ON c.id=i.customer_id LEFT JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
-    WHERE (i.vehicle_id IS NULL OR v.id IS NOT NULL) AND i.dispute_open IS NULL AND i.total_cents>i.paid AND i.created_at<=s.as_of-interval '3 days'
+    WHERE ${rules.unpaid.on} AND (i.vehicle_id IS NULL OR v.id IS NOT NULL) AND i.dispute_open IS NULL AND i.total_cents>i.paid AND i.created_at<=s.as_of-make_interval(days=>${rules.unpaid.days}::int)
   ), priority_customers AS (
     SELECT customer_id FROM declines UNION SELECT customer_id FROM open_estimates UNION SELECT customer_id FROM unpaid
   ), lapsed AS (
@@ -136,13 +147,13 @@ function candidates(tx: TenantTx, now: Date) {
       round(avg(v.total_cents) FILTER(WHERE v.visit_rank<=5)) AS amount_cents,max(v.visit_at) AS occurred_at,
       false AS renew_first,sum(v.total_cents)::numeric AS lifetime
     FROM contacts c JOIN visits v ON v.customer_id=c.id CROSS JOIN settings s
-    WHERE NOT EXISTS(SELECT 1 FROM priority_customers p WHERE p.customer_id=c.id)
+    WHERE ${rules.pastCustomer.on} AND NOT EXISTS(SELECT 1 FROM priority_customers p WHERE p.customer_id=c.id)
       AND NOT EXISTS(SELECT 1 FROM app.appointment a WHERE a.business_id=${tx.businessId} AND a.customer_id=c.id
         AND a.status='scheduled' AND a.starts_at>=s.as_of)
       AND NOT EXISTS(SELECT 1 FROM app.recovery_item r WHERE r.business_id=${tx.businessId} AND r.category='lapsed'
         AND r.customer_id=c.id AND r.last_contact_at>s.as_of-interval '90 days')
     GROUP BY c.id,c.display_name,c.phone_e164,c.email,c.email_opted_out_at,s.as_of,s.zone
-    HAVING max(v.visit_at) BETWEEN s.as_of-interval '24 months' AND s.as_of-interval '6 months'
+    HAVING max(v.visit_at) BETWEEN s.as_of-interval '24 months' AND s.as_of-make_interval(months=>${rules.pastCustomer.months}::int)
   ), service_due AS (
     SELECT 'service_due'::text AS category,v.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
       c.display_name AS customer_name,v.label AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
@@ -150,7 +161,7 @@ function candidates(tx: TenantTx, now: Date) {
       v.next_service_amount_cents::numeric AS amount_cents,(v.next_service_on::timestamp AT TIME ZONE s.zone) AS occurred_at,
       false AS renew_first,0::numeric AS lifetime
     FROM vehicles v JOIN contacts c ON c.id=v.customer_id CROSS JOIN settings s
-    WHERE v.next_service_on BETWEEN s.today-90 AND s.today+14
+    WHERE ${rules.serviceDue.on} AND v.next_service_on BETWEEN s.today-90 AND s.today+${rules.serviceDue.daysBefore}::int
       AND NOT EXISTS(SELECT 1 FROM app.appointment a WHERE a.business_id=${tx.businessId} AND a.vehicle_id=v.id
         AND a.status='scheduled' AND a.starts_at>=s.as_of)
       AND NOT EXISTS(SELECT 1 FROM visits p WHERE p.vehicle_id=v.id
@@ -162,19 +173,44 @@ function candidates(tx: TenantTx, now: Date) {
       a.next_service_amount_cents::numeric AS amount_cents,(a.next_service_on::timestamp AT TIME ZONE s.zone) AS occurred_at,
       false AS renew_first,0::numeric AS lifetime
     FROM service_assets a JOIN contacts c ON c.id=a.customer_id CROSS JOIN settings s
-    WHERE a.next_service_on BETWEEN s.today-90 AND s.today+14
+    WHERE ${rules.serviceDue.on} AND a.next_service_on BETWEEN s.today-90 AND s.today+${rules.serviceDue.daysBefore}::int
       AND NOT EXISTS(SELECT 1 FROM app.appointment ap WHERE ap.business_id=${tx.businessId} AND ap.service_asset_id=a.id
         AND ap.status='scheduled' AND ap.starts_at>=s.as_of)
       AND NOT EXISTS(SELECT 1 FROM visits p WHERE p.service_asset_id=a.id
         AND (p.visit_at AT TIME ZONE s.zone)::date>=a.next_service_on-30)
+  ), new_leads AS (
+    SELECT 'new_lead'::text AS category,c.id AS subject_id,c.id AS customer_id,NULL::uuid AS vehicle_id,
+      c.display_name AS customer_name,NULL::text AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
+      'New customer, no job yet' AS reason,NULL::numeric AS amount_cents,c.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
+    FROM contacts c CROSS JOIN settings s
+    WHERE ${rules.newLead.on} AND c.created_at BETWEEN s.as_of-interval '90 days' AND s.as_of-make_interval(days=>${rules.newLead.days}::int)
+      AND NOT EXISTS(SELECT 1 FROM app.activity a WHERE a.business_id=${tx.businessId} AND a.kind='job.costed' AND a.data->>'customerId'=c.id::text)
+      AND NOT EXISTS(SELECT 1 FROM app.estimate_version e WHERE e.business_id=${tx.businessId} AND e.customer_id=c.id)
+      AND NOT EXISTS(SELECT 1 FROM app.appointment a WHERE a.business_id=${tx.businessId} AND a.customer_id=c.id)
+      AND NOT EXISTS(SELECT 1 FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.customer_id=c.id)
+  ), job_progress AS (
+    SELECT DISTINCT ON(subject_id) subject_id AS job_id,data->>'status' AS work,occurred_at FROM app.activity
+    WHERE business_id=${tx.businessId} AND kind='job.progress' AND subject_type='job'
+    ORDER BY subject_id,occurred_at DESC,id DESC
+  ), job_updates AS (
+    SELECT 'job_update'::text AS category,p.job_id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
+      c.display_name AS customer_name,coalesce(v.label,e.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
+      'Work in progress: ' || (e.snapshot->>'title') AS reason,NULL::numeric AS amount_cents,p.occurred_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
+    FROM job_progress p JOIN latest_estimates e ON e.quote_id=p.job_id JOIN contacts c ON c.id=e.customer_id
+      LEFT JOIN vehicles v ON v.id=e.vehicle_id CROSS JOIN settings s
+    WHERE ${rules.jobUpdate.on} AND p.work='in_progress' AND (e.vehicle_id IS NULL OR v.id IS NOT NULL)
+      AND p.occurred_at<=s.as_of-make_interval(days=>${rules.jobUpdate.days}::int)
+      AND NOT EXISTS(SELECT 1 FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.quote_id=p.job_id AND i.voided_at IS NULL)
   ), sources AS (
     SELECT * FROM declines UNION ALL SELECT * FROM open_estimates UNION ALL SELECT * FROM unpaid
     UNION ALL SELECT * FROM lapsed UNION ALL SELECT * FROM service_due UNION ALL SELECT * FROM home_service_due
+    UNION ALL SELECT * FROM new_leads UNION ALL SELECT * FROM job_updates
   ), items AS (
     SELECT src.*,CASE
       WHEN src.category='service_due' AND src.vehicle_id IS NULL THEN src.subject_id
       WHEN src.category='open_estimate' THEN (SELECT e.service_asset_id FROM app.estimate_version e WHERE e.business_id=${tx.businessId} AND e.id=src.subject_id)
       WHEN src.category='unpaid_invoice' THEN (SELECT i.service_asset_id FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.id=src.subject_id)
+      WHEN src.category='job_update' THEN (SELECT e.service_asset_id FROM latest_estimates e WHERE e.quote_id=src.subject_id)
       ELSE NULL::uuid END AS service_asset_id,r.id AS recovery_id,coalesce(r.status,'open') AS status,r.snoozed_until,r.dismissed_reason,
       r.last_contact_at,r.last_contact_method FROM sources src
     LEFT JOIN app.recovery_item r ON r.business_id=${tx.businessId} AND r.category=src.category AND r.subject_id=src.subject_id
@@ -194,6 +230,37 @@ const safeCents = (n: unknown): number | null => {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
 };
 
+// The shop's follow-up rules (Settings → Follow-up rules).
+export async function loadFollowUpRules(tx: TenantTx) {
+  const rows = await tx.execute(
+    sql`SELECT follow_up_rules AS rules FROM app.business WHERE id=${tx.businessId}`,
+  );
+  return readFollowUpRules(rows.rows[0]?.rules);
+}
+
+// Every open (not dismissed) reminder the shop's rules produce, for Tasks.
+export async function listFollowUpItems(tx: TenantTx, now = new Date()) {
+  const rules = await loadFollowUpRules(tx);
+  const rows = await tx.execute(sql`${candidates(tx, now, rules)}
+    SELECT jsonb_build_object('today',(SELECT today FROM settings),'timezone',(SELECT zone FROM settings),
+      'items',coalesce((SELECT jsonb_agg(${itemJson()} ORDER BY occurred_at) FROM (
+        SELECT * FROM items WHERE status<>'dismissed' LIMIT 500) i),'[]'::jsonb)) AS data`);
+  const data = rows.rows[0].data as {
+    today: string;
+    timezone: string;
+    items: MoneyItem[];
+  };
+  return {
+    rules,
+    today: data.today,
+    timezone: data.timezone,
+    items: data.items.map((i) => ({
+      ...i,
+      amountCents: safeCents(i.amountCents),
+    })),
+  };
+}
+
 export async function getMoneyFinder(
   tx: TenantTx,
   options: {
@@ -206,8 +273,9 @@ export async function getMoneyFinder(
 ): Promise<MoneyDashboard> {
   const view = options.view ?? "active",
     page = Math.max(1, Math.min(options.page ?? 1, 10000));
+  const rules = await loadFollowUpRules(tx);
   const rows =
-    await tx.execute(sql`${candidates(tx, options.now ?? new Date())}, active AS (
+    await tx.execute(sql`${candidates(tx, options.now ?? new Date(), rules)}, active AS (
     SELECT items.* FROM items CROSS JOIN settings s WHERE status<>'dismissed' AND (snoozed_until IS NULL OR snoozed_until<=s.today)
   ), visible AS (
     SELECT items.* FROM items CROSS JOIN settings s WHERE
@@ -252,8 +320,9 @@ async function findCandidate(
   subjectId: string,
   allowRecorded = false,
 ) {
+  const rules = await loadFollowUpRules(tx);
   const rows = await tx.execute(
-    sql`${candidates(tx, new Date())} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`,
+    sql`${candidates(tx, new Date(), rules)} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`,
   );
   let item = rows.rows[0]?.data as unknown as MoneyItem | undefined;
   if (!item && allowRecorded) {
@@ -285,7 +354,7 @@ export async function updateRecovery(
     deliveryConfirmed?: boolean;
     method?: "phone" | "email" | "in_person" | "other";
     note?: string;
-    days?: 30 | 90;
+    days?: 1 | 7 | 30 | 90;
     reason?: string;
   },
 ) {
@@ -337,8 +406,8 @@ export async function updateRecovery(
     change.lastContactMethod = input.method;
     change.snoozedUntil = null;
   } else if (input.action === "snooze") {
-    if (![30, 90].includes(input.days ?? 0))
-      throw new AppError("VALIDATION", "Choose 30 or 90 days.");
+    if (![1, 7, 30, 90].includes(input.days ?? 0))
+      throw new AppError("VALIDATION", "Choose how long to snooze.");
     const [b] = await tx
       .execute(sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`)
       .then((r) => r.rows);

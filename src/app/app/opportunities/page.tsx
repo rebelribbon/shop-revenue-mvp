@@ -1,5 +1,5 @@
 import { HydratedMain } from "@/components/hydrated-main";
-import { MoneyNavigation } from "@/components/money-navigation";
+import { TasksNavigation } from "@/components/tasks-navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
@@ -49,15 +49,8 @@ export default async function OpportunitiesPage({
   );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <p>
-        <Link href="/app">← Home</Link>
-      </p>
-      <h1>Follow-ups</h1>
-      <MoneyNavigation current="followups" />
-      <p className="muted">
-        Choose a recorded opportunity, contact the customer yourself, then track
-        the result.
-      </p>
+      <h1>Tasks</h1>
+      <TasksNavigation current="all" />
       <Link className="btn primary" data-page-primary href="#follow-up-list">
         View follow-up list
       </Link>

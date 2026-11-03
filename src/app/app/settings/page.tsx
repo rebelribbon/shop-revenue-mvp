@@ -19,6 +19,15 @@ export default async function SettingsPage() {
       </form>
       <div className="settings-grid">
         {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/follow-ups">
+            <strong>Follow-up rules</strong>
+            <span className="muted">
+              Who to call and how often: leads, estimates, unpaid invoices, work
+              updates and past customers
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/common-jobs">
             <strong>Common jobs</strong>
             <span className="muted">Saved items, prices and labor</span>
