@@ -1,4 +1,4 @@
-import { businessTypeLabel, isAutomotive } from "@/lib/business-types";
+import { isAutomotive } from "@/lib/business-types";
 import { QuickFind } from "@/components/quick-find";
 import { WorkspaceIcon } from "@/components/workspace-icon";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
@@ -26,7 +26,6 @@ export default async function ShopLayout({
           legalName: business.legalName,
           dba: business.dba,
           businessType: business.businessType,
-          businessTypeSelected: business.businessTypeSelected,
         })
         .from(business)
         .where(eq(business.id, s.businessId));
@@ -58,13 +57,9 @@ export default async function ShopLayout({
       )}
       <div className="workspace-shell">
         <aside className="workspace-sidebar">
-          <div className="workspace-brand">
-            <p>Shop Revenue</p>
-            <strong>{b?.dba || b?.legalName}</strong>
-            <p className="muted workspace-industry">
-              {businessTypeLabel(b?.businessType)}
-            </p>
-          </div>
+          <Link href="/app" className="workspace-brand">
+            {b?.dba || b?.legalName}
+          </Link>
           <WorkspaceNavigation canSeeMoney={s.role === "owner"} />
         </aside>
         <header className="workspace-header">
@@ -131,13 +126,6 @@ export default async function ShopLayout({
                 {billingLink("Review billing")}
               </div>
             )}
-          {!b?.businessTypeSelected && s.role === "owner" && (
-            <div className="notice setup-notice">
-              <Link href="/app/settings/business">
-                Choose your line of business to personalize your workspace →
-              </Link>
-            </div>
-          )}
           {children}
         </div>
         <WorkspaceNavigation mobile canSeeMoney={s.role === "owner"} />

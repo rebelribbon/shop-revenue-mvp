@@ -147,19 +147,6 @@ function PlanPanel({
     </div>
   );
 }
-export function WorkflowBadges({ flow }: { flow: Workflow }) {
-  return (
-    <p className="muted" aria-label="Job balance">
-      {flow.currentInvoice
-        ? flow.balanceCents === 0
-          ? "Paid"
-          : `${flow.paidCents > 0 ? "Partially paid · " : ""}${formatMoney(flow.balanceCents)} unpaid`
-        : flow.latest
-          ? formatMoney(flow.latest.estimate.snapshot.totalCents)
-          : "Estimate needed"}
-    </p>
-  );
-}
 export function JobWorkflow({
   flow,
   jobId,

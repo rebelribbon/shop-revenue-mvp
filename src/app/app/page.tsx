@@ -1,5 +1,5 @@
 import { HydratedMain } from "@/components/hydrated-main";
-import { workspaceLabels, businessTypeLabel } from "@/lib/business-types";
+import { workspaceLabels } from "@/lib/business-types";
 import { todayAgenda } from "@/domain/today";
 import { RecentCustomers } from "@/components/recent-customers";
 import { ActionForm } from "@/components/action-form";
@@ -77,22 +77,21 @@ export default async function HomePage({
       )}
       <div className="page-heading">
         <h1>Today</h1>
-        <p className="muted">
-          {date} · {businessTypeLabel(type)}
-        </p>
+        <p className="muted">{date}</p>
       </div>
       <Link className="btn primary" data-page-primary href="/app/jobs?new=1">
         {labels.newJob}
       </Link>
-      {(!profile?.phoneE164 || !profile.addressLine1) && (
-        <div className="notice banner">
-          <p>
-            Finish your business details so appointments and documents use the
-            right information.
+      {s.role === "owner" &&
+        (!profile?.businessTypeSelected ||
+          !profile?.phoneE164 ||
+          !profile.addressLine1) && (
+          <p className="setup-line">
+            <Link href="/app/settings/business">
+              Finish setting up your business →
+            </Link>
           </p>
-          <Link href="/app/settings/business">Finish setup</Link>
-        </div>
-      )}
+        )}
       {summary && (
         <div className="overview-metrics">
           <Link href="/app/money" className="card overview-metric">
@@ -226,13 +225,6 @@ export default async function HomePage({
         )}
       </section>
       {light && <RecentCustomers />}
-      <section className="card">
-        <h2>Find a customer</h2>
-        <div className="money-actions">
-          <Link href="/app/customers">Customer list</Link>
-          <Link href="/app/customers/new">Add a customer</Link>
-        </div>
-      </section>
     </HydratedMain>
   );
 }

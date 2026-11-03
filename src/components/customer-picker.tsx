@@ -7,13 +7,17 @@ export function CustomerPicker({
   value,
   onChange,
   id = "customerId",
+  fixed = false,
 }: {
   options: CustomerChoice[];
   value: string;
   onChange: (id: string) => void;
   id?: string;
+  // Started from a customer: show their name, with a way to change it.
+  fixed?: boolean;
 }) {
-  const [query, setQuery] = useState(""),
+  const [changing, setChanging] = useState(false),
+    [query, setQuery] = useState(""),
     [added, setAdded] = useState<CustomerChoice[]>([]),
     [first, setFirst] = useState(""),
     [last, setLast] = useState(""),
@@ -31,6 +35,31 @@ export function CustomerPicker({
   const selected = all.find((c) => c.id === value);
   if (selected && !visible.some((c) => c.id === value))
     visible.unshift(selected);
+  if (fixed && selected && !changing)
+    return (
+      <section className="fixed-choice">
+        <label htmlFor={id}>Customer</label>
+        <div>
+          <strong>{selected.name}</strong>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => setChanging(true)}
+          >
+            Change customer
+          </button>
+        </div>
+        <select
+          id={id}
+          name="customerId"
+          hidden
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value={selected.id}>{selected.name}</option>
+        </select>
+      </section>
+    );
   return (
     <section>
       <label htmlFor={`${id}-search`}>Find customer</label>
