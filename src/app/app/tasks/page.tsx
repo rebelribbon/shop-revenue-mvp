@@ -82,7 +82,9 @@ export default async function TasksPage(props: {
               ))}
             </select>
           </ActionForm>
-          <Link href="/app/tasks">Done</Link>
+          <Link className="panel-close" href="/app/tasks">
+            Close
+          </Link>
         </section>
       )}
       {rows.length === 0 ? (

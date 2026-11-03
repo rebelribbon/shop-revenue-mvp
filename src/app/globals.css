@@ -1903,3 +1903,6 @@ div.overview-row + a.overview-row {
 .task-item .row-main strong > a:not(.card):not(.btn) {
   margin-left: -8px;
 }
+.add-panel a.panel-close:not(.card):not(.btn) {
+  margin-top: 8px;
+}
