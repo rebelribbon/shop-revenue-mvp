@@ -14,3 +14,4 @@ export * from "./billing";
 export * from "./service-plans";
 export * from "./job-media";
 export * from "./documents";
+export * from "./tasks";

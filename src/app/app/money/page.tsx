@@ -82,7 +82,8 @@ export default async function MoneyPage({
         </dl>
         <p className="money-sheet-side">
           <Link href="/app/invoices">
-            Customers owe you <strong>{formatMoney(m.owedCents)}</strong>
+            <span>Customers owe you&nbsp;</span>
+            <strong>{formatMoney(m.owedCents)}</strong>
           </Link>
         </p>
       </section>

@@ -51,6 +51,8 @@ export const business = app.table(
     logoFileId: uuid("logo_file_id"),
     // Default invoice layout (src/lib/invoice-display.ts).
     invoiceDisplay: jsonb("invoice_display"),
+    // Which follow-up reminders run, and when (src/lib/follow-up-rules.ts).
+    followUpRules: jsonb("follow_up_rules").notNull().default({}),
     status: text("status").notNull().default("active"),
     ...timestamps(),
   },

@@ -19,12 +19,11 @@ const shopItems = [
     phone: true,
   },
   {
-    href: "/app/schedule",
-    label: "Calendar",
-    mobile: "Calendar",
-    icon: "schedule",
-    // On phones the calendar opens from Today.
-    phone: false,
+    href: "/app/tasks",
+    label: "Tasks",
+    mobile: "Tasks",
+    icon: "tasks",
+    phone: true,
   },
   {
     href: "/app/money",
@@ -61,11 +60,12 @@ export function WorkspaceNavigation({
             aria-current={
               (
                 item.href === "/app"
-                  ? path === item.href
+                  ? path === item.href || path.startsWith("/app/schedule")
                   : path.startsWith(item.href) ||
+                    (item.href === "/app/tasks" &&
+                      path.startsWith("/app/opportunities")) ||
                     (item.href === "/app/money" &&
-                      (path.startsWith("/app/opportunities") ||
-                        path.startsWith("/app/revenue"))) ||
+                      path.startsWith("/app/revenue")) ||
                     (item.href === "/app/work" &&
                       workPaths.some((p) => path.startsWith(p)))
               )

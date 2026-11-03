@@ -1857,3 +1857,49 @@ div.overview-row + a.overview-row {
 .workspace-header > a {
   margin: 0;
 }
+/* Tasks: who, why, and the buttons to deal with it on one card row. */
+.task-list > li.task-item {
+  padding: 0 0 16px;
+}
+.row-list > li.task-item > .task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0;
+}
+.task-actions > .btn,
+.task-actions form,
+.task-actions form .btn,
+.task-actions form button {
+  margin: 0;
+}
+.task-actions form p[role="status"]:empty {
+  display: none;
+}
+/* Follow-up rules: one block per rule — on/off, then "every [N] days". */
+.rule-row {
+  margin: 0 0 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.rule-row legend {
+  font-weight: 700;
+  padding: 0 8px;
+}
+.rule-amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rule-amount input {
+  width: 10ch;
+  margin: 0;
+}
+.task-list > li {
+  max-width: none;
+}
+.task-item .row-main strong > a:not(.card):not(.btn) {
+  margin-left: -8px;
+}

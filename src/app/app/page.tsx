@@ -12,7 +12,7 @@ import { withTenant } from "@/db/tenant";
 import { recurringRevenue } from "@/domain/service-plans";
 import { requireShopSession } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
-import { getMoneyFinder } from "@/domain/money-finder";
+import { listTasks } from "@/domain/tasks";
 
 export default async function HomePage({
   searchParams,
@@ -36,14 +36,14 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, agenda, money, summary, recurring] = await withTenant(
+  const [profile, agenda, tasks, summary, recurring] = await withTenant(
     s.businessId,
     s.actor,
     async (tx) =>
       Promise.all([
         getBusinessProfile(tx),
         todayAgenda(tx),
-        getMoneyFinder(tx, { view: "active", page: 1, query: "" }),
+        listTasks(tx),
         s.role === "owner"
           ? getOwnerMoney(tx, undefined, new Date(), false)
           : null,
@@ -192,7 +192,9 @@ export default async function HomePage({
         <h2>
           Needs you{agenda.items.length ? ` (${agenda.items.length})` : ""}
         </h2>
-        {!agenda.items.length && <p>You’re all caught up. 🎉</p>}
+        {!agenda.items.length && !tasks.due.length && (
+          <p>You’re all caught up. 🎉</p>
+        )}
         {agenda.items.slice(0, 15).map((i) => (
           <Link className="overview-row today-item" key={i.id} href={i.href}>
             <span>
@@ -209,18 +211,24 @@ export default async function HomePage({
             </span>
           </Link>
         ))}
-        {money.total > 0 && (
-          <Link className="overview-row" href="/app/opportunities">
+        {tasks.due.length > 0 && (
+          <Link className="overview-row" href="/app/tasks">
             <span>
               <strong>
-                {money.total} follow-up{money.total === 1 ? "" : "s"}
+                {tasks.due.length} follow-up
+                {tasks.due.length === 1 ? "" : "s"} due
               </strong>
               <span className="muted">
                 {" "}
-                · declined work, service due and customers to check on
+                ·{" "}
+                {tasks.due
+                  .slice(0, 2)
+                  .map((t) => t.title)
+                  .join(", ")}
+                {tasks.due.length > 2 ? "…" : ""}
               </span>
             </span>
-            <span className="pill">Open follow-ups</span>
+            <span className="pill">Open tasks</span>
           </Link>
         )}
       </section>

@@ -225,6 +225,13 @@
       "when": 1794064531998,
       "tag": "0031_bio_cabinet_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794150931998,
+      "tag": "0032_tasks_follow_up_rules",
+      "breakpoints": true
     }
   ]
 }
