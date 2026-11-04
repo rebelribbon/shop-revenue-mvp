@@ -1,3 +1,5 @@
+import { reminderHistory } from "@/domain/payment-reminders";
+import { sendReminderAction } from "@/server/actions/payment-reminders";
 import { InvoiceDesigner } from "@/components/invoice-designer";
 import { getInvoiceTemplate } from "@/domain/invoice-display";
 import { HydratedMain } from "@/components/hydrated-main";
@@ -59,6 +61,9 @@ export default async function InvoicesPage({
       profile: await getBusinessProfile(tx),
       template: await getInvoiceTemplate(tx),
       invoices: await listInvoices(tx, params.invoiceId),
+      reminders: params.invoiceId
+        ? await reminderHistory(tx, params.invoiceId)
+        : [],
       estimates: await listEstimates(tx, requested?.quoteId),
       checkouts: await tx
         .select()
@@ -186,6 +191,35 @@ export default async function InvoicesPage({
             <Link href={`/app/jobs?job=${i.quoteId}`}>
               Job timeline, authorization &amp; work remaining
             </Link>
+            {params.invoiceId === i.id && !i.voidedAt && i.balanceCents > 0 && (
+              <section className="reminder-box" aria-label="Payment reminders">
+                {s.actor.type !== "support" && (
+                  <ActionForm
+                    action={sendReminderAction}
+                    hidden={{ invoiceId: i.id }}
+                    submitLabel="Email a payment reminder"
+                    variant="secondary"
+                  />
+                )}
+                {data.reminders.length > 0 && (
+                  <ul className="reminder-log muted">
+                    {data.reminders.map((r) => (
+                      <li key={r.id}>
+                        {r.status === "sent"
+                          ? "Reminder sent"
+                          : "Couldn’t send"}{" "}
+                        to {r.sentTo} ·{" "}
+                        {r.createdAt.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                        {r.automatic ? " (automatic)" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
             {i.voidReason && <p>Void reason: {i.voidReason}</p>}
             <section className="record-details" id="preview">
               <InvoiceDesigner

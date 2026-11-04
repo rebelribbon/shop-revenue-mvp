@@ -184,6 +184,14 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .click();
   await expect(page).toHaveURL(/\/app\/invoices\?invoiceId=/);
   const invoiceUrl = page.url();
+  // One-tap payment reminder by email; the outcome is recorded either way.
+  await page
+    .getByRole("button", { name: "Email a payment reminder", exact: true })
+    .click();
+  await expect(
+    page.getByText(/Reminder emailed to job-|couldn’t be sent right now/),
+  ).toBeVisible();
+  await auditUX(page);
   const invoice = page
     .getByRole("heading", {
       name: new RegExp(`Invoice #.*Brakes ${info.project.name}`),

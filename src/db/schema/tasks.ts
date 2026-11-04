@@ -102,3 +102,13 @@ export const stockMove = app.table("stock_move", {
   invoiceId: uuid("invoice_id"),
   note: text("note"),
 });
+
+// Payment reminder emails sent for an invoice (0042).
+export const paymentReminder = app.table("payment_reminder", {
+  ...tenantColumns(),
+  invoiceId: uuid("invoice_id").notNull(),
+  sentTo: text("sent_to").notNull(),
+  status: text("status").notNull(),
+  automatic: boolean("automatic").notNull(),
+  providerMessageId: text("provider_message_id"),
+});

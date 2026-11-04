@@ -1,4 +1,5 @@
 import { runServicePlanMaintenance } from "./service-plans";
+import { runPaymentReminders } from "./payment-reminders";
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 import { Logger, runOnce, type WorkerEvents } from "graphile-worker";
@@ -88,6 +89,8 @@ export async function runMaintenanceBatch({
       });
       const plans = await runServicePlanMaintenance();
       failed += plans.failed;
+      const reminders = await runPaymentReminders();
+      failed += reminders.errors;
       const status = failed ? "failed" : "succeeded";
       await tx.execute(
         sql`UPDATE app.maintenance_run SET finished_at=now(),status=${status},completed=${completed},failed=${failed} WHERE id=${started.id}`,
