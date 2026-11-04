@@ -17,6 +17,7 @@ import { estimateTotals } from "@/lib/estimate-tax";
 import { lockRevenue, reconcileRevenue } from "./revenue";
 import { assertOwner } from "./membership";
 import { releasePlanInvoice } from "./service-plans";
+import { returnStockForInvoice, takeStockForInvoice } from "./parts";
 export async function issueInvoice(
   tx: TenantTx,
   meta: RequestMeta,
@@ -127,6 +128,7 @@ export async function issueInvoice(
       expiresAt: new Date(Date.now() + 90 * 86400000),
     })
     .returning();
+  await takeStockForInvoice(tx, row.id, lines);
   await audit(tx, meta, {
     action: "invoice.issued",
     targetType: "invoice",
@@ -310,6 +312,7 @@ export async function voidInvoice(
     .where(and(eq(invoice.businessId, tx.businessId), eq(invoice.id, id)))
     .returning();
   if (row.servicePlanId) await releasePlanInvoice(tx, id);
+  await returnStockForInvoice(tx, id);
   await audit(tx, meta, {
     action: "invoice.voided",
     targetType: "invoice",

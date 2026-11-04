@@ -2747,3 +2747,38 @@ a.card.create-tile:hover {
 .view-toggle.tech-filter {
   display: flex;
 }
+/* Parts. */
+.part-form form,
+.part-actions form {
+  display: grid;
+  gap: 8px;
+  max-width: 480px;
+}
+.part-actions {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  margin: 0 0 16px;
+}
+.stock-history {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.stock-history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.part-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+.part-hint {
+  margin: 0;
+  font-size: 0.875rem;
+}

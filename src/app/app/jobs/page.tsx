@@ -44,6 +44,7 @@ import { jobInput } from "@/domain/jobs";
 import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { jobProfit, myClock } from "@/domain/job-profit";
 import { jobAssignees, listTechs } from "@/domain/assignments";
+import { partCatalog } from "@/domain/parts";
 import { assignJobAction } from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
@@ -206,6 +207,7 @@ export default async function JobsPage({
           : null,
       clock: await myClock(tx),
       techs: await listTechs(tx),
+      catalog: edit || creating ? await partCatalog(tx) : [],
       assignee: page.selected
         ? ((await jobAssignees(tx, [page.selected.id])).get(page.selected.id) ??
           null)
@@ -327,6 +329,7 @@ export default async function JobsPage({
           </p>
           <JobEditor
             commonJobs={data.commonJobs}
+            catalog={data.catalog}
             canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
             laborSellRateCents={data.profile?.laborSellRateCents}
             laborCostRateCents={data.profile?.laborCostRateCents}
