@@ -35,6 +35,8 @@ export const jobInput = z.object({
     .array(
       z.object({
         recommendationId: z.uuid().optional(),
+        // From the parts catalog: stock comes off when it's invoiced.
+        partItemId: z.uuid().optional(),
         description: z.string().trim().min(1).max(200),
         quantity: z
           .number()

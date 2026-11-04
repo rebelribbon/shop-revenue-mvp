@@ -11,21 +11,25 @@ const who = z
 export const assignJobAction = defineShopAction({
   name: "assignJob",
   input: z.object({ jobId: z.uuid(), userId: who }),
-  run: ({ tx, meta }, i) => assignJob(tx, meta, i),
-  persist: (r) => ({
-    ...r,
-    message: r.tech ? `${r.tech} is on this job.` : "Nobody is on this job.",
-  }),
+  run: async ({ tx, meta }, i) => {
+    const r = await assignJob(tx, meta, i);
+    return {
+      ...r,
+      message: r.tech ? `${r.tech} is on this job.` : "Nobody is on this job.",
+    };
+  },
 });
 
 export const assignVisitAction = defineShopAction({
   name: "assignVisit",
   input: z.object({ appointmentId: z.uuid(), userId: who }),
-  run: ({ tx, meta }, i) => assignVisit(tx, meta, i),
-  persist: (r) => ({
-    ...r,
-    message: r.tech
-      ? `${r.tech} is on this visit.`
-      : "Nobody is on this visit.",
-  }),
+  run: async ({ tx, meta }, i) => {
+    const r = await assignVisit(tx, meta, i);
+    return {
+      ...r,
+      message: r.tech
+        ? `${r.tech} is on this visit.`
+        : "Nobody is on this visit.",
+    };
+  },
 });

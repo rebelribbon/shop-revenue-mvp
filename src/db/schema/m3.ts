@@ -18,6 +18,8 @@ export type EstimateLine = {
   totalCents: number;
   kind: "part" | "labor";
   taxable?: boolean;
+  // Catalog part, so stock can come off when invoiced.
+  partItemId?: string;
 };
 export type AuthorizationPolicy = {
   id: string;

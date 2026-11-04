@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { isAutomotive } from "@/lib/business-types";
 
 export function WorkNavigation({
   current,
+  businessType = "automotive",
 }: {
-  current: "jobs" | "estimates" | "invoices";
+  current: "jobs" | "estimates" | "invoices" | "parts";
   businessType?: string;
 }) {
   return (
@@ -13,6 +15,7 @@ export function WorkNavigation({
           ["jobs", "Jobs"],
           ["estimates", "Estimates"],
           ["invoices", "Invoices"],
+          ["parts", isAutomotive(businessType) ? "Parts" : "Materials"],
         ] as const
       ).map(([key, label]) => (
         <Link

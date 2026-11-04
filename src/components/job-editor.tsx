@@ -8,6 +8,7 @@ import { createJobAction } from "@/server/actions/jobs";
 import { saveCommonJobAction } from "@/server/actions/owner-tools";
 import { calculateJob } from "@/domain/job-costing";
 import type { JobInput } from "@/domain/jobs";
+import type { CatalogPart } from "@/domain/parts";
 import { CustomerPicker } from "./customer-picker";
 import { RepeatPicker } from "./repeat-picker";
 import { updateMediaAction } from "@/server/actions/job-media";
@@ -43,6 +44,7 @@ export function JobEditor({
   laborSellRateCents = 0,
   laborCostRateCents = 0,
   commonJobs = [],
+  catalog = [],
   canSaveCommon = false,
   today,
   defaultRepeats = false,
@@ -63,6 +65,8 @@ export function JobEditor({
   laborSellRateCents?: number;
   laborCostRateCents?: number;
   commonJobs?: CommonJobChoice[];
+  // Parts catalog: picking one fills the prices and tracks stock.
+  catalog?: CatalogPart[];
   canSaveCommon?: boolean;
   today: string;
   defaultRepeats?: boolean;
@@ -345,6 +349,20 @@ export function JobEditor({
           profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
         />
         <h3>{auto ? "Parts" : "Materials"}</h3>
+        {catalog.length > 0 && (
+          <datalist id="part-catalog">
+            {catalog.map((c) => (
+              <option key={c.id} value={c.name}>
+                {[
+                  c.partNumber && `#${c.partNumber}`,
+                  `${c.onHandHundredths / 100} on hand`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </option>
+            ))}
+          </datalist>
+        )}
         {parts.map((p, i) => (
           <fieldset key={`part-${i}`}>
             <legend>
@@ -363,15 +381,47 @@ export function JobEditor({
                 required
                 maxLength={200}
                 value={p.description}
-                onChange={(e) =>
+                list={catalog.length ? "part-catalog" : undefined}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  const hit = catalog.find(
+                    (c) =>
+                      c.name.toLowerCase() === text.trim().toLowerCase() ||
+                      (c.partNumber &&
+                        c.partNumber.toLowerCase() ===
+                          text.trim().toLowerCase()),
+                  );
                   setParts(
                     parts.map((x, n) =>
-                      n === i ? { ...x, description: e.target.value } : x,
+                      n !== i
+                        ? x
+                        : hit
+                          ? {
+                              ...x,
+                              description: hit.name,
+                              partItemId: hit.id,
+                              unitPriceCents: hit.unitPriceCents,
+                              unitCostCents: hit.unitCostCents,
+                            }
+                          : {
+                              ...x,
+                              description: text,
+                              partItemId: undefined,
+                            },
                     ),
-                  )
-                }
+                  );
+                }}
               />
             </label>
+            {p.partItemId &&
+              (() => {
+                const c = catalog.find((x) => x.id === p.partItemId);
+                return c ? (
+                  <p className="muted part-hint">
+                    From your list · {c.onHandHundredths / 100} on the shelf
+                  </p>
+                ) : null;
+              })()}
             {numberField("Unit selling price", p.unitPriceCents, (v) =>
               setParts(
                 parts.map((x, n) =>
