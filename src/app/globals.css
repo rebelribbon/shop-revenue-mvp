@@ -2820,3 +2820,49 @@ a.card.create-tile:hover {
   display: grid;
   gap: 8px;
 }
+/* Quick sale. */
+.quick-sale {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+}
+.quick-sale > .card {
+  display: grid;
+  gap: 8px;
+}
+.sale-lines {
+  display: grid;
+  gap: 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sale-lines li {
+  display: grid;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.sale-line-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  font-weight: 700;
+}
+.sale-tax {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+.sale-void {
+  margin-top: 16px;
+}
+.sale-void form {
+  display: grid;
+  gap: 8px;
+  max-width: 400px;
+}

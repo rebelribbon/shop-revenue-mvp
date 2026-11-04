@@ -140,6 +140,12 @@ export async function getOwnerMoney(
       sql`select coalesce(sum(round(p.amount_cents::numeric*coalesce((i.snapshot->>'taxCents')::numeric,0)/nullif(i.total_cents,0))),0)::text as cents from app.invoice_payment p join app.invoice i on i.business_id=p.business_id and i.id=p.invoice_id where p.business_id=${tx.businessId} and p.created_at>=${start} and p.created_at<${end}`,
     )
     .then((r) => r.rows);
+  // Quick sales at the counter count as money in (and their tax as owed).
+  const [counter] = await tx
+    .execute(
+      sql`select coalesce(sum(total_cents),0)::text as total, coalesce(sum(tax_cents),0)::text as tax, coalesce(sum(subtotal_cents),0)::text as sub from app.counter_sale where business_id=${tx.businessId} and voided_at is null and created_at>=${start} and created_at<${end}`,
+    )
+    .then((r) => r.rows);
   const [owed] = await tx
     .execute(
       sql`select coalesce(sum(greatest(i.total_cents-coalesce(p.paid,0),0)),0)::text as cents from app.invoice i left join lateral (select sum(amount_cents) paid from app.invoice_payment where business_id=i.business_id and invoice_id=i.id) p on true where i.business_id=${tx.businessId} and i.voided_at is null`,
@@ -255,8 +261,10 @@ export async function getOwnerMoney(
     overheadCents = rows
       .filter((e) => !e.includedInJobCost)
       .reduce((n, e) => n + e.amountCents, 0),
-    collectedCents = Number(received.cents),
-    salesTaxCents = Number((salesTax as { cents: string }).cents);
+    collectedCents = Number(received.cents) + Number(counter.total),
+    salesTaxCents =
+      Number((salesTax as { cents: string }).cents) + Number(counter.tax);
+  salesCents += Number(counter.sub);
   const reversed = new Set(
     rows.filter((e) => e.reversesExpenseId).map((e) => e.reversesExpenseId),
   );
