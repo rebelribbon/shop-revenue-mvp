@@ -35,13 +35,20 @@ export async function registerDay(
     FROM app.invoice_payment p
     WHERE p.business_id=${tx.businessId}
       AND (p.created_at AT TIME ZONE ${tz})::date = ${d}::date
-    GROUP BY p.method`);
-  const by = new Map(
-    rows.rows.map((r) => [
-      String(r.method),
-      { n: Number(r.n), cents: Number(r.cents) },
-    ]),
-  );
+    GROUP BY p.method
+    UNION ALL
+    SELECT s.method, count(*)::int AS n, coalesce(sum(s.total_cents),0)::bigint AS cents
+    FROM app.counter_sale s
+    WHERE s.business_id=${tx.businessId} AND s.voided_at IS NULL
+      AND (s.created_at AT TIME ZONE ${tz})::date = ${d}::date
+    GROUP BY s.method`);
+  // Invoice payments and quick sales, added up per method.
+  const by = new Map<string, { n: number; cents: number }>();
+  for (const r of rows.rows) {
+    const m = String(r.method);
+    const cur = by.get(m) ?? { n: 0, cents: 0 };
+    by.set(m, { n: cur.n + Number(r.n), cents: cur.cents + Number(r.cents) });
+  }
   const methods = Object.keys(METHOD_LABELS)
     .filter((m) => by.has(m))
     .map((m) => ({ method: m, label: METHOD_LABELS[m], ...by.get(m)! }));

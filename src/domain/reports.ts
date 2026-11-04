@@ -1,3 +1,4 @@
+import { countersBetween } from "./counter-sales";
 import { leadSourceLabel } from "@/lib/lead-sources";
 // Owner reports for a date range, all from the same invoices, payments, jobs,
 // plans and expenses the rest of the app uses. Each report is a plain table
@@ -361,15 +362,35 @@ export async function runReport(
         tx,
         payments.map((p) => p.customerId),
       );
-      const rows = payments.map((p) => [
-        day(p.at),
-        `#${p.number}`,
-        p.customer,
-        p.method.replaceAll("_", " "),
-        p.reference || null,
-        p.cents,
-        found.get(p.customerId) ?? "Not set",
-      ]);
+      const sales = await countersBetween(tx, start, end);
+      const rows = [
+        ...payments.map((p) => ({
+          at: p.at,
+          row: [
+            day(p.at),
+            `#${p.number}`,
+            p.customer,
+            p.method.replaceAll("_", " "),
+            p.reference || null,
+            p.cents,
+            found.get(p.customerId) ?? "Not set",
+          ],
+        })),
+        ...sales.map((s) => ({
+          at: s.createdAt,
+          row: [
+            day(s.createdAt),
+            `Sale #${s.number}`,
+            "Counter sale",
+            s.method.replaceAll("_", " "),
+            s.reference || null,
+            s.totalCents,
+            "Not set",
+          ],
+        })),
+      ]
+        .sort((a, b) => a.at.getTime() - b.at.getTime())
+        .map((x) => x.row);
       return {
         columns: [
           { label: "Date" },
