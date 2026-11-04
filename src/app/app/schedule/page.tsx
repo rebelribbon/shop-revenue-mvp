@@ -2,6 +2,8 @@ import { everyLabel, type Repeat } from "@/lib/service-plans";
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
+import { listTechs } from "@/domain/assignments";
+import { assignVisitAction } from "@/server/actions/assignments";
 import { headsUpNotes } from "@/domain/memory";
 import { requireShopSession } from "@/server/views/shop";
 import {
@@ -51,6 +53,7 @@ export default async function VisitsPage({
       anchor,
       options: creating ? await listAppointmentChoices(tx) : null,
       visits,
+      techs: await listTechs(tx),
       headsUp: await headsUpNotes(tx, [
         ...new Set(visits.rows.map((r) => r.customerId)),
       ]),
@@ -180,6 +183,8 @@ export default async function VisitsPage({
                             ? "Skipped"
                             : visitStatusLabel(a.status)}
                           {a.planInvoiceId ? " · Billed" : ""}
+                          {a.assignedUserId &&
+                            ` · ${data.techs.find((t) => t.userId === a.assignedUserId)?.name ?? "Team member"}`}
                         </p>
                         {a.serviceAssetName && (
                           <p>
@@ -227,6 +232,35 @@ export default async function VisitsPage({
                                 submitLabel="Skip this visit"
                                 variant="secondary"
                               />
+                            )}
+                            {data.techs.length > 1 && (
+                              <div
+                                className="visit-tech"
+                                key={a.assignedUserId ?? "none"}
+                              >
+                                <ActionForm
+                                  action={assignVisitAction}
+                                  hidden={{ appointmentId: a.id }}
+                                  submitLabel="Save tech"
+                                  variant="secondary"
+                                >
+                                  <label htmlFor={`tech-${a.id}`}>
+                                    Who’s on this visit
+                                  </label>
+                                  <select
+                                    id={`tech-${a.id}`}
+                                    name="userId"
+                                    defaultValue={a.assignedUserId ?? ""}
+                                  >
+                                    <option value="">Nobody yet</option>
+                                    {data.techs.map((t) => (
+                                      <option key={t.userId} value={t.userId}>
+                                        {t.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </ActionForm>
+                              </div>
                             )}
                             <details>
                               <summary>Move, no-show or cancel</summary>

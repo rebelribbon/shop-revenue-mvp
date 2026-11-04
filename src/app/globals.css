@@ -2816,3 +2816,7 @@ a.card.create-tile:hover {
   display: grid;
   gap: 8px;
 }
+.visit-tech form {
+  display: grid;
+  gap: 8px;
+}
