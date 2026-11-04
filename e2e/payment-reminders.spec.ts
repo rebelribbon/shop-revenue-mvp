@@ -70,4 +70,18 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   );
   await expect(page.getByText(/by lead source/i).first()).toBeVisible();
   await auditUX(page, true);
+  // Deposits: owner sets an amount and percentage.
+  await page.goto("/app/settings/invoices");
+  const deposits = page.getByRole("region", { name: "Deposits" });
+  await deposits.getByRole("radio", { name: "On" }).check();
+  await deposits.getByLabel(/On approved work of at least/).fill("750");
+  await deposits.getByLabel(/Deposit \(%/).fill("30");
+  await deposits.getByRole("button", { name: "Save deposits" }).click();
+  await expect(
+    deposits.getByText("Deposits on: 30% on approved work of $750 or more."),
+  ).toBeVisible();
+  await auditUX(page, true);
+  await deposits.getByRole("radio", { name: "Off" }).check();
+  await deposits.getByRole("button", { name: "Save deposits" }).click();
+  await expect(deposits.getByText("Deposits are off.")).toBeVisible();
 });

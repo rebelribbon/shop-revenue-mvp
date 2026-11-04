@@ -45,6 +45,8 @@ import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { jobProfit, myClock } from "@/domain/job-profit";
 import { jobAssignees, listTechs } from "@/domain/assignments";
 import { partCatalog } from "@/domain/parts";
+import { jobDeposit } from "@/domain/deposits";
+import { startDepositAction } from "@/server/actions/deposits";
 import { assignJobAction } from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
@@ -206,6 +208,7 @@ export default async function JobsPage({
           ? await jobProfit(tx, page.selected.id)
           : null,
       clock: await myClock(tx),
+      deposit: page.selected ? await jobDeposit(tx, page.selected.id) : null,
       techs: await listTechs(tx),
       catalog: edit || creating ? await partCatalog(tx) : [],
       assignee: page.selected
@@ -423,6 +426,26 @@ export default async function JobsPage({
                     ⚠ {n.body}
                   </p>
                 ))}
+                {data.deposit && (
+                  <div className="notice deposit-due" role="status">
+                    <p>
+                      <strong>
+                        Deposit due: {money(data.deposit.depositCents)}
+                      </strong>{" "}
+                      ({data.deposit.percent}% of{" "}
+                      {money(data.deposit.approvedCents)} approved). Take it
+                      before you start.
+                    </p>
+                    {s.actor.type !== "support" && (
+                      <ActionForm
+                        action={startDepositAction}
+                        hidden={{ jobId: selected.id }}
+                        submitLabel={`Invoice and take ${money(data.deposit.depositCents)} deposit`}
+                        variant="secondary"
+                      />
+                    )}
+                  </div>
+                )}
                 {s.actor.type === "support" ? (
                   <p className="muted">
                     Tech:{" "}

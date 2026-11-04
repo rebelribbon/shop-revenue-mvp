@@ -2866,3 +2866,11 @@ a.card.create-tile:hover {
   gap: 8px;
   max-width: 400px;
 }
+.deposit-due {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.deposit-due p {
+  margin: 0;
+}

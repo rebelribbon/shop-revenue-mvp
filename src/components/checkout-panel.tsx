@@ -34,16 +34,21 @@ export function CheckoutPanel({
   invoiceId,
   dueCents,
   canAskReview = false,
+  startCents,
 }: {
   invoiceId: string;
   dueCents: number;
+  // Pre-fill a smaller amount (a deposit).
+  startCents?: number;
   // The shop has a review link: offer "Ask for a review" once paid in full.
   canAskReview?: boolean;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
   const [method, setMethod] = useState<Method>("external_card");
-  const [amount, setAmount] = useState((dueCents / 100).toFixed(2));
+  const [amount, setAmount] = useState(
+    ((startCents ?? dueCents) / 100).toFixed(2),
+  );
   const [received, setReceived] = useState("");
   const [reference, setReference] = useState("");
   const [pending, setPending] = useState(false);
