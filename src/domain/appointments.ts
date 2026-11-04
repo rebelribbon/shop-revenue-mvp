@@ -335,6 +335,7 @@ export async function listVisitsRange(
       planRepeat: sql<Record<string, unknown> | null>`${servicePlan.repeat}`,
       planBilling: servicePlan.billing,
       planInvoiceId: appointment.planInvoiceId,
+      assignedUserId: appointment.assignedUserId,
       year: vehicle.year,
       make: vehicle.make,
       model: vehicle.model,

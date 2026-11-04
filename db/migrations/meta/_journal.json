@@ -281,6 +281,13 @@
       "when": 1794755731998,
       "tag": "0039_customer_portal",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794842131998,
+      "tag": "0040_tech_board",
+      "breakpoints": true
     }
   ]
 }

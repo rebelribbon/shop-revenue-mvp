@@ -217,6 +217,8 @@ export const appointment = app.table(
     servicePlanId: uuid("service_plan_id"),
     planVisitOn: date("plan_visit_on", { mode: "string" }),
     planInvoiceId: uuid("plan_invoice_id"),
+    // The tech on this visit (migration 0040).
+    assignedUserId: uuid("assigned_user_id"),
   },
   (t) => [
     unique("appointment_business_id_id_key").on(t.businessId, t.id),

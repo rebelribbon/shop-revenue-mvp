@@ -22,6 +22,7 @@ import {
   timeEntry,
   savedReport,
   inspection,
+  jobAssignment,
   customerPortal,
   document,
   estimateAuthorization,
@@ -298,6 +299,18 @@ const builders: Record<string, Builder> = {
       return row.id;
     });
   },
+  "app.job_assignment": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(jobAssignment)
+        .values({
+          businessId: t.businessId,
+          jobId: randomUUID(),
+          userId: t.owner.userId,
+        })
+        .returning();
+      return row.id;
+    }),
   "app.inspection": async (t) =>
     withTenant(t.businessId, t.owner.actor, async (tx) => {
       const [row] = await tx

@@ -43,6 +43,8 @@ import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { jobProfit, myClock } from "@/domain/job-profit";
+import { jobAssignees, listTechs } from "@/domain/assignments";
+import { assignJobAction } from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
 import { addInspectionToJobAction } from "@/server/actions/inspections";
@@ -74,6 +76,7 @@ export default async function JobsPage({
     add?: string;
     tab?: string;
     view?: string;
+    tech?: string;
   }>;
 }) {
   const {
@@ -95,6 +98,7 @@ export default async function JobsPage({
     add,
     tab: requestedTab,
     view,
+    tech,
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
@@ -201,6 +205,11 @@ export default async function JobsPage({
           ? await jobProfit(tx, page.selected.id)
           : null,
       clock: await myClock(tx),
+      techs: await listTechs(tx),
+      assignee: page.selected
+        ? ((await jobAssignees(tx, [page.selected.id])).get(page.selected.id) ??
+          null)
+        : null,
       inspection: page.selected
         ? await getInspection(tx, page.selected.id)
         : null,
@@ -212,6 +221,10 @@ export default async function JobsPage({
       ]),
     };
   });
+  const techName = (id: string) =>
+    id === s.actor.id
+      ? "Me"
+      : (data.techs.find((t) => t.userId === id)?.name ?? "Team member");
   const type = data.profile?.businessType ?? "automotive",
     auto = isAutomotive(type),
     labels = workspaceLabels(type);
@@ -407,6 +420,38 @@ export default async function JobsPage({
                     ⚠ {n.body}
                   </p>
                 ))}
+                {s.actor.type === "support" ? (
+                  <p className="muted">
+                    Tech:{" "}
+                    {data.techs.find((t) => t.userId === data.assignee)?.name ??
+                      "nobody yet"}
+                  </p>
+                ) : (
+                  <div className="tech-pick" key={data.assignee ?? "none"}>
+                    <ActionForm
+                      action={assignJobAction}
+                      hidden={{ jobId: selected.id }}
+                      submitLabel="Save tech"
+                      variant="secondary"
+                    >
+                      <label htmlFor="job-tech">Tech on this job</label>
+                      <select
+                        id="job-tech"
+                        name="userId"
+                        defaultValue={data.assignee ?? ""}
+                      >
+                        <option value="">Nobody yet</option>
+                        {data.techs.map((t) => (
+                          <option key={t.userId} value={t.userId}>
+                            {t.userId === s.actor.id
+                              ? `${t.name} (me)`
+                              : t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </ActionForm>
+                  </div>
+                )}
                 {flow && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
@@ -909,11 +954,46 @@ export default async function JobsPage({
               List
             </Link>
           </div>
+          {data.pipeline && data.techs.length > 1 && (
+            <div
+              className="view-toggle tech-filter"
+              role="group"
+              aria-label="Whose jobs"
+            >
+              {[
+                { key: "", label: "Everyone" },
+                { key: "me", label: "Mine" },
+                { key: "none", label: "Nobody yet" },
+                ...data.techs
+                  .filter((t) => t.userId !== s.actor.id)
+                  .map((t) => ({ key: t.userId, label: t.name })),
+              ].map((o) => (
+                <Link
+                  key={o.key || "all"}
+                  href={`/app/jobs?view=board${o.key ? `&tech=${o.key}` : ""}`}
+                  aria-current={(tech ?? "") === o.key ? "true" : undefined}
+                >
+                  {o.label}
+                </Link>
+              ))}
+            </div>
+          )}
           {data.pipeline ? (
             <div className="job-board" aria-label="Jobs board">
               {STAGES.map((stage) => {
-                const cards = data.pipeline!.columns[stage.key as StageKey];
-                const total = data.pipeline!.totals[stage.key as StageKey];
+                const want =
+                  tech === "me"
+                    ? s.actor.id
+                    : tech === "none"
+                      ? null
+                      : tech || undefined;
+                const cards = data.pipeline!.columns[
+                  stage.key as StageKey
+                ].filter((c) => want === undefined || c.techId === want);
+                const total = {
+                  count: cards.length,
+                  cents: cards.reduce((t, c) => t + c.amountCents, 0),
+                };
                 return (
                   <section
                     key={stage.key}
@@ -950,6 +1030,11 @@ export default async function JobsPage({
                         <span className={boardTone(c.status, c.ageDays)}>
                           {boardNote(c, statusLabels[c.status])}
                         </span>
+                        {c.techId && (
+                          <span className="board-tech">
+                            {techName(c.techId)}
+                          </span>
+                        )}
                       </Link>
                     ))}
                   </section>
