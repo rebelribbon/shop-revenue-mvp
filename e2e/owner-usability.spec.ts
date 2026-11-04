@@ -151,3 +151,38 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   });
   expect(errors).toEqual([]);
 });
+
+test("owner turns on online booking and a customer books a visit", async ({
+  page,
+  browser,
+}, info) => {
+  await signInWithPassword(page, "owner.a@shop-a.test");
+  await page.goto("/app/settings/booking");
+  const create = page.getByRole("button", {
+    name: "Create my booking link",
+    exact: true,
+  });
+  if (await create.count()) await create.click();
+  const open = page.getByRole("link", { name: "Open your booking page" });
+  await expect(open).toBeVisible();
+  await auditUX(page);
+  const href = await open.getAttribute("href");
+  // A customer with no account opens the public page.
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto(new URL(href!, page.url()).href);
+  await expect(
+    visitor.getByRole("heading", { name: "Book a visit" }),
+  ).toBeVisible();
+  const who = `Booker ${info.project.name} ${Date.now()}`;
+  await visitor.getByLabel("First name").fill("TEST");
+  await visitor.getByLabel("Last name").fill(who);
+  await visitor.getByLabel("Mobile phone").fill("(210) 831-2978");
+  await visitor.getByLabel("What do you need?").fill("Brakes grinding");
+  await visitor.getByRole("button", { name: "Request a visit" }).click();
+  await expect(visitor.getByText("Thanks — we got it")).toBeVisible();
+  await visitor.close();
+  await page.goto("/app/tasks");
+  await expect(
+    page.getByText(`Online booking: call TEST ${who} about Brakes grinding`),
+  ).toBeVisible();
+});

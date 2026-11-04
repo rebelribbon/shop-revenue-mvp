@@ -267,6 +267,13 @@
       "when": 1794582931998,
       "tag": "0037_inspections",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794669331998,
+      "tag": "0038_online_booking",
+      "breakpoints": true
     }
   ]
 }

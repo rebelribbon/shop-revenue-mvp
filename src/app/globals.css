@@ -2653,3 +2653,21 @@ a.card.create-tile:hover {
     color: #ff9b94;
   }
 }
+/* The app proving it pays for itself. */
+.money-line a.won-back:not(.card):not(.btn) {
+  padding: 0 8px;
+  border-radius: 8px;
+  background: #e6f3ed;
+  color: #0b5a42;
+  font-weight: 600;
+}
+.money-line a.won-back strong {
+  color: #0b5a42;
+}
+@media (prefers-color-scheme: dark) {
+  .money-line a.won-back:not(.card):not(.btn),
+  .money-line a.won-back strong {
+    background: #16372c;
+    color: #8fe0c1;
+  }
+}
