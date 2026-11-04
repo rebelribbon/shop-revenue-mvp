@@ -78,3 +78,27 @@ export const jobAssignment = app.table("job_assignment", {
   jobId: uuid("job_id").notNull(),
   userId: uuid("user_id"),
 });
+
+// Parts catalog (0041). Quantities are in hundredths (1.5 qt = 150).
+export const partItem = app.table("part_item", {
+  ...tenantColumns(),
+  name: text("name").notNull(),
+  partNumber: text("part_number"),
+  unitCostCents: bigint("unit_cost_cents", { mode: "number" }),
+  unitPriceCents: bigint("unit_price_cents", { mode: "number" }).notNull(),
+  onHandHundredths: bigint("on_hand_hundredths", { mode: "number" })
+    .notNull()
+    .default(0),
+  reorderAtHundredths: bigint("reorder_at_hundredths", { mode: "number" }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+});
+
+// Every stock change, never edited.
+export const stockMove = app.table("stock_move", {
+  ...tenantColumns(),
+  partItemId: uuid("part_item_id").notNull(),
+  changeHundredths: bigint("change_hundredths", { mode: "number" }).notNull(),
+  reason: text("reason").notNull(),
+  invoiceId: uuid("invoice_id"),
+  note: text("note"),
+});

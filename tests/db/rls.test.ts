@@ -23,6 +23,8 @@ import {
   savedReport,
   inspection,
   jobAssignment,
+  partItem,
+  stockMove,
   customerPortal,
   document,
   estimateAuthorization,
@@ -307,6 +309,39 @@ const builders: Record<string, Builder> = {
           businessId: t.businessId,
           jobId: randomUUID(),
           userId: t.owner.userId,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.part_item": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(partItem)
+        .values({
+          businessId: t.businessId,
+          name: "RLS part",
+          unitPriceCents: 1,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.stock_move": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [part] = await tx
+        .insert(partItem)
+        .values({
+          businessId: t.businessId,
+          name: "RLS move",
+          unitPriceCents: 1,
+        })
+        .returning();
+      const [row] = await tx
+        .insert(stockMove)
+        .values({
+          businessId: t.businessId,
+          partItemId: part.id,
+          changeHundredths: 100,
+          reason: "received",
         })
         .returning();
       return row.id;

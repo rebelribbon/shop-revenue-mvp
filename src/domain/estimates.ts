@@ -154,6 +154,7 @@ export async function freezeEstimate(
       unitPriceCents: p.unitPriceCents,
       totalCents: partLineCents(p.quantity, p.unitPriceCents),
       taxable: p.taxable ?? shop.partsTaxableDefault,
+      ...(p.partItemId ? { partItemId: p.partItemId } : {}),
     })),
     ...data.labor.map((l, i) => ({
       id: `labor-${i}`,
