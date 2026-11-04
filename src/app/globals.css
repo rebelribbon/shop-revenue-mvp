@@ -2812,3 +2812,7 @@ a.card.create-tile:hover {
 .checkout-review {
   margin-top: 16px;
 }
+.portal-box form {
+  display: grid;
+  gap: 8px;
+}

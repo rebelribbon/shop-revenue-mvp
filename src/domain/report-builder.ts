@@ -44,6 +44,7 @@ export const SOURCES: Record<string, Source> = {
       ...DATE_DIMS(0),
       customer: { label: "Customer", col: 2 },
       job: { label: "Job", col: 3 },
+      source: { label: "Lead source", col: 9 },
     },
     measures: {
       count: { label: "Invoices", count: true },
@@ -61,6 +62,7 @@ export const SOURCES: Record<string, Source> = {
       ...DATE_DIMS(0),
       customer: { label: "Customer", col: 2 },
       job: { label: "Job", col: 3 },
+      source: { label: "Lead source", col: 8 },
     },
     measures: {
       count: { label: "Jobs", count: true },
@@ -78,6 +80,7 @@ export const SOURCES: Record<string, Source> = {
       ...DATE_DIMS(0),
       customer: { label: "Customer", col: 2 },
       method: { label: "How they paid", col: 3 },
+      source: { label: "Lead source", col: 6 },
     },
     measures: {
       count: { label: "Payments", count: true },

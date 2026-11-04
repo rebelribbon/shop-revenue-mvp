@@ -1,3 +1,5 @@
+import type { LeadSource } from "@/lib/lead-sources";
+import { LEAD_SOURCE_KEYS } from "@/lib/lead-sources";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { activity, asset, customer, vehicle } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
@@ -16,6 +18,9 @@ export type CustomerInput = {
   city?: string | null;
   region?: string | null;
   postalCode?: string | null;
+  // Where they found the shop (only used when adding a customer).
+  leadSource?: LeadSource | null;
+  leadSourceDetail?: string | null;
   // Set when the owner confirmed a same-phone/email customer is a different person.
   allowDuplicate?: boolean;
 };
@@ -88,6 +93,8 @@ export async function createCustomer(
       email: input.email ?? null,
       phoneE164: input.phoneE164 ?? null,
       phoneDigits: phoneDigits(input.phoneE164),
+      leadSource: input.leadSource ?? null,
+      leadSourceDetail: input.leadSourceDetail?.trim() || null,
       notes: input.notes ?? null,
       addressLine1: input.addressLine1 ?? null,
       addressLine2: input.addressLine2 ?? null,
@@ -633,4 +640,37 @@ export async function setContactPermission(
     data: { channel, allowed },
   });
   return { id: customerId, changed: true };
+}
+
+// "How did they find you?" on the customer profile.
+export async function setLeadSource(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: {
+    customerId: string;
+    leadSource: LeadSource | null;
+    detail: string | null;
+  },
+) {
+  if (input.leadSource && !LEAD_SOURCE_KEYS.includes(input.leadSource))
+    throw new AppError("VALIDATION", "Pick where they found you.");
+  const detail = input.detail?.trim().slice(0, 200) || null;
+  const [row] = await tx
+    .update(customer)
+    .set({ leadSource: input.leadSource, leadSourceDetail: detail })
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        eq(customer.id, input.customerId),
+      ),
+    )
+    .returning({ id: customer.id });
+  if (!row) throw notFound("That customer");
+  await audit(tx, meta, {
+    action: "customer.lead_source",
+    targetType: "customer",
+    targetId: row.id,
+    after: { leadSource: input.leadSource, detail },
+  });
+  return { id: row.id };
 }
