@@ -29,6 +29,11 @@ import {
   updateSavedReport,
 } from "@/domain/report-builder";
 import { presetRange } from "@/domain/reports";
+import {
+  createPortalLink,
+  portalLink,
+  readCustomerPortal,
+} from "@/domain/customer-portal";
 import { freezeEstimate } from "@/domain/estimates";
 import {
   startRecoveryWork,
@@ -808,3 +813,33 @@ const saveReportAction_domain = (
   tx: Parameters<typeof saveReport>[0],
   config: ReturnType<typeof readConfig>,
 ) => saveReport(tx, meta(), { name: "By method", config, pinned: true });
+
+describe("Customer link", () => {
+  it("shows the customer what to pay, replaces cleanly, and never shows other customers", async () => {
+    const f = await fixture();
+    const inv = await bill(f, 0, 0);
+    const { path } = await run(f, (tx) =>
+      createPortalLink(tx, meta(), f.customerId),
+    );
+    expect(await run(f, (tx) => portalLink(tx, f.customerId))).toBe(path);
+    const token = path.replace("/c/", "");
+    const p = (await readCustomerPortal(token, "203.0.113.20"))!;
+    expect(p.customer.displayName).toBe("Real History");
+    expect(p.toPay.map((i) => [i.id, i.balanceCents])).toEqual([
+      [inv.id, 10000],
+    ]);
+    // Another shop's customer never appears, and a made-up link shows nothing.
+    const g = await fixture();
+    await bill(g, 0, 0);
+    expect(p.toPay).toHaveLength(1);
+    expect(await readCustomerPortal("x".repeat(43), null)).toBeNull();
+    // A new link replaces the old one.
+    const second = await run(f, (tx) =>
+      createPortalLink(tx, meta(), f.customerId),
+    );
+    expect(await readCustomerPortal(token, null)).toBeNull();
+    expect(
+      (await readCustomerPortal(second.path.replace("/c/", ""), null))?.toPay,
+    ).toHaveLength(1);
+  });
+});

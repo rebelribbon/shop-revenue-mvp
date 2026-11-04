@@ -8,8 +8,11 @@ export function CopyLink({
   title,
   phone,
   email,
+  intro,
 }: {
   path: string;
+  // What the text/email says above the link. Defaults to a signing ask.
+  intro?: string;
   label?: string;
   title?: string;
   phone?: string | null;
@@ -18,12 +21,13 @@ export function CopyLink({
   const [copied, setCopied] = useState(false);
   const url = () => `${window.location.origin}${path}`;
   const message = () =>
-    `${title ? `Please review and sign: ${title}\n` : ""}${url()}`;
+    `${intro ? `${intro}\n` : title ? `Please review and sign: ${title}\n` : ""}${url()}`;
   return (
     <>
       <button
         type="button"
         className="btn secondary"
+        data-link-path={path}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(url());
@@ -54,7 +58,7 @@ export function CopyLink({
           className="btn secondary"
           onClick={() =>
             window.location.assign(
-              `mailto:${email}?subject=${encodeURIComponent(title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`,
+              `mailto:${email}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`,
             )
           }
         >
