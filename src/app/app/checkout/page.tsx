@@ -174,7 +174,10 @@ export default async function CheckoutPage(props: {
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Checkout</h1>
-      <p className="muted">Pick who’s paying.</p>
+      <p className="muted">
+        Pick who’s paying, or{" "}
+        <Link href="/app/checkout/sale">ring up a quick sale</Link> with no job.
+      </p>
       {owed[0] ? (
         <Link
           className="btn primary"

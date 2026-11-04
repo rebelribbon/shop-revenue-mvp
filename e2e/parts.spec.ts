@@ -42,4 +42,38 @@ test("Parts: add, receive, count, and pick one on a job", async ({
   await expect(
     page.getByLabel("Unit selling price", { exact: true }),
   ).toHaveValue(/^90(\.00)?$/);
+
+  // Quick sale at the counter: no job, stock comes off, then void it.
+  await page.goto("/app/checkout");
+  await page.getByRole("link", { name: "ring up a quick sale" }).click();
+  await expect(page.getByRole("heading", { name: "Quick sale" })).toBeVisible();
+  const pick = page.getByLabel("Add a part from your list");
+  const value = await pick
+    .locator("option")
+    .filter({ hasText: name })
+    .getAttribute("value");
+  await pick.selectOption(value!);
+  await page.getByRole("radio", { name: /Cash/ }).check();
+  await auditUX(page, true);
+  await page
+    .getByRole("group", { name: "Cash received" })
+    .getByRole("button")
+    .last()
+    .click();
+  await expect(page.getByText(/Change due:/)).toBeVisible();
+  await page.getByRole("button", { name: /^Take \$/ }).click();
+  await expect(page.getByText(/^Sale #\d+$/)).toBeVisible();
+  await page.getByRole("link", { name: "Receipt" }).click();
+  await expect(
+    page.getByRole("heading", { name: /^Sale #\d+$/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "Receipt" })).toContainText(
+    name,
+  );
+  await auditUX(page, true);
+  await page.getByText("Void this sale").click();
+  await page.getByLabel("Why?").fill("TEST void");
+  await page.getByRole("button", { name: "Void sale" }).click();
+  await page.getByRole("button", { name: "Yes, continue" }).click();
+  await expect(page.getByText("Voided: TEST void")).toBeVisible();
 });

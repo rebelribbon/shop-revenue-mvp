@@ -2,6 +2,7 @@ import {
   bigint,
   boolean,
   date,
+  integer,
   jsonb,
   text,
   timestamp,
@@ -100,6 +101,7 @@ export const stockMove = app.table("stock_move", {
   changeHundredths: bigint("change_hundredths", { mode: "number" }).notNull(),
   reason: text("reason").notNull(),
   invoiceId: uuid("invoice_id"),
+  counterSaleId: uuid("counter_sale_id"),
   note: text("note"),
 });
 
@@ -131,4 +133,22 @@ export const weeklyReport = app.table("weekly_report", {
   sentTo: text("sent_to").notNull(),
   status: text("status").notNull(),
   automatic: boolean("automatic").notNull(),
+});
+
+// Quick sale at the counter (0047). Lines: { partItemId?, description,
+// quantityHundredths, unitPriceCents, unitCostCents, taxable }.
+export const counterSale = app.table("counter_sale", {
+  ...tenantColumns(),
+  number: integer("number").notNull(),
+  lines: jsonb("lines").notNull(),
+  subtotalCents: bigint("subtotal_cents", { mode: "number" }).notNull(),
+  taxBps: integer("tax_bps").notNull(),
+  taxCents: bigint("tax_cents", { mode: "number" }).notNull(),
+  totalCents: bigint("total_cents", { mode: "number" }).notNull(),
+  method: text("method").notNull(),
+  reference: text("reference"),
+  receivedCents: bigint("received_cents", { mode: "number" }),
+  voidedAt: timestamp("voided_at", { withTimezone: true }),
+  voidedByUserId: uuid("voided_by_user_id"),
+  voidReason: text("void_reason"),
 });

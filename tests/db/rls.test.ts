@@ -26,6 +26,7 @@ import {
   paymentReminder,
   reviewRequest,
   weeklyReport,
+  counterSale,
   partItem,
   stockMove,
   customerPortal,
@@ -387,6 +388,29 @@ const builders: Record<string, Builder> = {
           sentTo: "rls@example.test",
           status: "sent",
           automatic: false,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.counter_sale": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(counterSale)
+        .values({
+          businessId: t.businessId,
+          number: 1,
+          lines: [
+            {
+              description: "RLS",
+              quantityHundredths: 100,
+              unitPriceCents: 100,
+            },
+          ],
+          subtotalCents: 100,
+          taxBps: 0,
+          taxCents: 0,
+          totalCents: 100,
+          method: "cash",
         })
         .returning();
       return row.id;

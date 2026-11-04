@@ -84,9 +84,13 @@ export async function weeklyNumbers(
   const r = await tx.execute(sql`
     SELECT
       (SELECT coalesce(sum(p.amount_cents),0) FROM app.invoice_payment p
-        WHERE p.business_id=${tx.businessId} AND p.created_at>=${from} AND p.created_at<${to}) AS collected,
+        WHERE p.business_id=${tx.businessId} AND p.created_at>=${from} AND p.created_at<${to})
+      + (SELECT coalesce(sum(s.total_cents),0) FROM app.counter_sale s
+        WHERE s.business_id=${tx.businessId} AND s.voided_at IS NULL AND s.created_at>=${from} AND s.created_at<${to}) AS collected,
       (SELECT count(*) FROM app.invoice_payment p
-        WHERE p.business_id=${tx.businessId} AND p.amount_cents>0 AND p.created_at>=${from} AND p.created_at<${to}) AS payments,
+        WHERE p.business_id=${tx.businessId} AND p.amount_cents>0 AND p.created_at>=${from} AND p.created_at<${to})
+      + (SELECT count(*) FROM app.counter_sale s
+        WHERE s.business_id=${tx.businessId} AND s.voided_at IS NULL AND s.created_at>=${from} AND s.created_at<${to}) AS payments,
       (SELECT count(*) FROM app.customer c
         WHERE c.business_id=${tx.businessId} AND c.created_at>=${from} AND c.created_at<${to}) AS new_customers,
       (SELECT coalesce(sum(i.total_cents),0) FROM app.invoice i

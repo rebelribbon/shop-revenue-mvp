@@ -330,6 +330,13 @@
       "when": 1795360531998,
       "tag": "0046_warranty_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795446931998,
+      "tag": "0047_counter_sales",
+      "breakpoints": true
     }
   ]
 }

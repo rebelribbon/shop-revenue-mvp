@@ -5,6 +5,7 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { MoneyNavigation } from "@/components/money-navigation";
 import { withTenant } from "@/db/tenant";
 import { registerDay } from "@/domain/register";
+import { salesOnDay } from "@/domain/counter-sales";
 import { addLocalDays } from "@/lib/timezone";
 import { closeRegisterAction } from "@/server/actions/register";
 import { requireOwnerView } from "@/server/views/shop";
@@ -22,9 +23,10 @@ export default async function RegisterPage(props: {
 }) {
   const { day } = await props.searchParams;
   const s = await requireOwnerView("/app/money/register");
-  const r = await withTenant(s.businessId, s.actor, (tx) =>
-    registerDay(tx, day),
-  );
+  const [r, sales] = await withTenant(s.businessId, s.actor, async (tx) => {
+    const reg = await registerDay(tx, day);
+    return [reg, await salesOnDay(tx, reg.day)] as const;
+  });
   const prev = addLocalDays(r.day, -1),
     next = addLocalDays(r.day, 1);
   return (
@@ -69,6 +71,30 @@ export default async function RegisterPage(props: {
           </div>
         </dl>
       </section>
+      {sales.length > 0 && (
+        <section className="card" aria-label="Quick sales">
+          <h2>Quick sales ({sales.length})</h2>
+          <ul className="row-list">
+            {sales.map((x) => (
+              <li key={x.id}>
+                <Link href={`/app/checkout/sale?id=${x.id}`}>
+                  <span className="row-main">
+                    <strong>Sale #{x.number}</strong>
+                    <span className="muted">
+                      {(x.lines as { description: string }[])
+                        .map((l) => l.description)
+                        .join(", ")}
+                    </span>
+                  </span>
+                  <span className="row-side">
+                    {x.voidedAt ? "Voided" : formatMoney(x.totalCents)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="card" aria-label="Close out the day">
         <h2>Close out the day</h2>
         {r.closed ? (

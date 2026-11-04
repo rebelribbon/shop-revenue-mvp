@@ -173,12 +173,12 @@ export async function archivePart(tx: TenantTx, meta: RequestMeta, id: string) {
   return { id };
 }
 
-async function moveStock(
+export async function moveStock(
   tx: TenantTx,
   partItemId: string,
   change: number,
   reason: "received" | "used" | "returned" | "counted",
-  extra: { invoiceId?: string; note?: string } = {},
+  extra: { invoiceId?: string; counterSaleId?: string; note?: string } = {},
 ) {
   if (change === 0) return;
   const [row] = await tx
@@ -196,6 +196,7 @@ async function moveStock(
     changeHundredths: change,
     reason,
     invoiceId: extra.invoiceId ?? null,
+    counterSaleId: extra.counterSaleId ?? null,
     note: extra.note ?? null,
   });
 }
