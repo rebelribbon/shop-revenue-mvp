@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { lookupVinAction } from "@/server/actions/vin";
+import { VinScanner } from "./vin-scanner";
 
 type Initial = {
   year?: number | null;
@@ -22,9 +23,9 @@ export function VehicleFields({ initial = {} }: { initial?: Initial }) {
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
 
-  function lookup() {
+  function lookup(value = vin) {
     startTransition(async () => {
-      const result = await lookupVinAction(vin);
+      const result = await lookupVinAction(value);
       if (!result.ok) return setMessage(result.message);
       if (result.data.year) setYear(String(result.data.year));
       if (result.data.make) setMake(result.data.make);
@@ -49,12 +50,18 @@ export function VehicleFields({ initial = {} }: { initial?: Initial }) {
         <button
           className="btn secondary"
           type="button"
-          onClick={lookup}
+          onClick={() => lookup()}
           disabled={pending || vin.replace(/\s/g, "").length !== 17}
         >
           {pending ? "Looking up…" : "Look up VIN"}
         </button>
       </div>
+      <VinScanner
+        onVin={(v) => {
+          setVin(v);
+          lookup(v);
+        }}
+      />
       {message && (
         <p className="muted" role="status">
           {message}

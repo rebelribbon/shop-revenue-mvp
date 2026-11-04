@@ -2874,3 +2874,21 @@ a.card.create-tile:hover {
 .deposit-due p {
   margin: 0;
 }
+/* VIN camera scan. */
+.vin-scan {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #ffffff;
+  text-align: center;
+}
+.vin-scan video {
+  width: min(100%, 640px);
+  border-radius: 8px;
+}
