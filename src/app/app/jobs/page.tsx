@@ -43,6 +43,9 @@ import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { jobProfit, myClock } from "@/domain/job-profit";
+import { getInspection } from "@/domain/inspections";
+import { InspectionForm } from "@/components/inspection-form";
+import { addInspectionToJobAction } from "@/server/actions/inspections";
 import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
 import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
@@ -198,6 +201,9 @@ export default async function JobsPage({
           ? await jobProfit(tx, page.selected.id)
           : null,
       clock: await myClock(tx),
+      inspection: page.selected
+        ? await getInspection(tx, page.selected.id)
+        : null,
       workflows: await loadJobWorkflows(tx, [
         ...new Set([
           ...page.jobs.map((j) => j.id),
@@ -347,11 +353,14 @@ export default async function JobsPage({
             customerName =
               data.options.customers.find((c) => c.id === input.customerId)
                 ?.name ?? "Customer",
-            tab = ["photos", "files", "notes", "timeline"].includes(
-              requestedTab ?? "",
-            )
-              ? requestedTab!
-              : "work";
+            tab =
+              requestedTab === "notes" || requestedTab === "timeline"
+                ? "history"
+                : ["inspection", "photos", "files", "history"].includes(
+                      requestedTab ?? "",
+                    )
+                  ? requestedTab!
+                  : "work";
           return (
             <>
               <p>
@@ -599,6 +608,10 @@ export default async function JobsPage({
                     [
                       ["work", "Work"],
                       [
+                        "inspection",
+                        `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
+                      ],
+                      [
                         "photos",
                         `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`,
                       ],
@@ -606,11 +619,7 @@ export default async function JobsPage({
                         "files",
                         `Files${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
                       ],
-                      [
-                        "notes",
-                        `Notes${data.jobNotes.length ? ` (${data.jobNotes.length})` : ""}`,
-                      ],
-                      ["timeline", "Timeline"],
+                      ["history", "History"],
                     ] as const
                   ).map(([key, label]) => (
                     <Link
@@ -681,7 +690,42 @@ export default async function JobsPage({
                     />
                   </>
                 )}
-                {tab === "notes" && (
+                {tab === "inspection" && data.inspection && (
+                  <section aria-label="Inspection">
+                    <p className="inspection-summary">
+                      <span className="insp-count is-good">
+                        {data.inspection.counts.good} good
+                      </span>
+                      <span className="insp-count is-watch">
+                        {data.inspection.counts.watch} watch
+                      </span>
+                      <span className="insp-count is-fix">
+                        {data.inspection.counts.fix} need work
+                      </span>
+                      {data.inspection.counts.unchecked > 0 && (
+                        <span className="muted">
+                          {data.inspection.counts.unchecked} not checked
+                        </span>
+                      )}
+                    </p>
+                    {data.inspection.pending.length > 0 &&
+                      s.actor.type !== "support" && (
+                        <ActionForm
+                          action={addInspectionToJobAction}
+                          hidden={{ jobId: selected.id }}
+                          submitLabel={`Add ${data.inspection.pending.length} “needs work” item${data.inspection.pending.length === 1 ? "" : "s"} to the estimate`}
+                          variant="secondary"
+                        />
+                      )}
+                    <InspectionForm
+                      key={JSON.stringify(data.inspection.items)}
+                      jobId={selected.id}
+                      initial={data.inspection.items}
+                      readOnly={s.actor.type === "support"}
+                    />
+                  </section>
+                )}
+                {tab === "history" && (
                   <>
                     <section aria-label="Job notes">
                       <h3>Notes</h3>
@@ -817,7 +861,7 @@ export default async function JobsPage({
                     </section>
                   </>
                 )}
-                {tab === "timeline" && flow && (
+                {tab === "history" && flow && (
                   <ol className="workflow-timeline">
                     {flow.timeline.map((e) => (
                       <li key={e.id}>
