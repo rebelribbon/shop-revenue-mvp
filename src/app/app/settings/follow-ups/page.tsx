@@ -7,6 +7,11 @@ import { readReminderSettings } from "@/domain/payment-reminders";
 import { saveReminderSettingsAction } from "@/server/actions/payment-reminders";
 import { readReviewSettings } from "@/domain/review-requests";
 import { saveReviewSettingsAction } from "@/server/actions/review-requests";
+import { readWeeklySettings } from "@/domain/weekly-report";
+import {
+  saveWeeklySettingsAction,
+  sendWeeklyNowAction,
+} from "@/server/actions/weekly-report";
 import { RULE_TEXT } from "@/lib/follow-up-rules";
 import { saveFollowUpRulesAction } from "@/server/actions/tasks";
 import { requireOwnerView } from "@/server/views/shop";
@@ -24,7 +29,7 @@ const MAX: Record<string, number> = {
 
 export default async function FollowUpRulesPage() {
   const s = await requireOwnerView("/app/settings/follow-ups");
-  const [rules, reminders, reviews] = await withTenant(
+  const [rules, reminders, reviews, weekly] = await withTenant(
     s.businessId,
     s.actor,
     (tx) =>
@@ -32,6 +37,7 @@ export default async function FollowUpRulesPage() {
         loadFollowUpRules(tx),
         readReminderSettings(tx),
         readReviewSettings(tx),
+        readWeeklySettings(tx),
       ]),
   );
   return (
@@ -184,6 +190,46 @@ export default async function FollowUpRulesPage() {
             </label>
           </fieldset>
         </ActionForm>
+      </section>
+      <section className="card reminder-settings" aria-label="Monday summary">
+        <h2>Monday summary email</h2>
+        <p className="muted">
+          Every Monday morning: what you collected last week, what’s unpaid,
+          open estimates, jobs in the bay, tasks due and parts running low. Goes
+          to the owner’s email.
+        </p>
+        <ActionForm
+          action={saveWeeklySettingsAction}
+          submitLabel="Save summary setting"
+          variant="secondary"
+        >
+          <fieldset className="reminder-switch">
+            <legend>Send me the Monday summary</legend>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="true"
+                defaultChecked={weekly.on}
+              />
+              On
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="false"
+                defaultChecked={!weekly.on}
+              />
+              Off
+            </label>
+          </fieldset>
+        </ActionForm>
+        <ActionForm
+          action={sendWeeklyNowAction}
+          submitLabel="Email me last week’s summary now"
+          variant="secondary"
+        />
       </section>
     </HydratedMain>
   );

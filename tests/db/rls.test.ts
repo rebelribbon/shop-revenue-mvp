@@ -25,6 +25,7 @@ import {
   jobAssignment,
   paymentReminder,
   reviewRequest,
+  weeklyReport,
   partItem,
   stockMove,
   customerPortal,
@@ -369,6 +370,20 @@ const builders: Record<string, Builder> = {
         .values({
           businessId: t.businessId,
           customerId: randomUUID(),
+          sentTo: "rls@example.test",
+          status: "sent",
+          automatic: false,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.weekly_report": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(weeklyReport)
+        .values({
+          businessId: t.businessId,
+          weekStart: "2030-01-07",
           sentTo: "rls@example.test",
           status: "sent",
           automatic: false,

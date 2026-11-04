@@ -123,3 +123,12 @@ export const reviewRequest = app.table("review_request", {
   automatic: boolean("automatic").notNull(),
   providerMessageId: text("provider_message_id"),
 });
+
+// Monday summary emails sent (0044).
+export const weeklyReport = app.table("weekly_report", {
+  ...tenantColumns(),
+  weekStart: date("week_start", { mode: "string" }).notNull(),
+  sentTo: text("sent_to").notNull(),
+  status: text("status").notNull(),
+  automatic: boolean("automatic").notNull(),
+});

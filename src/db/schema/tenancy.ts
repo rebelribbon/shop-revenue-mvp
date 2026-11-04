@@ -57,6 +57,8 @@ export const business = app.table(
     paymentReminders: jsonb("payment_reminders").notNull().default({}),
     // Review requests (0043): { on, link }.
     reviewRequests: jsonb("review_requests").notNull().default({}),
+    // Monday summary email (0044): { on } — on unless turned off.
+    weeklyReport: jsonb("weekly_report").notNull().default({}),
     // Public "Book online" link (/book/<slug>); null = turned off.
     bookingSlug: text("booking_slug"),
     // Profit the shop aims for on a job, in basis points (4000 = 40%).
