@@ -2,6 +2,14 @@ import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 import { auditUX } from "./ux-audit";
 
+// Tomorrow at 10:00 in the shop's time zone, for a datetime-local input.
+const chicagoTomorrow = () => {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Chicago",
+  }).format(new Date(Date.now() + 86400000));
+  return `${day}T10:00`;
+};
+
 test("Put a tech on a job; it shows on their day and the board", async ({
   page,
   browser,
@@ -79,4 +87,23 @@ test("Put a tech on a job; it shows on their day and the board", async ({
   await expect(card.locator(".board-tech")).not.toHaveText("");
   await auditUX(page, true);
   await page.goto(jobUrl);
+
+  // Book a visit and put the tech on it from the schedule.
+  await page.goto("/app/schedule?new=1");
+  await page
+    .getByLabel("Customer", { exact: true })
+    .selectOption({ label: `Tech TEST ${info.project.name}` });
+  await page.getByLabel("Date and time").fill(chicagoTomorrow());
+  await page.getByLabel("Reason").fill(`Visit ${name}`);
+  await page.getByRole("button", { name: "Book visit" }).click();
+  await expect(page.getByRole("status")).toContainText("Visit booked");
+  const visit = page
+    .locator("article.appointment-row")
+    .filter({ hasText: `Visit ${name}` });
+  await visit
+    .getByLabel("Who’s on this visit")
+    .selectOption({ label: "Staff A" });
+  await visit.getByRole("button", { name: "Save tech" }).click();
+  await expect(visit).toContainText("· Staff A");
+  await auditUX(page, true);
 });
