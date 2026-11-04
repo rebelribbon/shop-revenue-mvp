@@ -3,6 +3,8 @@ import { ActionForm } from "@/components/action-form";
 import { HydratedMain } from "@/components/hydrated-main";
 import { withTenant } from "@/db/tenant";
 import { loadFollowUpRules } from "@/domain/money-finder";
+import { readReminderSettings } from "@/domain/payment-reminders";
+import { saveReminderSettingsAction } from "@/server/actions/payment-reminders";
 import { RULE_TEXT } from "@/lib/follow-up-rules";
 import { saveFollowUpRulesAction } from "@/server/actions/tasks";
 import { requireOwnerView } from "@/server/views/shop";
@@ -20,8 +22,8 @@ const MAX: Record<string, number> = {
 
 export default async function FollowUpRulesPage() {
   const s = await requireOwnerView("/app/settings/follow-ups");
-  const rules = await withTenant(s.businessId, s.actor, (tx) =>
-    loadFollowUpRules(tx),
+  const [rules, reminders] = await withTenant(s.businessId, s.actor, (tx) =>
+    Promise.all([loadFollowUpRules(tx), readReminderSettings(tx)]),
   );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -71,6 +73,60 @@ export default async function FollowUpRulesPage() {
           );
         })}
       </ActionForm>
+      <section
+        className="card reminder-settings"
+        aria-label="Automatic payment reminders"
+      >
+        <h2>Automatic payment reminders</h2>
+        <p className="muted">
+          We email the customer their pay link once an invoice is due, then
+          every few days until it’s paid (up to {5} times). Customers who opted
+          out of email are skipped. Your unpaid-invoice call task still shows up
+          either way.
+        </p>
+        <ActionForm
+          action={saveReminderSettingsAction}
+          submitLabel="Save reminders"
+          variant="secondary"
+        >
+          <fieldset className="reminder-switch">
+            <legend>Send reminders automatically</legend>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="true"
+                defaultChecked={reminders.on}
+              />
+              On
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="false"
+                defaultChecked={!reminders.on}
+              />
+              Off
+            </label>
+          </fieldset>
+          <label htmlFor="reminder-days">Send one every</label>
+          <div className="rule-amount">
+            <input
+              id="reminder-days"
+              name="everyDays"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={30}
+              step={1}
+              required
+              defaultValue={reminders.everyDays}
+            />
+            <span>days</span>
+          </div>
+        </ActionForm>
+      </section>
     </HydratedMain>
   );
 }

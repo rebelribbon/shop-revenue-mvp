@@ -23,6 +23,7 @@ import {
   savedReport,
   inspection,
   jobAssignment,
+  paymentReminder,
   partItem,
   stockMove,
   customerPortal,
@@ -342,6 +343,20 @@ const builders: Record<string, Builder> = {
           partItemId: part.id,
           changeHundredths: 100,
           reason: "received",
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.payment_reminder": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(paymentReminder)
+        .values({
+          businessId: t.businessId,
+          invoiceId: randomUUID(),
+          sentTo: "rls@example.test",
+          status: "sent",
+          automatic: false,
         })
         .returning();
       return row.id;
