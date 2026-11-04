@@ -2671,3 +2671,15 @@ a.card.create-tile:hover {
     color: #8fe0c1;
   }
 }
+.portal-box {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.portal-box h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+.portal-box p {
+  margin: 8px 0;
+}

@@ -62,3 +62,12 @@ export const inspection = app.table("inspection", {
   items: jsonb("items").notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
+
+// A customer's private link to their estimates, invoices and visits (0039).
+export const customerPortal = app.table("customer_portal", {
+  ...tenantColumns(),
+  customerId: uuid("customer_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  shareTokenCiphertext: text("share_token_ciphertext").notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
