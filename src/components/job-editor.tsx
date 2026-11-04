@@ -93,6 +93,9 @@ export function JobEditor({
       return own.length === 1 && !initial?.vehicleId ? own[0].id : "";
     }),
     [title, setTitle] = useState(initial?.title ?? ""),
+    [warranty, setWarranty] = useState(
+      initial?.warrantyMonths ? String(initial.warrantyMonths) : "",
+    ),
     [parts, setParts] = useState<JobInput["parts"]>(initial?.parts ?? []),
     [labor, setLabor] = useState<JobInput["labor"]>(initial?.labor ?? []),
     [message, setMessage] = useState(""),
@@ -200,6 +203,7 @@ export function JobEditor({
             serviceAssetId: serviceAssetId || undefined,
             title,
             repeat,
+            warrantyMonths: Number(warranty) > 0 ? Number(warranty) : null,
             parts,
             labor,
             clientRequestId: requestId,
@@ -339,6 +343,16 @@ export function JobEditor({
             maxLength={200}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label>
+          Warranty in months <span className="muted">(optional)</span>
+          <input
+            inputMode="numeric"
+            maxLength={3}
+            value={warranty}
+            placeholder="12"
+            onChange={(e) => setWarranty(e.target.value.replace(/\D/g, ""))}
           />
         </label>
         <RepeatPicker

@@ -10,6 +10,7 @@ import { meta, seedTenant } from "./fixtures";
 export async function unpaidInvoice(
   email: string | null,
   dueOn: string | null,
+  extra: { warrantyMonths?: number } = {},
 ) {
   const t = await seedTenant("Remind");
   const run = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
@@ -29,6 +30,7 @@ export async function unpaidInvoice(
       customerId: c.id,
       vehicleId: v.id,
       title: "Brakes",
+      ...(extra.warrantyMonths ? { warrantyMonths: extra.warrantyMonths } : {}),
       parts: [],
       labor: [
         {

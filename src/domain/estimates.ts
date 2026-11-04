@@ -179,6 +179,7 @@ export async function freezeEstimate(
   const { subtotalCents, taxCents } = estimateTotals(lines, input.taxBps);
   const photos = await estimatePhotos(tx, input.jobId);
   const snapshot: EstimateSnapshot = {
+    ...(data.warrantyMonths ? { warrantyMonths: data.warrantyMonths } : {}),
     title: data.title,
     shopName: shop.dba || shop.legalName,
     customerName: c.customer.displayName,

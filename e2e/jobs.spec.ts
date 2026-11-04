@@ -23,6 +23,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "New job", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
+  await page.getByLabel(/Warranty in months/).fill("12");
   await expect(
     page.getByLabel("Customer", { exact: true }).locator("option:checked"),
   ).toHaveText(`Job ${info.project.name}`);
@@ -93,6 +94,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   ).toBeVisible();
   await auditUX(page);
   await expect(page.locator("body")).not.toContainText("unit cost");
+  await expect(page.locator("[data-warranty]")).toContainText("12 months");
   await page
     .getByLabel("Your full name", { exact: true })
     .fill("Test Customer");

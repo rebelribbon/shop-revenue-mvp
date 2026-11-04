@@ -25,6 +25,7 @@ export const moneyCategories = [
   "new_lead",
   "job_update",
   "visit_confirm",
+  "warranty_ending",
 ] as const;
 export type MoneyCategory = (typeof moneyCategories)[number];
 export const categoryLabels: Record<MoneyCategory, string> = {
@@ -36,6 +37,7 @@ export const categoryLabels: Record<MoneyCategory, string> = {
   new_lead: "New leads",
   job_update: "Work updates",
   visit_confirm: "Confirm visits",
+  warranty_ending: "Warranty ending",
 };
 export type MoneyItem = {
   category: MoneyCategory;
@@ -213,15 +215,27 @@ function candidates(
     WHERE ${rules.confirmVisit.on} AND a.business_id=${tx.businessId} AND a.status='scheduled'
       AND (a.starts_at AT TIME ZONE s.zone)::date>s.today
       AND (a.starts_at AT TIME ZONE s.zone)::date<=s.today+${rules.confirmVisit.daysBefore}::int
+  ), warranties AS (
+    SELECT 'warranty_ending'::text AS category,i.id AS subject_id,c.id AS customer_id,v.id AS vehicle_id,
+      c.display_name AS customer_name,coalesce(v.label,i.snapshot->>'serviceLabel') AS vehicle_label,c.phone_e164 AS phone,CASE WHEN c.email_opted_out_at IS NULL THEN c.email END AS email,
+      'Warranty on ' || coalesce(nullif(i.snapshot->>'title',''),'invoice #' || i.number::text) || ' ends ' ||
+        to_char(((i.created_at AT TIME ZONE s.zone)::date + make_interval(months=>(i.snapshot->>'warrantyMonths')::int))::date,'Mon FMDD') AS reason,
+      NULL::numeric AS amount_cents,i.created_at AS occurred_at,false AS renew_first,0::numeric AS lifetime
+    FROM balances i JOIN contacts c ON c.id=i.customer_id LEFT JOIN vehicles v ON v.id=i.vehicle_id CROSS JOIN settings s
+    WHERE ${rules.warranty.on} AND (i.vehicle_id IS NULL OR v.id IS NOT NULL)
+      AND jsonb_typeof(i.snapshot->'warrantyMonths')='number'
+      AND ((i.created_at AT TIME ZONE s.zone)::date + make_interval(months=>(i.snapshot->>'warrantyMonths')::int))::date
+        BETWEEN s.today AND s.today+${rules.warranty.daysBefore}::int
   ), sources AS (
     SELECT * FROM declines UNION ALL SELECT * FROM open_estimates UNION ALL SELECT * FROM unpaid
     UNION ALL SELECT * FROM lapsed UNION ALL SELECT * FROM service_due UNION ALL SELECT * FROM home_service_due
     UNION ALL SELECT * FROM new_leads UNION ALL SELECT * FROM job_updates UNION ALL SELECT * FROM visit_confirms
+    UNION ALL SELECT * FROM warranties
   ), items AS (
     SELECT src.*,CASE
       WHEN src.category='service_due' AND src.vehicle_id IS NULL THEN src.subject_id
       WHEN src.category='open_estimate' THEN (SELECT e.service_asset_id FROM app.estimate_version e WHERE e.business_id=${tx.businessId} AND e.id=src.subject_id)
-      WHEN src.category='unpaid_invoice' THEN (SELECT i.service_asset_id FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.id=src.subject_id)
+      WHEN src.category IN ('unpaid_invoice','warranty_ending') THEN (SELECT i.service_asset_id FROM app.invoice i WHERE i.business_id=${tx.businessId} AND i.id=src.subject_id)
       WHEN src.category='visit_confirm' THEN (SELECT a.service_asset_id FROM app.appointment a WHERE a.business_id=${tx.businessId} AND a.id=src.subject_id)
       WHEN src.category='job_update' THEN (SELECT e.service_asset_id FROM latest_estimates e WHERE e.quote_id=src.subject_id)
       ELSE NULL::uuid END AS service_asset_id,r.id AS recovery_id,coalesce(r.status,'open') AS status,r.snoozed_until,r.dismissed_reason,
