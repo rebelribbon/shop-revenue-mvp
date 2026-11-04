@@ -5,6 +5,7 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { withTenant } from "@/db/tenant";
 import { listInvoices } from "@/domain/invoices";
 import { loadPipeline } from "@/domain/pipeline";
+import { readReviewSettings } from "@/domain/review-requests";
 import { requireShopSession } from "@/server/views/shop";
 
 // Checkout: pick who's paying, see the bill, take the money.
@@ -14,11 +15,15 @@ export default async function CheckoutPage(props: {
   const { invoiceId } = await props.searchParams;
   const s = await requireShopSession("/app/checkout");
   const readOnly = s.actor.type === "support";
-  const [invoices, pipe] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([
-      listInvoices(tx, invoiceId),
-      invoiceId ? null : loadPipeline(tx),
-    ]),
+  const [invoices, pipe, reviews] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        listInvoices(tx, invoiceId),
+        invoiceId ? null : loadPipeline(tx),
+        readReviewSettings(tx),
+      ]),
   );
 
   if (invoiceId) {
@@ -150,7 +155,11 @@ export default async function CheckoutPage(props: {
             ) : readOnly ? (
               <p className="muted">Support view is read-only.</p>
             ) : (
-              <CheckoutPanel invoiceId={i.id} dueCents={i.balanceCents} />
+              <CheckoutPanel
+                invoiceId={i.id}
+                dueCents={i.balanceCents}
+                canAskReview={!!reviews.link}
+              />
             )}
           </div>
         </div>

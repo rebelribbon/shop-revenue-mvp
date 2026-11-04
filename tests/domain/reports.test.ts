@@ -96,12 +96,26 @@ it("sales, tax, profit, payments and customers agree with the invoices", async (
   const range = { from: today, to: today };
   const sales = await run((tx) => runReport(tx, "sales", range));
   // $150 before tax, $10 tax on the $100 taxable part, $160 total, $60 paid.
-  expect(sales.totals!.slice(4)).toEqual([15000, 1000, 16000, 6000, 10000]);
+  expect(sales.totals!.slice(4)).toEqual([
+    15000,
+    1000,
+    16000,
+    6000,
+    10000,
+    null,
+  ]);
+  expect(sales.rows[0].at(-1)).toBe("Not set");
   const tax = await run((tx) => runReport(tx, "tax", range));
   expect(tax.rows[0].slice(1)).toEqual([10000, 5000, 1000, 16000]);
   const profit = await run((tx) => runReport(tx, "profit", range));
   // Cost $40 part + $20 labor = $60, kept $90 (60%).
-  expect(profit.rows[0].slice(4)).toEqual([15000, 6000, 9000, "60%"]);
+  expect(profit.rows[0].slice(4)).toEqual([
+    15000,
+    6000,
+    9000,
+    "60%",
+    "Not set",
+  ]);
   const payments = await run((tx) => runReport(tx, "payments", range));
   expect(payments.totals![5]).toBe(6000);
   const customers = await run((tx) => runReport(tx, "customers", range));

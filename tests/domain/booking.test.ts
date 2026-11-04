@@ -40,6 +40,8 @@ describe("Online booking", () => {
           and(eq(customer.businessId, t.businessId), eq(customer.id, r.id)),
         ),
     );
+    // Tagged as an online-booking lead automatically.
+    expect(c?.leadSource).toBe("booking");
     expect(c).toMatchObject({
       displayName: "Jordan TEST Booker",
       phoneE164: "+12108312978",

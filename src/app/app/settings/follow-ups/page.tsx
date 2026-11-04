@@ -3,6 +3,15 @@ import { ActionForm } from "@/components/action-form";
 import { HydratedMain } from "@/components/hydrated-main";
 import { withTenant } from "@/db/tenant";
 import { loadFollowUpRules } from "@/domain/money-finder";
+import { readReminderSettings } from "@/domain/payment-reminders";
+import { saveReminderSettingsAction } from "@/server/actions/payment-reminders";
+import { readReviewSettings } from "@/domain/review-requests";
+import { saveReviewSettingsAction } from "@/server/actions/review-requests";
+import { readWeeklySettings } from "@/domain/weekly-report";
+import {
+  saveWeeklySettingsAction,
+  sendWeeklyNowAction,
+} from "@/server/actions/weekly-report";
 import { RULE_TEXT } from "@/lib/follow-up-rules";
 import { saveFollowUpRulesAction } from "@/server/actions/tasks";
 import { requireOwnerView } from "@/server/views/shop";
@@ -16,12 +25,21 @@ const MAX: Record<string, number> = {
   declined: 365,
   serviceDue: 90,
   confirmVisit: 7,
+  warranty: 90,
 };
 
 export default async function FollowUpRulesPage() {
   const s = await requireOwnerView("/app/settings/follow-ups");
-  const rules = await withTenant(s.businessId, s.actor, (tx) =>
-    loadFollowUpRules(tx),
+  const [rules, reminders, reviews, weekly] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        loadFollowUpRules(tx),
+        readReminderSettings(tx),
+        readReviewSettings(tx),
+        readWeeklySettings(tx),
+      ]),
   );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -71,6 +89,149 @@ export default async function FollowUpRulesPage() {
           );
         })}
       </ActionForm>
+      <section
+        className="card reminder-settings"
+        aria-label="Automatic payment reminders"
+      >
+        <h2>Automatic payment reminders</h2>
+        <p className="muted">
+          We email the customer their pay link once an invoice is due, then
+          every few days until it’s paid (up to {5} times). Customers who opted
+          out of email are skipped. Your unpaid-invoice call task still shows up
+          either way.
+        </p>
+        <ActionForm
+          action={saveReminderSettingsAction}
+          submitLabel="Save reminders"
+          variant="secondary"
+        >
+          <fieldset className="reminder-switch">
+            <legend>Send reminders automatically</legend>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="true"
+                defaultChecked={reminders.on}
+              />
+              On
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="false"
+                defaultChecked={!reminders.on}
+              />
+              Off
+            </label>
+          </fieldset>
+          <label htmlFor="reminder-days">Send one every</label>
+          <div className="rule-amount">
+            <input
+              id="reminder-days"
+              name="everyDays"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={30}
+              step={1}
+              required
+              defaultValue={reminders.everyDays}
+            />
+            <span>days</span>
+          </div>
+        </ActionForm>
+      </section>
+      <section className="card reminder-settings" aria-label="Ask for reviews">
+        <h2>Ask for reviews</h2>
+        <p className="muted">
+          When a customer pays in full, we email them your review link. Each
+          customer is asked at most once every 6 months. You can also tap “Ask
+          for a review” at checkout or on their profile.
+        </p>
+        <ActionForm
+          action={saveReviewSettingsAction}
+          submitLabel="Save review settings"
+          variant="secondary"
+        >
+          <label htmlFor="review-link">Your review link</label>
+          <input
+            id="review-link"
+            name="link"
+            type="url"
+            inputMode="url"
+            maxLength={500}
+            placeholder="https://g.page/r/…/review"
+            defaultValue={reviews.link}
+          />
+          <p className="muted part-hint">
+            In your Google Business Profile, tap “Ask for reviews” and copy the
+            link.
+          </p>
+          <fieldset className="reminder-switch">
+            <legend>Ask automatically after payment</legend>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="true"
+                defaultChecked={reviews.on}
+              />
+              On
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="false"
+                defaultChecked={!reviews.on}
+              />
+              Off
+            </label>
+          </fieldset>
+        </ActionForm>
+      </section>
+      <section className="card reminder-settings" aria-label="Monday summary">
+        <h2>Monday summary email</h2>
+        <p className="muted">
+          Every Monday morning: what you collected last week, what’s unpaid,
+          open estimates, jobs in the bay, tasks due and parts running low. Goes
+          to the owner’s email.
+        </p>
+        <ActionForm
+          action={saveWeeklySettingsAction}
+          submitLabel="Save summary setting"
+          variant="secondary"
+        >
+          <fieldset className="reminder-switch">
+            <legend>Send me the Monday summary</legend>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="true"
+                defaultChecked={weekly.on}
+              />
+              On
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="false"
+                defaultChecked={!weekly.on}
+              />
+              Off
+            </label>
+          </fieldset>
+        </ActionForm>
+        <ActionForm
+          action={sendWeeklyNowAction}
+          submitLabel="Email me last week’s summary now"
+          variant="secondary"
+        />
+      </section>
     </HydratedMain>
   );
 }

@@ -102,3 +102,33 @@ export const stockMove = app.table("stock_move", {
   invoiceId: uuid("invoice_id"),
   note: text("note"),
 });
+
+// Payment reminder emails sent for an invoice (0042).
+export const paymentReminder = app.table("payment_reminder", {
+  ...tenantColumns(),
+  invoiceId: uuid("invoice_id").notNull(),
+  sentTo: text("sent_to").notNull(),
+  status: text("status").notNull(),
+  automatic: boolean("automatic").notNull(),
+  providerMessageId: text("provider_message_id"),
+});
+
+// Review request emails (0043).
+export const reviewRequest = app.table("review_request", {
+  ...tenantColumns(),
+  customerId: uuid("customer_id").notNull(),
+  invoiceId: uuid("invoice_id"),
+  sentTo: text("sent_to").notNull(),
+  status: text("status").notNull(),
+  automatic: boolean("automatic").notNull(),
+  providerMessageId: text("provider_message_id"),
+});
+
+// Monday summary emails sent (0044).
+export const weeklyReport = app.table("weekly_report", {
+  ...tenantColumns(),
+  weekStart: date("week_start", { mode: "string" }).notNull(),
+  sentTo: text("sent_to").notNull(),
+  status: text("status").notNull(),
+  automatic: boolean("automatic").notNull(),
+});

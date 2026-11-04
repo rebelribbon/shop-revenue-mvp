@@ -1,9 +1,11 @@
 "use server";
+import { LEAD_SOURCE_KEYS } from "@/lib/lead-sources";
 import { z } from "zod";
 import {
   archiveCustomer,
   archiveVehicle,
   createCustomer,
+  setLeadSource,
   createVehicle,
   updateCustomer,
   updateVehicle,
@@ -44,16 +46,43 @@ const customerInput = (input: z.infer<typeof customerFields>) => ({
   postalCode: input.postalCode || null,
 });
 
+// "" from the picker = not set.
+const leadSourceField = z
+  .union([z.enum(LEAD_SOURCE_KEYS), z.literal("")])
+  .optional()
+  .transform((v) => v || null);
+
+export const setLeadSourceAction = defineShopAction({
+  name: "setLeadSource",
+  input: z.object({
+    customerId: z.uuid(),
+    leadSource: leadSourceField,
+    leadSourceDetail: z.string().max(200).default(""),
+  }),
+  run: async ({ tx, meta }, i) => {
+    const r = await setLeadSource(tx, meta, {
+      customerId: i.customerId,
+      leadSource: i.leadSource,
+      detail: i.leadSourceDetail,
+    });
+    return { ...r, message: "Saved." };
+  },
+});
+
 export const createCustomerAction = defineShopAction({
   name: "createCustomer",
   input: customerFields.extend({
     allowDuplicate: z
       .union([z.boolean(), z.literal("true"), z.literal("")])
       .optional(),
+    leadSource: leadSourceField,
+    leadSourceDetail: z.string().max(200).optional(),
   }),
   run: ({ tx, meta }, input) =>
     createCustomer(tx, meta, {
       ...customerInput(input),
+      leadSource: input.leadSource,
+      leadSourceDetail: input.leadSourceDetail ?? null,
       allowDuplicate:
         input.allowDuplicate === true || input.allowDuplicate === "true",
     }),

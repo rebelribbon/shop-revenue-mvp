@@ -37,6 +37,9 @@ export const customer = app.table(
     // Null = allowed. Set when the customer asks to stop (e.g. replies STOP).
     textOptedOutAt: timestamp("text_opted_out_at", { withTimezone: true }),
     emailOptedOutAt: timestamp("email_opted_out_at", { withTimezone: true }),
+    // Where they found the shop (0045).
+    leadSource: text("lead_source"),
+    leadSourceDetail: text("lead_source_detail"),
     status: text("status").notNull().default("active"),
   },
   (t) => [

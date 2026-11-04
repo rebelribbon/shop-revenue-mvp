@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { createCustomerAction } from "@/server/actions/customers";
 import { requireShopSession } from "@/server/views/shop";
+import { LEAD_SOURCES } from "@/lib/lead-sources";
 export default async function NewCustomerPage() {
   const s = await requireShopSession("/app/customers/new");
   const profile = await withTenant(s.businessId, s.actor, (tx) =>
@@ -55,6 +56,23 @@ export default async function NewCustomerPage() {
             name="postalCode"
             maxLength={20}
             inputMode="numeric"
+          />
+          <label htmlFor="leadSource">How did they find you?</label>
+          <select id="leadSource" name="leadSource" defaultValue="">
+            <option value="">Not sure / skip</option>
+            {LEAD_SOURCES.filter(([k]) => k !== "booking").map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="leadSourceDetail">
+            Who referred them? <span className="muted">(optional)</span>
+          </label>
+          <input
+            id="leadSourceDetail"
+            name="leadSourceDetail"
+            maxLength={200}
           />
           <label htmlFor="notes">Notes</label>
           <textarea id="notes" name="notes" rows={4} maxLength={5000} />

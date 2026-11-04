@@ -23,6 +23,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "New job", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
+  await page.getByLabel(/Warranty in months/).fill("12");
   await expect(
     page.getByLabel("Customer", { exact: true }).locator("option:checked"),
   ).toHaveText(`Job ${info.project.name}`);
@@ -93,6 +94,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   ).toBeVisible();
   await auditUX(page);
   await expect(page.locator("body")).not.toContainText("unit cost");
+  await expect(page.locator("[data-warranty]")).toContainText("12 months");
   await page
     .getByLabel("Your full name", { exact: true })
     .fill("Test Customer");
@@ -184,6 +186,14 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .click();
   await expect(page).toHaveURL(/\/app\/invoices\?invoiceId=/);
   const invoiceUrl = page.url();
+  // One-tap payment reminder by email; the outcome is recorded either way.
+  await page
+    .getByRole("button", { name: "Email a payment reminder", exact: true })
+    .click();
+  await expect(
+    page.getByText(/Reminder emailed to job-|couldn’t be sent right now/),
+  ).toBeVisible();
+  await auditUX(page);
   const invoice = page
     .getByRole("heading", {
       name: new RegExp(`Invoice #.*Brakes ${info.project.name}`),

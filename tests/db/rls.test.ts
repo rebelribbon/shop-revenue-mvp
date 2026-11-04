@@ -23,6 +23,9 @@ import {
   savedReport,
   inspection,
   jobAssignment,
+  paymentReminder,
+  reviewRequest,
+  weeklyReport,
   partItem,
   stockMove,
   customerPortal,
@@ -342,6 +345,48 @@ const builders: Record<string, Builder> = {
           partItemId: part.id,
           changeHundredths: 100,
           reason: "received",
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.payment_reminder": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(paymentReminder)
+        .values({
+          businessId: t.businessId,
+          invoiceId: randomUUID(),
+          sentTo: "rls@example.test",
+          status: "sent",
+          automatic: false,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.review_request": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(reviewRequest)
+        .values({
+          businessId: t.businessId,
+          customerId: randomUUID(),
+          sentTo: "rls@example.test",
+          status: "sent",
+          automatic: false,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.weekly_report": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(weeklyReport)
+        .values({
+          businessId: t.businessId,
+          weekStart: "2030-01-07",
+          sentTo: "rls@example.test",
+          status: "sent",
+          automatic: false,
         })
         .returning();
       return row.id;

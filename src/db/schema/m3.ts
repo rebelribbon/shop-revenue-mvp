@@ -40,6 +40,8 @@ export type EstimateSnapshot = {
   taxCents: number;
   totalCents: number;
   terms: string;
+  // Warranty on the work, in months from the invoice date.
+  warrantyMonths?: number;
   authorizationPolicy?: AuthorizationPolicy;
   // Recurring work the customer agreed to (one signature covers every visit).
   repeat?: Repeat;

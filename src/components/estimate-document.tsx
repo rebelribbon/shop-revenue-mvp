@@ -62,6 +62,13 @@ export function EstimateDocument({
         </div>
       )}
       {s.photos && <CustomerPhotos photos={s.photos} token={photoToken} />}
+      {s.warrantyMonths && (
+        <p data-warranty>
+          <strong>Warranty:</strong> {s.warrantyMonths}{" "}
+          {s.warrantyMonths === 1 ? "month" : "months"} on this work from the
+          invoice date.
+        </p>
+      )}
       {s.terms && <p style={{ whiteSpace: "pre-wrap" }}>{s.terms}</p>}
     </section>
   );

@@ -1,3 +1,4 @@
+import { leadSourceLabel } from "@/lib/lead-sources";
 // Owner reports for a date range, all from the same invoices, payments, jobs,
 // plans and expenses the rest of the app uses. Each report is a plain table
 // so the page and the CSV download show exactly the same thing.
@@ -5,6 +6,7 @@ import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
   activity,
   business,
+  customer,
   expense,
   invoice,
   invoicePayment,
@@ -106,6 +108,21 @@ async function bounds(tx: TenantTx, r: Range) {
   };
 }
 
+// "Found us" per customer, for the sales, profit and payments reports.
+async function foundUs(tx: TenantTx, ids: string[]) {
+  if (!ids.length) return new Map<string, string>();
+  const rows = await tx
+    .select({ id: customer.id, source: customer.leadSource })
+    .from(customer)
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        inArray(customer.id, [...new Set(ids)]),
+      ),
+    );
+  return new Map(rows.map((r) => [r.id, leadSourceLabel(r.source)]));
+}
+
 export async function runReport(
   tx: TenantTx,
   key: ReportKey,
@@ -150,6 +167,10 @@ export async function runReport(
       : [];
     const paidOf = (id: string) =>
       Number(paid.find((p) => p.id === id)?.cents ?? 0);
+    const found = await foundUs(
+      tx,
+      invoices.map((i) => i.customerId),
+    );
     if (key === "sales") {
       const rows = invoices.map((i) => [
         day(i.createdAt),
@@ -161,6 +182,7 @@ export async function runReport(
         i.totalCents,
         paidOf(i.id),
         i.totalCents - paidOf(i.id),
+        found.get(i.customerId) ?? "Not set",
       ]);
       return {
         columns: [
@@ -173,6 +195,7 @@ export async function runReport(
           { label: "Total", money: true },
           { label: "Paid", money: true },
           { label: "Still owed", money: true },
+          { label: "Found us" },
         ],
         rows,
         totals: [
@@ -185,6 +208,7 @@ export async function runReport(
           sum(rows, 6),
           sum(rows, 7),
           sum(rows, 8),
+          null,
         ],
       };
     }
@@ -270,6 +294,7 @@ export async function runReport(
         kept === null || !i.snapshot.subtotalCents
           ? "Add costs to see"
           : `${Math.round((kept / i.snapshot.subtotalCents) * 100)}%`,
+        found.get(i.customerId) ?? "Not set",
       ];
     });
     const known = rows.filter((r) => r[5] !== null);
@@ -283,6 +308,7 @@ export async function runReport(
         { label: "Cost", money: true },
         { label: "Kept", money: true },
         { label: "Margin" },
+        { label: "Found us" },
       ],
       rows,
       totals: [
@@ -298,6 +324,7 @@ export async function runReport(
         sum(known, 4)
           ? `${Math.round((sum(known, 6) / sum(known, 4)) * 100)}%`
           : null,
+        null,
       ],
     };
   }
@@ -330,6 +357,10 @@ export async function runReport(
       )
       .orderBy(invoicePayment.createdAt);
     if (key === "payments") {
+      const found = await foundUs(
+        tx,
+        payments.map((p) => p.customerId),
+      );
       const rows = payments.map((p) => [
         day(p.at),
         `#${p.number}`,
@@ -337,6 +368,7 @@ export async function runReport(
         p.method.replaceAll("_", " "),
         p.reference || null,
         p.cents,
+        found.get(p.customerId) ?? "Not set",
       ]);
       return {
         columns: [
@@ -346,6 +378,7 @@ export async function runReport(
           { label: "Method" },
           { label: "Reference" },
           { label: "Amount", money: true },
+          { label: "Found us" },
         ],
         rows,
         totals: [
@@ -355,6 +388,7 @@ export async function runReport(
           null,
           null,
           sum(rows, 5),
+          null,
         ],
       };
     }

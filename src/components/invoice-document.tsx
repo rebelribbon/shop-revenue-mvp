@@ -94,6 +94,18 @@ export function InvoiceDocument({
               ? "Partially paid"
               : "Payment due"}
       </h2>
+      {i.snapshot.warrantyMonths && (
+        <p data-warranty>
+          <strong>Warranty:</strong> {i.snapshot.warrantyMonths}{" "}
+          {i.snapshot.warrantyMonths === 1 ? "month" : "months"} from{" "}
+          {new Date(i.issuedAt).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
+          .
+        </p>
+      )}
       {d.terms && i.terms && (
         <p style={{ whiteSpace: "pre-wrap" }}>{i.terms}</p>
       )}

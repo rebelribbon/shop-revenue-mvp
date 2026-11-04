@@ -48,6 +48,11 @@ const shape = z.object({
     .object({ on, daysBefore: days(1, 7) })
     .catch({ on: true, daysBefore: 1 })
     .default({ on: true, daysBefore: 1 }),
+  // A job's warranty is about to run out: invite them in for a check.
+  warranty: z
+    .object({ on, daysBefore: days(30, 90) })
+    .catch({ on: true, daysBefore: 30 })
+    .default({ on: true, daysBefore: 30 }),
 });
 export type FollowUpRules = z.infer<typeof shape>;
 export const DEFAULT_FOLLOW_UP_RULES: FollowUpRules = shape.parse({});
@@ -133,6 +138,13 @@ export const RULE_TEXT = [
     key: "confirmVisit",
     title: "Confirm visits",
     before: "Remind me to confirm a booked visit this many days before",
+    unit: "days",
+    field: "daysBefore",
+  },
+  {
+    key: "warranty",
+    title: "Warranty ending",
+    before: "Remind me before a job’s warranty runs out by",
     unit: "days",
     field: "daysBefore",
   },
