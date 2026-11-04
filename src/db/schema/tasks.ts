@@ -112,3 +112,14 @@ export const paymentReminder = app.table("payment_reminder", {
   automatic: boolean("automatic").notNull(),
   providerMessageId: text("provider_message_id"),
 });
+
+// Review request emails (0043).
+export const reviewRequest = app.table("review_request", {
+  ...tenantColumns(),
+  customerId: uuid("customer_id").notNull(),
+  invoiceId: uuid("invoice_id"),
+  sentTo: text("sent_to").notNull(),
+  status: text("status").notNull(),
+  automatic: boolean("automatic").notNull(),
+  providerMessageId: text("provider_message_id"),
+});

@@ -24,6 +24,7 @@ import {
   inspection,
   jobAssignment,
   paymentReminder,
+  reviewRequest,
   partItem,
   stockMove,
   customerPortal,
@@ -354,6 +355,20 @@ const builders: Record<string, Builder> = {
         .values({
           businessId: t.businessId,
           invoiceId: randomUUID(),
+          sentTo: "rls@example.test",
+          status: "sent",
+          automatic: false,
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.review_request": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(reviewRequest)
+        .values({
+          businessId: t.businessId,
+          customerId: randomUUID(),
           sentTo: "rls@example.test",
           status: "sent",
           automatic: false,

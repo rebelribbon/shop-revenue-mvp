@@ -5,6 +5,8 @@ import { useState } from "react";
 import { useActionHydration } from "./action-hydration";
 import { recordInvoicePaymentAction } from "@/server/actions/invoices";
 import { DocumentShare } from "./document-share";
+import { ActionForm } from "./action-form";
+import { askForReviewAction } from "@/server/actions/review-requests";
 
 const fmt = (c: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -31,9 +33,12 @@ function cashChoices(due: number) {
 export function CheckoutPanel({
   invoiceId,
   dueCents,
+  canAskReview = false,
 }: {
   invoiceId: string;
   dueCents: number;
+  // The shop has a review link: offer "Ask for a review" once paid in full.
+  canAskReview?: boolean;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
@@ -95,6 +100,16 @@ export function CheckoutPanel({
             Print or send receipt
           </Link>
         </div>
+        {done.remaining <= 0 && canAskReview && (
+          <div className="checkout-review">
+            <ActionForm
+              action={askForReviewAction}
+              hidden={{ invoiceId }}
+              submitLabel="★ Ask for a review"
+              variant="secondary"
+            />
+          </div>
+        )}
       </section>
     );
 

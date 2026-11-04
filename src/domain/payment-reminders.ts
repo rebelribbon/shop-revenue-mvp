@@ -140,7 +140,7 @@ function appUrl(path: string) {
   return `${base.replace(/\/$/, "")}${path}`;
 }
 
-async function shopInfo(tx: TenantTx) {
+export async function shopInfo(tx: TenantTx) {
   const r = await tx.execute(sql`
     SELECT coalesce(nullif(b.dba,''),b.legal_name) AS name, b.phone_e164 AS phone, b.timezone,
       (SELECT u.email FROM app.membership m JOIN app."user" u ON u.id=m.user_id
@@ -223,14 +223,14 @@ async function record(
   });
 }
 
-async function deliver(p: PreparedReminder) {
+export async function deliver(p: { email: OutboundEmail }) {
   try {
     const r = await emailProvider().send(p.email);
     return { status: "sent" as const, providerMessageId: r.providerMessageId };
   } catch (error) {
     logger.warn({
-      event: "payment_reminder.failed",
-      invoiceId: p.invoiceId,
+      event: "customer_email.failed",
+      kind: p.email.metadata?.kind,
       ...safeErrorDiagnostic(error),
     });
     return { status: "failed" as const };
