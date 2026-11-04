@@ -19,6 +19,14 @@ export default async function SettingsPage() {
       </form>
       <div className="settings-grid">
         {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/booking">
+            <strong>Online booking</strong>
+            <span className="muted">
+              A “Book a visit” link for your website and Google profile
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/follow-ups">
             <strong>Follow-up rules</strong>
             <span className="muted">

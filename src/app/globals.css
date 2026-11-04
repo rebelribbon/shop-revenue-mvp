@@ -2545,3 +2545,129 @@ a.card.create-tile:hover {
   margin: 0 0 16px;
   font-weight: 600;
 }
+/* Inspections: each item Good / Watch / Needs work, colored so a glance
+   tells the story (colors differ in lightness, not just hue). */
+.inspection-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+}
+.insp-count {
+  padding: 0 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  line-height: 32px;
+}
+.insp-count.is-good {
+  background: #e6f3ed;
+  color: #0b5a42;
+}
+.insp-count.is-watch {
+  background: #fff4d6;
+  color: #6b4a00;
+}
+.insp-count.is-fix {
+  background: #fdeceb;
+  color: #a4251b;
+}
+.inspection-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inspection-item fieldset {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-left-width: 8px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.inspection-item.is-good fieldset {
+  border-left-color: #0e8a63;
+}
+.inspection-item.is-watch fieldset {
+  border-left-color: #d49b00;
+}
+.inspection-item.is-fix fieldset {
+  border-left-color: #c2321f;
+}
+.inspection-item legend {
+  padding: 0 8px;
+  font-weight: 700;
+}
+.inspection-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.inspection-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.inspection-choices label.choice-good:has(input:checked) {
+  border-color: #0e8a63;
+  background: #e6f3ed;
+  color: #0b5a42;
+}
+.inspection-choices label.choice-watch:has(input:checked) {
+  border-color: #d49b00;
+  background: #fff4d6;
+  color: #6b4a00;
+}
+.inspection-choices label.choice-fix:has(input:checked) {
+  border-color: #c2321f;
+  background: #fdeceb;
+  color: #a4251b;
+}
+.inspection-added {
+  margin: 8px 0 0;
+}
+@media (prefers-color-scheme: dark) {
+  .insp-count.is-good,
+  .inspection-choices label.choice-good:has(input:checked) {
+    background: #16372c;
+    color: #8fe0c1;
+  }
+  .insp-count.is-watch,
+  .inspection-choices label.choice-watch:has(input:checked) {
+    background: #3a2f10;
+    color: #f5d37a;
+  }
+  .insp-count.is-fix,
+  .inspection-choices label.choice-fix:has(input:checked) {
+    background: #3d1715;
+    color: #ff9b94;
+  }
+}
+/* The app proving it pays for itself. */
+.money-line a.won-back:not(.card):not(.btn) {
+  padding: 0 8px;
+  border-radius: 8px;
+  background: #e6f3ed;
+  color: #0b5a42;
+  font-weight: 600;
+}
+.money-line a.won-back strong {
+  color: #0b5a42;
+}
+@media (prefers-color-scheme: dark) {
+  .money-line a.won-back:not(.card):not(.btn),
+  .money-line a.won-back strong {
+    background: #16372c;
+    color: #8fe0c1;
+  }
+}
