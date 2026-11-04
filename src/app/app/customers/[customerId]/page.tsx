@@ -43,6 +43,8 @@ import { requireShopSession } from "@/server/views/shop";
 import { portalLink } from "@/domain/customer-portal";
 import { createPortalLinkAction } from "@/server/actions/customer-portal";
 import { askForReviewAction } from "@/server/actions/review-requests";
+import { setLeadSourceAction } from "@/server/actions/customers";
+import { LEAD_SOURCES, leadSourceLabel } from "@/lib/lead-sources";
 import {
   lastReviewRequest,
   readReviewSettings,
@@ -239,6 +241,45 @@ export default async function CustomerDetailPage(props: {
                   variant="secondary"
                 />
               )
+            )}
+          </div>
+          <div className="portal-box">
+            <h2>Found us</h2>
+            {readOnly ? (
+              <p>
+                {leadSourceLabel(c.leadSource)}
+                {c.leadSourceDetail && ` · ${c.leadSourceDetail}`}
+              </p>
+            ) : (
+              <ActionForm
+                action={setLeadSourceAction}
+                hidden={{ customerId }}
+                submitLabel="Save"
+                variant="secondary"
+              >
+                <label htmlFor="lead-source">How did they find you?</label>
+                <select
+                  id="lead-source"
+                  name="leadSource"
+                  defaultValue={c.leadSource ?? ""}
+                >
+                  <option value="">Not set</option>
+                  {LEAD_SOURCES.map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor="lead-detail">
+                  Details <span className="muted">(who referred them)</span>
+                </label>
+                <input
+                  id="lead-detail"
+                  name="leadSourceDetail"
+                  maxLength={200}
+                  defaultValue={c.leadSourceDetail ?? ""}
+                />
+              </ActionForm>
             )}
           </div>
           {reviewLink && (

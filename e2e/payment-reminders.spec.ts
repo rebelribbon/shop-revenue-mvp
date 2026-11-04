@@ -15,6 +15,7 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   await box.getByRole("button", { name: "Save reminders" }).click();
   await expect(box.getByText(/Reminders on: every 2 days/)).toBeVisible();
   await page.reload();
+  await expect(page.locator("main")).toHaveAttribute("data-ux-ready", "true");
   await expect(box.getByRole("radio", { name: "On" })).toBeChecked();
   await expect(box.getByLabel("Send one every")).toHaveValue("2");
   await box.getByRole("radio", { name: "Off" }).check();
@@ -37,8 +38,14 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   await page
     .getByLabel("Email", { exact: true })
     .fill(`review-${Date.now()}@example.test`);
+  await page.getByLabel("How did they find you?").selectOption("referral");
+  await page.getByLabel(/Who referred them/).fill("Sam TEST");
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
+  await expect(page.getByLabel("How did they find you?")).toHaveValue(
+    "referral",
+  );
+  await expect(page.getByLabel(/Details/)).toHaveValue("Sam TEST");
   await expect(
     page.getByRole("heading", { name: "Review", exact: true }),
   ).toBeVisible();
@@ -56,5 +63,11 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   await expect(
     weekly.getByText(/Summary emailed to|couldn’t be sent right now/),
   ).toBeVisible();
+  await auditUX(page, true);
+  // Reports can group by where customers found you.
+  await page.goto(
+    "/app/money/reports/build?source=sales&group=source&measures=total",
+  );
+  await expect(page.getByText(/by lead source/i).first()).toBeVisible();
   await auditUX(page, true);
 });
