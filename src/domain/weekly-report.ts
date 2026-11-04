@@ -147,7 +147,7 @@ const plural = (n: number, one: string, many = `${one}s`) =>
 export function composeWeekly(
   n: WeeklyNumbers,
   shopName: string,
-  appUrl: string,
+  appUrl: string | null,
 ): Pick<OutboundEmail, "subject" | "text"> {
   const lines = [
     `${shopName}: your week, ${day(n.weekStart)}–${day(n.weekEnd)}`,
@@ -169,7 +169,7 @@ export function composeWeekly(
       ? `Running low: ${n.lowStock.slice(0, 8).join(", ")}${n.lowStock.length > 8 ? ` and ${n.lowStock.length - 8} more` : ""}`
       : "",
     "",
-    `Open your shop: ${appUrl}/app`,
+    appUrl ? `Open your shop: ${appUrl}/app` : "",
     "",
     "You get this every Monday. Turn it off in Settings → Follow-up rules.",
   ];
@@ -179,14 +179,9 @@ export function composeWeekly(
   };
 }
 
+// The app's address for the "Open your shop" link; left out if unset.
 function baseUrl() {
-  const base = process.env.APP_BASE_URL;
-  if (!base)
-    throw new AppError(
-      "PROVIDER_UNAVAILABLE",
-      "APP_BASE_URL is not configured.",
-    );
-  return base.replace(/\/$/, "");
+  return process.env.APP_BASE_URL?.replace(/\/$/, "") || null;
 }
 
 async function ownerEmails(tx: TenantTx) {

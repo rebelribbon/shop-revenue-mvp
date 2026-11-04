@@ -76,6 +76,10 @@ describe("Monday summary", () => {
     );
     expect(email.text).toContain("Running low: Wiper blades TEST");
     expect(email.text).toContain("Open your shop: http://localhost:3000/app");
+    // No app address configured: the summary still goes out, without a link.
+    expect(composeWeekly(n, "Test Auto", null).text).not.toContain(
+      "Open your shop",
+    );
   });
 
   it("emails owners once a week, Monday to Wednesday, unless turned off", async () => {
