@@ -10,9 +10,9 @@ import { requireShopSession } from "@/server/views/shop";
 
 // Checkout: pick who's paying, see the bill, take the money.
 export default async function CheckoutPage(props: {
-  searchParams: Promise<{ invoiceId?: string }>;
+  searchParams: Promise<{ invoiceId?: string; amount?: string }>;
 }) {
-  const { invoiceId } = await props.searchParams;
+  const { invoiceId, amount } = await props.searchParams;
   const s = await requireShopSession("/app/checkout");
   const readOnly = s.actor.type === "support";
   const [invoices, pipe, reviews] = await withTenant(
@@ -158,6 +158,11 @@ export default async function CheckoutPage(props: {
               <CheckoutPanel
                 invoiceId={i.id}
                 dueCents={i.balanceCents}
+                startCents={
+                  Number(amount) > 0 && Number(amount) < i.balanceCents
+                    ? Math.round(Number(amount))
+                    : undefined
+                }
                 canAskReview={!!reviews.link}
               />
             )}

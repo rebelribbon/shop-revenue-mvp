@@ -337,6 +337,13 @@
       "when": 1795446931998,
       "tag": "0047_counter_sales",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795533331998,
+      "tag": "0048_deposits",
+      "breakpoints": true
     }
   ]
 }
