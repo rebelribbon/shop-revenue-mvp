@@ -22,6 +22,8 @@ import {
   timeEntry,
   savedReport,
   inspection,
+  jobAssignment,
+  customerPortal,
   document,
   estimateAuthorization,
   recommendation,
@@ -274,6 +276,37 @@ const builders: Record<string, Builder> = {
         .onConflictDoUpdate({
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.customer_portal": async (t) => {
+    const customerId = (
+      await withTenant(t.businessId, t.owner.actor, (tx) =>
+        createCustomer(tx, meta(), { firstName: "RLS", lastName: "Portal" }),
+      )
+    ).id;
+    return withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(customerPortal)
+        .values({
+          businessId: t.businessId,
+          customerId,
+          tokenHash: "a".repeat(64),
+          shareTokenCiphertext: "x",
+        })
+        .returning();
+      return row.id;
+    });
+  },
+  "app.job_assignment": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(jobAssignment)
+        .values({
+          businessId: t.businessId,
+          jobId: randomUUID(),
+          userId: t.owner.userId,
         })
         .returning();
       return row.id;

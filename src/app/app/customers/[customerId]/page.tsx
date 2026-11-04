@@ -40,6 +40,9 @@ import {
   updateCustomerAction,
 } from "@/server/actions/customers";
 import { requireShopSession } from "@/server/views/shop";
+import { portalLink } from "@/domain/customer-portal";
+import { createPortalLinkAction } from "@/server/actions/customer-portal";
+import { CopyLink } from "@/components/copy-link";
 import { ContactPermissions } from "@/components/contact-permissions";
 
 export default async function CustomerDetailPage(props: {
@@ -48,19 +51,29 @@ export default async function CustomerDetailPage(props: {
 }) {
   const { customerId } = await props.params;
   const s = await requireShopSession(`/app/customers/${customerId}`);
-  const [data, history, notes, profile, assets, jobs, money, attachments] =
-    await withTenant(s.businessId, s.actor, async (tx) =>
-      Promise.all([
-        getCustomerWithVehicles(tx, customerId),
-        customerHistory(tx, customerId),
-        listNotes(tx, customerId),
-        getBusinessProfile(tx),
-        listServiceAssets(tx, customerId),
-        listCustomerJobs(tx, customerId),
-        customerMoney(tx, customerId),
-        listAttachments(tx, customerId),
-      ]),
-    );
+  const [
+    data,
+    history,
+    notes,
+    profile,
+    assets,
+    jobs,
+    money,
+    attachments,
+    portal,
+  ] = await withTenant(s.businessId, s.actor, async (tx) =>
+    Promise.all([
+      getCustomerWithVehicles(tx, customerId),
+      customerHistory(tx, customerId),
+      listNotes(tx, customerId),
+      getBusinessProfile(tx),
+      listServiceAssets(tx, customerId),
+      listCustomerJobs(tx, customerId),
+      customerMoney(tx, customerId),
+      listAttachments(tx, customerId),
+      portalLink(tx, customerId),
+    ]),
+  );
   const profileNotes = notes.filter((n) => n.kind === "profile");
   const historyNotes = notes.filter((n) => n.kind === "log");
   const statusLabels = jobStatusLabels(profile?.businessType ?? "automotive");
@@ -194,6 +207,31 @@ export default async function CustomerDetailPage(props: {
               <strong>{formatMoney(money.paidCents)}</strong> paid you, all time
             </span>
           </p>
+          <div className="portal-box">
+            <h2>Customer link</h2>
+            <p className="muted">
+              One link for their estimates, invoices, papers to sign and visits.
+            </p>
+            {portal ? (
+              <CopyLink
+                path={portal}
+                label="Copy customer link"
+                intro="Here’s your account: estimates, invoices and visits in one place."
+                title={`Your account with ${profile?.dba || profile?.legalName || "us"}`}
+                phone={c.textOptedOutAt ? null : c.phoneE164}
+                email={c.emailOptedOutAt ? null : c.email}
+              />
+            ) : (
+              !readOnly && (
+                <ActionForm
+                  action={createPortalLinkAction}
+                  hidden={{ customerId }}
+                  submitLabel="Create customer link"
+                  variant="secondary"
+                />
+              )
+            )}
+          </div>
         </aside>
         <div className="profile-main">
           {!readOnly && (

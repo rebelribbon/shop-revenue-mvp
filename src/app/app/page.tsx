@@ -79,6 +79,15 @@ export default async function HomePage({
   const auto = isAutomotive(type);
   const leads = tasks.due.filter((t) => t.category === "new_lead").length;
   const t = pipe.totals;
+  const me = s.actor.type === "user" ? s.actor.id : null;
+  const myJobs = me
+    ? [
+        ...pipe.columns.working,
+        ...pipe.columns.approved,
+        ...pipe.columns.estimate.filter((c) => c.status === "draft"),
+      ].filter((c) => c.techId === me).length
+    : 0;
+  const myVisits = me ? open.filter((a) => a.assignedUserId === me).length : 0;
   const notScheduled = pipe.columns.approved.filter(
     (c) => c.status === "won",
   ).length;
@@ -159,6 +168,14 @@ export default async function HomePage({
             </Link>
           </p>
         )}
+      {(myJobs > 0 || myVisits > 0) && (
+        <p className="my-day-line">
+          <Link className="btn secondary" href="/app/my-day">
+            My day: {myJobs} job{myJobs === 1 ? "" : "s"}
+            {myVisits > 0 && `, ${myVisits} visit${myVisits === 1 ? "" : "s"}`}
+          </Link>
+        </p>
+      )}
       <div className="pipeline-strip" aria-label="Where your jobs are">
         {strip.map((c) => (
           <Link
