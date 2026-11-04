@@ -71,3 +71,10 @@ export const customerPortal = app.table("customer_portal", {
   shareTokenCiphertext: text("share_token_ciphertext").notNull(),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
 });
+
+// Which tech is on a job (0040). user_id null = nobody yet.
+export const jobAssignment = app.table("job_assignment", {
+  ...tenantColumns(),
+  jobId: uuid("job_id").notNull(),
+  userId: uuid("user_id"),
+});

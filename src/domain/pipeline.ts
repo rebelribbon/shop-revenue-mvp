@@ -4,6 +4,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { customer } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { jobStatus, type JobStatus } from "@/lib/job-status";
+import { jobAssignees } from "./assignments";
 import { calculateJob } from "./job-costing";
 import { loadJobWorkflows } from "./job-workflow";
 import { jobInput, listJobs } from "./jobs";
@@ -30,16 +31,21 @@ export type BoardCard = {
   nextVisit: Date | null;
   // Latest estimate version (to create the invoice from).
   versionId: string | null;
+  // The tech on it, if anyone.
+  techId: string | null;
 };
 
 const DAY = 86400000;
 
 export async function loadPipeline(tx: TenantTx, now = new Date()) {
   const jobs = await listJobs(tx);
-  const flows = await loadJobWorkflows(
-    tx,
-    jobs.map((j) => j.id),
-  );
+  const [flows, techs] = await Promise.all([
+    loadJobWorkflows(
+      tx,
+      jobs.map((j) => j.id),
+    ),
+    jobAssignees(tx),
+  ]);
   const ids = [
     ...new Set(
       jobs
@@ -99,6 +105,7 @@ export async function loadPipeline(tx: TenantTx, now = new Date()) {
       ageDays: Math.max(0, Math.floor((now.getTime() - since.getTime()) / DAY)),
       nextVisit: flow.nextVisit,
       versionId: flow.latest?.estimate.id ?? null,
+      techId: techs.get(j.id) ?? null,
     });
   }
   for (const k of Object.keys(columns) as StageKey[])

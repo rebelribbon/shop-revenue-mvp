@@ -2683,3 +2683,67 @@ a.card.create-tile:hover {
 .portal-box p {
   margin: 8px 0;
 }
+
+/* Tech board: who's on the job. */
+.tech-pick form {
+  display: grid;
+  gap: 8px;
+  max-width: 400px;
+  margin: 0 0 16px;
+}
+.board-tech {
+  justify-self: start;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--accent-soft, #e6f2ee);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.view-toggle {
+  flex-wrap: wrap;
+}
+/* My day. */
+.clock-banner {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #ffffff;
+}
+.clock-banner p {
+  margin: 0;
+}
+.my-jobs {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.my-jobs li {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.my-jobs li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.my-jobs li > a:not(.card):not(.btn) {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 8px 0;
+  color: var(--text);
+  text-decoration: none;
+}
+.my-day-line {
+  margin: 0 0 16px;
+}
+.view-toggle.tech-filter {
+  display: flex;
+}
