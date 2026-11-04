@@ -7,7 +7,7 @@ test("Customer link opens one page with everything for that customer", async ({
   browser,
 }, info) => {
   const stamp = `${info.project.name}${Date.now()}`;
-  await signInWithPassword(page, "owner.a@shop-a.test");
+  await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill("Portal");
   await page.getByLabel("Last name").fill(`TEST ${stamp}`);

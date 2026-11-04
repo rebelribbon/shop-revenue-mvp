@@ -7,7 +7,7 @@ test("Parts: add, receive, count, and pick one on a job", async ({
 }, info) => {
   test.setTimeout(120_000);
   const name = `Pads TEST ${info.project.name} ${Date.now()}`;
-  await signInWithPassword(page, "owner.a@shop-a.test");
+  await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/app/parts");
   await auditUX(page, true);
   await page.getByRole("link", { name: "+ Add part" }).click();
