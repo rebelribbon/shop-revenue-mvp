@@ -65,6 +65,8 @@ function titleFor(category: MoneyCategory, name: string, label: string | null) {
       return `Remind ${name}: service due${label ? ` (${label})` : ""}`;
     case "visit_confirm":
       return `Confirm ${name}’s visit`;
+    case "warranty_ending":
+      return `Invite ${name} in before their warranty ends${label ? ` (${label})` : ""}`;
   }
 }
 

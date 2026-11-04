@@ -31,6 +31,8 @@ export const jobInput = z.object({
   title: z.string().trim().min(1).max(200),
   // Recurring work; absent for a one-time job.
   repeat: repeatInput.nullable().optional(),
+  // Warranty on this work, in months (shown on the estimate and invoice).
+  warrantyMonths: z.number().int().min(1).max(120).nullable().optional(),
   parts: z
     .array(
       z.object({
