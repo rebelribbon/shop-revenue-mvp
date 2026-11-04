@@ -25,13 +25,19 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON app.customer_portal FOR EACH ROW 
 --> statement-breakpoint
 CREATE POLICY portal_capability ON app.customer_portal FOR SELECT TO migration_owner USING (true);
 --> statement-breakpoint
-CREATE POLICY portal_appointments ON app.appointment FOR SELECT TO migration_owner USING (true);
+CREATE POLICY portal_appointments ON app.appointment FOR SELECT TO migration_owner USING (business_id = app.current_business_id());
 --> statement-breakpoint
-CREATE POLICY portal_customers ON app.customer FOR SELECT TO migration_owner USING (true);
+CREATE POLICY portal_customers ON app.customer FOR SELECT TO migration_owner USING (business_id = app.current_business_id());
 --> statement-breakpoint
 -- Everything a customer may see, found by their link only. Sealed share
 -- tokens are returned so the server (never the browser) can build links.
-CREATE FUNCTION app.read_customer_portal(p_hash text) RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog,app AS $$
+-- The link picks the shop first, so the definer only ever sees that shop.
+CREATE FUNCTION app.read_customer_portal(p_hash text) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,app AS $$
+DECLARE v_business uuid; v_out jsonb;
+BEGIN
+ SELECT cp.business_id INTO v_business FROM app.customer_portal cp WHERE cp.token_hash=p_hash AND cp.revoked_at IS NULL;
+ IF v_business IS NULL THEN RETURN NULL; END IF;
+ PERFORM set_config('app.business_id', v_business::text, true);
  WITH p AS (
   SELECT cp.* FROM app.customer_portal cp WHERE cp.token_hash=p_hash AND cp.revoked_at IS NULL
  ), b AS (
@@ -59,7 +65,9 @@ CREATE FUNCTION app.read_customer_portal(p_hash text) RETURNS jsonb LANGUAGE sql
   'visits', coalesce((SELECT jsonb_agg(jsonb_build_object('startsAt',a.starts_at,'reason',a.reason) ORDER BY a.starts_at)
    FROM app.appointment a JOIN c ON c.business_id=a.business_id AND c.id=a.customer_id
    WHERE a.status='scheduled' AND a.starts_at>now()-interval '2 hours'),'[]'::jsonb)
- ) END
+ ) END INTO v_out;
+ RETURN v_out;
+END
 $$;
 --> statement-breakpoint
 REVOKE ALL ON FUNCTION app.read_customer_portal(text) FROM PUBLIC;
