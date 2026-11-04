@@ -5,6 +5,8 @@ import { withTenant } from "@/db/tenant";
 import { loadFollowUpRules } from "@/domain/money-finder";
 import { readReminderSettings } from "@/domain/payment-reminders";
 import { saveReminderSettingsAction } from "@/server/actions/payment-reminders";
+import { readReviewSettings } from "@/domain/review-requests";
+import { saveReviewSettingsAction } from "@/server/actions/review-requests";
 import { RULE_TEXT } from "@/lib/follow-up-rules";
 import { saveFollowUpRulesAction } from "@/server/actions/tasks";
 import { requireOwnerView } from "@/server/views/shop";
@@ -22,8 +24,15 @@ const MAX: Record<string, number> = {
 
 export default async function FollowUpRulesPage() {
   const s = await requireOwnerView("/app/settings/follow-ups");
-  const [rules, reminders] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([loadFollowUpRules(tx), readReminderSettings(tx)]),
+  const [rules, reminders, reviews] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        loadFollowUpRules(tx),
+        readReminderSettings(tx),
+        readReviewSettings(tx),
+      ]),
   );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -125,6 +134,55 @@ export default async function FollowUpRulesPage() {
             />
             <span>days</span>
           </div>
+        </ActionForm>
+      </section>
+      <section className="card reminder-settings" aria-label="Ask for reviews">
+        <h2>Ask for reviews</h2>
+        <p className="muted">
+          When a customer pays in full, we email them your review link. Each
+          customer is asked at most once every 6 months. You can also tap “Ask
+          for a review” at checkout or on their profile.
+        </p>
+        <ActionForm
+          action={saveReviewSettingsAction}
+          submitLabel="Save review settings"
+          variant="secondary"
+        >
+          <label htmlFor="review-link">Your review link</label>
+          <input
+            id="review-link"
+            name="link"
+            type="url"
+            inputMode="url"
+            maxLength={500}
+            placeholder="https://g.page/r/…/review"
+            defaultValue={reviews.link}
+          />
+          <p className="muted part-hint">
+            In your Google Business Profile, tap “Ask for reviews” and copy the
+            link.
+          </p>
+          <fieldset className="reminder-switch">
+            <legend>Ask automatically after payment</legend>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="true"
+                defaultChecked={reviews.on}
+              />
+              On
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="on"
+                value="false"
+                defaultChecked={!reviews.on}
+              />
+              Off
+            </label>
+          </fieldset>
         </ActionForm>
       </section>
     </HydratedMain>

@@ -42,6 +42,11 @@ import {
 import { requireShopSession } from "@/server/views/shop";
 import { portalLink } from "@/domain/customer-portal";
 import { createPortalLinkAction } from "@/server/actions/customer-portal";
+import { askForReviewAction } from "@/server/actions/review-requests";
+import {
+  lastReviewRequest,
+  readReviewSettings,
+} from "@/domain/review-requests";
 import { CopyLink } from "@/components/copy-link";
 import { ContactPermissions } from "@/components/contact-permissions";
 
@@ -61,6 +66,8 @@ export default async function CustomerDetailPage(props: {
     money,
     attachments,
     portal,
+    reviewLink,
+    lastReview,
   ] = await withTenant(s.businessId, s.actor, async (tx) =>
     Promise.all([
       getCustomerWithVehicles(tx, customerId),
@@ -72,6 +79,8 @@ export default async function CustomerDetailPage(props: {
       customerMoney(tx, customerId),
       listAttachments(tx, customerId),
       portalLink(tx, customerId),
+      readReviewSettings(tx).then((r) => r.link),
+      lastReviewRequest(tx, customerId),
     ]),
   );
   const profileNotes = notes.filter((n) => n.kind === "profile");
@@ -232,6 +241,24 @@ export default async function CustomerDetailPage(props: {
               )
             )}
           </div>
+          {reviewLink && (
+            <div className="portal-box">
+              <h2>Review</h2>
+              <p className="muted">
+                {lastReview
+                  ? `${lastReview.status === "sent" ? "Asked" : "Tried to ask"} ${lastReview.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+                  : "Not asked yet."}
+              </p>
+              {!readOnly && c.email && !c.emailOptedOutAt && (
+                <ActionForm
+                  action={askForReviewAction}
+                  hidden={{ customerId }}
+                  submitLabel="★ Ask for a review"
+                  variant="secondary"
+                />
+              )}
+            </div>
+          )}
         </aside>
         <div className="profile-main">
           {!readOnly && (
