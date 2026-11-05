@@ -5,6 +5,7 @@ import {
   activity,
   customer,
   estimateVersion,
+  jobAssignment,
   recommendation,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
@@ -215,7 +216,7 @@ export async function getJob(tx: TenantTx, id: string) {
     .limit(1);
   return job ?? null;
 }
-export async function listJobs(tx: TenantTx, query = "") {
+export async function listJobs(tx: TenantTx, query = "", assigneeUserId?: string) {
   const latest = tx
     .selectDistinctOn([activity.subjectId], {
       version: activity.id,
@@ -242,12 +243,17 @@ export async function listJobs(tx: TenantTx, query = "") {
     .select()
     .from(latest)
     .where(
-      query.trim()
-        ? or(
-            ilike(latest.title, pattern),
-            sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}::text=${latest.data}->>'customerId' and ${customer.displayName} ilike ${pattern})`,
-          )
-        : undefined,
+      and(
+        query.trim()
+          ? or(
+              ilike(latest.title, pattern),
+              sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}::text=${latest.data}->>'customerId' and ${customer.displayName} ilike ${pattern})`,
+            )
+          : undefined,
+        assigneeUserId
+          ? sql`exists(select 1 from ${jobAssignment} where ${jobAssignment.businessId}=${tx.businessId} and ${jobAssignment.jobId}=${latest.id} and ${jobAssignment.userId}=${assigneeUserId})`
+          : undefined,
+      ),
     )
     .orderBy(desc(latest.createdAt), desc(latest.version))
     .limit(100);
