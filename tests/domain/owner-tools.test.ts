@@ -394,16 +394,14 @@ it("explains cross-month collections, exposes document-only jobs and never guess
     importedJob = randomUUID(),
     token = newToken();
   await f.run((tx) =>
-    tx
-      .insert(estimateVersion)
-      .values({
-        ...original,
-        id: importedId,
-        quoteId: importedJob,
-        createdAt: new Date("2026-10-01T12:00:00Z"),
-        tokenHash: token.hash,
-        shareTokenCiphertext: sealShareToken(token.token),
-      }),
+    tx.insert(estimateVersion).values({
+      ...original,
+      id: importedId,
+      quoteId: importedJob,
+      createdAt: new Date("2026-10-01T12:00:00Z"),
+      tokenHash: token.hash,
+      shareTokenCiphertext: sealShareToken(token.token),
+    }),
   );
   await signTestEstimate(token.token, "Maria", ["part-0", "labor-0"], meta());
   const [auth] = await f.run((tx) =>
@@ -433,16 +431,14 @@ it("explains cross-month collections, exposes document-only jobs and never guess
       .returning(),
   );
   await f.run((tx) =>
-    tx
-      .insert(invoicePayment)
-      .values({
-        businessId: f.t.businessId,
-        createdByUserId: f.t.owner.userId,
-        invoiceId: i.id,
-        amountCents: 31650,
-        method: "cash",
-        createdAt: new Date("2026-11-02T12:00:00Z"),
-      }),
+    tx.insert(invoicePayment).values({
+      businessId: f.t.businessId,
+      createdByUserId: f.t.owner.userId,
+      invoiceId: i.id,
+      amountCents: 31650,
+      method: "cash",
+      createdAt: new Date("2026-11-02T12:00:00Z"),
+    }),
   );
   const nov = await f.run((tx) => getOwnerMoney(tx, "2026-11"));
   expect(nov).toMatchObject({
