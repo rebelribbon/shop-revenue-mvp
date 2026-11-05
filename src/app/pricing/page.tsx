@@ -2,6 +2,9 @@ import Link from "next/link";
 import { HydratedMain } from "@/components/hydrated-main";
 import { subscriptionPriceLabel } from "@/domain/billing";
 import { publicSignupEnabled, TRIAL_DAYS } from "@/lib/billing";
+
+export const dynamic = "force-dynamic";
+
 export default async function Pricing() {
   const price = await subscriptionPriceLabel();
   return (
