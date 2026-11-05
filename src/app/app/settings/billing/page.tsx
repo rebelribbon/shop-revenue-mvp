@@ -25,7 +25,8 @@ export default async function BillingSettings({
   searchParams: Promise<{ started?: string }>;
 }) {
   const s = await requireOwnerView("/app/settings/billing");
-  if ((await searchParams).started)
+  const started = Boolean((await searchParams).started);
+  if (s.actor.type === "user" && s.role === "owner")
     await refreshShopSubscription(s.businessId).catch(() =>
       logger.warn({
         event: "billing.refresh_failed",
@@ -41,7 +42,9 @@ export default async function BillingSettings({
       return { row, access: billingAccess(row, now), now };
     },
   );
-  const price = await subscriptionPriceLabel();
+  const price = await subscriptionPriceLabel(
+    row?.stripeSubscriptionId ?? undefined,
+  );
   const canAct = s.actor.type === "user" && s.role === "owner";
   const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 86400000);
   return (
@@ -51,7 +54,22 @@ export default async function BillingSettings({
         Your Shop Revenue subscription. Stripe keeps your card on file; we never
         see the full number.
       </p>
+      {started && access.kind === "setup" && (
+        <p role="status" className="notice">
+          Your subscription is being confirmed. Refresh this page to check
+          billing again.
+        </p>
+      )}
       <section className="card">
+        {access.kind === "unavailable" && (
+          <>
+            <h2>Billing is temporarily unavailable</h2>
+            <p>
+              Please contact support to restore billing. You can still view and
+              export your records.
+            </p>
+          </>
+        )}
         {access.kind === "off" && (
           <>
             <h2>Billing isn’t turned on yet</h2>

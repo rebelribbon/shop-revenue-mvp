@@ -92,9 +92,14 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/app") ||
     request.nextUrl.pathname.startsWith("/admin") ||
     request.nextUrl.pathname.startsWith("/auth") ||
-    ["/sign-in", "/forgot-password", "/reset-password", "/verify"].includes(
-      request.nextUrl.pathname,
-    )
+    [
+      "/sign-in",
+      "/sign-up",
+      "/start",
+      "/forgot-password",
+      "/reset-password",
+      "/verify",
+    ].includes(request.nextUrl.pathname)
   ) {
     response.headers.set("Cache-Control", "private, no-store");
     response.headers.set("X-Robots-Tag", "noindex, nofollow");

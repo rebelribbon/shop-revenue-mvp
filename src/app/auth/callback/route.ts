@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
     }
   }
   return NextResponse.redirect(
-    new URL("/sign-in?error=recovery", req.nextUrl.origin),
+    new URL(
+      next === "/start"
+        ? "/sign-in?error=confirmation&next=/start"
+        : "/sign-in?error=recovery",
+      req.nextUrl.origin,
+    ),
   );
 }
