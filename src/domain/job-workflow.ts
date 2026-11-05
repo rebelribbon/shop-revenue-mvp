@@ -18,6 +18,8 @@ import { audit, recordActivity, type RequestMeta } from "./records";
 import { activeCheckoutStates } from "./payments";
 import { listServicePlans, type PlanSummary } from "./service-plans";
 import { sql } from "drizzle-orm";
+import { estimateTotals } from "@/lib/estimate-tax";
+import { unbilledLines } from "@/lib/supplement";
 
 export type WorkStatus = "not_recorded" | "in_progress" | "completed";
 export const stageLabels = {
@@ -241,18 +243,31 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
     const issued = invoices.filter(
       (i) => i.quoteId === jobId && !i.servicePlanId,
     );
-    const currentInvoice = issued.find((i) => !i.voidedAt) ?? null;
-    const entries = payments.filter((p) => p.invoiceId === currentInvoice?.id);
+    // The main invoice plus any add-on invoices for supplement work: the
+    // job's balance covers all of them.
+    const activeInvoices = issued.filter((i) => !i.voidedAt);
+    const currentInvoice =
+      activeInvoices.find((i) => !i.supplementOf) ?? activeInvoices[0] ?? null;
+    const addOnInvoices = activeInvoices.filter((i) => i !== currentInvoice);
+    const activeIds = new Set(activeInvoices.map((i) => i.id));
+    const entries = payments.filter((p) => activeIds.has(p.invoiceId));
     const paidCents = entries.reduce((sum, p) => sum + p.amountCents, 0);
-    const balanceCents = currentInvoice
-      ? currentInvoice.totalCents - paidCents
+    const balanceCents =
+      activeInvoices.reduce((sum, i) => sum + i.totalCents, 0) - paidCents;
+    const processing = checkouts.some((c) => activeIds.has(c.invoiceId));
+    const refundPending = refunds.some((r) => activeIds.has(r.invoiceId));
+    // Approved supplement work not on any invoice yet.
+    const supplementLines =
+      currentInvoice && latest?.authorization
+        ? unbilledLines(
+            approved,
+            activeInvoices.flatMap((i) => i.snapshot.lines),
+          )
+        : [];
+    const supplementDueCents = supplementLines.length
+      ? estimateTotals(supplementLines, latest!.estimate.snapshot.taxBps)
+          .totalCents
       : 0;
-    const processing = checkouts.some(
-      (c) => c.invoiceId === currentInvoice?.id,
-    );
-    const refundPending = refunds.some(
-      (r) => r.invoiceId === currentInvoice?.id,
-    );
     const approval = !latest
       ? "Not published"
       : latest.authorization
@@ -282,7 +297,7 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
               ? "ready"
               : work === "in_progress"
                 ? "working"
-                : !currentInvoice
+                : !currentInvoice || supplementDueCents > 0
                   ? "bill"
                   : refundPending ||
                       currentInvoice.disputeOpen ||
@@ -351,6 +366,9 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
       stage,
       approval,
       currentInvoice,
+      addOnInvoices,
+      supplementLines,
+      supplementDueCents,
       entries,
       paidCents,
       balanceCents,
@@ -408,6 +426,10 @@ type Projection = {
   stage: keyof typeof stageLabels;
   approval: string;
   currentInvoice: typeof invoice.$inferSelect | null;
+  // Add-on invoices billing supplement work, and approved work not billed.
+  addOnInvoices: (typeof invoice.$inferSelect)[];
+  supplementLines: (typeof estimateVersion.$inferSelect)["snapshot"]["lines"];
+  supplementDueCents: number;
   entries: (typeof invoicePayment.$inferSelect)[];
   paidCents: number;
   balanceCents: number;

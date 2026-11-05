@@ -41,6 +41,8 @@ export const invoice = app.table(
     disputeOpen: text("dispute_open"),
     // Set when a service plan billed this invoice (many per job).
     servicePlanId: uuid("service_plan_id"),
+    // Add-on invoice for supplement work: the job's main invoice (0049).
+    supplementOf: uuid("supplement_of"),
     // This invoice's layout override, on top of the business default.
     display: jsonb("display"),
     tokenHash: text("token_hash").notNull(),

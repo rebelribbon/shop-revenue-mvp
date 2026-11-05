@@ -20,6 +20,7 @@ import { buildReport, listSavedReports } from "@/domain/report-builder";
 import { presetRange } from "@/domain/reports";
 import { localDateKey } from "@/lib/timezone";
 import { isAutomotive } from "@/lib/business-types";
+import { listParts } from "@/domain/parts";
 
 export default async function HomePage({
   searchParams,
@@ -43,21 +44,31 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, agenda, tasks, summary, recurring, pipe, pinned, won] =
-    await withTenant(s.businessId, s.actor, async (tx) =>
-      Promise.all([
-        getBusinessProfile(tx),
-        todayAgenda(tx),
-        listTasks(tx),
-        s.role === "owner"
-          ? getOwnerMoney(tx, undefined, new Date(), false)
-          : null,
-        s.role === "owner" ? recurringRevenue(tx) : null,
-        loadPipeline(tx),
-        s.role === "owner" ? pinnedReports(tx) : [],
-        s.role === "owner" ? listRevenue(tx) : null,
-      ]),
-    );
+  const [
+    profile,
+    agenda,
+    tasks,
+    summary,
+    recurring,
+    pipe,
+    pinned,
+    won,
+    lowParts,
+  ] = await withTenant(s.businessId, s.actor, async (tx) =>
+    Promise.all([
+      getBusinessProfile(tx),
+      todayAgenda(tx),
+      listTasks(tx),
+      s.role === "owner"
+        ? getOwnerMoney(tx, undefined, new Date(), false)
+        : null,
+      s.role === "owner" ? recurringRevenue(tx) : null,
+      loadPipeline(tx),
+      s.role === "owner" ? pinnedReports(tx) : [],
+      s.role === "owner" ? listRevenue(tx) : null,
+      listParts(tx).then((parts) => parts.filter((p) => p.low).length),
+    ]),
+  );
   const type = profile?.businessType ?? "automotive",
     labels = workspaceLabels(type);
   const tz = agenda.visits.timezone;
@@ -189,6 +200,13 @@ export default async function HomePage({
           </Link>
         ))}
       </div>
+      {lowParts > 0 && (
+        <p className="money-line">
+          <Link href="/app/parts" className="won-back">
+            {lowParts} part{lowParts === 1 ? "" : "s"} low on stock
+          </Link>
+        </p>
+      )}
       {summary && (
         <p className="money-line">
           <Link href="/app/money">

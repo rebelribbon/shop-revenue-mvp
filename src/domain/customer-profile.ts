@@ -71,7 +71,7 @@ export async function listCustomerJobs(tx: TenantTx, customerId: string) {
         amountCents: flow.plan
           ? flow.plan.perVisitCents
           : flow.currentInvoice
-            ? flow.currentInvoice.totalCents
+            ? flow.paidCents + flow.balanceCents
             : (flow.latest?.estimate.snapshot.totalCents ?? null),
         balanceCents: flow.currentInvoice ? flow.balanceCents : 0,
         plan: flow.plan,

@@ -65,13 +65,10 @@ export function JobEditor({
   laborSellRateCents?: number;
   laborCostRateCents?: number;
   commonJobs?: CommonJobChoice[];
-  // Parts catalog: picking one fills the prices and tracks stock.
   catalog?: CatalogPart[];
   canSaveCommon?: boolean;
   today: string;
   defaultRepeats?: boolean;
-  // A "Found an issue" photo being quoted: attach it to the new job and
-  // show it to the customer on the estimate.
   attachMediaId?: string;
 }) {
   const ready = useActionHydration();
@@ -79,7 +76,6 @@ export function JobEditor({
   const [customerId, setCustomer] = useState(initial?.customerId ?? ""),
     [vehicleId, setVehicle] = useState(() => {
       if (initial?.vehicleId) return initial.vehicleId;
-      // One vehicle on file: pick it so there's nothing to choose.
       const own = options.vehicles.filter(
         (v) => v.customerId === initial?.customerId,
       );
@@ -114,7 +110,8 @@ export function JobEditor({
               billing: "per_visit",
             }
           : null,
-    );
+    ),
+    [showCosts, setShowCosts] = useState(false);
   const auto =
     !!initial?.vehicleId ||
     (!initial?.serviceAssetId && isAutomotive(businessType));
@@ -430,11 +427,15 @@ export function JobEditor({
             {p.partItemId &&
               (() => {
                 const c = catalog.find((x) => x.id === p.partItemId);
-                return c ? (
-                  <p className="muted part-hint">
-                    From your list · {c.onHandHundredths / 100} on the shelf
+                if (!c) return null;
+                const onHand = c.onHandHundredths / 100;
+                const low = onHand <= 0;
+                return (
+                  <p className={low ? "notice" : "muted part-hint"}>
+                    From your list · {onHand} on the shelf
+                    {low && " — low or out of stock"}
                   </p>
-                ) : null;
+                );
               })()}
             {numberField("Unit selling price", p.unitPriceCents, (v) =>
               setParts(
@@ -443,10 +444,8 @@ export function JobEditor({
                 ),
               ),
             )}
-            <details>
-              <summary>
-                {auto ? "Part" : "Material"} costs &amp; quantity
-              </summary>
+            <details open={showCosts}>
+              <summary>{auto ? "Part" : "Material"} costs & quantity</summary>
               {numberField("Quantity", Math.round(p.quantity * 100), (v) =>
                 setParts(
                   parts.map((x, n) =>
@@ -548,8 +547,8 @@ export function JobEditor({
                 ),
               ),
             )}
-            <details>
-              <summary>Labor time &amp; cost</summary>
+            <details open={showCosts}>
+              <summary>Labor time & cost</summary>
               {numberField(
                 "Actual hours",
                 l.actualHoursHundredths,
@@ -619,35 +618,44 @@ export function JobEditor({
         </button>
         {totals ? (
           <>
-            <p>
+            <p className="money-total" style={{ margin: "0.75rem 0" }}>
               Quoted subtotal: <strong>{money(totals.subtotalCents)}</strong>
-            </p>
-            <details>
-              <summary>Job costs &amp; profit</summary>
-              {totals.estimatedCostCents === null ||
-              totals.estimatedGrossProfitCents === null ? (
-                <p>
-                  Profit unknown: add your cost for{" "}
-                  {totals.missingCosts === 1
-                    ? "1 line"
-                    : `${totals.missingCosts} lines`}{" "}
-                  to see it.
-                </p>
+              {" · "}
+              {totals.estimatedGrossProfitCents === null ? (
+                <span className="muted">
+                  Gross profit unknown — add costs to see it
+                  {totals.missingCosts > 0 &&
+                    ` (${totals.missingCosts} ${totals.missingCosts === 1 ? "line" : "lines"} missing)`}
+                </span>
               ) : (
-                <p>
-                  Estimated cost: {money(totals.estimatedCostCents)} · Gross
-                  profit: {money(totals.estimatedGrossProfitCents)}
-                </p>
+                <strong>
+                  Gross profit: {money(totals.estimatedGrossProfitCents)}
+                  {totals.estimatedMarginBps !== null &&
+                    ` (${(totals.estimatedMarginBps / 100).toFixed(1)}%)`}
+                </strong>
               )}
-              <p>
+            </p>
+            <label style={{ display: "block", marginBottom: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={showCosts}
+                onChange={(e) => setShowCosts(e.target.checked)}
+              />{" "}
+              Show costs on every line
+            </label>
+            {showCosts && (
+              <p className="muted">
+                Estimated cost:{" "}
+                {totals.estimatedCostCents === null
+                  ? "unknown"
+                  : money(totals.estimatedCostCents)}
+                {" · "}
                 Actual cost:{" "}
                 {totals.actualCostCents === null
-                  ? totals.missingCosts
-                    ? "Add missing costs and actual hours"
-                    : "Add actual hours"
+                  ? "add actual hours"
                   : money(totals.actualCostCents)}
               </p>
-            </details>
+            )}
           </>
         ) : (
           <p className="notice error">

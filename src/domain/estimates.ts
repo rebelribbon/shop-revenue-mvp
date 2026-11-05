@@ -1,3 +1,4 @@
+import { changedBilledLines } from "@/lib/supplement";
 import { shareRecipient } from "./document-sharing";
 import { partLineCents } from "./job-costing";
 import { sealShareToken } from "@/lib/share-token";
@@ -65,20 +66,26 @@ export async function freezeEstimate(
       "CONFLICT",
       "The job changed. Refresh before publishing.",
     );
-  const [issued] = await tx
-    .select({ id: invoice.id })
+  const issuedInvoices = await tx
+    .select({
+      id: invoice.id,
+      number: invoice.number,
+      snapshot: invoice.snapshot,
+    })
     .from(invoice)
     .where(
       and(
         eq(invoice.businessId, tx.businessId),
         eq(invoice.quoteId, input.jobId),
         sql`${invoice.voidedAt} IS NULL`,
+        sql`${invoice.servicePlanId} IS NULL`,
       ),
     );
-  if (issued)
+  const issued = issuedInvoices[0];
+  if (issued && !input.supplementReason.trim())
     throw new AppError(
-      "CONFLICT",
-      "This job has an issued invoice. Create a new job for additional work.",
+      "VALIDATION",
+      "This job already has an invoice. Explain the additional work in the change reason to publish a supplement estimate.",
     );
   const data = jobInput.parse(job.data);
   const c = await getCustomerWithVehicles(tx, data.customerId);
@@ -176,6 +183,24 @@ export async function freezeEstimate(
     input.taxBps > 2000
   )
     throw new AppError("VALIDATION", "Enter a tax rate between 0% and 20%.");
+  // A supplement adds work; it can't change work already invoiced (that's
+  // "Correct and re-issue"), so nothing gets billed twice.
+  if (issued) {
+    const changed = changedBilledLines(
+      issuedInvoices.flatMap((i) => i.snapshot.lines),
+      lines,
+    );
+    if (changed.length)
+      throw new AppError(
+        "VALIDATION",
+        `“${changed[0].description}” is already on invoice #${issued.number}. A supplement can only add work; to change billed work, void and re-issue the invoice.`,
+      );
+    if (issued.snapshot.taxBps !== input.taxBps)
+      throw new AppError(
+        "VALIDATION",
+        `Use the same tax rate as invoice #${issued.number} (${issued.snapshot.taxBps / 100}%).`,
+      );
+  }
   const { subtotalCents, taxCents } = estimateTotals(lines, input.taxBps);
   const photos = await estimatePhotos(tx, input.jobId);
   const snapshot: EstimateSnapshot = {

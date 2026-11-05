@@ -101,11 +101,11 @@ it("invoices only approved frozen work and maintains an immutable, tenant-safe p
         jobId: j.id,
         expectedJobVersion: job.version,
         taxBps: 0,
-        supplementReason: "After invoice",
+        supplementReason: "",
         terms: "",
       }),
     ),
-  ).rejects.toThrow(/issued invoice/);
+  ).rejects.toThrow(/already has an invoice/);
   const p = await withTenant(a.businessId, a.owner.actor, (tx) =>
     recordInvoicePayment(tx, meta(), {
       invoiceId: i.id,
