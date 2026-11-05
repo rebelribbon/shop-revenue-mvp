@@ -21,14 +21,6 @@ async function adminActor() {
 }
 const planInput = z
   .object({
-    monthlyCost: z.coerce
-      .number()
-      .positive()
-      .max(100000)
-      .refine(
-        (n) => Math.abs(n * 100 - Math.round(n * 100)) < 0.000001,
-        "Use at most two decimal places.",
-      ),
     clientRequestId: z.uuid(),
   })
   .strict();
@@ -42,17 +34,12 @@ export async function configurePlanAction(
     if (!parsed.success)
       throw new AppError(
         "VALIDATION",
-        "Enter a valid monthly cost and refresh the form before retrying.",
+        "Refresh the subscription form before retrying.",
       );
     const input = parsed.data;
     return {
       ok: true,
-      data: await configureSubscriptionPlan(
-        actor,
-        meta,
-        Math.round(input.monthlyCost * 100),
-        input.clientRequestId,
-      ),
+      data: await configureSubscriptionPlan(actor, meta, input.clientRequestId),
     };
   } catch (e) {
     return {

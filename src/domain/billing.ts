@@ -135,6 +135,7 @@ export async function startSubscription(shop: Shop, meta: RequestMeta) {
     if (LIVE_STATES.has(locked.status)) return null;
     if (
       locked.checkoutAttemptId &&
+      locked.checkoutPriceId === price.id &&
       locked.checkoutExpiresAt &&
       locked.checkoutExpiresAt > new Date()
     )
