@@ -1,4 +1,4 @@
-// Team access (D15, S28): Owner + one Staff login. inviteStaff, resendInvite,
+// Team access (D15, S28): Owner + Staff + Technician logins. inviteStaff, resendInvite,
 // removeStaff are Owner-only; acceptInvite activates an invited membership for
 // the signed-in person whose verified email or phone matches the invite.
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -10,10 +10,12 @@ import { audit, recordActivity, type RequestMeta } from "./records";
 
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+export type MembershipRole = "owner" | "staff" | "technician";
+
 // The caller's role, read inside the transaction (never trusted from input).
 export async function currentMemberRole(
   tx: TenantTx,
-): Promise<"owner" | "staff" | null> {
+): Promise<MembershipRole | null> {
   if (tx.actor.type !== "user" || !tx.actor.id) return null;
   const [m] = await tx
     .select({ role: membership.role })
@@ -25,7 +27,7 @@ export async function currentMemberRole(
         eq(membership.status, "active"),
       ),
     );
-  return (m?.role as "owner" | "staff") ?? null;
+  return (m?.role as MembershipRole) ?? null;
 }
 
 export async function assertOwner(tx: TenantTx) {
@@ -89,8 +91,8 @@ export async function listTeam(tx: TenantTx) {
     .orderBy(membership.createdAt);
 }
 
-// Mirrors the cap in app.membership_guard (db/migrations/0024).
-export const MAX_STAFF_SEATS = 10;
+// Mirrors the cap in app.membership_guard (db/migrations/0050).
+export const MAX_TEAM_SEATS = 10;
 
 export type InviteDelivery = {
   membershipId: string;
@@ -103,25 +105,33 @@ export type InviteDelivery = {
 export async function inviteStaff(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { name: string; email?: string | null; phoneE164?: string | null },
+  input: {
+    name: string;
+    email?: string | null;
+    phoneE164?: string | null;
+    role?: "staff" | "technician";
+  },
 ): Promise<InviteDelivery> {
   await assertOwner(tx);
   if (!input.email && !input.phoneE164)
     throw new AppError("VALIDATION", "Add an email or a mobile number.");
+  const role = input.role ?? "staff";
+  if (role !== "staff" && role !== "technician")
+    throw new AppError("VALIDATION", "Role must be staff or technician.");
   const [{ seats }] = await tx
     .select({ seats: sql<number>`count(*)::int` })
     .from(membership)
     .where(
       and(
         eq(membership.businessId, tx.businessId),
-        eq(membership.role, "staff"),
+        inArray(membership.role, ["staff", "technician"]),
         inArray(membership.status, ["invited", "active"]),
       ),
     );
-  if (seats >= MAX_STAFF_SEATS) {
+  if (seats >= MAX_TEAM_SEATS) {
     throw new AppError(
       "CONFLICT",
-      `You can have up to ${MAX_STAFF_SEATS} staff logins. Remove one to invite someone else.`,
+      `You can have up to ${MAX_TEAM_SEATS} team logins. Remove one to invite someone else.`,
     );
   }
   const invite = newToken();
@@ -130,7 +140,7 @@ export async function inviteStaff(
     .values({
       businessId: tx.businessId,
       createdByUserId: tx.actor.id,
-      role: "staff",
+      role,
       status: "invited",
       inviteName: input.name,
       inviteEmail: input.email ?? null,
@@ -143,13 +153,13 @@ export async function inviteStaff(
     action: "membership.invited",
     targetType: "membership",
     targetId: m.id,
-    after: { role: "staff" },
+    after: { role },
   });
   await recordActivity(tx, {
     kind: "team.invited",
     subjectType: "membership",
     subjectId: m.id,
-    summary: "Staff login invited",
+    summary: role === "technician" ? "Technician login invited" : "Staff login invited",
   });
   return {
     membershipId: m.id,
@@ -176,7 +186,7 @@ export async function resendInvite(
       ),
     );
   if (!m) throw notFound("That invite");
-  if (m.role === "staff") await assertOwner(tx);
+  if (m.role === "staff" || m.role === "technician") await assertOwner(tx);
   else if (tx.actor.type !== "internal") throw forbidden();
   if (m.status !== "invited")
     throw new AppError(
@@ -210,7 +220,7 @@ export async function removeStaff(
   meta: RequestMeta,
   membershipId: string,
 ) {
-  // Owner request, or our support/admin resetting the Staff login on the owner's behalf.
+  // Owner request, or our support/admin resetting the login on the owner's behalf.
   if (tx.actor.type !== "internal") await assertOwner(tx);
   const [m] = await tx
     .select()
@@ -240,7 +250,7 @@ export async function removeStaff(
     kind: "team.removed",
     subjectType: "membership",
     subjectId: m.id,
-    summary: "Staff login removed",
+    summary: m.role === "technician" ? "Technician login removed" : "Staff login removed",
   });
 }
 
@@ -337,7 +347,9 @@ export async function acceptInvite(
         summary:
           inv.role === "owner"
             ? "Owner signed in for the first time"
-            : "Staff login accepted",
+            : inv.role === "technician"
+              ? "Technician login accepted"
+              : "Staff login accepted",
       });
       return { businessId: inv.businessId, userId: u.id, role: inv.role };
     },
