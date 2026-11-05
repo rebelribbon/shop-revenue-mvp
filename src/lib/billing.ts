@@ -29,6 +29,8 @@ export function billingEnabled(env = process.env) {
   return Boolean(
     env.STRIPE_SECRET_KEY &&
     env.STRIPE_BILLING_WEBHOOK_SECRET &&
+    (env.STRIPE_SUBSCRIPTION_PRICE_ID ||
+      env.STRIPE_SUBSCRIPTION_LOOKUP_KEY === "shop_revenue_monthly") &&
     (env.PAYMENTS_BASE_URL || env.APP_BASE_URL),
   );
 }

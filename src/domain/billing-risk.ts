@@ -57,7 +57,10 @@ export async function applyBillingRiskEvent(event: Stripe.Event) {
       );
     if (prior) return true;
     const [subscription] = await tx
-      .select({ id: shopSubscription.stripeSubscriptionId })
+      .select({
+        id: shopSubscription.id,
+        stripeId: shopSubscription.stripeSubscriptionId,
+      })
       .from(shopSubscription)
       .where(eq(shopSubscription.businessId, businessId));
     await audit(
@@ -65,12 +68,13 @@ export async function applyBillingRiskEvent(event: Stripe.Event) {
       { requestId: event.id },
       {
         action,
-        targetType: "stripe_charge",
-        targetId: charge.id,
+        targetType: "shop_subscription",
+        targetId: subscription?.id ?? null,
         after: {
           eventType: event.type,
           customerId: customer,
-          currentSubscriptionId: subscription?.id,
+          currentSubscriptionId: subscription?.stripeId,
+          stripeChargeId: charge.id,
           amountCents: charge.amount,
           refundedCents: charge.amount_refunded,
           currency: charge.currency,

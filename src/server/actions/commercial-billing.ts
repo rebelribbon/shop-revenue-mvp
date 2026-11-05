@@ -38,7 +38,13 @@ export async function configurePlanAction(
   const meta = await getRequestMeta();
   try {
     const actor = await adminActor();
-    const input = planInput.parse(raw);
+    const parsed = planInput.safeParse(raw);
+    if (!parsed.success)
+      throw new AppError(
+        "VALIDATION",
+        "Enter a valid monthly cost and refresh the form before retrying.",
+      );
+    const input = parsed.data;
     return {
       ok: true,
       data: await configureSubscriptionPlan(
@@ -65,10 +71,16 @@ export async function createDiscountCodeAction(
   const meta = await getRequestMeta();
   try {
     const actor = await adminActor();
-    const input = discountCodeInput
+    const parsed = discountCodeInput
       .extend({ clientRequestId: z.uuid() })
       .strict()
-      .parse(raw);
+      .safeParse(raw);
+    if (!parsed.success)
+      throw new AppError(
+        "VALIDATION",
+        "Check the discount code, percentage, redemption limit and expiry date.",
+      );
+    const input = parsed.data;
     return {
       ok: true,
       data: await createDiscountCode(actor, meta, input, input.clientRequestId),

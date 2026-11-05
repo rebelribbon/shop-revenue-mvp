@@ -34,7 +34,7 @@ export function SignupForm() {
           {state.message}
         </p>
       )}
-      {state?.ok && (
+      {state?.ready && (
         <p>
           <Link href="/start">Continue to set up your shop</Link>
         </p>

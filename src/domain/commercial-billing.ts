@@ -87,6 +87,20 @@ export async function configureSubscriptionPlan(
       { idempotencyKey: "shop-revenue-product-v1" },
     );
   }
+  if (!(await billingPortalConfiguration(stripe)))
+    await stripe.billingPortal.configurations.create(
+      {
+        business_profile: { headline: "Manage your Shop Revenue subscription" },
+        default_return_url: `${paymentBaseUrl()}/app/settings/billing`,
+        features: {
+          invoice_history: { enabled: true },
+          payment_method_update: { enabled: true },
+          subscription_cancel: { enabled: true, mode: "at_period_end" },
+        },
+        metadata: { application: "shop_revenue" },
+      },
+      { idempotencyKey: "shop-revenue-portal-v1" },
+    );
   const price = await stripe.prices.create(
     {
       product: PRODUCT_ID,
@@ -103,20 +117,6 @@ export async function configureSubscriptionPlan(
     },
     { idempotencyKey: `shop-plan-${requestId}` },
   );
-  if (!(await billingPortalConfiguration(stripe)))
-    await stripe.billingPortal.configurations.create(
-      {
-        business_profile: { headline: "Manage your Shop Revenue subscription" },
-        default_return_url: `${paymentBaseUrl()}/app/settings/billing`,
-        features: {
-          invoice_history: { enabled: true },
-          payment_method_update: { enabled: true },
-          subscription_cancel: { enabled: true, mode: "at_period_end" },
-        },
-        metadata: { application: "shop_revenue" },
-      },
-      { idempotencyKey: "shop-revenue-portal-v1" },
-    );
   await withAdmin(actor, (tx) =>
     auditPlatform(
       tx,
@@ -125,8 +125,9 @@ export async function configureSubscriptionPlan(
       {
         action: "billing.plan_configured",
         targetType: "stripe_price",
-        targetId: price.id,
+        targetId: null,
         after: {
+          stripePriceId: price.id,
           monthlyCostCents,
           monthlyPriceCents: amount,
           appliesTo: "new_subscriptions",
@@ -199,8 +200,8 @@ export async function createDiscountCode(
       {
         action: "billing.discount_created",
         targetType: "stripe_promotion_code",
-        targetId: promo.id,
-        after: input,
+        targetId: null,
+        after: { ...input, stripePromotionCodeId: promo.id },
       },
     ),
   );

@@ -11,6 +11,8 @@ import { getRequestMeta } from "@/server/request";
 import { toActionError } from "./define";
 import type { AuthFormState } from "./auth";
 
+export type SignupFormState = AuthFormState & { ready?: boolean };
+
 const accountInput = z.object({
   email: z.email(),
   password: z.string().min(12).max(128),
@@ -20,9 +22,9 @@ function requireSignup() {
     throw new AppError("NOT_ELIGIBLE", "New shop signup is not open yet.");
 }
 export async function signUpOwner(
-  _: AuthFormState | null,
+  _: SignupFormState | null,
   form: FormData,
-): Promise<AuthFormState> {
+): Promise<SignupFormState> {
   const meta = await getRequestMeta();
   try {
     requireSignup();
@@ -55,6 +57,7 @@ export async function signUpOwner(
       return {
         ok: true,
         message: "Your login is ready. Continue to set up your shop.",
+        ready: true,
       };
     return {
       ok: true,

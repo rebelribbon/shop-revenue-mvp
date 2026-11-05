@@ -38,6 +38,12 @@ cancel an otherwise active subscription.
 
 The production database still needs the pending migration chain, including 0051.
 Stage and verify it with the existing release workflow and restore evidence.
+Supabase Auth must allow email signup and require email confirmations. Add the
+canonical `/auth/callback` return URL to its redirect allowlist. The local stack
+enables confirmations and the browser test opens the actual Mailpit email.
+For confirmation across browsers, the signup email template can use
+`/auth/confirm?token_hash={{ .TokenHash }}&type=email` on the app origin.
+
 The code does not supply missing branch protection, runtime role credentials,
 transactional email, live Stripe key, independent review or backup evidence.
 No public enrollment or production charges were activated by this revision.

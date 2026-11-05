@@ -91,12 +91,14 @@ const keys = [
   "STRIPE_SECRET_KEY",
   "STRIPE_BILLING_WEBHOOK_SECRET",
   "STRIPE_SUBSCRIPTION_PRICE_ID",
+  "STRIPE_SUBSCRIPTION_LOOKUP_KEY",
   "PAYMENTS_BASE_URL",
 ];
 beforeEach(() => {
   saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   Object.assign(process.env, {
     APP_ENV: "test",
+    STRIPE_SUBSCRIPTION_LOOKUP_KEY: "shop_revenue_monthly",
     STRIPE_SECRET_KEY: "sk_test_synthetic",
     STRIPE_BILLING_WEBHOOK_SECRET: "whsec_synthetic",
     PAYMENTS_BASE_URL: "https://billing.example.test",

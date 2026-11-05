@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { auditUX } from "./ux-audit";
-import { E2E_PASSWORD } from "./helpers";
+import { E2E_PASSWORD, waitForEmail } from "./helpers";
 
 test("a new owner creates their own isolated shop and reaches subscription billing", async ({
   page,
@@ -10,31 +10,22 @@ test("a new owner creates their own isolated shop and reaches subscription billi
     "Self-service signup is gated until billing is configured.",
   );
   const stamp = `${info.project.name}-${Date.now()}`;
+  const email = `new-owner-${stamp}@example.test`;
   await page.goto("/sign-up");
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill(`new-owner-${stamp}@example.test`);
+  await page.getByLabel("Email", { exact: true }).fill(email);
   await page
     .getByLabel("Create a password", { exact: true })
     .fill(E2E_PASSWORD);
   await auditUX(page);
+  const sentAt = Date.now();
   await page.getByRole("button", { name: "Create login", exact: true }).click();
-  await expect
-    .poll(
-      async () =>
-        page.url().endsWith("/start") ||
-        (await page
-          .getByRole("link", {
-            name: "Continue to set up your shop",
-            exact: true,
-          })
-          .isVisible()),
-    )
-    .toBe(true);
-  if (!page.url().endsWith("/start"))
-    await page
-      .getByRole("link", { name: "Continue to set up your shop", exact: true })
-      .click();
+  await expect(page.getByRole("status")).toContainText("Check your email");
+  const confirmation = await waitForEmail(
+    email,
+    sentAt,
+    /http:\/\/127\.0\.0\.1:54321\/auth\/v1\/verify\?[^\s"'<>]+/,
+  );
+  await page.goto(confirmation);
   await expect(page).toHaveURL(/\/start$/);
   await page.getByLabel("Your name", { exact: true }).fill("New Owner");
   await page
