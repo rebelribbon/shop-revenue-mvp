@@ -175,7 +175,15 @@ export default async function HomePage({
           !profile.addressLine1) && (
           <p className="setup-line">
             <Link href="/app/settings/business">
-              Finish setting up your business →
+              Add{" "}
+              {[
+                !profile?.businessTypeSelected && "business type",
+                !profile?.phoneE164 && "business phone",
+                !profile?.addressLine1 && "business address",
+              ]
+                .filter(Boolean)
+                .join(" and ")}{" "}
+              →
             </Link>
           </p>
         )}

@@ -1,10 +1,12 @@
 "use server";
 import { z } from "zod";
 import { setTargetMargin, startClock, stopClock } from "@/domain/job-profit";
+import { requireAssignedJob } from "@/domain/job-access";
 import { defineShopAction } from "./define";
 
 export const startClockAction = defineShopAction({
   name: "startClock",
+  technicianAccess: requireAssignedJob,
   input: z.object({ jobId: z.uuid() }),
   run: ({ tx, meta }, i) => startClock(tx, meta, i.jobId),
   persist: (r) => ({ ...r, message: "Clock started." }),
@@ -12,6 +14,7 @@ export const startClockAction = defineShopAction({
 
 export const stopClockAction = defineShopAction({
   name: "stopClock",
+  technicianAccess: async () => {},
   input: z.object({}),
   run: ({ tx, meta }) => stopClock(tx, meta),
   persist: (r) => ({ ...r, message: "Clock stopped." }),

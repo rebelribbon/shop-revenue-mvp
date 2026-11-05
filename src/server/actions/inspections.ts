@@ -5,10 +5,12 @@ import {
   inspectionItems,
   saveInspection,
 } from "@/domain/inspections";
+import { requireAssignedJob } from "@/domain/job-access";
 import { defineShopAction } from "./define";
 
 export const saveInspectionAction = defineShopAction({
   name: "saveInspection",
+  technicianAccess: requireAssignedJob,
   input: z.object({ jobId: z.uuid(), items: z.string().max(100000) }),
   run: ({ tx, meta }, i) =>
     saveInspection(tx, meta, {
@@ -25,6 +27,7 @@ export const saveInspectionAction = defineShopAction({
 
 export const addInspectionToJobAction = defineShopAction({
   name: "addInspectionToJob",
+  technicianAccess: requireAssignedJob,
   input: z.object({ jobId: z.uuid() }),
   run: ({ tx, meta }, i) => addInspectionToJob(tx, meta, i.jobId),
   persist: (r) => ({

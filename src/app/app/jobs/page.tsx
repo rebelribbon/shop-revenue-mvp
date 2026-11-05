@@ -247,7 +247,7 @@ export default async function JobsPage({
   const flow = selected ? data.workflows.get(selected.id) : undefined;
   if ((edit || job) && !selected) notFound();
   const editing = !!(
-    edit ||
+    (edit && !selected?.documentOnly) ||
     creating === "1" ||
     customerId ||
     sourceRecoveryItemId ||
@@ -397,6 +397,13 @@ export default async function JobsPage({
                   ← {customerName}
                 </Link>
               </p>
+              {selected.documentOnly && (
+                <p className="notice">
+                  This older job was recovered from its estimate. Its customer
+                  documents and payments are available, but its original parts
+                  and labor costs were not recorded. Profit is unknown.
+                </p>
+              )}
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
@@ -456,7 +463,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {s.actor.type === "support" ? (
+                {s.actor.type === "support" || s.role === "technician" ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
@@ -865,11 +872,18 @@ export default async function JobsPage({
                 {tab === "work" && (
                   <>
                     <section aria-label="Job costs">
-                      <h3>Costs &amp; profit</h3>
+                      <h3>Job-sheet costs &amp; profit</h3>
+                      <p className="muted">
+                        This uses the current job sheet, recorded time and
+                        estimated card fees. Money and Reports use approved
+                        invoice lines and quote-time costs instead.
+                      </p>
                       <div className="money-actions">
-                        <Link href={`/app/jobs?edit=${selected.id}`}>
-                          Edit job / actual hours
-                        </Link>
+                        {!selected.documentOnly && (
+                          <Link href={`/app/jobs?edit=${selected.id}`}>
+                            Edit job / actual hours
+                          </Link>
+                        )}
                         <Link href={`/app/estimates?jobId=${selected.id}`}>
                           Estimate history
                         </Link>
@@ -958,19 +972,21 @@ export default async function JobsPage({
                           work.
                         </p>
                       )}
-                      {s.actor.type !== "support" && (
-                        <EstimatePublisher
-                          taxRateBps={
-                            flow?.currentInvoice
-                              ? flow.currentInvoice.snapshot.taxBps
-                              : data.profile?.taxRateBps
-                          }
-                          jobId={selected.id}
-                          version={selected.version}
-                          existingVersion={flow?.latest?.estimate.version}
-                          pendingChanges={flow?.changedSinceEstimate}
-                        />
-                      )}
+                      {s.actor.type !== "support" &&
+                        s.role !== "technician" &&
+                        !selected.documentOnly && (
+                          <EstimatePublisher
+                            taxRateBps={
+                              flow?.currentInvoice
+                                ? flow.currentInvoice.snapshot.taxBps
+                                : data.profile?.taxRateBps
+                            }
+                            jobId={selected.id}
+                            version={selected.version}
+                            existingVersion={flow?.latest?.estimate.version}
+                            pendingChanges={flow?.changedSinceEstimate}
+                          />
+                        )}
                     </section>
                   </>
                 )}

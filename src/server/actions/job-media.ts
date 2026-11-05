@@ -7,10 +7,16 @@ import {
   prepareMediaUpload,
   updateMedia,
 } from "@/domain/job-media";
+import {
+  requireAssignedCustomer,
+  requireAssignedUpload,
+  requireAssignedMedia,
+} from "@/domain/job-access";
 import { defineShopAction } from "./define";
 
 export const prepareMediaUploadAction = defineShopAction({
   name: "prepareMediaUpload",
+  technicianAccess: requireAssignedCustomer,
   input: z.object({
     customerId: z.uuid(),
     contentType: z.string().max(100),
@@ -23,6 +29,7 @@ export const prepareMediaUploadAction = defineShopAction({
 
 const finish = defineShopAction({
   name: "finishMediaUpload",
+  technicianAccess: requireAssignedUpload,
   input: z.object({
     fileId: z.uuid(),
     customerId: z.uuid(),
@@ -44,6 +51,7 @@ export async function finishMediaUploadAction(input: unknown) {
 
 export const updateMediaAction = defineShopAction({
   name: "updateMedia",
+  technicianAccess: requireAssignedMedia,
   input: z.object({
     mediaId: z.uuid(),
     tag: z.enum(MEDIA_TAGS).optional(),

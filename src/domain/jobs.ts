@@ -1,4 +1,5 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { currentMemberRole } from "./membership";
 import { AppError } from "@/lib/errors";
 import { z } from "zod";
 import {
@@ -73,6 +74,14 @@ export const jobInput = z.object({
 export type JobInput = z.infer<typeof jobInput>;
 export async function createJob(tx: TenantTx, input: JobInput) {
   const data = jobInput.parse(input);
+  if (
+    (await currentMemberRole(tx)) === "technician" &&
+    (!data.jobId || !(await getJob(tx, data.jobId)))
+  )
+    throw new AppError(
+      "FORBIDDEN",
+      "Technicians can update only assigned jobs.",
+    );
   await getCustomerWithVehicles(tx, data.customerId);
   if (Boolean(data.vehicleId) === Boolean(data.serviceAssetId))
     throw new AppError(
@@ -195,6 +204,19 @@ export async function createJob(tx: TenantTx, input: JobInput) {
 }
 export async function getJob(tx: TenantTx, id: string) {
   if (!z.uuid().safeParse(id).success) return null;
+  if ((await currentMemberRole(tx)) === "technician") {
+    const [assignment] = await tx
+      .select()
+      .from(jobAssignment)
+      .where(
+        and(
+          eq(jobAssignment.businessId, tx.businessId),
+          eq(jobAssignment.jobId, id),
+          eq(jobAssignment.userId, tx.actor.id!),
+        ),
+      );
+    if (!assignment) return null;
+  }
   const [job] = await tx
     .select({
       version: activity.id,
@@ -214,13 +236,16 @@ export async function getJob(tx: TenantTx, id: string) {
     )
     .orderBy(desc(activity.occurredAt), desc(activity.id))
     .limit(1);
-  return job ?? null;
+  if (job) return { ...job, documentOnly: false };
+  return (await documentJobs(tx, id))[0] ?? null;
 }
 export async function listJobs(
   tx: TenantTx,
   query = "",
   assigneeUserId?: string,
 ) {
+  if ((await currentMemberRole(tx)) === "technician")
+    assigneeUserId = tx.actor.id!;
   const latest = tx
     .selectDistinctOn([activity.subjectId], {
       version: activity.id,
@@ -243,7 +268,7 @@ export async function listJobs(
     .trim()
     .slice(0, 100)
     .replace(/[\\%_]/g, "\\$&")}%`;
-  return tx
+  const costed = await tx
     .select()
     .from(latest)
     .where(
@@ -261,4 +286,81 @@ export async function listJobs(
     )
     .orderBy(desc(latest.createdAt), desc(latest.version))
     .limit(100);
+  const documents = await documentJobs(tx, undefined, query, assigneeUserId);
+  return [...costed.map((j) => ({ ...j, documentOnly: false })), ...documents]
+    .sort(
+      (a, b) =>
+        b.createdAt.getTime() - a.createdAt.getTime() ||
+        b.version.localeCompare(a.version),
+    )
+    .slice(0, 100);
+}
+
+// Older imported estimates can have no job.costed activity. Read their frozen
+// documents without inventing a cost history or modifying customer evidence.
+async function documentJobs(
+  tx: TenantTx,
+  id?: string,
+  query = "",
+  assignee?: string,
+) {
+  const pattern = `%${query
+    .trim()
+    .slice(0, 100)
+    .replace(/[\\%_]/g, "\\$&")}%`;
+  const latest = tx
+    .selectDistinctOn([estimateVersion.quoteId])
+    .from(estimateVersion)
+    .where(
+      and(
+        eq(estimateVersion.businessId, tx.businessId),
+        id ? eq(estimateVersion.quoteId, id) : undefined,
+        sql`not exists(select 1 from ${activity} where ${activity.businessId}=${tx.businessId} and ${activity.subjectId}=${estimateVersion.quoteId} and ${activity.kind}='job.costed' and ${activity.subjectType}='job')`,
+        query.trim()
+          ? sql`(${estimateVersion.snapshot}->>'title' ilike ${pattern} or ${estimateVersion.snapshot}->>'customerName' ilike ${pattern})`
+          : undefined,
+        assignee
+          ? sql`exists(select 1 from ${jobAssignment} where ${jobAssignment.businessId}=${tx.businessId} and ${jobAssignment.jobId}=${estimateVersion.quoteId} and ${jobAssignment.userId}=${assignee})`
+          : undefined,
+      ),
+    )
+    .orderBy(estimateVersion.quoteId, desc(estimateVersion.version))
+    .as("document_jobs");
+  const rows = await tx
+    .select()
+    .from(latest)
+    .orderBy(desc(latest.createdAt), desc(latest.id))
+    .limit(100);
+  return rows.map((v) => ({
+    id: v.quoteId,
+    version: v.id,
+    title: v.snapshot.title,
+    createdAt: v.createdAt,
+    documentOnly: true,
+    data: {
+      customerId: v.customerId,
+      vehicleId: v.vehicleId ?? undefined,
+      serviceAssetId: v.serviceAssetId ?? undefined,
+      title: v.snapshot.title,
+      parts: v.snapshot.lines
+        .filter((l) => l.kind === "part")
+        .map((l) => ({
+          description: l.description,
+          quantity: l.quantity,
+          unitPriceCents: l.unitPriceCents,
+          unitCostCents: null,
+          taxable: l.taxable,
+        })),
+      labor: v.snapshot.lines
+        .filter((l) => l.kind === "labor")
+        .map((l) => ({
+          description: l.description,
+          estimatedHoursHundredths: Math.round(l.quantity * 100),
+          actualHoursHundredths: null,
+          sellRateCents: l.unitPriceCents,
+          costRateCents: null,
+          taxable: l.taxable,
+        })),
+    },
+  }));
 }
