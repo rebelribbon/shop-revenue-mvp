@@ -15,7 +15,10 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   await box.getByRole("button", { name: "Save reminders" }).click();
   await expect(box.getByText(/Reminders on: every 2 days/)).toBeVisible();
   await page.reload();
-  await expect(page.locator("main")).toHaveAttribute("data-ux-ready", "true");
+  await expect(page.locator("main#main-content")).toHaveAttribute(
+    "data-ux-ready",
+    "true",
+  );
   await expect(box.getByRole("radio", { name: "On" })).toBeChecked();
   await expect(box.getByLabel("Send one every")).toHaveValue("2");
   await box.getByRole("radio", { name: "Off" }).check();
@@ -81,6 +84,13 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
     deposits.getByText("Deposits on: 30% on approved work of $750 or more."),
   ).toBeVisible();
   await auditUX(page, true);
+  // Reload so the saved setting is what the form starts from.
+  await page.reload();
+  await expect(page.locator("main#main-content")).toHaveAttribute(
+    "data-ux-ready",
+    "true",
+  );
+  await expect(deposits.getByRole("radio", { name: "On" })).toBeChecked();
   await deposits.getByRole("radio", { name: "Off" }).check();
   await deposits.getByRole("button", { name: "Save deposits" }).click();
   await expect(deposits.getByText("Deposits are off.")).toBeVisible();

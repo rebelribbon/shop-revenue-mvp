@@ -1,3 +1,4 @@
+import { unbilledLines } from "@/lib/supplement";
 import { reminderHistory } from "@/domain/payment-reminders";
 import { sendReminderAction } from "@/server/actions/payment-reminders";
 import { InvoiceDesigner } from "@/components/invoice-designer";
@@ -87,14 +88,31 @@ export default async function InvoicesPage({
         a.findIndex((x) => x.quoteId === e.quoteId) === i &&
         e.authorization &&
         e.authorization.approvedLineIds.length > 0 &&
-        !data.invoices.some(
-          (inv) => inv.quoteId === e.quoteId && !inv.voidedAt,
-        ),
+        unbilledLines(
+          e.snapshot.lines.filter((l) =>
+            e.authorization!.approvedLineIds.includes(l.id),
+          ),
+          data.invoices
+            .filter(
+              (inv) =>
+                inv.quoteId === e.quoteId &&
+                !inv.voidedAt &&
+                !inv.servicePlanId,
+            )
+            .flatMap((inv) => inv.snapshot.lines),
+        ).length > 0,
     )
     .map((e) => ({
       id: e.id,
       jobId: e.quoteId,
-      label: `${e.snapshot.title} · ${e.snapshot.customerName}`,
+      label: `${e.snapshot.title} · ${e.snapshot.customerName}${
+        data.invoices.some(
+          (inv) =>
+            inv.quoteId === e.quoteId && !inv.voidedAt && !inv.servicePlanId,
+        )
+          ? " · extra work"
+          : ""
+      }`,
     }));
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -382,15 +400,13 @@ export default async function InvoicesPage({
                 ) && (
                   <InvoicePaymentForm id={i.id} balanceCents={i.balanceCents} />
                 )}{" "}
-              {s.role === "owner" &&
-                !i.voidedAt &&
-                i.paidCents > 0 && (
-                  <p className="notice">
-                    To void this invoice, reverse the recorded payments below first
-                    (total {formatMoney(i.paidCents)}). Once the balance is restored,
-                    the void option appears.
-                  </p>
-                )}
+              {s.role === "owner" && !i.voidedAt && i.paidCents > 0 && (
+                <p className="notice">
+                  To void this invoice, reverse the recorded payments below
+                  first (total {formatMoney(i.paidCents)}). Once the balance is
+                  restored, the void option appears.
+                </p>
+              )}
               {s.role === "owner" &&
                 !i.voidedAt &&
                 i.paidCents === 0 &&
@@ -416,7 +432,11 @@ export default async function InvoicesPage({
                 )}
               {s.role === "owner" && !i.voidedAt && (
                 <p className="muted">
-                  To correct a typo or change the price, void this invoice (after reversing any payments), edit the job, and send a new estimate version. The customer re-authorizes only if the authorized total goes up. Then issue a new invoice from the corrected version.
+                  To correct a typo or change the price, void this invoice
+                  (after reversing any payments), edit the job, and send a new
+                  estimate version. The customer re-authorizes only if the
+                  authorized total goes up. Then issue a new invoice from the
+                  corrected version.
                 </p>
               )}
             </details>

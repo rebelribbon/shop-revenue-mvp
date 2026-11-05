@@ -252,7 +252,7 @@ export default async function JobsPage({
   const totalOf = (id: string) => {
     const f = data.workflows.get(id)!;
     return (
-      f.currentInvoice?.totalCents ??
+      (f.currentInvoice ? f.paidCents + f.balanceCents : undefined) ??
       f.latest?.estimate.snapshot.totalCents ??
       0
     );
@@ -547,16 +547,39 @@ export default async function JobsPage({
                         variant="secondary"
                       />
                     )}
-                    {flow?.currentInvoice &&
-                      !flow.currentInvoice.voidedAt &&
-                      flow.balanceCents > 0 && (
+                    {flow &&
+                      flow.supplementDueCents > 0 &&
+                      flow.latest?.authorization && (
                         <Link
                           className="btn secondary"
-                          href={`/app/checkout?invoiceId=${flow.currentInvoice.id}`}
+                          href={`/app/invoices?new=1&versionId=${flow.latest.estimate.id}`}
                         >
-                          Check out · {money(flow.balanceCents)}
+                          Bill extra work · {money(flow.supplementDueCents)}
                         </Link>
                       )}
+                    {flow?.currentInvoice &&
+                      flow.balanceCents > 0 &&
+                      (() => {
+                        // The first of the job's invoices with money due.
+                        const due = [
+                          flow.currentInvoice,
+                          ...flow.addOnInvoices,
+                        ].find(
+                          (i) =>
+                            i.totalCents >
+                            flow.entries
+                              .filter((p) => p.invoiceId === i.id)
+                              .reduce((t, p) => t + p.amountCents, 0),
+                        );
+                        return due ? (
+                          <Link
+                            className="btn secondary"
+                            href={`/app/checkout?invoiceId=${due.id}`}
+                          >
+                            Check out · {money(flow.balanceCents)}
+                          </Link>
+                        ) : null;
+                      })()}
                     {(
                       [
                         ["note", "+ Note"],
@@ -915,19 +938,28 @@ export default async function JobsPage({
                     </section>
                     <section className="record-details" id="job-estimate">
                       <h3>Customer estimate</h3>
-                      {!flow?.currentInvoice && s.actor.type !== "support" ? (
+                      {flow?.currentInvoice && (
+                        <p className="notice" data-supplement-note>
+                          Invoice #{flow.currentInvoice.number} is issued.
+                          Publishing now sends a <strong>supplement</strong>:
+                          add the extra work to the job sheet and leave billed
+                          lines as they are. Once the customer approves, “Bill
+                          extra work” issues an add-on invoice for just the new
+                          work.
+                        </p>
+                      )}
+                      {s.actor.type !== "support" && (
                         <EstimatePublisher
-                          taxRateBps={data.profile?.taxRateBps}
+                          taxRateBps={
+                            flow?.currentInvoice
+                              ? flow.currentInvoice.snapshot.taxBps
+                              : data.profile?.taxRateBps
+                          }
                           jobId={selected.id}
                           version={selected.version}
                           existingVersion={flow?.latest?.estimate.version}
                           pendingChanges={flow?.changedSinceEstimate}
                         />
-                      ) : (
-                        <p>
-                          Issued invoice and authorization stay linked to this
-                          job. Use a separate job for additional billable work.
-                        </p>
                       )}
                     </section>
                   </>

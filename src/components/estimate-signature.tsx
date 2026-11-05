@@ -82,7 +82,12 @@ export function EstimateSignature({
         setPending(true);
         try {
           const sigToSend = useTyped
-            ? [[{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }]]
+            ? [
+                [
+                  { x: 0.1, y: 0.5 },
+                  { x: 0.9, y: 0.5 },
+                ],
+              ]
             : signature;
           const r = await signEstimateAction({
             token,
@@ -138,8 +143,8 @@ export function EstimateSignature({
         <p>
           Approving{" "}
           <strong>
-            {approved.length} of {s.lines.length} items · {money(totals.totalCents)} of{" "}
-            {money(fullTotals.totalCents)}
+            {approved.length} of {s.lines.length} items ·{" "}
+            {money(totals.totalCents)} of {money(fullTotals.totalCents)}
           </strong>{" "}
           (including tax)
         </p>

@@ -44,22 +44,31 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
-  const [profile, agenda, tasks, summary, recurring, pipe, pinned, won, lowParts] =
-    await withTenant(s.businessId, s.actor, async (tx) =>
-      Promise.all([
-        getBusinessProfile(tx),
-        todayAgenda(tx),
-        listTasks(tx),
-        s.role === "owner"
-          ? getOwnerMoney(tx, undefined, new Date(), false)
-          : null,
-        s.role === "owner" ? recurringRevenue(tx) : null,
-        loadPipeline(tx),
-        s.role === "owner" ? pinnedReports(tx) : [],
-        s.role === "owner" ? listRevenue(tx) : null,
-        listParts(tx).then((parts) => parts.filter((p) => p.low).length),
-      ]),
-    );
+  const [
+    profile,
+    agenda,
+    tasks,
+    summary,
+    recurring,
+    pipe,
+    pinned,
+    won,
+    lowParts,
+  ] = await withTenant(s.businessId, s.actor, async (tx) =>
+    Promise.all([
+      getBusinessProfile(tx),
+      todayAgenda(tx),
+      listTasks(tx),
+      s.role === "owner"
+        ? getOwnerMoney(tx, undefined, new Date(), false)
+        : null,
+      s.role === "owner" ? recurringRevenue(tx) : null,
+      loadPipeline(tx),
+      s.role === "owner" ? pinnedReports(tx) : [],
+      s.role === "owner" ? listRevenue(tx) : null,
+      listParts(tx).then((parts) => parts.filter((p) => p.low).length),
+    ]),
+  );
   const type = profile?.businessType ?? "automotive",
     labels = workspaceLabels(type);
   const tz = agenda.visits.timezone;
