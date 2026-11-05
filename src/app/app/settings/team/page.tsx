@@ -5,7 +5,7 @@ import { withTenant } from "@/db/tenant";
 import {
   inviteDeliveryStatus,
   listTeam,
-  MAX_STAFF_SEATS,
+  MAX_TEAM_SEATS,
 } from "@/domain/membership";
 import {
   inviteStaffAction,
@@ -44,9 +44,16 @@ export default async function TeamPage() {
       return { text: "Invite sent", warn: false };
     return { text: "Invited", warn: false };
   };
+  const roleLabel = (role: string) => {
+    if (role === "owner") return "Owner";
+    if (role === "technician") return "Technician";
+    return "Staff";
+  };
   const isOwner = s.role === "owner";
-  const staffSeats = team.filter((m) => m.role === "staff").length;
-  const seatsLeft = MAX_STAFF_SEATS - staffSeats;
+  const teamSeats = team.filter(
+    (m) => m.role === "staff" || m.role === "technician",
+  ).length;
+  const seatsLeft = MAX_TEAM_SEATS - teamSeats;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Team</h1>
@@ -72,7 +79,7 @@ export default async function TeamPage() {
                       formatPhone(m.phoneE164 ?? m.invitePhoneE164)}
                   </span>
                 </td>
-                <td>{m.role === "owner" ? "Owner" : "Staff"}</td>
+                <td>{roleLabel(m.role)}</td>
                 <td>
                   <span
                     className={statusLabel(m).warn ? "pill pill-warn" : "pill"}
@@ -82,15 +89,16 @@ export default async function TeamPage() {
                 </td>
                 {isOwner && (
                   <td>
-                    {m.role === "staff" && m.status === "invited" && (
-                      <ActionForm
-                        action={resendInviteAction}
-                        hidden={{ membershipId: m.id }}
-                        submitLabel="Resend invite"
-                        variant="secondary"
-                      />
-                    )}
-                    {m.role === "staff" && (
+                    {(m.role === "staff" || m.role === "technician") &&
+                      m.status === "invited" && (
+                        <ActionForm
+                          action={resendInviteAction}
+                          hidden={{ membershipId: m.id }}
+                          submitLabel="Resend invite"
+                          variant="secondary"
+                        />
+                      )}
+                    {(m.role === "staff" || m.role === "technician") && (
                       <ActionForm
                         action={removeStaffAction}
                         hidden={{ membershipId: m.id }}
@@ -110,12 +118,17 @@ export default async function TeamPage() {
         <div className="card">
           <h2>Invite a teammate</h2>
           <p className="muted">
-            Each person gets their own login. {seatsLeft} of {MAX_STAFF_SEATS}{" "}
-            staff logins left.
+            Each person gets their own login. {seatsLeft} of {MAX_TEAM_SEATS}{" "}
+            team logins left. Staff run the front office; technicians work assigned jobs.
           </p>
           <ActionForm action={inviteStaffAction} submitLabel="Send invite">
             <label htmlFor="name">Name</label>
             <input id="name" name="name" required maxLength={100} />
+            <label htmlFor="role">Role</label>
+            <select id="role" name="role" defaultValue="staff" required>
+              <option value="staff">Staff (front office)</option>
+              <option value="technician">Technician (assigned jobs)</option>
+            </select>
             <label htmlFor="email">Email</label>
             <input id="email" name="email" type="email" />
             <label htmlFor="phone">or mobile number</label>
@@ -125,7 +138,7 @@ export default async function TeamPage() {
       )}
       {isOwner && seatsLeft <= 0 && (
         <p className="muted">
-          You have {MAX_STAFF_SEATS} staff logins, the most allowed. Remove one
+          You have {MAX_TEAM_SEATS} team logins, the most allowed. Remove one
           to invite someone else.
         </p>
       )}
