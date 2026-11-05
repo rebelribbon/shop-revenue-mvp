@@ -18,7 +18,8 @@ limit. Owners manage their cards, invoices and cancellation in Stripe's portal.
 Public enrollment verifies the Supabase email identity before creating a shop.
 Creation is serialized per identity, with one owner shop under concurrent retries.
 Removed or suspended owner records require support rather than another signup.
-Owner login MFA continues through the existing production security flow.
+All hosted shop and internal logins require authenticator verification before
+accessing records (see the November 5 mandatory-MFA revision).
 Checkout reserves a persisted idempotency key so repeated starts reuse one
 session. A Stripe reconciliation before checkout prevents another trial or
 subscription after a late lifecycle webhook. Production becomes read-only if

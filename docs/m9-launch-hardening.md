@@ -4,7 +4,7 @@ Status: implementation under verification; commercial release is blocked until t
 
 ## Implemented
 
-- Owner authenticator enrollment and verification; production owners and internal operators require MFA. Enrolled hosted accounts must verify on new sessions. No real owner factor is enrolled automatically.
+- Authenticator enrollment and verification for owners, staff, technicians and internal operators. Every hosted login requires MFA before shop/admin records, actions or direct downloads. No real user's factor is enrolled automatically.
 - Atomic, hashed database throttles for sign-in, password reset, invitation setup and authenticator verification; password changes revoke other sessions.
 - Same-origin redirects, sign-out origin checks, private page caching, security headers, public-link log masking and sanitized diagnostics.
 - Owner-only streamed NDJSON exports for fifteen datasets, explicit tenant checks, audit trail, pagination and credential filtering. Exports contain customer information and costs and must be stored privately; they are not restore backups.

@@ -1,17 +1,10 @@
 import { AppError } from "@/lib/errors";
-import { mfaNeeded } from "@/lib/mfa-policy";
+import { mfaNeeded, mfaRequired } from "@/lib/mfa-policy";
 import { supabaseServer } from "./supabase";
-export async function sessionNeedsMfa(
-  role: "owner" | "staff" | "technician" | "support" | "admin",
-  force = false,
-) {
+export async function sessionNeedsMfa(force = false) {
   const env = process.env.APP_ENV ?? "local";
-  if (
-    ["local", "test"].includes(env) &&
-    !force &&
-    process.env.REQUIRE_OWNER_MFA !== "true"
-  )
-    return false;
+  const required = mfaRequired(process.env, force);
+  if (["local", "test"].includes(env) && !required) return false;
   const supabase = await supabaseServer();
   const { data, error } =
     await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -20,17 +13,10 @@ export async function sessionNeedsMfa(
       "PROVIDER_UNAVAILABLE",
       "Security verification is unavailable. Sign in again.",
     );
-  const required =
-    force ||
-    (role === "owner" &&
-      (env === "production" || process.env.REQUIRE_OWNER_MFA === "true")) ||
-    (["admin", "support"].includes(role) && env === "production");
   return mfaNeeded(required, data.currentLevel, data.nextLevel);
 }
-export async function assertSessionAssurance(
-  role: "owner" | "staff" | "technician" | "support" | "admin",
-) {
-  if (await sessionNeedsMfa(role))
+export async function assertSessionAssurance() {
+  if (await sessionNeedsMfa())
     throw new AppError(
       "FORBIDDEN",
       "Verify your authenticator code before continuing.",

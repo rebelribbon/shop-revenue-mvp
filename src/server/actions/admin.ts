@@ -46,7 +46,7 @@ function defineAdminAction<S extends z.ZodObject, R>(cfg: {
       const me = await getInternalUser();
       if (!me)
         throw new AppError("FORBIDDEN", "Please sign in to the admin console.");
-      await assertSessionAssurance(me.role);
+      await assertSessionAssurance();
       if (cfg.role === "admin" && me.role !== "admin")
         throw new AppError("FORBIDDEN", "Admins only.");
       const parsed = schema.safeParse(raw);

@@ -78,7 +78,7 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
         );
         throw new AppError("FORBIDDEN", "View-as is read-only.");
       }
-      await assertSessionAssurance(session.role);
+      await assertSessionAssurance();
       const parsed = schema.safeParse(trimStrings(raw));
       if (!parsed.success) {
         const fields = Object.fromEntries(

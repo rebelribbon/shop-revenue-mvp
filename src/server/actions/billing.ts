@@ -15,7 +15,7 @@ async function ownerSession() {
     state.session.role !== "owner"
   )
     throw new AppError("FORBIDDEN", "Only the shop owner can manage billing.");
-  await assertSessionAssurance(state.session.role);
+  await assertSessionAssurance();
   return state.session;
 }
 

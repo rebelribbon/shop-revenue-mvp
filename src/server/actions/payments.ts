@@ -3,6 +3,7 @@ import { z } from "zod";
 import { cookies } from "next/headers";
 import { safeStripeError } from "@/lib/stripe";
 import { getSessionState } from "@/server/auth/session";
+import { assertSessionAssurance } from "@/server/auth/assurance";
 import { getRequestMeta } from "@/server/request";
 import { toActionError, type ActionResult } from "./define";
 import { AppError } from "@/lib/errors";
@@ -25,6 +26,7 @@ async function shopContext(owner = false) {
         ? "Only the shop owner can do this."
         : "Please sign in with a shop account.",
     );
+  await assertSessionAssurance();
   return state.session;
 }
 export async function connectStripeAction(): Promise<
