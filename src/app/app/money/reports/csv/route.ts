@@ -16,7 +16,12 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET(req: Request) {
   const state = await getSessionState();
-  if (state.kind !== "shop" || state.session.role === "staff")
+  // Owner (or support view-as) only: staff and technicians can't export.
+  if (
+    state.kind !== "shop" ||
+    state.session.role === "staff" ||
+    state.session.role === "technician"
+  )
     return new Response("Not found", { status: 404 });
   const q = new URL(req.url).searchParams;
   if (q.get("custom") === "1") {

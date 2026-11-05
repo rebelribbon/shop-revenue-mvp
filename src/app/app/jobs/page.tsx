@@ -105,13 +105,23 @@ export default async function JobsPage({
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
+  // Technicians see only the jobs they're on.
+  const techOnly =
+    s.role === "technician" && s.actor.type === "user"
+      ? (s.actor.id ?? undefined)
+      : undefined;
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
+    const wanted = edit ?? job;
+    const allowed =
+      !wanted ||
+      !techOnly ||
+      (await jobAssignees(tx, [wanted])).get(wanted) === techOnly;
     const page = {
-      selected: edit || job ? await getJob(tx, (edit ?? job)!) : null,
+      selected: wanted && allowed ? await getJob(tx, wanted) : null,
       profile: await getBusinessProfile(tx),
       commonJobs: await listCommonJobs(tx),
       options: await listAppointmentChoices(tx),
-      jobs: await listJobs(tx, q ?? ""),
+      jobs: await listJobs(tx, q ?? "", techOnly),
       pipeline: boardView ? await loadPipeline(tx) : null,
       recommendations: await tx
         .select({
@@ -1012,7 +1022,7 @@ export default async function JobsPage({
               List
             </Link>
           </div>
-          {data.pipeline && data.techs.length > 1 && (
+          {data.pipeline && data.techs.length > 1 && !techOnly && (
             <div
               className="view-toggle tech-filter"
               role="group"
@@ -1039,8 +1049,9 @@ export default async function JobsPage({
           {data.pipeline ? (
             <div className="job-board" aria-label="Jobs board">
               {STAGES.map((stage) => {
-                const want =
-                  tech === "me"
+                const want = techOnly
+                  ? techOnly
+                  : tech === "me"
                     ? s.actor.id
                     : tech === "none"
                       ? null

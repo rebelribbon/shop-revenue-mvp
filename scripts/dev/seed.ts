@@ -116,6 +116,27 @@ async function tenant(label: "A" | "B", admin: { id: string }) {
     )
   )
     throw new Error("staff membership not active");
+  // Shop B also has a technician login (sees only assigned jobs).
+  if (label === "B") {
+    const tech = { email: "tech.b@shop-b.test", name: "Tech B" };
+    const tinv = await withTenant(
+      created.businessId,
+      { type: "user", id: o.userId, authSubject: ownerAuth },
+      (tx) =>
+        inviteStaff(tx, meta, {
+          name: tech.name,
+          email: tech.email,
+          role: "technician",
+        }),
+    );
+    const techAuth = await authUser(tech.email);
+    await acceptInvite(meta, tinv.token, {
+      authSubject: techAuth,
+      email: tech.email,
+      phoneE164: null,
+      displayName: tech.name,
+    });
+  }
   return created.businessId;
 }
 
@@ -141,6 +162,7 @@ console.log(
     "local E2E auth uses email + password for owner, staff, admin and support users",
     "owner: owner.a@shop-a.test / owner.b@shop-b.test",
     "staff: staff.a@shop-a.test / staff.b@shop-b.test",
+    "technician: tech.b@shop-b.test",
     "admin: admin.one@example.test, admin.two@example.test, support.one@example.test",
   ].join("\n"),
 );

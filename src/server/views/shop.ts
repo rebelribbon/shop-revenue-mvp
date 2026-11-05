@@ -16,7 +16,7 @@ export async function requireShopSession(path: string): Promise<ShopSession> {
 
 export async function requireOwnerView(path: string): Promise<ShopSession> {
   const s = await requireShopSession(path);
-  // Support view-as may read what the owner sees; Staff may not.
-  if (s.role === "staff") redirect("/app?denied=1");
+  // Support view-as may read what the owner sees; Staff and Technicians may not.
+  if (s.role === "staff" || s.role === "technician") redirect("/app?denied=1");
   return s;
 }

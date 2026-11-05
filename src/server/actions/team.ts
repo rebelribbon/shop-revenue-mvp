@@ -70,6 +70,7 @@ const inviteInput = z.object({
   name: z.string().min(1).max(100),
   email: z.string().max(254).optional().or(z.literal("")),
   phone: z.string().max(40).optional().or(z.literal("")),
+  role: z.enum(["staff", "technician"]).optional(),
 });
 
 export const inviteStaffAction = defineShopAction({
@@ -81,6 +82,7 @@ export const inviteStaffAction = defineShopAction({
       name: input.name,
       email: input.email ? normalizeEmail(input.email) : null,
       phoneE164: input.phone ? normalizePhone(input.phone) : null,
+      role: input.role,
     }),
   persist: delivered,
   afterCommit: (d, session, meta) => sendAndRecord(d, session, meta),

@@ -351,6 +351,13 @@
       "when": 1795619731998,
       "tag": "0049_supplement_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795706131998,
+      "tag": "0050_technician_role",
+      "breakpoints": true
     }
   ]
 }

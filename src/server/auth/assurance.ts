@@ -2,7 +2,7 @@ import { AppError } from "@/lib/errors";
 import { mfaNeeded } from "@/lib/mfa-policy";
 import { supabaseServer } from "./supabase";
 export async function sessionNeedsMfa(
-  role: "owner" | "staff" | "support" | "admin",
+  role: "owner" | "staff" | "technician" | "support" | "admin",
   force = false,
 ) {
   const env = process.env.APP_ENV ?? "local";
@@ -28,7 +28,7 @@ export async function sessionNeedsMfa(
   return mfaNeeded(required, data.currentLevel, data.nextLevel);
 }
 export async function assertSessionAssurance(
-  role: "owner" | "staff" | "support" | "admin",
+  role: "owner" | "staff" | "technician" | "support" | "admin",
 ) {
   if (await sessionNeedsMfa(role))
     throw new AppError(
