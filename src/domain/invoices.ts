@@ -1,6 +1,7 @@
+import { unbilledLines } from "@/lib/supplement";
 import { shareRecipient } from "./document-sharing";
 import { sealShareToken } from "@/lib/share-token";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, isNull, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   business,
   estimateAuthorization,
@@ -69,9 +70,34 @@ export async function issueInvoice(
       "VALIDATION",
       "The customer must authorize this estimate before it can be invoiced.",
     );
-  const lines = v.snapshot.lines.filter((l) =>
+  const approvedLines = v.snapshot.lines.filter((l) =>
     authorization.approvedLineIds.includes(l.id),
   );
+  // Already invoiced: bill only the newly approved work, on an add-on
+  // invoice linked to the main one.
+  const active = await tx
+    .select()
+    .from(invoice)
+    .where(
+      and(
+        eq(invoice.businessId, tx.businessId),
+        eq(invoice.quoteId, v.quoteId),
+        isNull(invoice.voidedAt),
+        isNull(invoice.servicePlanId),
+      ),
+    );
+  const main = active.find((i) => !i.supplementOf) ?? null;
+  const lines = main
+    ? unbilledLines(
+        approvedLines,
+        active.flatMap((i) => i.snapshot.lines),
+      )
+    : approvedLines;
+  if (main && !lines.length)
+    throw new AppError(
+      "INVALID_TRANSITION",
+      `Everything the customer approved is already on invoice #${main.number}.`,
+    );
   const { subtotalCents, taxCents, totalCents } = estimateTotals(
     lines,
     v.snapshot.taxBps,
@@ -116,13 +142,16 @@ export async function issueInvoice(
       quoteId: v.quoteId,
       versionId: v.id,
       authorizationId: authorization.id,
+      supplementOf: main?.id ?? null,
       customerId: v.customerId,
       vehicleId: v.vehicleId,
       serviceAssetId: v.serviceAssetId,
       snapshot,
       totalCents,
       dueOn: input.dueOn,
-      invoiceTerms: input.terms,
+      invoiceTerms:
+        input.terms ||
+        (main ? `Additional work, added to invoice #${main.number}.` : ""),
       tokenHash: token.hash,
       shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 90 * 86400000),
@@ -138,13 +167,16 @@ export async function issueInvoice(
       totalCents,
       versionId: v.id,
       authorizationId: authorization.id,
+      ...(main ? { supplementOf: main.id } : {}),
     },
   });
   await recordActivity(tx, {
     kind: "invoice.issued",
     subjectType: v.vehicleId ? "vehicle" : "customer",
     subjectId: v.vehicleId ?? v.customerId,
-    summary: `Invoice #${row.number} issued`,
+    summary: main
+      ? `Add-on invoice #${row.number} issued (extra work on #${main.number})`
+      : `Invoice #${row.number} issued`,
     data: { invoiceId: row.id },
   });
   return {
@@ -306,6 +338,22 @@ export async function voidInvoice(
 ) {
   await assertOwner(tx);
   await requireInvoice(tx, id);
+  const [addOn] = await tx
+    .select({ number: invoice.number })
+    .from(invoice)
+    .where(
+      and(
+        eq(invoice.businessId, tx.businessId),
+        eq(invoice.supplementOf, id),
+        isNull(invoice.voidedAt),
+      ),
+    )
+    .limit(1);
+  if (addOn)
+    throw new AppError(
+      "INVALID_TRANSITION",
+      `Void add-on invoice #${addOn.number} first; it bills extra work on this one.`,
+    );
   const [row] = await tx
     .update(invoice)
     .set({ voidedAt: new Date(), voidReason: reason })

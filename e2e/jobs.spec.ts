@@ -194,6 +194,14 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     page.getByText(/Reminder emailed to job-|couldn’t be sent right now/),
   ).toBeVisible();
   await auditUX(page);
+  // Invoiced job: extra work goes on a supplement, not a new job.
+  await page.goto(`${jobUrl.split("&")[0]}&tab=work`);
+  await expect(page.locator("[data-supplement-note]")).toContainText(
+    "supplement",
+  );
+  await expect(page.getByText(/Use a separate job/)).toHaveCount(0);
+  await auditUX(page);
+  await page.goto(invoiceUrl);
   const invoice = page
     .getByRole("heading", {
       name: new RegExp(`Invoice #.*Brakes ${info.project.name}`),

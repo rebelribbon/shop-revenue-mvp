@@ -445,9 +445,7 @@ export function JobEditor({
               ),
             )}
             <details open={showCosts}>
-              <summary>
-                {auto ? "Part" : "Material"} costs & quantity
-              </summary>
+              <summary>{auto ? "Part" : "Material"} costs & quantity</summary>
               {numberField("Quantity", Math.round(p.quantity * 100), (v) =>
                 setParts(
                   parts.map((x, n) =>
