@@ -1,8 +1,8 @@
 import type { TenantTx } from "@/db/tenant";
 import { notFound } from "@/lib/errors";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { file, jobMedia } from "@/db/schema";
-import { getJob, listJobs } from "./jobs";
+import { getJob } from "./jobs";
 
 export async function requireAssignedJob(
   tx: TenantTx,
@@ -16,12 +16,14 @@ export async function requireAssignedCustomer(
   tx: TenantTx,
   input: { customerId: string },
 ) {
-  if (
-    !(await listJobs(tx)).some(
-      (j) => (j.data as { customerId: string }).customerId === input.customerId,
-    )
-  )
-    throw notFound("That assigned customer");
+  const result = await tx.execute(sql`select 1 from app.job_assignment a
+    where a.business_id=${tx.businessId} and a.user_id=${tx.actor.id}
+    and (exists(select 1 from app.activity j where j.business_id=a.business_id
+      and j.subject_id=a.job_id and j.kind='job.costed' and j.subject_type='job'
+      and j.data->>'customerId'=${input.customerId})
+    or exists(select 1 from app.estimate_version e where e.business_id=a.business_id
+      and e.quote_id=a.job_id and e.customer_id=${input.customerId}::uuid)) limit 1`);
+  if (!result.rows.length) throw notFound("That assigned customer");
 }
 export async function requireAssignedUpload(
   tx: TenantTx,

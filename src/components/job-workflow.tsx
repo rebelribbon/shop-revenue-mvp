@@ -152,12 +152,17 @@ export function JobWorkflow({
   jobId,
   timezone,
   readOnly,
+  technicianOnly = false,
+  canEditEstimate = true,
 }: {
   flow: Workflow;
   jobId: string;
   timezone: string;
   readOnly: boolean;
+  technicianOnly?: boolean;
+  canEditEstimate?: boolean;
 }) {
+  const office = !readOnly && !technicianOnly;
   const e = flow.latest?.estimate,
     a = flow.latest?.authorization,
     i = flow.currentInvoice;
@@ -221,7 +226,7 @@ export function JobWorkflow({
               ? `You changed this job after ${e.snapshot.customerName} approved it. They haven’t approved the changes, and an invoice will only bill what they approved.`
               : `You changed this job after sending the estimate. ${e.snapshot.customerName} is still seeing the old prices.`}
           </p>
-          {!readOnly && (
+          {office && canEditEstimate && (
             <Link href={`/app/jobs?job=${jobId}#job-estimate`}>
               Send updated estimate
             </Link>
@@ -248,9 +253,19 @@ export function JobWorkflow({
         </p>
       )}
       <section aria-label="Next step">
-        {flow.stage === "draft" ? null : flow.stage === "awaiting" ? (
+        {technicianOnly ? (
+          flow.stage === "ready" && !flow.repeats ? (
+            progress("in_progress", "Start job")
+          ) : flow.stage === "working" ? (
+            progress("completed", "Mark job finished")
+          ) : (
+            <Link className="btn primary" data-page-primary href="/app/my-day">
+              Back to my day
+            </Link>
+          )
+        ) : flow.stage === "draft" ? null : flow.stage === "awaiting" ? (
           <>
-            {!readOnly && e && (
+            {office && e && (
               <DocumentShare
                 id={e.id}
                 kind="estimate"
@@ -260,7 +275,7 @@ export function JobWorkflow({
             )}
             <RefreshJobStatus />
           </>
-        ) : flow.stage === "declined" ? (
+        ) : flow.stage === "declined" && canEditEstimate ? (
           <Link
             className="btn primary"
             data-page-primary
@@ -269,9 +284,13 @@ export function JobWorkflow({
             Change estimate
           </Link>
         ) : flow.plan ? (
-          <PlanPanel plan={flow.plan} timezone={timezone} readOnly={readOnly} />
+          <PlanPanel
+            plan={flow.plan}
+            timezone={timezone}
+            readOnly={readOnly || technicianOnly}
+          />
         ) : flow.stage === "ready" && flow.repeats ? (
-          !readOnly && (
+          office && (
             <ActionForm
               action={startServicePlanAction}
               variant="primary"
@@ -349,7 +368,7 @@ export function JobWorkflow({
             <p>Waiting for the customer to choose their work.</p>
           )}
           <Link href={`/app/estimates?jobId=${jobId}`}>Estimate history</Link>
-          {!readOnly && (
+          {office && (
             <ActionForm
               action={recordJobSharingAction}
               hidden={{ jobId, documentId: e.id, kind: "estimate" }}
@@ -378,8 +397,8 @@ export function JobWorkflow({
           <Link href={`/app/invoices?invoiceId=${i.id}`}>
             Payments and receipt
           </Link>
-          {!readOnly && <DocumentShare id={i.id} kind="invoice" />}
-          {!readOnly && (
+          {office && <DocumentShare id={i.id} kind="invoice" />}
+          {office && (
             <ActionForm
               action={recordJobSharingAction}
               hidden={{ jobId, documentId: i.id, kind: "invoice" }}
