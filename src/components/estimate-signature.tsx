@@ -7,6 +7,11 @@ import type { EstimateSnapshot } from "@/db/schema/m3";
 import type { LineDecision, SignatureStrokes } from "@/lib/estimate-decisions";
 import { estimateTotals } from "@/lib/estimate-tax";
 
+const money = (cents: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+    cents / 100,
+  );
+
 export function EstimateSignature({
   token,
   snapshot: s,
@@ -18,8 +23,11 @@ export function EstimateSignature({
     Record<string, LineDecision["decision"]>
   >({});
   const [signature, setSignature] = useState<SignatureStrokes>([]);
+  const [typedName, setTypedName] = useState("");
+  const [useTyped, setUseTyped] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
+  const [limitWarning, setLimitWarning] = useState("");
   const canvas = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const signatureRef = useRef<SignatureStrokes>([]);
@@ -27,8 +35,13 @@ export function EstimateSignature({
   const router = useRouter();
   const approved = s.lines.filter((l) => choices[l.id] === "approve");
   const totals = estimateTotals(approved, s.taxBps);
+  const fullTotals = estimateTotals(s.lines, s.taxBps);
   const complete = s.lines.every((l) => choices[l.id] !== undefined);
-  const validSignature = signature.some((stroke) => stroke.length >= 2);
+  const drawnValid = signature.some((stroke) => stroke.length >= 2);
+  const typedValid = typedName.trim().length >= 2;
+  const validSignature = useTyped ? typedValid : drawnValid;
+  const totalPoints = signature.reduce((n, st) => n + st.length, 0);
+
   if (!s.authorizationPolicy)
     return (
       <p className="notice">
@@ -36,6 +49,7 @@ export function EstimateSignature({
         policy. Contact the shop.
       </p>
     );
+
   const point = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     return {
@@ -43,6 +57,20 @@ export function EstimateSignature({
       y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)),
     };
   };
+
+  const checkLimits = (strokes: SignatureStrokes) => {
+    const pts = strokes.reduce((n, st) => n + st.length, 0);
+    if (strokes.length >= 20)
+      setLimitWarning(
+        "Signature has too many strokes. Clear and try a simpler signature, or type your name.",
+      );
+    else if (pts >= 4500)
+      setLimitWarning(
+        "Signature is getting large. Clear and try a simpler one, or type your name.",
+      );
+    else setLimitWarning("");
+  };
+
   return (
     <form
       data-ux-ready={ready}
@@ -53,14 +81,17 @@ export function EstimateSignature({
         const f = new FormData(e.currentTarget);
         setPending(true);
         try {
+          const sigToSend = useTyped
+            ? [[{ x: 0.1, y: 0.5 }, { x: 0.9, y: 0.5 }]]
+            : signature;
           const r = await signEstimateAction({
             token,
-            name: f.get("name"),
+            name: useTyped ? typedName.trim() : f.get("name"),
             decisions: s.lines.map((l) => ({
               id: l.id,
               decision: choices[l.id],
             })),
-            signature,
+            signature: sigToSend,
             consent: f.get("consent") === "on",
           });
           if (r.ok) {
@@ -105,13 +136,12 @@ export function EstimateSignature({
           </fieldset>
         ))}
         <p>
-          Authorized total including tax:{" "}
+          Approving{" "}
           <strong>
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-            }).format(totals.totalCents / 100)}
-          </strong>
+            {approved.length} of {s.lines.length} items · {money(totals.totalCents)} of{" "}
+            {money(fullTotals.totalCents)}
+          </strong>{" "}
+          (including tax)
         </p>
         <label>
           Your full name
@@ -121,67 +151,86 @@ export function EstimateSignature({
           Draw your signature below using your finger, pen, or mouse. Contact
           the shop if you need assistance signing.
         </p>
-        <canvas
-          ref={canvas}
-          width={640}
-          height={240}
-          role="img"
-          aria-label="Drawn signature"
-          aria-describedby="signature-help"
-          style={{
-            width: "100%",
-            height: 240,
-            border: "1px solid currentColor",
-            background: "white",
-            touchAction: "none",
-          }}
-          onPointerDown={(e) => {
-            if (pending || signatureRef.current.length >= 20) return;
-            const p = point(e);
-            e.currentTarget.setPointerCapture(e.pointerId);
-            drawing.current = true;
-            signatureRef.current = [...signatureRef.current, [p]];
-            setSignature(signatureRef.current);
-          }}
-          onPointerMove={(e) => {
-            if (!drawing.current) return;
-            const p = point(e),
-              strokes = signatureRef.current,
-              last = strokes.at(-1);
-            if (
-              !last ||
-              last.length >= 500 ||
-              strokes.reduce((n, s) => n + s.length, 0) >= 5000
-            )
-              return;
-            const previous = last.at(-1)!,
-              ctx = canvas.current?.getContext("2d");
-            if (ctx) {
-              ctx.strokeStyle = "#111111";
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.moveTo(previous.x * 640, previous.y * 240);
-              ctx.lineTo(p.x * 640, p.y * 240);
-              ctx.stroke();
-            }
-            signatureRef.current = [...strokes.slice(0, -1), [...last, p]];
-            setSignature(signatureRef.current);
-          }}
-          onPointerUp={() => {
-            drawing.current = false;
-            signatureRef.current = signatureRef.current.filter(
-              (stroke) => stroke.length >= 2,
-            );
-            setSignature(signatureRef.current);
-          }}
-          onPointerCancel={() => {
-            drawing.current = false;
-            signatureRef.current = signatureRef.current.filter(
-              (stroke) => stroke.length >= 2,
-            );
-            setSignature(signatureRef.current);
-          }}
-        />
+        {!useTyped && (
+          <>
+            <canvas
+              ref={canvas}
+              width={640}
+              height={240}
+              role="img"
+              aria-label="Drawn signature"
+              aria-describedby="signature-help"
+              style={{
+                width: "100%",
+                height: 240,
+                border: "1px solid currentColor",
+                background: "white",
+                touchAction: "none",
+              }}
+              onPointerDown={(e) => {
+                if (pending || signatureRef.current.length >= 20) {
+                  setLimitWarning(
+                    "Too many strokes. Clear the signature or type your name instead.",
+                  );
+                  return;
+                }
+                const p = point(e);
+                e.currentTarget.setPointerCapture(e.pointerId);
+                drawing.current = true;
+                signatureRef.current = [...signatureRef.current, [p]];
+                setSignature(signatureRef.current);
+                checkLimits(signatureRef.current);
+              }}
+              onPointerMove={(e) => {
+                if (!drawing.current) return;
+                const p = point(e),
+                  strokes = signatureRef.current,
+                  last = strokes.at(-1);
+                if (
+                  !last ||
+                  last.length >= 500 ||
+                  strokes.reduce((n, s) => n + s.length, 0) >= 5000
+                ) {
+                  setLimitWarning(
+                    "Signature is too large. Clear it or type your name instead.",
+                  );
+                  return;
+                }
+                const previous = last.at(-1)!,
+                  ctx = canvas.current?.getContext("2d");
+                if (ctx) {
+                  ctx.strokeStyle = "#111111";
+                  ctx.lineWidth = 2;
+                  ctx.beginPath();
+                  ctx.moveTo(previous.x * 640, previous.y * 240);
+                  ctx.lineTo(p.x * 640, p.y * 240);
+                  ctx.stroke();
+                }
+                signatureRef.current = [...strokes.slice(0, -1), [...last, p]];
+                setSignature(signatureRef.current);
+                checkLimits(signatureRef.current);
+              }}
+              onPointerUp={() => {
+                drawing.current = false;
+                signatureRef.current = signatureRef.current.filter(
+                  (stroke) => stroke.length >= 2,
+                );
+                setSignature(signatureRef.current);
+              }}
+              onPointerCancel={() => {
+                drawing.current = false;
+                signatureRef.current = signatureRef.current.filter(
+                  (stroke) => stroke.length >= 2,
+                );
+                setSignature(signatureRef.current);
+              }}
+            />
+            {limitWarning && <p className="notice">{limitWarning}</p>}
+            <p className="muted">
+              Strokes: {signature.length}/20 · Points: {totalPoints}/5000
+            </p>
+          </>
+        )}
         <button
           type="button"
           className="btn secondary"
@@ -189,11 +238,32 @@ export function EstimateSignature({
           onClick={() => {
             signatureRef.current = [];
             setSignature([]);
+            setLimitWarning("");
             canvas.current?.getContext("2d")?.clearRect(0, 0, 640, 240);
           }}
         >
           Clear signature
         </button>
+        <label style={{ display: "block", marginTop: "0.75rem" }}>
+          <input
+            type="checkbox"
+            checked={useTyped}
+            onChange={(e) => setUseTyped(e.target.checked)}
+          />{" "}
+          Type my name instead of drawing
+        </label>
+        {useTyped && (
+          <label>
+            Type your full name as your signature
+            <input
+              value={typedName}
+              onChange={(e) => setTypedName(e.target.value)}
+              maxLength={200}
+              required={useTyped}
+              placeholder="Your full name"
+            />
+          </label>
+        )}
         <p className="muted">
           Authorization policy version {s.authorizationPolicy.version}
         </p>
