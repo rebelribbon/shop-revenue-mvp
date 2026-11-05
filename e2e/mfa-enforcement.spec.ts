@@ -51,7 +51,7 @@ test.describe("mandatory authenticator @mfa", () => {
       await page
         .getByRole("button", { name: "Verify authenticator", exact: true })
         .click();
-      await expect(page).toHaveURL(new RegExp(`${home}$`));
+      await expect(page).toHaveURL((url) => url.pathname === home);
       await page.request.post("/auth/sign-out");
       await signIn();
       await expect(page.getByLabel("Authenticator code")).toBeVisible();
