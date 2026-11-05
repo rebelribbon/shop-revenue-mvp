@@ -6,7 +6,12 @@ import { and, eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { auditEvent, membership, requestIdempotency } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
-import { inviteStaff } from "@/domain/membership";
+import { createCustomer, createVehicle } from "@/domain/customers";
+import { createJob } from "@/domain/jobs";
+import { assignJob } from "@/domain/assignments";
+import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
+import { recordInvoicePaymentAction } from "@/server/actions/invoices";
+import { inviteStaff, acceptInvite } from "@/domain/membership";
 import {
   MemoryEmailProvider,
   setEmailProviderForTests,
@@ -244,4 +249,70 @@ describe("cross-tenant matrix (identity parts, Section 9)", () => {
     );
     expect(still.status).not.toBe("removed");
   });
+});
+
+it("enforces technician assignments on direct actions and idempotency replays", async () => {
+  const t = await seedTenant("Tech actions");
+  const run = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
+    withTenant(t.businessId, t.owner.actor, fn);
+  const email = `tech-${randomUUID()}@example.test`;
+  const invite = await run((tx) =>
+    inviteStaff(tx, meta(), { name: "Tess", email, role: "technician" }),
+  );
+  const authSubject = randomUUID();
+  const joined = await acceptInvite(meta(), invite.token, {
+    authSubject,
+    email,
+    phoneE164: null,
+    displayName: "Tess",
+  });
+  const c = await run((tx) =>
+    createCustomer(tx, meta(), { firstName: "Tech", lastName: "Actions" }),
+  );
+  const v = await run((tx) =>
+    createVehicle(tx, meta(), { customerId: c.id, make: "Ford" }),
+  );
+  const j = await run((tx) =>
+    createJob(tx, {
+      customerId: c.id,
+      vehicleId: v.id,
+      title: "Assigned",
+      parts: [],
+      labor: [],
+    }),
+  );
+  current = as({
+    businessId: t.businessId,
+    actor: { type: "user", id: joined.userId, authSubject },
+    role: "technician",
+    userId: joined.userId,
+    supportSession: null,
+  });
+  expect(
+    await startClockAction({ jobId: j.id, clientRequestId: randomUUID() }),
+  ).toMatchObject({ ok: false, error: { code: "NOT_FOUND" } });
+  await run((tx) =>
+    assignJob(tx, meta(), { jobId: j.id, userId: joined.userId }),
+  );
+  const request = { jobId: j.id, clientRequestId: randomUUID() };
+  expect(await startClockAction(request)).toMatchObject({ ok: true });
+  expect(await startClockAction(request)).toMatchObject({ ok: true });
+  expect(
+    await recordInvoicePaymentAction({
+      invoiceId: randomUUID(),
+      amountCents: 100,
+      method: "cash",
+      reference: "",
+      clientRequestId: randomUUID(),
+    }),
+  ).toMatchObject({ ok: false, error: { code: "FORBIDDEN" } });
+  await run((tx) => assignJob(tx, meta(), { jobId: j.id, userId: null }));
+  expect(await startClockAction(request)).toMatchObject({
+    ok: false,
+    error: { code: "NOT_FOUND" },
+  });
+  // A person can always stop their own running clock after reassignment.
+  expect(
+    await stopClockAction({ clientRequestId: randomUUID() }),
+  ).toMatchObject({ ok: true });
 });

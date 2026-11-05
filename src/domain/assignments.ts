@@ -4,6 +4,7 @@ import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { appointment, jobAssignment, membership, user } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
+import { currentMemberRole } from "./membership";
 import { getJob } from "./jobs";
 import { audit, type RequestMeta } from "./records";
 
@@ -63,6 +64,7 @@ export async function assignJob(
   meta: RequestMeta,
   input: { jobId: string; userId: string | null },
 ) {
+  await assertCanAssign(tx);
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const tech = await requireTech(tx, input.userId);
   const before = (await jobAssignees(tx, [input.jobId])).get(input.jobId);
@@ -93,6 +95,7 @@ export async function assignVisit(
   meta: RequestMeta,
   input: { appointmentId: string; userId: string | null },
 ) {
+  await assertCanAssign(tx);
   const tech = await requireTech(tx, input.userId);
   const [row] = await tx
     .update(appointment)
@@ -112,4 +115,12 @@ export async function assignVisit(
     after: { userId: input.userId },
   });
   return { appointmentId: row.id, tech: tech?.name ?? null };
+}
+
+async function assertCanAssign(tx: TenantTx) {
+  if ((await currentMemberRole(tx)) === "technician")
+    throw new AppError(
+      "FORBIDDEN",
+      "Ask the front office to change assignments.",
+    );
 }

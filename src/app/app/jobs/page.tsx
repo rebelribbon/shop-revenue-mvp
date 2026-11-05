@@ -247,7 +247,7 @@ export default async function JobsPage({
   const flow = selected ? data.workflows.get(selected.id) : undefined;
   if ((edit || job) && !selected) notFound();
   const editing = !!(
-    edit ||
+    (edit && !selected?.documentOnly) ||
     creating === "1" ||
     customerId ||
     sourceRecoveryItemId ||
@@ -397,6 +397,13 @@ export default async function JobsPage({
                   ← {customerName}
                 </Link>
               </p>
+              {selected.documentOnly && (
+                <p className="notice">
+                  This older job was recovered from its estimate. Its customer
+                  documents and payments are available, but its original parts
+                  and labor costs were not recorded. Profit is unknown.
+                </p>
+              )}
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
@@ -446,7 +453,7 @@ export default async function JobsPage({
                       {money(data.deposit.approvedCents)} approved). Take it
                       before you start.
                     </p>
-                    {s.actor.type !== "support" && (
+                    {s.actor.type !== "support" && s.role !== "technician" && (
                       <ActionForm
                         action={startDepositAction}
                         hidden={{ jobId: selected.id }}
@@ -456,7 +463,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {s.actor.type === "support" ? (
+                {s.actor.type === "support" || s.role === "technician" ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
@@ -557,7 +564,8 @@ export default async function JobsPage({
                         variant="secondary"
                       />
                     )}
-                    {flow &&
+                    {s.role !== "technician" &&
+                      flow &&
                       flow.supplementDueCents > 0 &&
                       flow.latest?.authorization && (
                         <Link
@@ -567,7 +575,8 @@ export default async function JobsPage({
                           Bill extra work · {money(flow.supplementDueCents)}
                         </Link>
                       )}
-                    {flow?.currentInvoice &&
+                    {s.role !== "technician" &&
+                      flow?.currentInvoice &&
                       flow.balanceCents > 0 &&
                       (() => {
                         // The first of the job's invoices with money due.
@@ -597,16 +606,23 @@ export default async function JobsPage({
                         ["file", "+ File"],
                         ["sign", "✍ Send to sign"],
                       ] as const
-                    ).map(([key, label]) => (
-                      <Link
-                        key={key}
-                        className="btn secondary"
-                        href={`/app/jobs?job=${selected.id}&add=${key}`}
-                        aria-current={add === key ? "true" : undefined}
-                      >
-                        {label}
-                      </Link>
-                    ))}
+                    )
+                      .filter(
+                        ([key]) =>
+                          s.role !== "technician" ||
+                          key === "note" ||
+                          key === "photo",
+                      )
+                      .map(([key, label]) => (
+                        <Link
+                          key={key}
+                          className="btn secondary"
+                          href={`/app/jobs?job=${selected.id}&add=${key}`}
+                          aria-current={add === key ? "true" : undefined}
+                        >
+                          {label}
+                        </Link>
+                      ))}
                   </div>
                 )}
                 {s.actor.type !== "support" && add === "note" && (
@@ -650,63 +666,67 @@ export default async function JobsPage({
                     </Link>
                   </section>
                 )}
-                {s.actor.type !== "support" && add === "file" && (
-                  <section className="card add-panel" aria-label="Add a file">
-                    <h3>Add a file to this job</h3>
-                    <FileUploader
-                      customerId={input.customerId}
-                      jobId={selected.id}
-                      categories={JOB_FILE_CATEGORIES}
-                      buttonLabel="Choose file"
-                    />
-                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
-                      Done
-                    </Link>
-                  </section>
-                )}
-                {s.actor.type !== "support" && add === "sign" && (
-                  <section
-                    className="card add-panel"
-                    aria-label="Send a document to sign"
-                  >
-                    <h3>Send a document to sign</h3>
-                    {data.templates.length ? (
-                      <ActionForm
-                        action={sendDocumentAction}
-                        hidden={{ jobId: selected.id }}
-                        submitLabel="Send for signature"
-                        variant="primary"
-                      >
-                        <label htmlFor="send-template">Document</label>
-                        <select id="send-template" name="templateId" required>
-                          {data.templates.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                      </ActionForm>
-                    ) : (
+                {s.actor.type !== "support" &&
+                  s.role !== "technician" &&
+                  add === "file" && (
+                    <section className="card add-panel" aria-label="Add a file">
+                      <h3>Add a file to this job</h3>
+                      <FileUploader
+                        customerId={input.customerId}
+                        jobId={selected.id}
+                        categories={JOB_FILE_CATEGORIES}
+                        buttonLabel="Choose file"
+                      />
+                      <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
+                        Done
+                      </Link>
+                    </section>
+                  )}
+                {s.actor.type !== "support" &&
+                  s.role !== "technician" &&
+                  add === "sign" && (
+                    <section
+                      className="card add-panel"
+                      aria-label="Send a document to sign"
+                    >
+                      <h3>Send a document to sign</h3>
+                      {data.templates.length ? (
+                        <ActionForm
+                          action={sendDocumentAction}
+                          hidden={{ jobId: selected.id }}
+                          submitLabel="Send for signature"
+                          variant="primary"
+                        >
+                          <label htmlFor="send-template">Document</label>
+                          <select id="send-template" name="templateId" required>
+                            {data.templates.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                        </ActionForm>
+                      ) : (
+                        <p className="muted">
+                          No documents yet.{" "}
+                          {s.role === "owner" ? (
+                            <Link href="/app/settings/documents">
+                              Set up your documents
+                            </Link>
+                          ) : (
+                            "Ask the owner to add them in Settings."
+                          )}
+                        </p>
+                      )}
                       <p className="muted">
-                        No documents yet.{" "}
-                        {s.role === "owner" ? (
-                          <Link href="/app/settings/documents">
-                            Set up your documents
-                          </Link>
-                        ) : (
-                          "Ask the owner to add them in Settings."
-                        )}
+                        The signing link appears in the file cabinet below,
+                        ready to text or email.
                       </p>
-                    )}
-                    <p className="muted">
-                      The signing link appears in the file cabinet below, ready
-                      to text or email.
-                    </p>
-                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
-                      Done
-                    </Link>
-                  </section>
-                )}
+                      <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
+                        Done
+                      </Link>
+                    </section>
+                  )}
                 <nav className="section-tabs" aria-label="Job sections">
                   {(
                     [
@@ -743,6 +763,8 @@ export default async function JobsPage({
                         jobId={selected.id}
                         timezone={data.profile?.timezone || "America/Chicago"}
                         readOnly={s.actor.type === "support"}
+                        technicianOnly={s.role === "technician"}
+                        canEditEstimate={!selected.documentOnly}
                       />
                     )}
                   </>
@@ -756,17 +778,20 @@ export default async function JobsPage({
                         next estimate you send, and on the invoice.
                       </p>
                       <MediaGallery
-                        quoteHref={(m) =>
-                          `/app/jobs?${new URLSearchParams({
-                            customerId: input.customerId,
-                            ...(input.vehicleId
-                              ? { vehicleId: input.vehicleId }
-                              : {}),
-                            ...(input.serviceAssetId
-                              ? { serviceAssetId: input.serviceAssetId }
-                              : {}),
-                            fromMedia: m.id,
-                          })}`
+                        quoteHref={
+                          s.role === "technician"
+                            ? undefined
+                            : (m) =>
+                                `/app/jobs?${new URLSearchParams({
+                                  customerId: input.customerId,
+                                  ...(input.vehicleId
+                                    ? { vehicleId: input.vehicleId }
+                                    : {}),
+                                  ...(input.serviceAssetId
+                                    ? { serviceAssetId: input.serviceAssetId }
+                                    : {}),
+                                  fromMedia: m.id,
+                                })}`
                         }
                         items={data.jobMedia}
                         readOnly={s.actor.type === "support"}
@@ -789,7 +814,9 @@ export default async function JobsPage({
                           ? data.contact.email
                           : null
                       }
-                      readOnly={s.actor.type === "support"}
+                      readOnly={
+                        s.actor.type === "support" || s.role === "technician"
+                      }
                       timeZone={data.profile?.timezone || "America/Chicago"}
                     />
                   </>
@@ -865,11 +892,18 @@ export default async function JobsPage({
                 {tab === "work" && (
                   <>
                     <section aria-label="Job costs">
-                      <h3>Costs &amp; profit</h3>
+                      <h3>Job-sheet costs &amp; profit</h3>
+                      <p className="muted">
+                        This uses the current job sheet, recorded time and
+                        estimated card fees. Money and Reports use approved
+                        invoice lines and quote-time costs instead.
+                      </p>
                       <div className="money-actions">
-                        <Link href={`/app/jobs?edit=${selected.id}`}>
-                          Edit job / actual hours
-                        </Link>
+                        {!selected.documentOnly && (
+                          <Link href={`/app/jobs?edit=${selected.id}`}>
+                            Edit job / actual hours
+                          </Link>
+                        )}
                         <Link href={`/app/estimates?jobId=${selected.id}`}>
                           Estimate history
                         </Link>
@@ -958,19 +992,21 @@ export default async function JobsPage({
                           work.
                         </p>
                       )}
-                      {s.actor.type !== "support" && (
-                        <EstimatePublisher
-                          taxRateBps={
-                            flow?.currentInvoice
-                              ? flow.currentInvoice.snapshot.taxBps
-                              : data.profile?.taxRateBps
-                          }
-                          jobId={selected.id}
-                          version={selected.version}
-                          existingVersion={flow?.latest?.estimate.version}
-                          pendingChanges={flow?.changedSinceEstimate}
-                        />
-                      )}
+                      {s.actor.type !== "support" &&
+                        s.role !== "technician" &&
+                        !selected.documentOnly && (
+                          <EstimatePublisher
+                            taxRateBps={
+                              flow?.currentInvoice
+                                ? flow.currentInvoice.snapshot.taxBps
+                                : data.profile?.taxRateBps
+                            }
+                            jobId={selected.id}
+                            version={selected.version}
+                            existingVersion={flow?.latest?.estimate.version}
+                            pendingChanges={flow?.changedSinceEstimate}
+                          />
+                        )}
                     </section>
                   </>
                 )}

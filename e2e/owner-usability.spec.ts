@@ -144,6 +144,15 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     fullPage: true,
   });
   await page.goto("/app/money?month=2026-10");
+  await expect(
+    page.getByRole("heading", {
+      name: "Estimated profit on this month’s invoices",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/collections above belong to the month money arrived/),
+  ).toBeVisible();
   await auditUX(page);
   await page.screenshot({
     path: `test-results/owner-money-${info.project.name}.png`,

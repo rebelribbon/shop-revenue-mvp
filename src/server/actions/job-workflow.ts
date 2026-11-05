@@ -1,11 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { requireAssignedJob } from "@/domain/job-access";
 import { defineShopAction } from "./define";
 import { recordJobProgress, recordJobSharing } from "@/domain/job-workflow";
 
 const progress = defineShopAction({
   name: "recordJobProgress",
+  technicianAccess: requireAssignedJob,
   input: z.object({
     jobId: z.uuid(),
     versionId: z.uuid(),

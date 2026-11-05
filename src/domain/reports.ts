@@ -1,3 +1,4 @@
+import { invoiceCosts } from "./invoice-costing";
 import { countersBetween } from "./counter-sales";
 import { leadSourceLabel } from "@/lib/lead-sources";
 // Owner reports for a date range, all from the same invoices, payments, jobs,
@@ -5,7 +6,6 @@ import { leadSourceLabel } from "@/lib/lead-sources";
 // so the page and the CSV download show exactly the same thing.
 import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
-  activity,
   business,
   customer,
   expense,
@@ -39,7 +39,7 @@ export const REPORTS = [
     key: "profit",
     title: "Profit by job",
     about:
-      "Each invoiced job: what you billed (before tax), what it cost you, and what you kept.",
+      "Invoice-month estimate using approved lines and quote-time costs, like Money. Excludes overhead and card fees; actual job-sheet profit can differ.",
   },
   {
     key: "customers",
@@ -246,43 +246,13 @@ export async function runReport(
         ],
       };
     }
-    // profit: the job's latest costing gives what it cost the shop.
-    const jobIds = [...new Set(invoices.map((i) => i.quoteId))];
-    const costs = jobIds.length
-      ? await tx
-          .selectDistinctOn([activity.subjectId], {
-            id: activity.subjectId,
-            data: activity.data,
-          })
-          .from(activity)
-          .where(
-            and(
-              eq(activity.businessId, tx.businessId),
-              eq(activity.kind, "job.costed"),
-              inArray(activity.subjectId, jobIds),
-            ),
-          )
-          .orderBy(activity.subjectId, desc(activity.occurredAt))
-      : [];
+    // Same approved-line, quote-time basis as the monthly Money estimate.
+    const costs = await invoiceCosts(
+      tx,
+      invoices.map((i) => i.id),
+    );
     const rows = invoices.map((i) => {
-      const totals = (
-        costs.find((c) => c.id === i.quoteId)?.data as
-          | {
-              totals?: {
-                subtotalCents?: number;
-                actualCostCents?: number | null;
-                estimatedCostCents?: number | null;
-              };
-            }
-          | undefined
-      )?.totals;
-      const quoted = totals?.subtotalCents ?? 0;
-      const fullCost = totals?.actualCostCents ?? totals?.estimatedCostCents;
-      // Scale the job's cost to what was actually billed (approved work).
-      const cost =
-        fullCost == null || !quoted
-          ? null
-          : Math.round((fullCost * i.snapshot.subtotalCents) / quoted);
+      const cost = costs.get(i.id)?.costCents ?? null;
       const kept = cost === null ? null : i.snapshot.subtotalCents - cost;
       return [
         day(i.createdAt),

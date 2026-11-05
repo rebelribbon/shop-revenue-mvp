@@ -57,6 +57,22 @@ test("Technicians see only their jobs and no owner pages", async ({
   await expect(tech.getByText(mine, { exact: true }).first()).toBeVisible();
   await expect(tech.getByText(other, { exact: true })).toHaveCount(0);
   await auditUX(tech, true);
+  await tech.goto(jobUrls[0]);
+  await expect(
+    tech.getByRole("button", { name: "Save tech", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    tech.getByRole("link", { name: "+ Photo / video", exact: true }),
+  ).toBeVisible();
+  await expect(
+    tech.getByRole("link", { name: "+ File", exact: true }),
+  ).toHaveCount(0);
+  await tech
+    .getByRole("button", { name: "▶ Start clock", exact: true })
+    .click();
+  await expect(tech.getByRole("button", { name: /Stop clock/ })).toBeVisible();
+  await tech.getByRole("button", { name: /Stop clock/ }).click();
+  await auditUX(tech, true);
   // The other job's page doesn't open for them.
   await tech.goto(jobUrls[1]);
   await expect(

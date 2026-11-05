@@ -6,10 +6,12 @@ import {
   recordMileage,
   setNoteHeadsUp,
 } from "@/domain/memory";
+import { requireAssignedNote } from "@/domain/job-access";
 import { defineShopAction } from "./define";
 const base = { customerId: z.uuid() };
 export const addNoteAction = defineShopAction({
   name: "addNote",
+  technicianAccess: requireAssignedNote,
   input: z.object({
     ...base,
     vehicleId: z.uuid().optional(),
