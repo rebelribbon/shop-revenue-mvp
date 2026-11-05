@@ -1,5 +1,6 @@
 // Shop Revenue's own monthly subscription: pure access rules, no I/O.
 export const TRIAL_DAYS = 14;
+export const MONTHLY_PRICE_CENTS = 4999;
 export const GRACE_DAYS = 7;
 const DAY_MS = 86400000;
 
@@ -89,15 +90,3 @@ export const daysUntil = (d: Date, now: Date) =>
 
 export const publicSignupEnabled = () =>
   process.env.PUBLIC_SIGNUP_ENABLED === "true";
-
-export function subscriptionPriceFromCosts(monthlyCostCents: number) {
-  if (
-    !Number.isSafeInteger(monthlyCostCents) ||
-    monthlyCostCents < 1 ||
-    monthlyCostCents > 10_000_000
-  )
-    throw new Error(
-      "Enter monthly operating expenses between $0.01 and $100,000.",
-    );
-  return monthlyCostCents * 3;
-}

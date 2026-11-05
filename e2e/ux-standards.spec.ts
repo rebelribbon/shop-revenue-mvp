@@ -173,6 +173,7 @@ test("UX standards across public, shop, detail and admin pages", async ({
   for (const path of [
     "/admin",
     "/admin/release",
+    "/admin/billing",
     "/admin/policies",
     "/admin/webhooks",
     "/admin/help",

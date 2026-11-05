@@ -2,7 +2,7 @@ import {
   currentSubscriptionPrice,
   billingPortalConfiguration,
 } from "../../src/domain/commercial-billing";
-import { subscriptionPriceFromCosts } from "../../src/lib/billing";
+import { MONTHLY_PRICE_CENTS } from "../../src/lib/billing";
 import { stripeClient } from "../../src/lib/stripe";
 import { readFileSync } from "node:fs";
 import { releaseConfiguration } from "../../src/lib/release-readiness";
@@ -11,18 +11,17 @@ let subscriptionReady = false;
 try {
   const stripe = stripeClient();
   const price = await currentSubscriptionPrice(stripe);
-  const costs = Number(price.metadata.monthly_operating_cost_cents);
   subscriptionReady =
     price.livemode &&
-    price.metadata.pricing_multiplier === "3" &&
-    price.unit_amount === subscriptionPriceFromCosts(costs) &&
+    price.metadata.pricing_model === "fixed_monthly" &&
+    price.unit_amount === MONTHLY_PRICE_CENTS &&
     Boolean(await billingPortalConfiguration(stripe));
 } catch {}
 checks.push({
   key: "subscription-catalog",
   ready: subscriptionReady,
   message:
-    "Verified live monthly price equals 3× configured operating costs, with an active billing portal",
+    "Verified live $49.99 monthly subscription price, with an active billing portal",
 });
 checks.push({
   key: "release-commit",

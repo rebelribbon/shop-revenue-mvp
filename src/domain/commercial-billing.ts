@@ -3,7 +3,7 @@ import { z } from "zod";
 import type Stripe from "stripe";
 import { withAdmin, type InternalActor } from "@/db/admin";
 import { internalUser } from "@/db/schema";
-import { subscriptionPriceFromCosts } from "@/lib/billing";
+import { MONTHLY_PRICE_CENTS } from "@/lib/billing";
 import { AppError } from "@/lib/errors";
 import { paymentBaseUrl, stripeClient } from "@/lib/stripe";
 import { auditPlatform, type RequestMeta } from "./records";
@@ -29,11 +29,11 @@ export async function currentSubscriptionPrice(
     price.currency !== "usd" ||
     price.recurring?.interval !== "month" ||
     price.recurring.interval_count !== 1 ||
-    !price.unit_amount
+    price.unit_amount !== MONTHLY_PRICE_CENTS
   )
     throw new AppError(
       "PROVIDER_UNAVAILABLE",
-      "The monthly subscription price is not configured.",
+      "The $49.99 monthly subscription price is not configured.",
     );
   return price;
 }
@@ -67,11 +67,10 @@ export async function billingPortalConfiguration(stripe: Stripe) {
 export async function configureSubscriptionPlan(
   actor: InternalActor,
   meta: RequestMeta,
-  monthlyCostCents: number,
   requestId: string,
 ) {
   await requireAdmin(actor);
-  const amount = subscriptionPriceFromCosts(monthlyCostCents);
+  const amount = MONTHLY_PRICE_CENTS;
   const stripe = stripeClient();
   try {
     await stripe.products.retrieve(PRODUCT_ID);
@@ -107,12 +106,12 @@ export async function configureSubscriptionPlan(
       currency: "usd",
       unit_amount: amount,
       recurring: { interval: "month" },
+      tax_behavior: "exclusive",
       lookup_key: SUBSCRIPTION_LOOKUP_KEY,
       transfer_lookup_key: true,
       metadata: {
         application: "shop_revenue",
-        monthly_operating_cost_cents: String(monthlyCostCents),
-        pricing_multiplier: "3",
+        pricing_model: "fixed_monthly",
       },
     },
     { idempotencyKey: `shop-plan-${requestId}` },
@@ -128,7 +127,6 @@ export async function configureSubscriptionPlan(
         targetId: null,
         after: {
           stripePriceId: price.id,
-          monthlyCostCents,
           monthlyPriceCents: amount,
           appliesTo: "new_subscriptions",
         },

@@ -20,32 +20,18 @@ export default async function PlatformBilling() {
         {TRIAL_DAYS}-day trial. A card is required.
       </p>
       <section className="card">
-        <h2>Set the monthly price</h2>
+        <h2>Monthly plan</h2>
         <p>
-          Each shop pays 3× your entered monthly app expenses. For example, $50
-          of expenses sets a $150 monthly subscription. Include the full
-          recurring cost of running Shop Revenue. This sets the price for new
+          $49.99 per shop per month, plus applicable taxes. Operating expenses
+          do not change this price. Publishing applies the plan to new
           subscriptions. Existing subscriptions keep their agreed price.
         </p>
         <ActionForm
           action={configurePlanAction}
-          submitLabel="Set price to 3× expenses"
+          submitLabel="Publish $49.99 monthly plan"
           variant="primary"
-          confirm="Set the monthly price for new subscriptions to three times the expenses entered?"
-        >
-          <label htmlFor="platform-cost">
-            Monthly app operating expenses ($)
-          </label>
-          <input
-            id="platform-cost"
-            name="monthlyCost"
-            type="number"
-            min="0.01"
-            step="0.01"
-            max="100000"
-            required
-          />
-        </ActionForm>
+          confirm="Publish the $49.99 monthly plan for new subscriptions?"
+        />
       </section>
       <section className="card">
         <h2>Create a discount code</h2>

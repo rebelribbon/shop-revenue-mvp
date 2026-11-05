@@ -1,14 +1,17 @@
 # Commercial subscriptions — November 5, 2026
 
 Brad authorized public subscription sales, a trial and discount codes on November 5.
-The monthly price per shop is three times the total monthly operating expenses
-entered by the platform admin. It is not divided by the number of shops. Costs
-were unavailable from the billing connectors, so no live price is assumed.
+Later on November 5, Brad replaced expense-based pricing with a fixed **$49.99
+per shop per month**, plus applicable taxes. The earlier three-times-expenses
+rule is superseded. There is no paid advertising in the launch budget ($0/month).
+Operating expenses remain a business cost and do not automatically raise the
+subscription price. The 14-day card-required trial and discount codes remain.
 
 The admin publishes a Stripe monthly USD Price with lookup key
-`shop_revenue_monthly`. Metadata records the entered cost and multiplier. Price
-changes apply to new subscriptions; existing contracts keep their agreed price.
-The pricing screen states this before publishing. Discounts are product-scoped,
+`shop_revenue_monthly`. The price is fixed at 4999 USD cents; metadata records
+`pricing_model=fixed_monthly`. Checkout and release checks reject a different
+monthly amount. Publishing applies to new subscriptions; existing contracts keep
+their agreed price. Discounts are product-scoped,
 with a percentage, first-invoice/every-invoice duration, expiration and redemption
 limit. Owners manage their cards, invoices and cancellation in Stripe's portal.
 

@@ -10,11 +10,7 @@ import {
 } from "@/domain/commercial-billing";
 import { startSubscription, syncSubscription } from "@/domain/billing";
 import { applyBillingRiskEvent } from "@/domain/billing-risk";
-import {
-  billingAccess,
-  canMakeChanges,
-  subscriptionPriceFromCosts,
-} from "@/lib/billing";
+import { billingAccess, canMakeChanges } from "@/lib/billing";
 import { createInternalUser, meta, seedTenant } from "../helpers/fixtures";
 
 let client: Stripe;
@@ -27,7 +23,7 @@ const price = {
   product: "prod_shop_revenue_subscription",
   active: true,
   type: "recurring",
-  unit_amount: 15000,
+  unit_amount: 4999,
   currency: "usd",
   recurring: { interval: "month", interval_count: 1 },
 };
@@ -112,26 +108,22 @@ afterEach(() => {
     else process.env[k] = saved[k];
 });
 
-it("sets each shop's price to three times total monthly operating costs", async () => {
-  expect(subscriptionPriceFromCosts(5000)).toBe(15000);
-  for (const n of [0, -1, 1.5, 10000001])
-    expect(() => subscriptionPriceFromCosts(n)).toThrow();
+it("publishes the fixed $49.99 monthly shop plan without an expense multiplier", async () => {
   const admin = await createInternalUser("admin");
   await configureSubscriptionPlan(
     { internalUserId: admin.id },
     meta(),
-    5000,
     randomUUID(),
   );
   expect(fake.prices.create).toHaveBeenCalledWith(
     expect.objectContaining({
-      unit_amount: 15000,
+      unit_amount: 4999,
       currency: "usd",
       recurring: { interval: "month" },
+      tax_behavior: "exclusive",
       lookup_key: "shop_revenue_monthly",
       metadata: expect.objectContaining({
-        monthly_operating_cost_cents: "5000",
-        pricing_multiplier: "3",
+        pricing_model: "fixed_monthly",
       }),
     }),
     expect.anything(),
@@ -141,10 +133,46 @@ it("sets each shop's price to three times total monthly operating costs", async 
     configureSubscriptionPlan(
       { internalUserId: support.id },
       meta(),
-      5000,
       randomUUID(),
     ),
   ).rejects.toMatchObject({ code: "FORBIDDEN" });
+});
+
+it.each([9900, 15000])(
+  "blocks checkout when the configured offer is %i cents instead of $49.99",
+  async (unitAmount) => {
+    const t = await seedTenant("Incorrect subscription price");
+    fake.prices.list.mockResolvedValue({
+      data: [{ ...price, unit_amount: unitAmount }],
+    });
+    await expect(
+      startSubscription(
+        { businessId: t.businessId, actor: t.owner.actor },
+        meta(),
+      ),
+    ).rejects.toMatchObject({ code: "PROVIDER_UNAVAILABLE" });
+    expect(fake.checkout.sessions.create).not.toHaveBeenCalled();
+  },
+);
+
+it("replaces a pending checkout reservation for an older price", async () => {
+  const t = await seedTenant("Changed subscription offer");
+  const shop = { businessId: t.businessId, actor: t.owner.actor };
+  await startSubscription(shop, meta());
+  await withTenant(t.businessId, t.owner.actor, (tx) =>
+    tx
+      .update(shopSubscription)
+      .set({ checkoutPriceId: "price_previous_expensive_offer" })
+      .where(eq(shopSubscription.businessId, tx.businessId)),
+  );
+  await startSubscription(shop, meta());
+  const calls = fake.checkout.sessions.create.mock.calls as unknown as [
+    Stripe.Checkout.SessionCreateParams,
+    Stripe.RequestOptions,
+  ][];
+  expect(calls).toHaveLength(2);
+  expect(calls[1][0].line_items).toEqual([{ price: price.id, quantity: 1 }]);
+  expect(calls[1][1].idempotencyKey).not.toBe(calls[0][1].idempotencyKey);
 });
 
 it("scopes discount codes to the SaaS product with expiry and redemption limits", async () => {
