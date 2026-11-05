@@ -158,7 +158,7 @@ export type MembershipRow = {
   userStatus: string;
   membershipId: string;
   businessId: string;
-  role: "owner" | "staff";
+  role: "owner" | "staff" | "technician";
   status: "invited" | "active" | "removed";
   businessStatus: string;
 };
@@ -178,7 +178,7 @@ export async function resolveMemberships(
 export type InviteRow = {
   membershipId: string;
   businessId: string;
-  role: "owner" | "staff";
+  role: "owner" | "staff" | "technician";
   inviteEmail: string | null;
   invitePhoneE164: string | null;
   inviteExpiresAt: Date | null;

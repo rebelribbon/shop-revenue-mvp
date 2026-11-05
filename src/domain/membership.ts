@@ -159,7 +159,10 @@ export async function inviteStaff(
     kind: "team.invited",
     subjectType: "membership",
     subjectId: m.id,
-    summary: role === "technician" ? "Technician login invited" : "Staff login invited",
+    summary:
+      role === "technician"
+        ? "Technician login invited"
+        : "Staff login invited",
   });
   return {
     membershipId: m.id,
@@ -250,7 +253,10 @@ export async function removeStaff(
     kind: "team.removed",
     subjectType: "membership",
     subjectId: m.id,
-    summary: m.role === "technician" ? "Technician login removed" : "Staff login removed",
+    summary:
+      m.role === "technician"
+        ? "Technician login removed"
+        : "Staff login removed",
   });
 }
 

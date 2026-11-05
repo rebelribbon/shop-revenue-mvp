@@ -98,7 +98,7 @@ test("F1 + Owner invites Staff: owner and staff choose passwords, more staff sea
   await expect(
     owner.getByRole("row").filter({ hasText: staffEmail }),
   ).toContainText("Invite sent");
-  await expect(owner.getByText("9 of 10 staff logins left")).toBeVisible();
+  await expect(owner.getByText("9 of 10 team logins left")).toBeVisible();
 
   const staff = await (await browser.newContext()).newPage();
   await staff.goto(await inviteLink(staffEmail, since));

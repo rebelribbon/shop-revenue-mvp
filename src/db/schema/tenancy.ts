@@ -164,7 +164,10 @@ export const membership = app.table(
     // Staff and technician seats (invited or active) are capped by app.membership_guard
     // (migration 0050), which replaced the original one-seat unique index.
     index("membership_user_id_idx").on(t.userId),
-    check("membership_role_check", sql`${t.role} IN ('owner', 'staff', 'technician')`),
+    check(
+      "membership_role_check",
+      sql`${t.role} IN ('owner', 'staff', 'technician')`,
+    ),
     check(
       "membership_status_check",
       sql`${t.status} IN ('invited', 'active', 'removed')`,
