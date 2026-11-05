@@ -15,7 +15,7 @@ export async function prepareDocumentShare(raw: unknown) {
     const s = await getSessionState();
     if (s.kind !== "shop" || s.session.actor.type !== "user")
       return { ok: false as const, message: "Sign in to share this document." };
-    await assertSessionAssurance(s.session.role);
+    await assertSessionAssurance();
     return {
       ok: true as const,
       data: await withTenant(s.session.businessId, s.session.actor, (tx) =>

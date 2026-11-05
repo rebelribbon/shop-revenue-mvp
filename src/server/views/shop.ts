@@ -9,7 +9,7 @@ export async function requireShopSession(path: string): Promise<ShopSession> {
   if (state.kind === "anonymous")
     redirect(`/sign-in?next=${encodeURIComponent(path)}`);
   if (state.kind === "no_access") redirect("/no-access");
-  if (await sessionNeedsMfa(state.session.role))
+  if (await sessionNeedsMfa())
     redirect(`/verify?next=${encodeURIComponent(path)}`);
   return state.session;
 }

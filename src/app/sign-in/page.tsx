@@ -35,7 +35,9 @@ export default async function SignInPage({
       <SignInForms next={safeNext(sp.next)} />
       {publicSignupEnabled() && (
         <p>
-          <Link href="/sign-up">New here? Start a free trial</Link>
+          <Link className="btn secondary" href="/sign-up">
+            Create an account
+          </Link>
         </p>
       )}
     </HydratedMain>

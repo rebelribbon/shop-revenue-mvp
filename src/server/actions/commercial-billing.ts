@@ -16,7 +16,7 @@ async function adminActor() {
   const me = await getInternalUser();
   if (!me || me.role !== "admin")
     throw new AppError("FORBIDDEN", "Admins only.");
-  await assertSessionAssurance(me.role);
+  await assertSessionAssurance();
   return { internalUserId: me.id };
 }
 const planInput = z

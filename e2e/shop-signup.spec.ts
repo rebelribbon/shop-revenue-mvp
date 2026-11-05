@@ -11,7 +11,11 @@ test("a new owner creates their own isolated shop and reaches subscription billi
   );
   const stamp = `${info.project.name}-${Date.now()}`;
   const email = `new-owner-${stamp}@example.test`;
-  await page.goto("/sign-up");
+  await page.goto("/sign-in");
+  await page
+    .getByRole("link", { name: "Create an account", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/sign-up$/);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page
     .getByLabel("Create a password", { exact: true })

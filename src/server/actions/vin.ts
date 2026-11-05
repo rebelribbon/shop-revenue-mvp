@@ -4,12 +4,14 @@ import { cachedVin, cacheVin } from "@/domain/memory";
 import { AppError } from "@/lib/errors";
 import { decodeVin } from "@/providers/vin";
 import { getSessionState } from "../auth/session";
+import { assertSessionAssurance } from "../auth/assurance";
 
 export async function lookupVinAction(vin: string) {
   const state = await getSessionState();
   if (state.kind !== "shop")
     return { ok: false as const, message: "Please sign in again." };
   try {
+    await assertSessionAssurance();
     vin = vin.replace(/\s/g, "").toUpperCase();
     if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(vin))
       throw new AppError("VALIDATION", "Enter a valid 17-character VIN.");
