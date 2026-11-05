@@ -1,3 +1,4 @@
+import { publicSignupEnabled } from "@/lib/billing";
 import { redirect } from "next/navigation";
 import { getSessionState } from "@/server/auth/session";
 
@@ -8,6 +9,8 @@ export default async function Home() {
       ? "/app"
       : state.kind === "no_access"
         ? "/no-access"
-        : "/sign-in",
+        : publicSignupEnabled()
+          ? "/pricing"
+          : "/sign-in",
   );
 }

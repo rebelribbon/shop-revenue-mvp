@@ -12,7 +12,7 @@ Scope: every existing page template, shared UI, loading/error boundary, automoti
 - Every settled interactive page has one primary action. The existing control is enhanced, never cloned, preserving its form association, validation, pending state and focus. Entering an editing form makes its safe submit action primary. List screens retain their explicit New action while their secondary search controls stay in place. Destructive actions are excluded from the sticky primary area and keep secondary/danger styling and existing confirmation.
 - The primary action stays in the bottom half on mobile, above the bottom navigation bar with an 8px gap. The content scroll area reserves room so pinned controls do not cover fields or other actions. Read-only pages get a meaningful print or navigation action. Noninteractive loading placeholders do not invent a CTA.
 - All interactive controls have a 48×48px minimum effective hit area and visible borders/backgrounds. Adjacent targets have at least 8px separation. Hover feedback uses 80ms transitions; keyboard focus and reduced-motion treatment are explicit.
-- The app has no marketing landing page: `/` redirects to sign-in or the workspace. Workspace information follows a left-aligned hierarchy; Z-pattern marketing blocks are not applicable to these forms/data pages.
+- With public signup enabled, `/` leads new visitors to `/pricing`, then `/sign-up` and `/start` for the commercial subscription flow (revision November 5, 2026). With signup closed, `/` redirects to sign-in or the workspace. Workspace information follows a left-aligned hierarchy; Z-pattern marketing blocks are not applicable to these forms/data pages.
 
 ## Verification
 

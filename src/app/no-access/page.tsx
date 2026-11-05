@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { publicSignupEnabled } from "@/lib/billing";
 import { HydratedMain } from "@/components/hydrated-main";
 export default function NoAccess() {
   return (
@@ -8,6 +10,11 @@ export default function NoAccess() {
         you were invited, open the invite link again, or ask the shop owner to
         resend it.
       </p>
+      {publicSignupEnabled() && (
+        <p>
+          <Link href="/start">Create your own shop</Link>
+        </p>
+      )}
       <form action="/auth/sign-out" method="post">
         <button className="btn secondary">Sign out</button>
       </form>

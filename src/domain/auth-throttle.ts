@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { withGlobalWorker } from "@/db/tenant";
 import { AppError } from "@/lib/errors";
 const RULES = {
+  signup: { ip: 10, email: 3, minutes: 60 },
   sign_in: { ip: 100, email: 30, minutes: 15 },
   reset: { ip: 10, email: 3, minutes: 60 },
   invite: { ip: 10, email: 3, minutes: 60 },

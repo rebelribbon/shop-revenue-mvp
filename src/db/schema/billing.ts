@@ -7,6 +7,9 @@ export const shopSubscription = app.table(
   "shop_subscription",
   {
     ...tenantColumns(),
+    checkoutAttemptId: text("checkout_attempt_id"),
+    checkoutPriceId: text("checkout_price_id"),
+    checkoutExpiresAt: timestamp("checkout_expires_at", { withTimezone: true }),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
     status: text("status").notNull().default("none"),

@@ -1,3 +1,4 @@
+import { applyBillingRiskEvent, BILLING_RISK_EVENTS } from "./billing-risk";
 import type Stripe from "stripe";
 import { applyStripeEvent } from "./stripe-payments";
 import { applySubscriptionEvent, SUBSCRIPTION_EVENTS } from "./billing";
@@ -5,7 +6,11 @@ import { applySubscriptionEvent, SUBSCRIPTION_EVENTS } from "./billing";
 // Connect events (event.account set) are a shop's customer invoice payments;
 // platform events are the shop's own Shop Revenue subscription.
 export const routeStripeEvent = (event: Stripe.Event) =>
-  event.account ? applyStripeEvent(event) : applySubscriptionEvent(event);
+  event.account
+    ? applyStripeEvent(event)
+    : BILLING_RISK_EVENTS.includes(event.type)
+      ? applyBillingRiskEvent(event)
+      : applySubscriptionEvent(event);
 
 export const CONNECT_EVENTS = [
   "checkout.session.completed",
@@ -18,5 +23,9 @@ export const CONNECT_EVENTS = [
   "account.updated",
 ];
 export const STRIPE_EVENT_TYPES = [
-  ...new Set([...CONNECT_EVENTS, ...SUBSCRIPTION_EVENTS]),
+  ...new Set([
+    ...CONNECT_EVENTS,
+    ...SUBSCRIPTION_EVENTS,
+    ...BILLING_RISK_EVENTS,
+  ]),
 ];

@@ -101,6 +101,12 @@ export default async function ShopLayout({
           </Link>
         </header>
         <div className="workspace-body">
+          {billing.kind === "unavailable" && (
+            <p className="notice error">
+              Subscription billing needs attention.{" "}
+              {billingLink("Contact the owner to restore billing")}
+            </p>
+          )}
           {billing.kind === "setup" && (
             <div className="notice setup-notice" data-billing="setup">
               {owner

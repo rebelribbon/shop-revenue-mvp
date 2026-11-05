@@ -1,6 +1,6 @@
 # M9 launch hardening
 
-Status: implementation under verification; commercial release is blocked until the external evidence below exists. M5 texting and M6 imports remain out of scope. Shops contact customers themselves. SaaS subscription billing remains manual per the frozen specification.
+Status: implementation under verification; commercial release is blocked until the external evidence below exists. M5 texting and M6 imports remain out of scope. Shops contact customers themselves. Commercial subscriptions, trial and discount codes follow the November 5 revision in `spec-revision-2026-11-05-commercial-subscriptions.md`; activation requires the production release checks.
 
 ## Implemented
 
@@ -44,3 +44,4 @@ No production application deployment has been made as part of this M9 work. Prev
 ## Verified preview
 
 See [the dated verification report](m9-verification-2026-10-29.md) for the exact tested application commit, CI runs, hosted scheduler proof and remaining launch gates.
+
