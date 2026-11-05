@@ -39,7 +39,7 @@ export const getIdentity = cache(async (): Promise<Identity | null> => {
 export type ShopSession = {
   businessId: string;
   actor: Actor;
-  role: "owner" | "staff" | "support";
+  role: "owner" | "staff" | "technician" | "support";
   userId: string | null;
   supportSession: { id: string; expiresAt: Date; businessName: string } | null;
 };
@@ -156,7 +156,7 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
     session: {
       businessId: m.businessId,
       actor: { type: "user", id: m.userId, authSubject: identity.authSubject },
-      role: m.role,
+      role: m.role as "owner" | "staff" | "technician",
       userId: m.userId,
       supportSession: null,
     },
