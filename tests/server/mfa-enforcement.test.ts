@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   assurance: vi.fn(),
   read: vi.fn(),
 }));
+// These are server-route tests; retain Next's server-only marker in app builds.
+vi.mock("server-only", () => ({}));
 let state: SessionState;
 vi.mock("@/server/request", () => ({
   getRequestMeta: async () => ({ requestId: "mfa-test-request" }),
