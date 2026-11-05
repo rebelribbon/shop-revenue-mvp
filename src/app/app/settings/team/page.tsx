@@ -119,7 +119,8 @@ export default async function TeamPage() {
           <h2>Invite a teammate</h2>
           <p className="muted">
             Each person gets their own login. {seatsLeft} of {MAX_TEAM_SEATS}{" "}
-            team logins left. Staff run the front office; technicians work assigned jobs.
+            team logins left. Staff run the front office; technicians work
+            assigned jobs.
           </p>
           <ActionForm action={inviteStaffAction} submitLabel="Send invite">
             <label htmlFor="name">Name</label>
@@ -138,8 +139,8 @@ export default async function TeamPage() {
       )}
       {isOwner && seatsLeft <= 0 && (
         <p className="muted">
-          You have {MAX_TEAM_SEATS} team logins, the most allowed. Remove one
-          to invite someone else.
+          You have {MAX_TEAM_SEATS} team logins, the most allowed. Remove one to
+          invite someone else.
         </p>
       )}
     </HydratedMain>

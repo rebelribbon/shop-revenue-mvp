@@ -87,7 +87,7 @@ export default async function SettingsPage() {
           <strong>Team</strong>
           <span className="muted">Owner and staff access</span>
         </Link>
-        {s.role !== "staff" && (
+        {s.role !== "staff" && s.role !== "technician" && (
           <Link
             className="card settings-link"
             href="/app/settings/support-access"

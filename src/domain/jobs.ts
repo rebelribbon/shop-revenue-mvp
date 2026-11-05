@@ -216,7 +216,11 @@ export async function getJob(tx: TenantTx, id: string) {
     .limit(1);
   return job ?? null;
 }
-export async function listJobs(tx: TenantTx, query = "", assigneeUserId?: string) {
+export async function listJobs(
+  tx: TenantTx,
+  query = "",
+  assigneeUserId?: string,
+) {
   const latest = tx
     .selectDistinctOn([activity.subjectId], {
       version: activity.id,
