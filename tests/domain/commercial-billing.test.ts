@@ -8,7 +8,7 @@ import {
   configureSubscriptionPlan,
   createDiscountCode,
 } from "@/domain/commercial-billing";
-import { startSubscription } from "@/domain/billing";
+import { startSubscription, syncSubscription } from "@/domain/billing";
 import { applyBillingRiskEvent } from "@/domain/billing-risk";
 import {
   billingAccess,
@@ -244,6 +244,23 @@ it("reuses a persisted Stripe idempotency key for simultaneous trial checkout st
   await startSubscription(shop, meta());
   expect(fake.checkout.sessions.create).toHaveBeenCalledTimes(before);
   expect(fake.billingPortal.sessions.create).toHaveBeenCalled();
+  const completed = (await fake.subscriptions.list())
+    .data[0] as Stripe.Subscription;
+  const canceled = { ...completed, status: "canceled" } as Stripe.Subscription;
+  await syncSubscription(t.businessId, canceled, meta());
+  fake.subscriptions.list.mockResolvedValue({ data: [canceled] });
+  await startSubscription(shop, meta());
+  const restarted = fake.checkout.sessions.create.mock.calls as unknown as [
+    Stripe.Checkout.SessionCreateParams,
+    Stripe.RequestOptions,
+  ][];
+  expect(restarted).toHaveLength(before + 1);
+  expect(restarted.at(-1)![1].idempotencyKey).not.toBe(
+    restarted[0][1].idempotencyKey,
+  );
+  expect(restarted.at(-1)![0].subscription_data).not.toHaveProperty(
+    "trial_period_days",
+  );
 });
 
 it("records refund/dispute/fraud review once using the charge Customer and rejects the wrong payment mode", async () => {
@@ -284,6 +301,19 @@ it("records refund/dispute/fraud review once using the charge Customer and rejec
     refundedCents: 15000,
     reviewRequired: true,
   });
+  fake.charges.retrieve.mockResolvedValue(event.data.object);
+  for (const type of [
+    "charge.dispute.created",
+    "radar.early_fraud_warning.created",
+  ]) {
+    const risk = {
+      ...event,
+      id: `evt_${randomUUID()}`,
+      type,
+      data: { object: { charge: "ch_subscription" } },
+    } as unknown as Stripe.Event;
+    expect(await applyBillingRiskEvent(risk)).toBe(true);
+  }
   await expect(
     applyBillingRiskEvent({ ...event, livemode: true }),
   ).rejects.toMatchObject({ code: "CONFLICT" });

@@ -47,7 +47,7 @@ export async function enrollShop(
         email: identity.email.toLowerCase(),
         displayName: input.ownerName,
       })
-      .onConflictDoNothing({ target: user.authProviderId });
+      .onConflictDoNothing();
     const [row] = await tx
       .select()
       .from(user)

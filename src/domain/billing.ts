@@ -97,8 +97,6 @@ export async function startSubscription(shop: Shop, meta: RequestMeta) {
     );
   if (row.comped)
     throw new AppError("NOT_ELIGIBLE", "Your shop is not billed.");
-  if (row.stripeCustomerId && LIVE_STATES.has(row.status))
-    return openBillingPortal(shop);
   if (!row.stripeCustomerId) {
     const profile = await withTenant(shop.businessId, shop.actor, (tx) =>
       getBusinessProfile(tx),
@@ -265,6 +263,15 @@ export async function syncSubscription(
       trialUsedAt:
         row.trialUsedAt ?? (sub.trial_start ? toDate(sub.trial_start) : null),
       updatedAt: now,
+      ...(row.stripeSubscriptionId !== sub.id ||
+      row.status !== status ||
+      (!row.trialUsedAt && sub.trial_start)
+        ? {
+            checkoutAttemptId: null,
+            checkoutPriceId: null,
+            checkoutExpiresAt: null,
+          }
+        : {}),
     };
     await tx
       .update(shopSubscription)

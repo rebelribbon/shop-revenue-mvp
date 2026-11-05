@@ -14,7 +14,7 @@ it("creates one shop under concurrent verified signup retries and scopes its own
   };
   const input = { shopName: "New shop", ownerName: "Sam Owner" };
   const rows = await Promise.all(
-    Array.from({ length: 3 }, () => enrollShop(identity, input, meta())),
+    Array.from({ length: 10 }, () => enrollShop(identity, input, meta())),
   );
   expect(new Set(rows.map((r) => r.businessId)).size).toBe(1);
   const [owned] = await resolveMemberships(identity.authSubject);
@@ -105,4 +105,25 @@ it("keeps the signup resolver unavailable to the app database role", async () =>
   } finally {
     await client.end();
   }
+});
+
+it("does not transfer a shop when a different auth identity presents an existing email", async () => {
+  const identity = {
+    authSubject: randomUUID(),
+    email: `existing-${randomUUID()}@example.test`,
+    emailVerified: true,
+  };
+  await enrollShop(
+    identity,
+    { shopName: "First shop", ownerName: "Owner" },
+    meta(),
+  );
+  await expect(
+    enrollShop(
+      { ...identity, authSubject: randomUUID() },
+      { shopName: "Other shop", ownerName: "Other" },
+      meta(),
+    ),
+  ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  expect(await resolveMemberships(identity.authSubject)).toHaveLength(1);
 });

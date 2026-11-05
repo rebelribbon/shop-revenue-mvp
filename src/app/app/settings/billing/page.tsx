@@ -25,7 +25,8 @@ export default async function BillingSettings({
   searchParams: Promise<{ started?: string }>;
 }) {
   const s = await requireOwnerView("/app/settings/billing");
-  if ((await searchParams).started)
+  const started = Boolean((await searchParams).started);
+  if (s.actor.type === "user" && s.role === "owner")
     await refreshShopSubscription(s.businessId).catch(() =>
       logger.warn({
         event: "billing.refresh_failed",
@@ -53,6 +54,12 @@ export default async function BillingSettings({
         Your Shop Revenue subscription. Stripe keeps your card on file; we never
         see the full number.
       </p>
+      {started && access.kind === "setup" && (
+        <p role="status" className="notice">
+          Your subscription is being confirmed. Refresh this page to check
+          billing again.
+        </p>
+      )}
       <section className="card">
         {access.kind === "unavailable" && (
           <>

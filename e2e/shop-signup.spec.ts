@@ -47,8 +47,8 @@ test("a new owner creates their own isolated shop and reaches subscription billi
     page.getByRole("heading", { name: "Billing", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(`Independent Shop ${stamp}`, { exact: true }).first(),
-  ).toBeVisible();
+    page.locator(".workspace-brand:visible, .workspace-mobile-brand:visible"),
+  ).toContainText(`Independent Shop ${stamp}`);
   await page.goto("/app/customers");
   await expect(page.getByText("Ford", { exact: true })).toHaveCount(0);
   await page.goto("/start");
