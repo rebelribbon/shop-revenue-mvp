@@ -5,7 +5,10 @@ import { safeNext } from "@/lib/safe-next";
 import { maskTokenPath } from "@/lib/logger";
 import { safeErrorDiagnostic } from "@/lib/errors";
 import { mfaNeeded } from "@/lib/mfa-policy";
-import { releaseConfiguration } from "@/lib/release-readiness";
+import {
+  releaseConfiguration,
+  stripeAccountReady,
+} from "@/lib/release-readiness";
 import { checkAuthThrottle } from "@/domain/auth-throttle";
 import { runMaintenanceBatch, maintenanceStatus } from "@/domain/maintenance";
 import { withGlobalWorker, withTenant } from "@/db/tenant";
@@ -22,6 +25,40 @@ beforeAll(() => {
     "test-only-hardening-session-signing-secret";
 });
 describe("launch security boundaries", () => {
+  it("requires activated charges, payouts and complete business verification before commercial release", () => {
+    const ready = {
+      charges_enabled: true,
+      payouts_enabled: true,
+      details_submitted: true,
+      requirements: { disabled_reason: null, currently_due: [], past_due: [] },
+    };
+    expect(stripeAccountReady(ready)).toBe(true);
+    expect(stripeAccountReady({})).toBe(false);
+    for (const field of [
+      "charges_enabled",
+      "payouts_enabled",
+      "details_submitted",
+    ])
+      expect(stripeAccountReady({ ...ready, [field]: false })).toBe(false);
+    expect(
+      stripeAccountReady({
+        ...ready,
+        requirements: { disabled_reason: "requirements.past_due" },
+      }),
+    ).toBe(false);
+    expect(
+      stripeAccountReady({
+        ...ready,
+        requirements: { currently_due: ["business_type"] },
+      }),
+    ).toBe(false);
+    expect(
+      stripeAccountReady({
+        ...ready,
+        requirements: { past_due: ["business_type"] },
+      }),
+    ).toBe(false);
+  });
   it("rejects control-character and backslash redirect bypasses", () => {
     for (const path of [
       "https://outside.example",

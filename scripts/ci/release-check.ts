@@ -5,11 +5,16 @@ import {
 import { MONTHLY_PRICE_CENTS } from "../../src/lib/billing";
 import { stripeClient } from "../../src/lib/stripe";
 import { readFileSync } from "node:fs";
-import { releaseConfiguration } from "../../src/lib/release-readiness";
+import {
+  releaseConfiguration,
+  stripeAccountReady,
+} from "../../src/lib/release-readiness";
 const checks = releaseConfiguration(process.env, true);
 let subscriptionReady = false;
+let accountReady = false;
 try {
   const stripe = stripeClient();
+  accountReady = stripeAccountReady(await stripe.accounts.retrieve(null));
   const price = await currentSubscriptionPrice(stripe);
   subscriptionReady =
     price.livemode &&
@@ -17,6 +22,12 @@ try {
     price.unit_amount === MONTHLY_PRICE_CENTS &&
     Boolean(await billingPortalConfiguration(stripe));
 } catch {}
+checks.push({
+  key: "stripe-account-activation",
+  ready: accountReady,
+  message:
+    "Stripe business verification completed, live charges and payouts enabled, no outstanding account requirements",
+});
 checks.push({
   key: "subscription-catalog",
   ready: subscriptionReady,

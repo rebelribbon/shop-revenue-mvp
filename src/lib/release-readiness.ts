@@ -1,4 +1,23 @@
 export type ReleaseCheck = { key: string; ready: boolean; message: string };
+export function stripeAccountReady(account: {
+  charges_enabled?: boolean;
+  payouts_enabled?: boolean;
+  details_submitted?: boolean;
+  requirements?: {
+    disabled_reason?: string | null;
+    currently_due?: string[] | null;
+    past_due?: string[] | null;
+  } | null;
+}) {
+  return (
+    account.charges_enabled === true &&
+    account.payouts_enabled === true &&
+    account.details_submitted === true &&
+    !account.requirements?.disabled_reason &&
+    !account.requirements?.currently_due?.length &&
+    !account.requirements?.past_due?.length
+  );
+}
 export function releaseConfiguration(
   env: Record<string, string | undefined>,
   allowRuntimePlaceholders = false,
