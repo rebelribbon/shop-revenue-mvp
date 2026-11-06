@@ -1,4 +1,26 @@
 export type ReleaseCheck = { key: string; ready: boolean; message: string };
+export function productionRecoveryReady(
+  evidence: Record<string, unknown> | undefined,
+  now = Date.now(),
+) {
+  const recent = (value: unknown) => {
+    if (typeof value !== "string") return false;
+    const time = Date.parse(value);
+    return Number.isFinite(time) && time <= now && now - time <= 86400000;
+  };
+  if (evidence?.mode === "daily-offsite")
+    return (
+      recent(evidence.providerBackupAt) && recent(evidence.offsiteBackupAt)
+    );
+  if (evidence?.mode === "pitr")
+    return (
+      typeof evidence.retentionDays === "number" &&
+      Number.isInteger(evidence.retentionDays) &&
+      evidence.retentionDays >= 7 &&
+      recent(evidence.latestRestorePointAt)
+    );
+  return false;
+}
 export function stripeAccountReady(account: {
   charges_enabled?: boolean;
   payouts_enabled?: boolean;

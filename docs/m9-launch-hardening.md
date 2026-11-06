@@ -24,8 +24,13 @@ The bounded worker handles at most 25 completed/failed jobs per call, checks its
 CI must pass the full migration chain, RLS checks, production-role tests, browser phone/desktop tests, audit and application-schema restore. The CI restore covers `app`, `graphile_worker` and `drizzle` into disposable PostgreSQL. It does not verify Supabase Auth, Storage or the off-site download/decrypt/restore chain.
 
 Production deploy requires non-secret `release_evidence_json` supplied at dispatch, keyed by:
-`independentSecurityReview`, `productionAuthAndMfa`, `smtpDelivery`, `offsiteBackupRestore`, `pitr`, `alertsAndOnCall`, `designPartnerApproval`.
+`independentSecurityReview`, `productionAuthAndMfa`, `smtpDelivery`, `offsiteBackupRestore`, `productionRecovery`, `alertsAndOnCall`, `designPartnerApproval`.
 Each value is `{ "commit": "<exact SHA>", "verifiedAt": "<ISO timestamp>", "reference": "<review/report reference>" }`. Evidence must be recent (seven days); no secrets or customer records belong in these references. A prepared file outside the repository avoids a self-referential evidence SHA. Exact-build staging smoke is an automated prerequisite; production smoke runs automatically after deployment and is not a circular pre-deployment evidence requirement. Human review must actually be independent; generated implementation checks cannot substitute for it.
+
+`productionRecovery` also requires the mode and verified restore-point timestamps
+in [the November 5 daily-recovery revision](spec-revision-2026-11-05-daily-commercial-recovery.md).
+The daily path requires both provider and independent backups no older than
+24 hours. The separate full off-site restore evidence remains mandatory.
 
 The preview provider scheduler uses a private `ops` function and synchronous `http`, with a bounded timeout and credentials read from Vault only in memory. Application and anonymous roles cannot call that function or read Vault. The asynchronous `pg_net` request queue was rejected for credentialed calls because provider-owned PUBLIC queue grants could not be revoked by the available postgres role. Its unused extension remains a provider cleanup item; no credentialed requests were queued.
 
@@ -34,7 +39,7 @@ The preview provider scheduler uses a private `ops` function and synchronous `ht
 - Configure transactional email and Supabase Auth SMTP; observe invite and password-reset delivery end to end. An accepted reset request is not delivered email.
 - Configure server-side Supabase account administration, production worker/admin roles, internal Google sign-in/domain allowlist, and verify production owner MFA without locking out the owner.
 - Configure monitoring destination and on-call ownership; run a staged alert drill and uptime checks for app/public/webhook paths.
-- Configure independent-account off-site backup credentials, encryption, schedules and complete the off-site restore drill. Enable/verify required PITR retention before real shop data. Repository workflows do not run on a non-default branch schedule.
+- Configure independent-account off-site backup credentials, encryption, schedules and complete the off-site restore drill. Verify the chosen daily-offsite or PITR recovery path before real shop data. Repository workflows do not run on a non-default branch schedule.
 - Complete independent security review of the exact candidate and record the candidate’s existing 20,000-customer CI benchmark (this is not a production latency guarantee).
 - Configure production Stripe Connect separately from sandbox. Verify live webhook isolation and each shop's own connected account. Do not treat sandbox payment/refund tests as live settlement evidence.
 - Confirm final commercial authorization language and design-partner onboarding/release evidence against the frozen release checklist. No legal review or provider purchase is initiated automatically.
@@ -44,4 +49,3 @@ No production application deployment has been made as part of this M9 work. Prev
 ## Verified preview
 
 See [the dated verification report](m9-verification-2026-10-29.md) for the exact tested application commit, CI runs, hosted scheduler proof and remaining launch gates.
-
