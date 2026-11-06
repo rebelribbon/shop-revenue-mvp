@@ -27,6 +27,16 @@ Production deploy requires non-secret `release_evidence_json` supplied at dispat
 `independentSecurityReview`, `productionAuthAndMfa`, `smtpDelivery`, `offsiteBackupRestore`, `productionRecovery`, `alertsAndOnCall`, `designPartnerApproval`.
 Each value is `{ "commit": "<exact SHA>", "verifiedAt": "<ISO timestamp>", "reference": "<review/report reference>" }`. Evidence must be recent (seven days); no secrets or customer records belong in these references. A prepared file outside the repository avoids a self-referential evidence SHA. Exact-build staging smoke is an automated prerequisite; production smoke runs automatically after deployment and is not a circular pre-deployment evidence requirement. Human review must actually be independent; generated implementation checks cannot substitute for it.
 
+Vercel builds run remotely so production Secret variables stay inside Vercel.
+`vercel pull` returns redacted placeholders and cannot supply usable Stripe or
+database credentials to a GitHub runner. The production build runs the release
+check with real environment values and exact-commit evidence before building the
+app. A failed check prevents both the candidate build and subsequent migrations.
+The candidate is deployed with `--skip-domain`; after the provider restore-point
+check, migrations and exact-candidate smoke, only that candidate is promoted.
+Preview builds use their separate Preview environment and skip commercial
+release evidence. No production credentials are copied to Preview or GitHub.
+
 `productionRecovery` also requires the mode and verified restore-point timestamps
 in [the November 5 daily-recovery revision](spec-revision-2026-11-05-daily-commercial-recovery.md).
 The daily path requires both provider and independent backups no older than

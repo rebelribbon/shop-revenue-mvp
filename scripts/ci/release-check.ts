@@ -10,7 +10,7 @@ import {
   stripeAccountReady,
   productionRecoveryReady,
 } from "../../src/lib/release-readiness";
-const checks = releaseConfiguration(process.env, true);
+const checks = releaseConfiguration(process.env);
 let subscriptionReady = false;
 let accountReady = false;
 try {
@@ -61,10 +61,11 @@ let evidence: Record<
 > = {};
 try {
   evidence = JSON.parse(
-    readFileSync(
-      process.env.RELEASE_EVIDENCE_FILE ?? "docs/release-evidence.json",
-      "utf8",
-    ),
+    process.env.RELEASE_EVIDENCE_JSON ??
+      readFileSync(
+        process.env.RELEASE_EVIDENCE_FILE ?? "docs/release-evidence.json",
+        "utf8",
+      ),
   );
 } catch {}
 for (const key of requiredEvidence) {
