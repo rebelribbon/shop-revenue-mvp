@@ -1,0 +1,44 @@
+name: Initialize unused production database logins
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_commit:
+        description: Exact reviewed main commit SHA
+        required: true
+        type: string
+      initialize_unused_roles:
+        description: Initialize only the unconfigured, inactive worker_user and admin_user logins
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: production-runtime-setup
+  cancel-in-progress: false
+jobs:
+  setup:
+    if: github.ref == 'refs/heads/main' && github.ref_protected && inputs.initialize_unused_roles
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    steps:
+      - name: Require exact reviewed protected-main commit
+        env:
+          REVIEWED_COMMIT: ${{ inputs.reviewed_commit }}
+        run: test "$REVIEWED_COMMIT" = "$GITHUB_SHA"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Test setup guards without production credentials
+        run: node --test tests/ci/setup-production-runtime.test.mjs
+      - name: Initialize logins and save directly to sensitive production variables
+        env:
+          REVIEWED_COMMIT: ${{ inputs.reviewed_commit }}
+          INITIALIZE_UNUSED_ROLES: ${{ inputs.initialize_unused_roles }}
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node scripts/ci/setup-production-runtime.mjs
