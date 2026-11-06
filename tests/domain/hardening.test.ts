@@ -8,6 +8,7 @@ import { mfaNeeded } from "@/lib/mfa-policy";
 import {
   releaseConfiguration,
   stripeAccountReady,
+  productionRecoveryReady,
 } from "@/lib/release-readiness";
 import { checkAuthThrottle } from "@/domain/auth-throttle";
 import { runMaintenanceBatch, maintenanceStatus } from "@/domain/maintenance";
@@ -25,6 +26,97 @@ beforeAll(() => {
     "test-only-hardening-session-signing-secret";
 });
 describe("launch security boundaries", () => {
+  it("requires fresh provider and independent backups for daily recovery, or verified PITR retention", () => {
+    const now = Date.parse("2026-11-05T20:00:00Z");
+    const fresh = "2026-11-05T07:00:00Z";
+    expect(productionRecoveryReady(undefined, now)).toBe(false);
+    expect(
+      productionRecoveryReady(
+        { mode: "daily-offsite", providerBackupAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        {
+          mode: "daily-offsite",
+          providerBackupAt: fresh,
+          offsiteBackupAt: fresh,
+        },
+        now,
+      ),
+    ).toBe(true);
+    for (const invalid of [
+      "bad-date",
+      "2026-11-05T21:00:00Z",
+      "2026-11-04T19:59:59Z",
+    ]) {
+      expect(
+        productionRecoveryReady(
+          {
+            mode: "daily-offsite",
+            providerBackupAt: fresh,
+            offsiteBackupAt: invalid,
+          },
+          now,
+        ),
+      ).toBe(false);
+      expect(
+        productionRecoveryReady(
+          {
+            mode: "daily-offsite",
+            providerBackupAt: invalid,
+            offsiteBackupAt: fresh,
+          },
+          now,
+        ),
+      ).toBe(false);
+    }
+    expect(
+      productionRecoveryReady(
+        {
+          mode: "daily-offsite",
+          providerBackupAt: "2026-11-04T20:00:00Z",
+          offsiteBackupAt: fresh,
+        },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      productionRecoveryReady(
+        { mode: "pitr", retentionDays: 7, latestRestorePointAt: fresh },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      productionRecoveryReady(
+        { mode: "pitr", retentionDays: 6, latestRestorePointAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        { mode: "pitr", retentionDays: "7", latestRestorePointAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        {
+          mode: "pitr",
+          retentionDays: 7,
+          latestRestorePointAt: "2026-11-04T19:59:59Z",
+        },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        { mode: "daily", providerBackupAt: fresh, offsiteBackupAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+  });
   it("requires activated charges, payouts and complete business verification before commercial release", () => {
     const ready = {
       charges_enabled: true,

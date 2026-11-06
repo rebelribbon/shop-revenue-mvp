@@ -3,7 +3,8 @@
 The approved retail offer is $49.99 per shop per month, a 14-day card-required
 trial and product-scoped discount codes. Paid advertising remains $0. Brad
 declined the approximately $100/month PITR add-on and authorized continuing
-with the lean setup. Neither PITR nor the Vercel Pro upgrade has been purchased.
+with the lean setup. PITR remains disabled. Vercel Pro was subsequently activated
+at the approved quote of $21.32/month including estimated tax, plus usage.
 The inspected forecast for existing Supabase projects was $36.87/month; Vercel
 quoted $21.32/month including estimated tax. Resend is on its free plan.
 These are estimates, excluding further usage, payment fees and off-site storage.
@@ -43,20 +44,36 @@ partial setup requires review. Failed writes roll back the database and remove
 only variables marked with that run's unique operation identifier. An unknown
 COMMIT outcome preserves saved credentials and requires manual review.
 
-This workflow has not yet been run. It does not deploy the app, enable public
+The workflow completed successfully at reviewed main commit
+`ab746f39a675e04da1a6fdf9cba4168e42126238` in
+[run 42153409578](https://github.com/rebelribbon/shop-revenue-mvp/actions/runs/42153409578).
+Both new logins were verified and both sensitive production variables were
+confirmed present without reading their values. It does not deploy the app, enable public
 signup, provision Supabase service credentials, or create a Stripe API key.
 The runtime still needs server-side Supabase account administration, internal
-Google SSO/domain allowlist, the restricted live Stripe key (including account
-read for activation checks), and the separate Connect signing configuration.
+Google SSO/domain allowlist and the restricted live Stripe key (including account
+read for activation checks). The separate live Connect webhook
+`we_1UYdsqK3kUALRyLgc5bH76s5` has now been created for the eight handled shop-payment
+events, disabled, and its signing key saved as sensitive `STRIPE_WEBHOOK_SECRET`
+in production. Keep both live webhooks disabled until the deployed receiver is
+verified. No test-mode credentials were copied into production.
 
 ## Recovery and release remain blocked
 
-Supabase daily backups exist and PITR remains off. The current commercial
-release policy still requires PITR and independent off-site recovery evidence.
-The cheaper daily-backup alternative needs a dated policy revision, encrypted
-independent storage, unattended nightly execution, failure alerts and a real
-download/decrypt/restore drill covering Auth and private Storage as well as
-application data. No alternative recovery evidence has been asserted.
+Supabase daily backups exist and PITR remains off. The
+[daily commercial recovery revision](spec-revision-2026-11-05-daily-commercial-recovery.md)
+allows fresh provider and independent off-site backups in place of paid PITR.
+Independent encrypted storage, unattended nightly execution, failure alerts and
+a real download/decrypt/restore drill covering Auth and private Storage as well
+as application data are still required. No alternative recovery evidence has
+been asserted.
+
+The staged release of `ab746f3` passed database/browser CI, applied staging
+migrations and passed exact-deployment hosted smoke in
+[run 42156573659](https://github.com/rebelribbon/shop-revenue-mvp/actions/runs/42156573659).
+Its production job is waiting at the approval gate with no release evidence
+supplied. It must not be approved as a commercial release. The recovery revision
+needs its own reviewed candidate and successful checks before release.
 
 Finish those items, independent candidate security review, real production
 email/MFA and alert drills, staging migration/smoke and owner onboarding

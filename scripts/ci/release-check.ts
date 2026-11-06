@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import {
   releaseConfiguration,
   stripeAccountReady,
+  productionRecoveryReady,
 } from "../../src/lib/release-readiness";
 const checks = releaseConfiguration(process.env, true);
 let subscriptionReady = false;
@@ -46,13 +47,17 @@ const requiredEvidence = [
   "productionAuthAndMfa",
   "smtpDelivery",
   "offsiteBackupRestore",
-  "pitr",
+  "productionRecovery",
   "alertsAndOnCall",
   "designPartnerApproval",
 ];
 let evidence: Record<
   string,
-  { commit?: string; verifiedAt?: string; reference?: string }
+  Record<string, unknown> & {
+    commit?: string;
+    verifiedAt?: string;
+    reference?: string;
+  }
 > = {};
 try {
   evidence = JSON.parse(
@@ -71,7 +76,8 @@ for (const key of requiredEvidence) {
       e.commit === process.env.GITHUB_SHA &&
       !!e.verifiedAt &&
       Date.now() - new Date(e.verifiedAt).getTime() < 7 * 86400000 &&
-      new Date(e.verifiedAt).getTime() <= Date.now() + 300000,
+      new Date(e.verifiedAt).getTime() <= Date.now() + 300000 &&
+      (key !== "productionRecovery" || productionRecoveryReady(e)),
     message: `Release evidence required for ${key} at the release commit`,
   });
 }

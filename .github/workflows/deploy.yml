@@ -7,7 +7,8 @@ name: Deploy
 # approve -> migrate production as migration_owner -> deploy app. Full M1 E2E
 # stays in the local-stack workflow because those tests intentionally depend on
 # seeded tenants, Mailpit and the local SMS inbox. Production migrations require
-# a PITR restore point. GitHub environments "staging" and "production" hold only
+# a recent provider restore point plus reviewed commercial recovery evidence.
+# GitHub environments "staging" and "production" hold only
 # credentials; "production" requires reviewer approval.
 # Two-project hosted model (revision 2026-10-23):
 # - staging environment -> shop-revenue-dev
@@ -171,4 +172,3 @@ jobs:
             sleep 10
           done
           echo "::error::production health check failed or canonical domain is not serving $GITHUB_SHA"; exit 1
-
