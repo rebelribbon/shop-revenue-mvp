@@ -1,4 +1,46 @@
 export type ReleaseCheck = { key: string; ready: boolean; message: string };
+export function releaseProfileChecks(
+  env: Record<string, string | undefined>,
+): ReleaseCheck[] {
+  const profile = env.RELEASE_PROFILE ?? "commercial";
+  return [
+    {
+      key: "release-profile",
+      ready: profile === "commercial" || profile === "pilot",
+      message: "Release profile must be commercial or pilot",
+    },
+    ...(profile === "pilot"
+      ? [
+          {
+            key: "pilot-signup-closed",
+            ready: env.PUBLIC_SIGNUP_ENABLED === "false",
+            message:
+              "Pilot release requires public signup closed; provider database backups only",
+          },
+        ]
+      : []),
+  ];
+}
+
+export function requiredReleaseEvidence(profile = "commercial") {
+  const keys = [
+    "independentSecurityReview",
+    "productionAuthAndMfa",
+    "smtpDelivery",
+    "offsiteBackupRestore",
+    "productionRecovery",
+    "alertsAndOnCall",
+    "designPartnerApproval",
+  ];
+  // Pilot backup checks run automatically in deploy.yml before migrations.
+  // An unknown profile retains every commercial requirement and fails above.
+  return profile === "pilot"
+    ? keys.filter(
+        (key) => !["offsiteBackupRestore", "productionRecovery"].includes(key),
+      )
+    : keys;
+}
+
 export function productionRecoveryReady(
   evidence: Record<string, unknown> | undefined,
   now = Date.now(),

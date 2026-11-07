@@ -9,8 +9,13 @@ import {
   releaseConfiguration,
   stripeAccountReady,
   productionRecoveryReady,
+  releaseProfileChecks,
+  requiredReleaseEvidence,
 } from "../../src/lib/release-readiness";
-const checks = releaseConfiguration(process.env);
+const checks = [
+  ...releaseConfiguration(process.env),
+  ...releaseProfileChecks(process.env),
+];
 let subscriptionReady = false;
 let accountReady = false;
 try {
@@ -42,15 +47,7 @@ checks.push({
 });
 // Staging smoke is a dependency; production smoke runs after deployment. Requiring
 // production smoke before production exists would make the release gate circular.
-const requiredEvidence = [
-  "independentSecurityReview",
-  "productionAuthAndMfa",
-  "smtpDelivery",
-  "offsiteBackupRestore",
-  "productionRecovery",
-  "alertsAndOnCall",
-  "designPartnerApproval",
-];
+const requiredEvidence = requiredReleaseEvidence(process.env.RELEASE_PROFILE);
 let evidence: Record<
   string,
   Record<string, unknown> & {
@@ -84,7 +81,11 @@ for (const key of requiredEvidence) {
 }
 console.log(
   JSON.stringify(
-    { launchReady: checks.every((c) => c.ready), checks },
+    {
+      releaseProfile: process.env.RELEASE_PROFILE ?? "commercial",
+      launchReady: checks.every((c) => c.ready),
+      checks,
+    },
     null,
     2,
   ),
