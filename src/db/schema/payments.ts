@@ -14,12 +14,25 @@ export const stripeConnection = app.table(
   {
     ...tenantColumns(),
     accountId: text("account_id"),
+    connectionMethod: text("connection_method").notNull().default("hosted"),
     cardPaymentsStatus: text("card_payments_status")
       .notNull()
       .default("not_connected"),
     livemode: boolean("livemode").notNull().default(false),
   },
   (t) => [unique().on(t.businessId), unique().on(t.accountId)],
+);
+export const stripeOAuthAttempt = app.table(
+  "stripe_oauth_attempt",
+  {
+    ...tenantColumns(),
+    ownerId: uuid("owner_id").notNull(),
+    stateHash: text("state_hash").notNull().unique(),
+    livemode: boolean("livemode").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  },
+  (t) => [unique().on(t.businessId, t.id)],
 );
 export const invoiceCheckout = app.table(
   "invoice_checkout",

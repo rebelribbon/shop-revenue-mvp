@@ -13,6 +13,7 @@ import {
   invoiceCheckout,
   invoiceRefund,
   stripeConnection,
+  stripeOAuthAttempt,
   shopSubscription,
   servicePlan,
   jobMedia,
@@ -282,6 +283,20 @@ const builders: Record<string, Builder> = {
         .onConflictDoUpdate({
           target: stripeConnection.businessId,
           set: { cardPaymentsStatus: "active" },
+        })
+        .returning();
+      return row.id;
+    }),
+  "app.stripe_oauth_attempt": async (t) =>
+    withTenant(t.businessId, t.owner.actor, async (tx) => {
+      const [row] = await tx
+        .insert(stripeOAuthAttempt)
+        .values({
+          businessId: t.businessId,
+          ownerId: t.owner.userId,
+          stateHash: newToken().hash,
+          livemode: false,
+          expiresAt: new Date(Date.now() + 600_000),
         })
         .returning();
       return row.id;

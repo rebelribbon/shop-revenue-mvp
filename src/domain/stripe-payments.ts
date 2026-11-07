@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import Stripe from "stripe";
 import {
   invoiceCheckout,
@@ -41,6 +41,9 @@ export async function connectShop(shop: Shop, meta: RequestMeta) {
   );
   requireMode(row.livemode);
   let accountId = row.accountId;
+  if (accountId && row.connectionMethod === "oauth") {
+    return { url: `https://dashboard.stripe.com/${accountId}` };
+  }
   if (!accountId) {
     const profile = await withTenant(shop.businessId, shop.actor, (tx) =>
       getBusinessProfile(tx),
@@ -102,19 +105,56 @@ export async function refreshShopConnection(businessId: string) {
   );
   if (!c?.accountId) return null;
   requireMode(c.livemode);
+  if (c.cardPaymentsStatus === "disconnected") return c;
+  if (c.connectionMethod === "oauth") {
+    const account = await stripeClient().accounts.retrieve(c.accountId);
+    const status =
+      account.charges_enabled &&
+      account.capabilities?.card_payments === "active"
+        ? "active"
+        : "inactive";
+    const [updated] = await withPaymentTenant(businessId, (tx) =>
+      tx
+        .update(stripeConnection)
+        .set({ cardPaymentsStatus: status, updatedAt: new Date() })
+        .where(
+          and(
+            eq(stripeConnection.businessId, businessId),
+            eq(stripeConnection.accountId, c.accountId!),
+            ne(stripeConnection.cardPaymentsStatus, "disconnected"),
+          ),
+        )
+        .returning(),
+    );
+    // A deauthorization received while retrieving the account must win.
+    return (
+      updated ??
+      (await withPaymentTenant(businessId, (tx) => getStripeConnection(tx)))
+    );
+  }
   const account = await stripeClient().v2.core.accounts.retrieve(c.accountId, {
     include: ["configuration.merchant"],
   });
   const status =
     account.configuration?.merchant?.capabilities?.card_payments?.status ??
     "inactive";
-  await withPaymentTenant(businessId, (tx) =>
+  const [updated] = await withPaymentTenant(businessId, (tx) =>
     tx
       .update(stripeConnection)
       .set({ cardPaymentsStatus: status, updatedAt: new Date() })
-      .where(eq(stripeConnection.businessId, businessId)),
+      .where(
+        and(
+          eq(stripeConnection.businessId, businessId),
+          eq(stripeConnection.accountId, c.accountId!),
+          ne(stripeConnection.cardPaymentsStatus, "disconnected"),
+        ),
+      )
+      .returning(),
   );
-  return { ...c, cardPaymentsStatus: status };
+  return (
+    updated ??
+    (await withPaymentTenant(businessId, (tx) => getStripeConnection(tx)))
+  );
 }
 export async function beginInvoiceCheckout(token: string, meta: RequestMeta) {
   const base = paymentBaseUrl();
@@ -326,6 +366,7 @@ export async function applyStripeEvent(event: Stripe.Event) {
       "refund.updated",
       "refund.failed",
       "account.updated",
+      "account.application.deauthorized",
     ].includes(event.type)
   )
     return false;
@@ -337,8 +378,33 @@ export async function applyStripeEvent(event: Stripe.Event) {
       "CONFLICT",
       "Stripe webhook mode does not match this environment.",
     );
-  const stripe = stripeClient();
   const meta = { requestId: event.id, ip: null };
+  if (event.type === "account.application.deauthorized") {
+    await withPaymentTenant(businessId, async (tx) => {
+      const [connection] = await tx
+        .update(stripeConnection)
+        .set({ cardPaymentsStatus: "disconnected", updatedAt: new Date() })
+        .where(
+          and(
+            eq(stripeConnection.businessId, businessId),
+            eq(stripeConnection.accountId, event.account!),
+          ),
+        )
+        .returning();
+      if (connection)
+        await audit(tx, meta, {
+          action: "stripe.account_disconnected",
+          targetType: "stripe_connection",
+          targetId: connection.id,
+          after: {
+            accountId: event.account,
+            cardPaymentsStatus: "disconnected",
+          },
+        });
+    });
+    return true;
+  }
+  const stripe = stripeClient();
   if (
     [
       "checkout.session.completed",

@@ -1,5 +1,6 @@
 import { assertSessionAssurance } from "../auth/assurance";
 import { safeErrorDiagnostic } from "@/lib/errors";
+import { stripeErrorDiagnostic } from "@/lib/stripe";
 // Server action contract (Section 10): Zod validation with unknown fields
 // rejected; caller resolved from the session; one withTenant transaction;
 // clientRequestId idempotency stored in request_idempotency (48 h); typed
@@ -222,6 +223,14 @@ export function toActionError(
       ? err
       : fromDatabaseError((err as { cause?: unknown }).cause ?? err);
   if (app) {
+    const providerDiagnostic = stripeErrorDiagnostic(app);
+    if (providerDiagnostic)
+      logger.warn({
+        event: "action.provider_error",
+        action,
+        requestId: meta.requestId,
+        ...providerDiagnostic,
+      });
     if (app.code === "FORBIDDEN")
       logger.warn({
         event: "action.forbidden",

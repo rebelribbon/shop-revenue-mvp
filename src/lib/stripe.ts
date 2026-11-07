@@ -35,10 +35,64 @@ export function paymentBaseUrl() {
 }
 
 export function safeStripeError(error: unknown) {
-  return error instanceof Stripe.errors.StripeError
-    ? new AppError(
-        "PROVIDER_UNAVAILABLE",
-        "Stripe could not complete this request. Refresh payment status before retrying.",
-      )
-    : error;
+  if (!(error instanceof Stripe.errors.StripeError)) return error;
+  return new AppError(
+    "PROVIDER_UNAVAILABLE",
+    error.code === "account_create_activation_required"
+      ? "Shop Revenue’s Stripe connection is awaiting activation. Please contact support."
+      : "Stripe could not complete this request. Check payment status before starting a new request.",
+    { stripeDiagnostic: pickStripeDiagnostic(error) },
+  );
+}
+
+// Provider messages and bodies can contain personal data, codes or credentials.
+// Logs receive only fixed categories and Stripe's opaque request identifier.
+const diagnosticCodes = new Set([
+  "account_create_activation_required",
+  "api_key_expired",
+  "authentication_required",
+  "capability_not_active",
+  "invalid_client",
+  "invalid_grant",
+  "invalid_scope",
+  "resource_missing",
+  "parameter_missing",
+  "permission_denied",
+  "rate_limit",
+  "insufficient_permissions",
+  "invalid_request_error",
+]);
+function pickStripeDiagnostic(value: unknown) {
+  const e =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+  return {
+    stripeCode:
+      typeof e.code === "string" && diagnosticCodes.has(e.code)
+        ? e.code
+        : "other",
+    stripeStatus:
+      typeof e.statusCode === "number" &&
+      Number.isInteger(e.statusCode) &&
+      e.statusCode >= 400 &&
+      e.statusCode <= 599
+        ? e.statusCode
+        : null,
+    stripeRequestId:
+      typeof e.requestId === "string" &&
+      /^req_[A-Za-z0-9]{8,80}$/.test(e.requestId)
+        ? e.requestId
+        : null,
+  };
+}
+export function stripeErrorDiagnostic(error: AppError) {
+  const value = error.details?.stripeDiagnostic;
+  if (!value || typeof value !== "object") return null;
+  const stored = value as Record<string, unknown>;
+  return pickStripeDiagnostic({
+    code: stored.stripeCode,
+    statusCode: stored.stripeStatus,
+    requestId: stored.stripeRequestId,
+  });
 }

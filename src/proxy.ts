@@ -106,7 +106,8 @@ export async function proxy(request: NextRequest) {
   }
   if (
     TOKEN_ROUTES.test(request.nextUrl.pathname) ||
-    request.nextUrl.pathname.startsWith("/auth/")
+    request.nextUrl.pathname.startsWith("/auth/") ||
+    request.nextUrl.pathname === "/stripe/connect/callback"
   ) {
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("X-Robots-Tag", "noindex");

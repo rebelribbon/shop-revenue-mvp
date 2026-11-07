@@ -21,6 +21,7 @@ export const CONNECT_EVENTS = [
   "refund.updated",
   "refund.failed",
   "account.updated",
+  "account.application.deauthorized",
 ];
 export const STRIPE_EVENT_TYPES = [
   ...new Set([

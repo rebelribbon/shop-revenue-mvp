@@ -14,10 +14,12 @@ export function StripeButton({
   kind,
   token,
   checkoutId,
+  label,
 }: {
   kind: "connect" | "pay" | "reconcile" | "cancel" | "retry-refund";
   token?: string;
   checkoutId?: string;
+  label?: string;
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -27,7 +29,7 @@ export function StripeButton({
     <div data-ux-ready={ready}>
       <button
         className={`btn ${kind === "cancel" || kind === "retry-refund" ? "danger" : kind === "pay" || kind === "connect" ? "primary" : "secondary"}`}
-        disabled={busy}
+        disabled={busy || !ready}
         onClick={() =>
           start(async () => {
             try {
@@ -74,7 +76,7 @@ export function StripeButton({
           : kind === "retry-refund"
             ? "Retry / check this refund"
             : kind === "connect"
-              ? "Set up / update Stripe"
+              ? label || "Connect with Stripe"
               : kind === "cancel"
                 ? "Cancel unpaid checkout"
                 : kind === "pay"
