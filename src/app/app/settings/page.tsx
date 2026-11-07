@@ -62,6 +62,15 @@ export default async function SettingsPage() {
           </Link>
         )}
         {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/payments">
+            <strong>Online payments</strong>
+            <span className="muted">
+              Set up Stripe to receive customer invoice payments in your shop’s
+              account
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/billing">
             <strong>Billing</strong>
             <span className="muted">
