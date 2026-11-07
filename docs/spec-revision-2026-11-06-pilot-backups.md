@@ -6,6 +6,11 @@ Decision: the product owner explicitly declined purchasing AWS backup services
 for the pilot. The pilot uses the existing Supabase daily database backups.
 This revision supersedes the off-site requirement for the closed pilot only.
 
+The later [pilot activation decision](spec-revision-2026-11-06-pilot-activation.md)
+supersedes this document's five remaining pre-deployment evidence requirements:
+they are reported honestly as pending while the owner-authorized closed pilot
+deploys for real production verification. Commercial release requirements remain.
+
 ## Pilot release
 
 - Select `release_profile: pilot` in the protected-main Deploy workflow.

@@ -5,6 +5,8 @@ import {
   requiredReleaseEvidence,
   releaseProfileChecks,
   productionRecoveryReady,
+  releaseDecision,
+  releaseConfiguration,
 } from "../../src/lib/release-readiness.ts";
 import { verifyProductionBackup } from "../../scripts/ci/verify-provider-backup.mjs";
 
@@ -23,23 +25,83 @@ const fetcher = (data) => async () => ({
   json: async () => data,
 });
 
-test("pilot defers exactly the two off-site recovery evidence requirements", () => {
+const technical = (profile = "pilot", signup = "false") => [
+  ...releaseConfiguration({}).map((check) => ({ ...check, ready: true })),
+  ...[
+    "stripe-account-activation",
+    "subscription-catalog",
+    "release-commit",
+  ].map((key) => ({ key, ready: true, message: key })),
+  ...releaseProfileChecks({
+    RELEASE_PROFILE: profile,
+    PUBLIC_SIGNUP_ENABLED: signup,
+  }),
+];
+
+test("closed pilot deploys for verification while commercial keeps all review evidence", () => {
   const commercial = requiredReleaseEvidence();
   assert.equal(commercial.length, 7);
   assert.deepEqual(requiredReleaseEvidence("commercial"), commercial);
-  assert.deepEqual(
-    requiredReleaseEvidence("pilot"),
-    commercial.filter(
-      (key) => !["offsiteBackupRestore", "productionRecovery"].includes(key),
-    ),
-  );
-  assert.equal(requiredReleaseEvidence("pilot").length, 5);
+  assert.deepEqual(requiredReleaseEvidence("pilot"), []);
   assert.equal(
     productionRecoveryReady({
       mode: "pilot-provider-daily",
       providerBackupAt: at(-1),
     }),
     false,
+  );
+});
+
+test("pilot deployment does not claim missing reviews passed or public launch ready", () => {
+  const pending = requiredReleaseEvidence().map((key) => ({
+    key,
+    ready: false,
+    message: key,
+  }));
+  const checks = [...technical(), ...pending];
+  const result = releaseDecision("pilot", checks);
+  assert.equal(result.deploymentReady, true);
+  assert.equal(result.launchReady, false);
+  assert.deepEqual(result.pendingEvidence, requiredReleaseEvidence());
+  assert.equal(
+    pending.every((check) => check.ready === false),
+    true,
+  );
+  assert.equal(releaseDecision("commercial", checks).deploymentReady, false);
+});
+
+test("pilot still blocks missing technical configuration, open signup and unknown profiles", () => {
+  for (const profile of ["pilot", "unknown"]) {
+    const checks = releaseProfileChecks({
+      RELEASE_PROFILE: profile,
+      PUBLIC_SIGNUP_ENABLED: "true",
+    });
+    assert.equal(releaseDecision(profile, checks).deploymentReady, false);
+  }
+  assert.equal(
+    releaseDecision("pilot", [
+      { key: "production-payments", ready: false, message: "missing" },
+    ]).deploymentReady,
+    false,
+  );
+  assert.equal(releaseDecision("unknown", []).deploymentReady, false);
+  const evidence = requiredReleaseEvidence().map((key) => ({
+    key,
+    ready: true,
+    message: key,
+  }));
+  assert.equal(
+    releaseDecision(
+      "pilot",
+      [...technical(), ...evidence].filter((check) => check.key !== "database"),
+    ).deploymentReady,
+    false,
+  );
+  assert.equal(releaseDecision("pilot", []).deploymentReady, false);
+  assert.equal(
+    releaseDecision("commercial", [...technical("commercial"), ...evidence])
+      .launchReady,
+    true,
   );
 });
 
