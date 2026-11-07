@@ -105,3 +105,16 @@ The development-mode scenario exposed the thumb-bar enhancer selecting streamed 
 Client form controls are natively disabled by a layout-free fieldset until the same readiness flag is true. This also prevents a select or typed value from being accepted before its React handler is attached, then lost when hydration installs the controlled state.
 
 Each resolved server page also renders through HydratedMain. Its readiness boundary protects native GET filters and links while the page hydrates; a layout-level boundary could become ready before its streamed page. Server children remain server-rendered.
+
+## Online payment setup clarity — November 7
+
+Online payments always shows the owner's Connect Stripe option. A platform that
+is not ready has an explicit disabled connection button, an adjacent explanation
+that Shop Revenue must finish activation, and a Check setup status action that
+refreshes the authenticated page. The page does not direct shop owners into
+Shop Revenue's private platform settings or label an unconnected shop as taking
+live payments. Once available, three short steps explain signing in or creating
+a Stripe account and authorizing the connection. Connected shops get one Manage
+Stripe or Finish Stripe setup action, with status reconciliation separate.
+Phone and desktop regression coverage checks the pending state, visible controls,
+refresh, return to Settings, geometry, contrast and browser errors.

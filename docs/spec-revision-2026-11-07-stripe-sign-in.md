@@ -46,3 +46,17 @@ Provider failure logging retains an allowlisted category, HTTP status, Stripe
 request ID and app request ID. Provider messages, bodies, OAuth credentials and
 personal data are excluded. Existing legal-policy approval and closed-pilot
 restrictions remain enforced.
+
+Follow-up diagnosis on November 7: the live Platform profile explicitly says
+Onboarding incomplete, and its OAuth client ID remains unavailable. Its View
+onboarding control starts the sandbox guide; the live-account checklist blocks
+Confirm your integration choices until owner verification is finished. The
+provider's actual activation form at
+`https://dashboard.stripe.com/acct_1UVIoCK3kUALRyLg/account/onboarding/overview`
+shows Verify your business and Review and submit as not started. The outstanding
+bank task alone is not proof that platform activation is complete. No liability
+acknowledgement, identity declaration or financial account activation is submitted
+on the owner's behalf. Ordinary shop owners do not receive access or links to
+the SaaS platform's private setup. Their page keeps Connect Stripe visible and
+explains platform unavailability until genuine configuration enables the
+existing authorization flow.
