@@ -40,8 +40,9 @@ export async function prepareStripeConnection(tx: TenantTx) {
       createdByUserId: tx.actor.id,
       livemode: stripeLivemode(),
     })
+    .onConflictDoNothing({ target: stripeConnection.businessId })
     .returning();
-  return row;
+  return row ?? (await getStripeConnection(tx))!;
 }
 export async function resolveInvoicePaymentToken(token: string) {
   if (!isWellFormedToken(token)) throw notFound("That invoice link");
