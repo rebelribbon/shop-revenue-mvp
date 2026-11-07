@@ -46,8 +46,10 @@ The daily path requires both provider and independent backups no older than
 The explicitly selected `pilot` profile uses existing provider database backups
 and defers those two commercial off-site recovery evidence items under the
 [November 6 pilot revision](spec-revision-2026-11-06-pilot-backups.md).
-It requires public signup closed and retains all five other evidence gates,
-automated restore tests and a fresh provider restore point. Uploaded file objects
+Under the later [pilot activation decision](spec-revision-2026-11-06-pilot-activation.md),
+it requires public signup closed, automated restore tests and a fresh provider
+restore point; review evidence is reported as pending instead of preventing the
+closed pilot from deploying for production verification. Uploaded file objects
 are outside the provider database backup. The default profile remains commercial.
 
 The preview provider scheduler uses a private `ops` function and synchronous `http`, with a bounded timeout and credentials read from Vault only in memory. Application and anonymous roles cannot call that function or read Vault. The asynchronous `pg_net` request queue was rejected for credentialed calls because provider-owned PUBLIC queue grants could not be revoked by the available postgres role. Its unused extension remains a provider cleanup item; no credentialed requests were queued.

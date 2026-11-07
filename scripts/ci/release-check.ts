@@ -11,6 +11,7 @@ import {
   productionRecoveryReady,
   releaseProfileChecks,
   requiredReleaseEvidence,
+  releaseDecision,
 } from "../../src/lib/release-readiness";
 const checks = [
   ...releaseConfiguration(process.env),
@@ -47,7 +48,9 @@ checks.push({
 });
 // Staging smoke is a dependency; production smoke runs after deployment. Requiring
 // production smoke before production exists would make the release gate circular.
-const requiredEvidence = requiredReleaseEvidence(process.env.RELEASE_PROFILE);
+// Always report all review evidence. The closed pilot may deploy while these
+// remain pending; it must never report them as completed or publicly launched.
+const requiredEvidence = requiredReleaseEvidence();
 let evidence: Record<
   string,
   Record<string, unknown> & {
@@ -79,15 +82,19 @@ for (const key of requiredEvidence) {
     message: `Release evidence required for ${key} at the release commit`,
   });
 }
+const decision = releaseDecision(
+  process.env.RELEASE_PROFILE ?? "commercial",
+  checks,
+);
 console.log(
   JSON.stringify(
     {
       releaseProfile: process.env.RELEASE_PROFILE ?? "commercial",
-      launchReady: checks.every((c) => c.ready),
+      ...decision,
       checks,
     },
     null,
     2,
   ),
 );
-if (checks.some((c) => !c.ready)) process.exitCode = 1;
+if (!decision.deploymentReady) process.exitCode = 1;

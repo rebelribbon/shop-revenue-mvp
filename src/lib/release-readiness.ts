@@ -32,13 +32,43 @@ export function requiredReleaseEvidence(profile = "commercial") {
     "alertsAndOnCall",
     "designPartnerApproval",
   ];
-  // Pilot backup checks run automatically in deploy.yml before migrations.
+  // The owner-authorized closed pilot deploys for real production verification.
+  // Reviews stay visible as pending and remain mandatory for commercial release.
   // An unknown profile retains every commercial requirement and fails above.
-  return profile === "pilot"
-    ? keys.filter(
-        (key) => !["offsiteBackupRestore", "productionRecovery"].includes(key),
-      )
-    : keys;
+  return profile === "pilot" ? [] : keys;
+}
+
+export function releaseDecision(profile: string, checks: ReleaseCheck[]) {
+  const evidence = new Set(requiredReleaseEvidence());
+  const required = new Set(requiredReleaseEvidence(profile));
+  const blocking = checks.filter(
+    (check) => !evidence.has(check.key) || required.has(check.key),
+  );
+  const expected = [
+    ...releaseConfiguration({}).map((check) => check.key),
+    "stripe-account-activation",
+    "subscription-catalog",
+    "release-commit",
+    "release-profile",
+    ...evidence,
+    ...(profile === "pilot" ? ["pilot-signup-closed"] : []),
+  ];
+  const complete = expected.every((key) =>
+    checks.some((check) => check.key === key),
+  );
+  return {
+    deploymentReady:
+      (profile === "commercial" || profile === "pilot") &&
+      complete &&
+      blocking.every((check) => check.ready),
+    launchReady:
+      profile === "commercial" &&
+      complete &&
+      checks.every((check) => check.ready),
+    pendingEvidence: [...evidence].filter(
+      (key) => !checks.some((check) => check.key === key && check.ready),
+    ),
+  };
 }
 
 export function productionRecoveryReady(
