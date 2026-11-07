@@ -23,6 +23,9 @@ export default async function PaymentsSettings({
   const needsConnection =
     !c?.accountId || c.cardPaymentsStatus === "disconnected";
   const signInReady = stripeConnectConfigured();
+  const setupAvailable = configured && (!needsConnection || signInReady);
+  const platformPending = needsConnection && !signInReady;
+  const ownerCanAct = s.actor.type !== "support";
   const notices: Record<string, string> = {
     connected:
       "Your Stripe account is connected. Customers can now pay invoices online.",
@@ -49,63 +52,74 @@ export default async function PaymentsSettings({
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Online payments</h1>
       <p>
-        Accept customer invoice payments into your shop’s Stripe account. Stripe
-        handles checkout, card details, payouts, and account verification.
+        Let customers pay invoices by card. Payments go to your shop’s Stripe
+        account.
       </p>
       <section className="card">
         {notice && <p role="status">{notice}</p>}
         <h2>
           {c?.cardPaymentsStatus === "active"
-            ? "Online payments enabled"
+            ? "Stripe connected"
             : c?.cardPaymentsStatus === "disconnected"
-              ? "Reconnect your shop"
+              ? "Reconnect Stripe"
               : c?.accountId
                 ? "Finish Stripe setup"
-                : "Connect your shop"}
+                : "Connect your Stripe account"}
         </h2>
-        {c && (
-          <p>{c.livemode ? "Live payments" : "Sandbox · test payments only"}</p>
+        {c && !c.livemode && <p>Test mode · no real payments</p>}
+        {needsConnection && setupAvailable && (
+          <ol>
+            <li>
+              Select <strong>Connect Stripe</strong> below.
+            </li>
+            <li>Sign in to Stripe, or create an account for your shop.</li>
+            <li>
+              Approve the connection. Stripe will guide you through any business
+              or bank details it needs.
+            </li>
+          </ol>
+        )}
+        {!setupAvailable && (
+          <p id="stripe-setup-unavailable" role="status">
+            {platformPending
+              ? "Shop Revenue is still activating its online payment service. Your shop can connect after that is finished. There is nothing for you to change in your shop’s Stripe settings yet."
+              : "Online payment setup is temporarily unavailable. Check setup status to try again."}
+          </p>
+        )}
+        {ownerCanAct && (
+          <>
+            <StripeButton
+              kind="connect"
+              disabled={!setupAvailable}
+              describedBy={
+                !setupAvailable ? "stripe-setup-unavailable" : undefined
+              }
+              label={
+                needsConnection
+                  ? "Connect Stripe"
+                  : c?.cardPaymentsStatus === "active"
+                    ? "Manage Stripe"
+                    : "Finish Stripe setup"
+              }
+            />
+            {!setupAvailable && <StripeButton kind="setup-status" />}
+            {setupAvailable &&
+              c?.accountId &&
+              c.cardPaymentsStatus !== "disconnected" &&
+              process.env.STRIPE_PUBLISHABLE_KEY && (
+                <StripeNotifications
+                  publishableKey={process.env.STRIPE_PUBLISHABLE_KEY}
+                />
+              )}
+            {setupAvailable && c?.accountId && (
+              <StripeButton kind="reconcile" />
+            )}
+          </>
         )}
         <p>
-          Your shop pays Stripe’s processing fees directly. Shop Revenue adds no
+          Stripe charges its usual processing fees. Shop Revenue adds no
           transaction fee.
         </p>
-        {needsConnection && (
-          <p>
-            Sign in to Stripe and choose your shop’s account. Stripe will ask
-            you to authorize the connection. If you’re new to Stripe, you can
-            create an account there.
-          </p>
-        )}
-        {!configured || (needsConnection && !signInReady) ? (
-          <p>
-            Stripe connection setup is awaiting activation. You can still record
-            cash, check, and card payments taken outside this app.
-          </p>
-        ) : (
-          s.actor.type !== "support" && (
-            <>
-              <StripeButton
-                kind="connect"
-                label={
-                  needsConnection
-                    ? "Connect with Stripe"
-                    : c?.connectionMethod === "oauth"
-                      ? "Open Stripe"
-                      : "Finish / update Stripe setup"
-                }
-              />
-              {c?.accountId &&
-                c.cardPaymentsStatus !== "disconnected" &&
-                process.env.STRIPE_PUBLISHABLE_KEY && (
-                  <StripeNotifications
-                    publishableKey={process.env.STRIPE_PUBLISHABLE_KEY}
-                  />
-                )}
-              {c?.accountId && <StripeButton kind="reconcile" />}
-            </>
-          )
-        )}
         {c?.accountId && (
           <p>
             <a
@@ -113,14 +127,18 @@ export default async function PaymentsSettings({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Open Stripe Dashboard for payouts, disputes, and account
-              requirements
+              Stripe Dashboard: payouts and account details
             </a>
           </p>
         )}
       </section>
       <p>
-        <Link href="/app/invoices">Back to invoices</Link>
+        <Link
+          href="/app/settings"
+          className={`btn ${ownerCanAct ? "secondary" : "primary"}`}
+        >
+          Back to settings
+        </Link>
       </p>
     </HydratedMain>
   );
