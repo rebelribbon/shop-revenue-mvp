@@ -45,7 +45,14 @@ export default async function ReportsPage({
     return (
       <HydratedMain id="main-content" tabIndex={-1}>
         <h1>Reports</h1>
-        <section className="card"><h2>Owner access required</h2><p>Business-wide financial and performance reports are available to owners. Your appointments, tasks, customers, and assigned jobs remain accessible from the main tabs.</p></section>
+        <section className="card">
+          <h2>Owner access required</h2>
+          <p>
+            Business-wide financial and performance reports are available to
+            owners. Your appointments, tasks, customers, and assigned jobs
+            remain accessible from the main tabs.
+          </p>
+        </section>
       </HydratedMain>
     );
   }
