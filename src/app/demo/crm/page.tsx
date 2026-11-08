@@ -128,7 +128,7 @@ export default async function CrmPreview({
               <Link className="customer-work-row" href="/demo/job">
                 <strong>RO #10042 · Front brake service</strong><span>Alex Example · Awaiting approval</span>
               </Link>
-              <Link className="btn primary" href="/demo/crm?customer=alex&tab=Jobs">View customer's RO history</Link>
+              <Link className="btn primary" href="/demo/crm?customer=alex&tab=Jobs">View customer&apos;s RO history</Link>
             </section>
           ) : !who && view === "reports" ? (
             <section className="demo-job-panel">
