@@ -25,7 +25,6 @@ export function PageActions() {
     // Public interactive demos own their navigation and controls. Never attach
     // the global floating action or misleading sign-in fallback to a demo.
     if (pathname.startsWith("/demo/")) {
-      setFallback(false);
       document.body.style.removeProperty("--primary-space");
       return;
     }
