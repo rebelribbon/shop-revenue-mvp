@@ -1,5 +1,6 @@
 import { beforeAll, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
+import { customerPacketPath } from "@/domain/document-sharing";
 import { document } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import {
@@ -247,4 +248,19 @@ it("keeps change order scope and prices controlled by the shop, not the signer",
       fields: change.fields,
     }),
   ).toBe(false);
+});
+
+
+it("creates one customer packet link with immutable estimate and document tokens", () => {
+  const estimateToken = "A".repeat(43);
+  const docToken = "B".repeat(43);
+  const path = customerPacketPath(`/estimate/${estimateToken}`, [
+    { id: "signed-document", title: "Work authorization", path: `/sign/${docToken}` },
+  ]);
+  const url = new URL(path, "https://shop.example.test");
+  expect(url.pathname).toBe("/packet");
+  expect(url.searchParams.get("e")).toBe(estimateToken);
+  expect(url.searchParams.getAll("d")).toEqual([docToken]);
+  expect(() => customerPacketPath("/estimate/not-a-token", []))
+    .toThrow(/new sharing link/);
 });
