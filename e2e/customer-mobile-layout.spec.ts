@@ -6,9 +6,13 @@ test("mobile customer list scrolls above navigation and actions fit the viewport
   await page.setViewportSize({ width: 320, height: 480 });
   await page.goto("/demo/crm");
   const main = page.locator("main.crm-sample");
-  const nav = page.getByRole("navigation", { name: "Mobile sample navigation" });
+  const nav = page.getByRole("navigation", {
+    name: "Mobile sample navigation",
+  });
   await expect(nav).toBeVisible();
-  await main.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await main.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
   const last = page.locator(".customer-directory-row").last();
   await expect(last).toBeInViewport();
   const lastRect = await last.boundingBox();
@@ -43,11 +47,15 @@ test("authenticated Add Customer stays in the page flow above the list", async (
   await expect(button).toBeVisible();
   await expect(button).toHaveCSS("position", "static");
   const main = page.locator("main.customer-index-page");
-  await main.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  await main.evaluate((el) => {
+    el.scrollTop = el.scrollHeight;
+  });
   const rows = page.locator(".customer-directory-row");
   if (await rows.count()) {
     const lastRect = await rows.last().boundingBox();
-    const navRect = await page.getByRole("navigation", { name: "Mobile navigation" }).boundingBox();
+    const navRect = await page
+      .getByRole("navigation", { name: "Mobile navigation" })
+      .boundingBox();
     expect(lastRect).not.toBeNull();
     expect(navRect).not.toBeNull();
     expect(lastRect!.y + lastRect!.height).toBeLessThanOrEqual(navRect!.y - 8);
