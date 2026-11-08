@@ -4559,9 +4559,17 @@ main.customer-index-page {
   align-items: center;
   gap: 16px;
 }
-.demo-preview-dialog-head h3 { margin: 0; }
-.demo-preview-dialog .demo-job-paper { margin-top: 16px; }
+.demo-preview-dialog-head h3 {
+  margin: 0;
+}
+.demo-preview-dialog .demo-job-paper {
+  margin-top: 16px;
+}
 @media (max-width: 600px) {
-  .demo-preview-dialog { padding: 16px; }
-  .demo-preview-dialog .demo-job-paper { padding: 16px; }
+  .demo-preview-dialog {
+    padding: 16px;
+  }
+  .demo-preview-dialog .demo-job-paper {
+    padding: 16px;
+  }
 }
