@@ -54,16 +54,23 @@ export default async function CustomersPage(props: {
   }
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <div className="customer-list-heading"><div><h1>Customers</h1><p className="muted">Find a customer, open their history, and get right to work.</p></div>
-      <Link
-        id="new-customer"
-        href="/app/customers/new"
-        className="btn primary"
-        data-page-primary
-        data-stable-primary
-      >
-        Add customer
-      </Link></div>
+      <div className="customer-list-heading">
+        <div>
+          <h1>Customers</h1>
+          <p className="muted">
+            Find a customer, open their history, and get right to work.
+          </p>
+        </div>
+        <Link
+          id="new-customer"
+          href="/app/customers/new"
+          className="btn primary"
+          data-page-primary
+          data-stable-primary
+        >
+          Add customer
+        </Link>
+      </div>
       <form method="get" className="search-form inline-search" role="search">
         <label htmlFor="q">Search customers</label>
         <div className="search-controls">
@@ -102,17 +109,31 @@ export default async function CustomersPage(props: {
             if (linked.length > 2) things.push(`+${linked.length - 2} more`);
             return (
               <li key={c.id}>
-                <Link href={`/app/customers/${c.id}`} aria-label={`Open ${c.displayName}`} className="customer-directory-row">
-                  <span className="customer-avatar" aria-hidden="true">{c.displayName.trim().charAt(0).toUpperCase()}</span>
+                <Link
+                  href={`/app/customers/${c.id}`}
+                  aria-label={`Open ${c.displayName}`}
+                  className="customer-directory-row"
+                >
+                  <span className="customer-avatar" aria-hidden="true">
+                    {c.displayName.trim().charAt(0).toUpperCase()}
+                  </span>
                   <span className="customer-directory-main">
                     <strong>{c.displayName}</strong>
-                    <span className="muted">{things.length ? things.join(" · ") : "Customer"}</span>
+                    <span className="muted">
+                      {things.length ? things.join(" · ") : "Customer"}
+                    </span>
                     <span className="customer-directory-contact">
                       {[c.phoneE164 && formatPhone(c.phoneE164), c.email]
-                        .filter(Boolean).join(" · ") || "No contact details yet"}
+                        .filter(Boolean)
+                        .join(" · ") || "No contact details yet"}
                     </span>
                   </span>
-                  <span className="customer-directory-chevron" aria-hidden="true">›</span>
+                  <span
+                    className="customer-directory-chevron"
+                    aria-hidden="true"
+                  >
+                    ›
+                  </span>
                 </Link>
               </li>
             );
