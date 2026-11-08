@@ -14,12 +14,14 @@ export function FileCabinet({
   customerPhone,
   customerEmail,
   readOnly,
+  autoOpenShare = false,
   timeZone,
 }: {
   items: CabinetItem[];
   customerPhone: string | null;
   customerEmail: string | null;
   readOnly: boolean;
+  autoOpenShare?: boolean;
   timeZone: string;
 }) {
   const groups: CabinetItem["group"][] = [
@@ -82,6 +84,7 @@ export function FileCabinet({
                     id={i.estimateShareId}
                     kind="estimate"
                     label="Send estimate for approval"
+                    autoOpen={autoOpenShare}
                   />
                 )}
                 {i.signLink && !readOnly && (
