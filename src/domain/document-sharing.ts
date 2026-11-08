@@ -1,5 +1,11 @@
 import { and, eq, sql, isNull } from "drizzle-orm";
-import { business, customer, document, estimateVersion, invoice } from "@/db/schema";
+import {
+  business,
+  customer,
+  document,
+  estimateVersion,
+  invoice,
+} from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { openShareToken } from "@/lib/share-token";
 import { hashToken } from "@/lib/tokens";
@@ -127,7 +133,6 @@ export async function shareRecipient(tx: TenantTx, customerId: string) {
 
 export type ShareRecipient = Awaited<ReturnType<typeof shareRecipient>>;
 
-
 export type PacketDocument = { id: string; title: string; path: string };
 
 /** Only unsigned, active documents for the very same customer and job can
@@ -137,37 +142,55 @@ export async function getEstimatePacketDocuments(
   estimateId: string,
 ): Promise<PacketDocument[]> {
   if (tx.actor.type !== "user")
-    throw new AppError("FORBIDDEN", "Only shop staff can prepare customer packets.");
-  const [estimate] = await tx.select({
-    jobId: estimateVersion.quoteId,
-    customerId: estimateVersion.customerId,
-  }).from(estimateVersion).where(and(
-    eq(estimateVersion.businessId, tx.businessId),
-    eq(estimateVersion.id, estimateId),
-  ));
+    throw new AppError(
+      "FORBIDDEN",
+      "Only shop staff can prepare customer packets.",
+    );
+  const [estimate] = await tx
+    .select({
+      jobId: estimateVersion.quoteId,
+      customerId: estimateVersion.customerId,
+    })
+    .from(estimateVersion)
+    .where(
+      and(
+        eq(estimateVersion.businessId, tx.businessId),
+        eq(estimateVersion.id, estimateId),
+      ),
+    );
   if (!estimate) throw notFound("That estimate");
-  const rows = await tx.select({
-    id: document.id,
-    title: document.title,
-    fields: document.fields,
-    tokenHash: document.tokenHash,
-    encrypted: document.shareTokenCiphertext,
-  }).from(document).where(and(
-    eq(document.businessId, tx.businessId),
-    eq(document.jobId, estimate.jobId),
-    eq(document.customerId, estimate.customerId),
-    eq(document.kind, "esign"),
-    eq(document.status, "sent"),
-    isNull(document.deletedAt),
-    isNull(document.voidedAt),
-    sql`${document.expiresAt} > now()`,
-  )).orderBy(document.createdAt).limit(8);
+  const rows = await tx
+    .select({
+      id: document.id,
+      title: document.title,
+      fields: document.fields,
+      tokenHash: document.tokenHash,
+      encrypted: document.shareTokenCiphertext,
+    })
+    .from(document)
+    .where(
+      and(
+        eq(document.businessId, tx.businessId),
+        eq(document.jobId, estimate.jobId),
+        eq(document.customerId, estimate.customerId),
+        eq(document.kind, "esign"),
+        eq(document.status, "sent"),
+        isNull(document.deletedAt),
+        isNull(document.voidedAt),
+        sql`${document.expiresAt} > now()`,
+      ),
+    )
+    .orderBy(document.createdAt)
+    .limit(8);
   const candidates: PacketDocument[] = [];
   for (const row of rows) {
     // A legacy change order where the customer sets prices is not sendable.
-    if (row.title.trim().toLowerCase() === "change order" &&
-        (row.fields ?? []).some((f) =>
-          ["change", "added_cost", "cost", "price", "amount"].includes(f.key)))
+    if (
+      row.title.trim().toLowerCase() === "change order" &&
+      (row.fields ?? []).some((f) =>
+        ["change", "added_cost", "cost", "price", "amount"].includes(f.key),
+      )
+    )
       continue;
     if (!row.encrypted || !row.tokenHash) continue;
     let token: string;
