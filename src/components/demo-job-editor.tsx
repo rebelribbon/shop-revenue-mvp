@@ -395,20 +395,33 @@ export function DemoJobEditor({
                 Work and prices are set by the shop. The customer can approve or
                 decline the work, not edit prices.
               </p>
-              {showCustomerView && (
-                <div className="demo-job-customer-example">
-                  <h4>Customer approval preview</h4>
-                  <p>
-                    Customer reviews itemized work, chooses what to authorize,
-                    and signs electronically.
-                  </p>
-                  <span className="btn secondary" aria-disabled="true">
-                    Signature (preview only)
-                  </span>
-                </div>
-              )}
+
             </article>
           </div>
+          {showCustomerView && (
+            <div className="demo-preview-overlay" role="presentation" onClick={() => setShowCustomerView(false)}>
+              <section className="demo-preview-dialog" role="dialog" aria-modal="true" aria-label="Customer approval preview" onClick={(event) => event.stopPropagation()}>
+                <header className="demo-preview-dialog-head">
+                  <h3>Customer approval preview</h3>
+                  <button className="btn secondary" type="button" aria-label="Close preview" onClick={() => setShowCustomerView(false)}>Close</button>
+                </header>
+                <p className="muted">This is the customer's view. No approval or signature is recorded.</p>
+                <div className="demo-job-paper">
+                  <strong>{jobTitle}</strong>
+                  <p>{customer} · {asset}</p>
+                  {totals.computed.map((line) => (
+                    <div className="demo-job-paper-line" key={line.id}>
+                      <span>{line.title || "Unnamed item"} × {line.quantity}</span>
+                      <strong>{money(line.total)}</strong>
+                    </div>
+                  ))}
+                  <div className="demo-job-paper-line demo-job-paper-total"><strong>Estimated total</strong><strong>{money(totals.total)}</strong></div>
+                  <p>Review the proposed work and provide authorization.</p>
+                  <button type="button" className="btn secondary" disabled>Approve & sign (sample only)</button>
+                </div>
+              </section>
+            </div>
+          )}
           <div className="demo-job-bottom-actions">
             <button
               type="button"
