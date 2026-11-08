@@ -43,37 +43,51 @@ export async function prepareDocumentShare(raw: unknown) {
   }
 }
 
-
 /**
  * The recipient must be provided by the shop employee; this action actually
  * submits the email to our transactional provider. A share link alone is not
  * an indication of delivery.
  */
 export async function emailCustomerDocument(raw: unknown) {
-  const parsed = z.object({
-    id: z.uuid(),
-    kind: z.enum(["estimate", "invoice"]),
-    email: z.string().trim().email().max(254),
-  }).safeParse(raw);
+  const parsed = z
+    .object({
+      id: z.uuid(),
+      kind: z.enum(["estimate", "invoice"]),
+      email: z.string().trim().email().max(254),
+    })
+    .safeParse(raw);
   if (!parsed.success)
-    return { ok: false as const, message: "Enter a valid recipient email address." };
+    return {
+      ok: false as const,
+      message: "Enter a valid recipient email address.",
+    };
   try {
     const state = await getSessionState();
     if (state.kind !== "shop" || state.session.actor.type !== "user")
-      return { ok: false as const, message: "Sign in as a shop member to send documents." };
+      return {
+        ok: false as const,
+        message: "Sign in as a shop member to send documents.",
+      };
     await assertSessionAssurance();
     const s = state.session;
     const recipient = await withTenant(s.businessId, s.actor, (tx) =>
       getDocumentShare(tx, parsed.data.id, parsed.data.kind),
     );
     if (recipient.emailStoppedOn)
-      return { ok: false as const, message: "The customer opted out of email; do not send this document." };
+      return {
+        ok: false as const,
+        message: "The customer opted out of email; do not send this document.",
+      };
     const base = process.env.APP_BASE_URL;
     if (!base || !/^https:\/\//.test(base))
-      return { ok: false as const, message: "Document delivery isn't configured for this site." };
+      return {
+        ok: false as const,
+        message: "Document delivery isn't configured for this site.",
+      };
 
     const url = new URL(recipient.path, base).href;
-    const title = parsed.data.kind === "estimate" ? "estimate for approval" : "invoice";
+    const title =
+      parsed.data.kind === "estimate" ? "estimate for approval" : "invoice";
     const delivery = await emailProvider().send({
       to: parsed.data.email,
       subject: `${recipient.senderName || "Your shop"} — ${title}`,
@@ -85,11 +99,17 @@ export async function emailCustomerDocument(raw: unknown) {
     // must never cause the employee to send a second copy inadvertently.
     try {
       await withTenant(s.businessId, s.actor, async (tx) => {
-        const table = parsed.data.kind === "estimate" ? estimateVersion : invoice;
+        const table =
+          parsed.data.kind === "estimate" ? estimateVersion : invoice;
         const [row] = await tx
           .select({ customerId: table.customerId })
           .from(table)
-          .where(and(eq(table.businessId, tx.businessId), eq(table.id, parsed.data.id)));
+          .where(
+            and(
+              eq(table.businessId, tx.businessId),
+              eq(table.id, parsed.data.id),
+            ),
+          );
         if (row)
           await recordActivity(tx, {
             kind: "document.email_submitted",
@@ -113,9 +133,10 @@ export async function emailCustomerDocument(raw: unknown) {
   } catch (error) {
     return {
       ok: false as const,
-      message: error instanceof AppError
-        ? error.message
-        : "Email couldn't be sent. Open your email app or copy the link instead.",
+      message:
+        error instanceof AppError
+          ? error.message
+          : "Email couldn't be sent. Open your email app or copy the link instead.",
     };
   }
 }
