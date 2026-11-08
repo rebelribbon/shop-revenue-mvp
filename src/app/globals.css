@@ -3968,13 +3968,13 @@ main.customer-index-page {
 @media (max-width: 899px) {
   .shop-mobile-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 4px;
+    gap: 8px;
     padding-inline: 8px;
   }
   .shop-mobile-nav a {
     min-width: 0;
     font-size: clamp(11px, 3vw, 14px);
-    padding: 0 2px !important;
+    padding: 0 !important;
   }
 }
 @media (max-width: 359px) {
