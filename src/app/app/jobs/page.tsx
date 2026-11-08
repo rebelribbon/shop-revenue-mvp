@@ -329,7 +329,17 @@ export default async function JobsPage({
     }).format(c / 100);
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <h1>{editing ? (selected ? (isAutomotive(type) ? "Edit RO" : "Edit job") : labels.newJob) : isAutomotive(type) ? "Repair orders" : labels.jobs}</h1>
+      <h1>
+        {editing
+          ? selected
+            ? isAutomotive(type)
+              ? "Edit RO"
+              : "Edit job"
+            : labels.newJob
+          : isAutomotive(type)
+            ? "Repair orders"
+            : labels.jobs}
+      </h1>
 
       {editing ? (
         <>
@@ -412,7 +422,9 @@ export default async function JobsPage({
               <article className="card job-profile">
                 <header className="profile-head">
                   <div>
-                    <p className="customer-job-ref">{jobReference(selected.id, isAutomotive(type))}</p>
+                    <p className="customer-job-ref">
+                      {jobReference(selected.id, isAutomotive(type))}
+                    </p>
                     <h2 className="profile-title">
                       {input.repeat && "↻ "}
                       {selected.title}
