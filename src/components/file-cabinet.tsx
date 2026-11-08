@@ -118,10 +118,13 @@ export function FileCabinet({
           <button
             type="button"
             className="btn secondary"
-            disabled={!previewPath}
+            disabled={!previewPath && !active?.preview}
             onClick={() => {
-              if (previewPath)
+              if (active?.preview) {
+                document.querySelector(".docs-preview-pane")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              } else if (previewPath) {
                 window.open(previewPath, "_blank", "noopener,noreferrer");
+              }
             }}
           >
             Open preview
