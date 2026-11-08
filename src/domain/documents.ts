@@ -573,6 +573,23 @@ export type CabinetItem = {
   documentId?: string;
   signLink?: string;
   estimateShareId?: string;
+  preview?: {
+    type: "estimate" | "agreement" | "invoice";
+    customerName?: string;
+    shopName?: string;
+    subject?: string;
+    body?: string;
+    totalCents?: number;
+    taxCents?: number;
+    lines?: {
+      id: string;
+      description: string;
+      quantity: number;
+      unitPriceCents: number;
+      totalCents: number;
+    }[];
+    fields?: { label: string; type: string }[];
+  };
 };
 
 // Everything for one job: estimates, signed approvals, invoices, e-sign
@@ -629,6 +646,21 @@ export async function jobCabinet(
             ? "Email submitted"
             : "Ready to send",
       href: `/app/estimates?jobId=${jobId}`,
+      preview: {
+        type: "estimate",
+        customerName: v.snapshot.customerName,
+        shopName: v.snapshot.shopName,
+        subject: v.snapshot.vehicleLabel || v.snapshot.serviceLabel,
+        totalCents: v.snapshot.totalCents,
+        taxCents: v.snapshot.taxCents,
+        lines: v.snapshot.lines.map((line) => ({
+          id: line.id,
+          description: line.description,
+          quantity: line.quantity,
+          unitPriceCents: line.unitPriceCents,
+          totalCents: line.totalCents,
+        })),
+      },
       estimateShareId:
         !a &&
         !v.revokedAt &&
@@ -664,6 +696,7 @@ export async function jobCabinet(
       at: i.createdAt,
       status: i.voidedAt ? "Void" : null,
       href: `/app/invoices?invoiceId=${i.id}`,
+      preview: { type: "invoice", totalCents: i.totalCents },
     });
   const docs = await tx
     .select()
@@ -701,6 +734,11 @@ export async function jobCabinet(
         href: d.status === "signed" ? `/app/documents/${d.id}/pdf` : null,
         documentId: d.id,
         signLink: token ? `/sign/${token}` : undefined,
+        preview: {
+          type: "agreement",
+          body: d.body ?? "",
+          fields: (d.fields ?? []).map((field) => ({ label: field.label, type: field.type })),
+        },
       });
     } else
       items.push({
