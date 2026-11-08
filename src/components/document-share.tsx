@@ -246,7 +246,7 @@ export function DocumentShare({
               <a
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
-                href={`sms:${encodeURIComponent(phoneNumber)}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
+                href={`sms:${phoneNumber.trim()}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
               >
                 Text to customer
               </a>
