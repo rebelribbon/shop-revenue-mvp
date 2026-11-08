@@ -1,4 +1,5 @@
 import { HydratedMain } from "@/components/hydrated-main";
+import { CopyTextButton } from "@/components/copy-text-button";
 import { Notes, Readings } from "@/components/memory";
 import { listNotes, listReadings } from "@/domain/memory";
 import { recordMileageAction } from "@/server/actions/memory";
@@ -85,7 +86,10 @@ export default async function VehicleDetailPage(props: {
             <h2>Vehicle details</h2>
             <dl>
               <dt>VIN</dt>
-              <dd>{v.vin || "Not recorded"}</dd>
+              <dd className="identifier-with-copy">
+                <span>{v.vin || "Not recorded"}</span>
+                {v.vin && <CopyTextButton value={v.vin} label="Copy VIN" />}
+              </dd>
               <dt>Plate</dt>
               <dd>{v.plate || "Not recorded"}</dd>
               <dt>Mileage</dt>

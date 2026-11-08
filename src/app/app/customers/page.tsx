@@ -1,4 +1,5 @@
 import { RecordSection } from "@/components/record-section";
+import { RecentCustomers } from "@/components/recent-customers";
 import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { getBusinessProfile } from "@/domain/business-profile";
@@ -102,6 +103,7 @@ export default async function CustomersPage(props: {
           </div>
         </form>
       </RecordSection>
+      {!q && <RecentCustomers scope={`${s.businessId}:${s.actor.id}`} />}
       <RecordSection
         title="Customer directory"
         count={customers.length}

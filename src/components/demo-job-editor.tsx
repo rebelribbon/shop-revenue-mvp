@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RecordSection } from "@/components/record-section";
+import { CustomerContactActions } from "@/components/customer-contact-actions";
+import { CopyTextButton } from "@/components/copy-text-button";
 import { jobStatusLabels } from "@/lib/job-status";
 import { demoCustomers } from "@/lib/demo-customers";
 
@@ -119,14 +121,24 @@ export function DemoJobEditor({
   return (
     <main id="main-content" className="demo-job-editor" tabIndex={-1}>
       <header className="demo-job-header">
+        <CustomerContactActions
+          phone={`+1${customerRecord.contact.replace(/\D/g, "")}`}
+          email={customerRecord.email}
+        />
         <div>
           <Link href={`/demo/crm?customer=${customerRecord.id}`}>
             ← Customer profile
           </Link>
-          <h1>
-            RO #{customerRecord.roNumber}{" "}
-            <span className="demo-job-muted">· {jobTitle || "New job"}</span>
-          </h1>
+          <div className="identifier-with-copy">
+            <h1>
+              RO #{customerRecord.roNumber}{" "}
+              <span className="demo-job-muted">· {jobTitle || "New job"}</span>
+            </h1>
+            <CopyTextButton
+              value={`RO #${customerRecord.roNumber}`}
+              label="Copy RO number"
+            />
+          </div>
           <p>
             {customer || "Customer"} · {asset || "Vehicle"}
           </p>

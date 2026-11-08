@@ -4794,6 +4794,40 @@ main.customer-index-page {
 .customer-contact-actions {
   width: 100%;
 }
+.record-job-profile > .customer-contact-actions {
+  margin-bottom: 16px;
+}
+.identifier-with-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.identifier-with-copy > .customer-job-ref,
+.identifier-with-copy > h1 {
+  margin: 0;
+}
+.copy-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.copy-feedback {
+  font-size: 16px;
+}
+.recent-customer-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.recent-customer-shortcuts > .btn {
+  margin: 0;
+  min-width: 0;
+  white-space: normal;
+}
 .customer-contact-buttons {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));

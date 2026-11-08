@@ -374,7 +374,7 @@ export default async function HomePage({
           ))}
         </div>
       )}
-      {light && <RecentCustomers />}
+      {light && <RecentCustomers scope={`${s.businessId}:${s.actor.id}`} />}
     </HydratedMain>
   );
 }

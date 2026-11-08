@@ -1,4 +1,6 @@
 import { RecordSection, WorkCard } from "@/components/record-section";
+import { CustomerContactActions } from "@/components/customer-contact-actions";
+import { CopyTextButton } from "@/components/copy-text-button";
 import { groupWork } from "@/lib/work-sections";
 import { FileUploader } from "@/components/file-uploader";
 import { jobReference } from "@/lib/job-reference";
@@ -182,6 +184,7 @@ export default async function JobsPage({
                 email: customerTable.email,
                 textOff: customerTable.textOptedOutAt,
                 emailOff: customerTable.emailOptedOutAt,
+                doNotContact: customerTable.doNotContact,
               })
               .from(customerTable)
               .where(
@@ -422,11 +425,27 @@ export default async function JobsPage({
                 </p>
               )}
               <article className="card job-profile record-job-profile">
+                <CustomerContactActions
+                  phone={data.contact?.phone}
+                  email={data.contact?.email}
+                  textAllowed={
+                    !data.contact?.textOff && !data.contact?.doNotContact
+                  }
+                  emailAllowed={
+                    !data.contact?.emailOff && !data.contact?.doNotContact
+                  }
+                />
                 <header className="profile-head">
                   <div>
-                    <p className="customer-job-ref">
-                      {jobReference(selected.id, isAutomotive(type))}
-                    </p>
+                    <div className="identifier-with-copy">
+                      <p className="customer-job-ref">
+                        {jobReference(selected.id, isAutomotive(type))}
+                      </p>
+                      <CopyTextButton
+                        value={jobReference(selected.id, isAutomotive(type))}
+                        label={`Copy ${auto ? "RO" : "job"} number`}
+                      />
+                    </div>
                     <h2 className="profile-title">
                       {input.repeat && "↻ "}
                       {selected.title}

@@ -38,6 +38,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page.getByLabel("Mobile number").fill(phone);
   await page.getByRole("button", { name: "Add customer" }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
+  const customerUrl = page.url();
   await expect(
     page.getByRole("heading", { name: `${first} ${last}`, exact: true }),
   ).toBeVisible();
@@ -54,6 +55,10 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(
     page.getByRole("heading", { name: /2022 Honda Accord/ }),
   ).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy VIN", exact: true }).click();
+  await expect(page.getByText("Copied.", { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(vin);
 
   await page.goto(`/app/customers?q=${vin.slice(-6)}`);
   await expect(
@@ -74,6 +79,10 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page
     .getByLabel("Customer", { exact: true })
     .selectOption({ label: `${first} ${last}` });
+  await expect(page.getByLabel("Vehicle (optional)")).toHaveValue(/.+/);
+  await expect(
+    page.getByLabel("Vehicle (optional)").locator("option:checked"),
+  ).toHaveText("2022 Honda Accord");
   await page.getByLabel("Date and time").fill(chicagoTomorrow());
   await page.getByLabel("Reason").fill("Brake inspection");
   await page.getByRole("button", { name: "Book visit" }).click();
@@ -85,6 +94,13 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await expect(tomorrow).toContainText("Brake inspection");
 
   await page.goto("/app/customers");
+  const recent = page.getByRole("region", {
+    name: "Recently viewed customers",
+    exact: true,
+  });
+  await expect(
+    recent.getByRole("link", { name: `${first} ${last}`, exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("link", { name: `Open ${first} ${last}`, exact: true })
     .click();
@@ -93,6 +109,19 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
     .getByRole("link", { name: "History", exact: true })
     .click();
   await expect(page.getByText(/Visit booked/)).toBeVisible();
+
+  // When there is more than one vehicle, the owner chooses rather than guessing.
+  await page.goto(`${customerUrl}?view=assets&add=vehicle`);
+  await page.getByLabel("Make", { exact: true }).last().fill("Toyota");
+  await page.getByLabel("Model", { exact: true }).last().fill("Camry");
+  await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
+  await expect(page).toHaveURL(/\/vehicles\/[0-9a-f-]+$/);
+  const customerId = new URL(customerUrl).pathname.split("/").pop();
+  await page.goto(`/app/schedule?new=1&customerId=${customerId}`);
+  await expect(
+    page.getByLabel("Vehicle (optional)").locator("option"),
+  ).toHaveCount(3);
+  await expect(page.getByLabel("Vehicle (optional)")).toHaveValue("");
 });
 
 test("M2 business settings are Owner editable", async ({ page }) => {

@@ -145,7 +145,11 @@ export default async function CustomerDetailPage(props: {
 
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <RememberCustomer id={customerId} name={c.displayName} />
+      <RememberCustomer
+        id={customerId}
+        name={c.displayName}
+        scope={`${s.businessId}:${s.actor.id}`}
+      />
       <p>
         <Link href="/app/customers">← Customers</Link>
       </p>

@@ -13,6 +13,7 @@ export default function DemoAppointmentPage({
     demoCustomers.find((c) => c.id === params.customer) ?? demoCustomers[0];
   const profileUrl = `/demo/crm?customer=${selected.id}`;
   const [customer, setCustomer] = useState(selected.name);
+  const [vehicle, setVehicle] = useState(selected.asset);
   const [date, setDate] = useState("2026-11-10T09:00");
   const [reason, setReason] = useState("Brake service");
   const [saved, setSaved] = useState(false);
@@ -31,7 +32,7 @@ export default function DemoAppointmentPage({
           <div className="demo-job-confirm" role="status">
             <strong>Appointment saved in this demo</strong>
             <p>
-              {customer} · {date.replace("T", " ")} · {reason}
+              {customer} · {vehicle} · {date.replace("T", " ")} · {reason}
             </p>
             <p>Nothing was saved to the live database.</p>
             <Link className="btn primary" href="/demo/crm?view=appointments">
@@ -52,6 +53,14 @@ export default function DemoAppointmentPage({
                 required
                 value={customer}
                 onChange={(e) => setCustomer(e.target.value)}
+              />
+            </label>
+            <label>
+              Vehicle{" "}
+              <input
+                required
+                value={vehicle}
+                onChange={(e) => setVehicle(e.target.value)}
               />
             </label>
             <label>

@@ -5,6 +5,10 @@ import { RecordSection, WorkCard } from "@/components/record-section";
 import { CustomerContactSummary } from "@/components/customer-contact-summary";
 import { CustomerContactActions } from "@/components/customer-contact-actions";
 import {
+  RememberCustomer,
+  RecentCustomers,
+} from "@/components/recent-customers";
+import {
   demoCustomers as customers,
   type DemoCustomer,
 } from "@/lib/demo-customers";
@@ -291,6 +295,7 @@ export default async function CrmPreview({
                   </div>
                 </form>
               </RecordSection>
+              {!search && <RecentCustomers scope="public-demo" demo />}
               <RecordSection
                 title="Customer directory"
                 count={filtered.length}
@@ -335,6 +340,11 @@ export default async function CrmPreview({
             </>
           ) : (
             <>
+              <RememberCustomer
+                id={who.id}
+                name={who.name}
+                scope="public-demo"
+              />
               <Link href="/demo/crm" className="crm-sample-back">
                 ← Customers
               </Link>
