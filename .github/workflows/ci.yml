@@ -51,11 +51,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      - name: Temporary formatter capture for mobile tabs and document preview
-        run: |
-          pnpm exec prettier --write "src/app/demo/crm/page.tsx" "src/components/demo-job-editor.tsx" "src/components/workspace-navigation.tsx" "src/components/file-cabinet.tsx" "src/app/globals.css"
-          node -e 'const fs=require("fs");for(const p of process.argv.slice(1)){const s=JSON.stringify(fs.readFileSync(p,"utf8"));for(let i=0;i<s.length;i+=2500)console.log("FORMATTED_FILE|"+p+"|"+Math.floor(i/2500)+"|"+s.slice(i,i+2500));}' "src/app/demo/crm/page.tsx" "src/components/demo-job-editor.tsx" "src/components/workspace-navigation.tsx" "src/components/file-cabinet.tsx" "src/app/globals.css"
-
       - name: Generate per-run role passwords
         run: |
           for v in MIGRATION_OWNER APP_USER WORKER_USER ADMIN_USER; do
