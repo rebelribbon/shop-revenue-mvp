@@ -2,7 +2,7 @@
 import { useActionHydration } from "./action-hydration";
 import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
 import type { ShareRecipient } from "@/domain/document-sharing";
 
@@ -13,12 +13,14 @@ export function DocumentShare({
   primary = false,
   label,
   initial,
+  autoOpen = false,
 }: {
   id: string;
   kind: "estimate" | "invoice";
   primary?: boolean;
   label?: string;
   initial?: ShareData;
+  autoOpen?: boolean;
 }) {
   const ready = useActionHydration();
   const [data, setData] = useState<ShareData | null>(initial ?? null),
@@ -42,6 +44,25 @@ export function DocumentShare({
   ].join("\n");
   const canText = Boolean(phoneNumber.trim() && !data?.textStoppedOn);
   const canEmail = Boolean(!data?.emailStoppedOn);
+  useEffect(() => {
+    if (!autoOpen || initial) return;
+    let canceled = false;
+    void prepareDocumentShare({ id, kind }).then((r) => {
+      if (canceled) return;
+      if (r.ok) {
+        setData(r.data);
+        setEmailAddress(r.data.email ?? "");
+        setPhoneNumber(r.data.phone ?? "");
+      } else {
+        setMessage(r.message);
+        setNeedsReplacement("needsReplacement" in r && r.needsReplacement === true);
+        setRevisionPath("revisionPath" in r ? r.revisionPath : undefined);
+      }
+    }).catch(() => {
+      if (!canceled) setMessage("Sharing is unavailable. Try opening it again.");
+    });
+    return () => { canceled = true; };
+  }, [autoOpen, id, kind, initial]);
   const ios =
     typeof navigator !== "undefined" &&
     (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
