@@ -105,11 +105,11 @@ export default async function CustomerDetailPage(props: {
   const readOnly = s.actor.type === "support";
   const c = data.customer;
   const { view: requestedView, add: adding } = await props.searchParams;
-  const view = ["assets", "history", "details", "files"].includes(
+  const view = ["overview", "jobs", "assets", "history", "details", "files"].includes(
     requestedView ?? "",
   )
     ? requestedView!
-    : "jobs";
+    : "overview";
   const auto = isAutomotive(profile?.businessType ?? "automotive");
   const base = `/app/customers/${customerId}`;
   const permissions = (
@@ -134,6 +134,7 @@ export default async function CustomerDetailPage(props: {
       year: "numeric",
     });
   const tabs = [
+    ["overview", "Overview"],
     ["jobs", `Jobs${jobs.length ? ` (${jobs.length})` : ""}`],
     ["history", "History"],
     ["assets", auto ? "Vehicles" : "Properties"],
@@ -147,11 +148,45 @@ export default async function CustomerDetailPage(props: {
       <p>
         <Link href="/app/customers">← Customers</Link>
       </p>
-      <div className="profile-layout">
-        <aside className="card profile-card">
+      <header className="customer-hero" aria-label="Customer summary">
+        <div className="customer-hero-main">
+          <div className="customer-hero-avatar" aria-hidden="true">
+            {c.displayName.trim().charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="customer-eyebrow">Customer record</p>
+            <h1>{c.displayName}</h1>
+            <p className="muted">
+              {auto
+                ? data.vehicles[0]
+                  ? [data.vehicles[0].year, data.vehicles[0].make, data.vehicles[0].model].filter(Boolean).join(" ")
+                  : "No vehicle on file"
+                : assets.length
+                  ? `${assets.length} service asset${assets.length === 1 ? "" : "s"}`
+                  : "No property or equipment on file"}
+            </p>
+          </div>
+        </div>
+        <div className="customer-hero-actions" role="group" aria-label="Contact customer">
+          {c.phoneE164 && <a className="btn secondary" href={`tel:${c.phoneE164}`}>Call</a>}
+          {c.phoneE164 && !c.textOptedOutAt && !c.doNotContact && (
+            <a className="btn secondary" href={`sms:${c.phoneE164}`}>Text</a>
+          )}
+          {c.email && !c.emailOptedOutAt && !c.doNotContact && (
+            <a className="btn secondary" href={`mailto:${c.email}`}>Email</a>
+          )}
+          {!readOnly && (
+            <Link className="btn primary" data-page-primary href={
+              assetCount ? `/app/jobs?customerId=${customerId}` : `${base}?view=assets`
+            }>+ Job</Link>
+          )}
+        </div>
+      </header>
+      <div className="profile-layout customer-profile-layout">
+        <aside className="card profile-card customer-profile-side">
           <header className="profile-head">
             <div>
-              <h1 className="profile-title">{c.displayName}</h1>
+              <h2 className="profile-title">Customer details</h2>
               <p className="profile-meta">
                 {[
                   address ? (
@@ -178,25 +213,6 @@ export default async function CustomerDetailPage(props: {
                   ))}
               </p>
             </div>
-            {(c.phoneE164 || c.email) && (
-              <div className="money-actions">
-                {c.phoneE164 && (
-                  <a className="btn secondary" href={`tel:${c.phoneE164}`}>
-                    Call
-                  </a>
-                )}
-                {c.phoneE164 && !c.textOptedOutAt && (
-                  <a className="btn secondary" href={`sms:${c.phoneE164}`}>
-                    Text
-                  </a>
-                )}
-                {c.email && !c.emailOptedOutAt && (
-                  <a className="btn secondary" href={`mailto:${c.email}`}>
-                    Email
-                  </a>
-                )}
-              </div>
-            )}
           </header>
           {profileNotes.map((n) =>
             n.headsUp ? (
@@ -301,7 +317,7 @@ export default async function CustomerDetailPage(props: {
             </div>
           )}
         </aside>
-        <div className="profile-main">
+        <div className="profile-main customer-profile-main">
           {!readOnly && (
             <div className="action-bar" role="group" aria-label="Add">
               <Link
@@ -384,7 +400,7 @@ export default async function CustomerDetailPage(props: {
               <Link href={`${base}?view=files`}>Done</Link>
             </section>
           )}
-          <nav className="section-tabs" aria-label="Customer sections">
+          <nav className="section-tabs customer-record-tabs" aria-label="Customer sections">
             {tabs.map(([key, label]) => (
               <Link
                 key={key}
@@ -395,6 +411,72 @@ export default async function CustomerDetailPage(props: {
               </Link>
             ))}
           </nav>
+          {view === "overview" && (
+            <section className="customer-overview" aria-label="Customer overview">
+              <div className="customer-overview-grid">
+                <article className="card customer-overview-card">
+                  <div className="section-heading">
+                    <h2>Contact</h2>
+                    <Link href={`${base}?view=details`}>Edit</Link>
+                  </div>
+                  {c.phoneE164 && (
+                    <div className="customer-fact"><strong>Mobile</strong>
+                      <a href={`tel:${c.phoneE164}`}>{formatPhone(c.phoneE164)}</a>
+                    </div>
+                  )}
+                  {c.email && (
+                    <div className="customer-fact"><strong>Email</strong>
+                      <a href={`mailto:${c.email}`}>{c.email}</a>
+                    </div>
+                  )}
+                  {address && (
+                    <div className="customer-fact"><strong>Address</strong>
+                      <a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer">{address}</a>
+                    </div>
+                  )}
+                  {!c.phoneE164 && !c.email && !address && (
+                    <p className="muted">Add contact details to reach this customer.</p>
+                  )}
+                </article>
+                <article className="card customer-overview-card">
+                  <div className="section-heading">
+                    <h2>Current work</h2>
+                    <Link href={`${base}?view=jobs`}>All jobs</Link>
+                  </div>
+                  {jobs.slice(0, 2).map((j) => (
+                    <Link key={j.id} className="customer-work-row" href={`/app/jobs?job=${j.id}`}>
+                      <strong>{j.title}</strong>
+                      <span className={statusTone(j.status)}>{statusLabels[j.status]}</span>
+                      {j.balanceCents > 0 && <span>{formatMoney(j.balanceCents)} due</span>}
+                    </Link>
+                  ))}
+                  {!jobs.length && <p className="muted">No jobs yet. Create one to prepare an estimate.</p>}
+                </article>
+                <article className="card customer-overview-card">
+                  <div className="section-heading">
+                    <h2>Recent activity</h2>
+                    <Link href={`${base}?view=history`}>History</Link>
+                  </div>
+                  {history.slice(0, 3).map((e) => (
+                    <div className="customer-activity-row" key={e.id}>
+                      <span>{e.summary}</span><small className="muted">{when(e.at)}</small>
+                    </div>
+                  ))}
+                  {!history.length && <p className="muted">No activity recorded yet.</p>}
+                </article>
+                <article className="card customer-overview-card">
+                  <div className="section-heading">
+                    <h2>{auto ? "Vehicles" : "Properties & equipment"}</h2>
+                    <Link href={`${base}?view=assets`}>View all</Link>
+                  </div>
+                  <p>{assetCount} on file</p>
+                  <Link className="btn secondary" href={`${base}?view=assets`}>
+                    {auto ? "View vehicles" : "View assets"}
+                  </Link>
+                </article>
+              </div>
+            </section>
+          )}
           {view === "jobs" && (
             <section aria-label="Jobs" id="jobs">
               {jobs.length > 1 && (
