@@ -690,7 +690,11 @@ export default async function JobsPage({
                       aria-label="Send a document to sign"
                     >
                       <h3>Prepare a document for signature</h3>
-                      <p>Choose a shop-prepared agreement. The customer may review it and sign, but cannot change the work or price. The file is saved to this job first.</p>
+                      <p>
+                        Choose a shop-prepared agreement. The customer may
+                        review it and sign, but cannot change the work or price.
+                        The file is saved to this job first.
+                      </p>
                       {data.templates.length ? (
                         <ActionForm
                           action={sendDocumentAction}
@@ -720,7 +724,9 @@ export default async function JobsPage({
                         </p>
                       )}
                       <p className="muted">
-                        After preparation, you’ll return to the job’s file cabinet to copy or share the signing link. This step does not send a message automatically.
+                        After preparation, you’ll return to the job’s file
+                        cabinet to copy or share the signing link. This step
+                        does not send a message automatically.
                       </p>
                       <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
                         Done
