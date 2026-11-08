@@ -71,6 +71,8 @@ export default async function ShopLayout({
           </Link>
           <WorkspaceNavigation
             canSeeMoney={s.role === "owner"}
+          automotive={isAutomotive(b?.businessType ?? "automotive")}
+            automotive={isAutomotive(b?.businessType ?? "automotive")}
             counts={{ "/app/tasks": tasksDue }}
           />
         </aside>
