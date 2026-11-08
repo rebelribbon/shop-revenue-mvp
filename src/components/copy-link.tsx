@@ -43,7 +43,10 @@ export function CopyLink({
       </button>
       <details className="record-details">
         <summary>Send signing link</summary>
-        <p>Confirm where to send it. Opening your messaging app does not send the link automatically.</p>
+        <p>
+          Confirm where to send it. Opening your messaging app does not send the
+          link automatically.
+        </p>
         <label>
           Recipient email
           <input
@@ -66,10 +69,14 @@ export function CopyLink({
         </label>
         <div className="money-actions">
           {recipientPhone.trim() && (
-            <button type="button" className="btn secondary"
-              onClick={() => window.location.assign(
-                `sms:${recipientPhone.trim()}?body=${encodeURIComponent(message())}`
-              )}
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() =>
+                window.location.assign(
+                  `sms:${recipientPhone.trim()}?body=${encodeURIComponent(message())}`,
+                )
+              }
             >
               Open text message
             </button>
@@ -78,10 +85,14 @@ export function CopyLink({
             <button
               type="button"
               className="btn secondary"
-              disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())}
-              onClick={() => window.location.assign(
-                `mailto:${encodeURIComponent(recipientEmail.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`
-              )}
+              disabled={
+                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())
+              }
+              onClick={() =>
+                window.location.assign(
+                  `mailto:${encodeURIComponent(recipientEmail.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`,
+                )
+              }
             >
               Open email message
             </button>
