@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { WorkspaceIcon } from "@/components/workspace-icon";
 
 export const metadata: Metadata = {
   title: "CRM workspace preview | Shop Revenue",
@@ -360,17 +361,19 @@ export default async function CrmPreview({
           )}
         </div>
       </div>
-      <nav
-        className="crm-sample-mobile-nav"
-        aria-label="Mobile sample navigation"
-      >
-        <Link href="/demo/crm">Today</Link>
-        <Link href="/demo/crm" aria-current="page">
-          Customers
-        </Link>
-        <Link href="/demo/crm?customer=alex&tab=Jobs">Jobs</Link>
-        <Link href="/demo/crm?customer=alex&tab=History">Tasks</Link>
-        <Link href="/demo/crm?customer=alex&tab=Overview">Money</Link>
+      <nav className="crm-sample-mobile-nav" aria-label="Mobile sample navigation">
+        {[
+          { label: "Today", href: "/demo/crm?view=today", icon: "home", current: !who && view === "today" },
+          { label: "Customers", href: "/demo/crm", icon: "customers", current: (!who && view !== "today" && view !== "tasks") || Boolean(who) },
+          { label: "Jobs", href: "/demo/job", icon: "work", current: false },
+          { label: "Tasks", href: "/demo/crm?view=tasks", icon: "tasks", current: !who && view === "tasks" },
+          { label: "Money", href: "/demo/job?stage=payment", icon: "money", current: false },
+        ] as const).map((item) => (
+          <Link key={item.label} href={item.href} aria-label={item.label} aria-current={item.current ? "page" : undefined}>
+            <WorkspaceIcon name={item.icon} />
+            <span>{item.label}</span>
+          </Link>
+        ))}
       </nav>
     </main>
   );
