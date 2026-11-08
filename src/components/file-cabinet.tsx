@@ -11,8 +11,6 @@ type View = "all" | "generated" | "uploaded";
 
 export function FileCabinet({
   items,
-  customerPhone,
-  customerEmail,
   readOnly,
   autoOpenShare = false,
   timeZone,
@@ -135,7 +133,7 @@ export function FileCabinet({
         <div className="docs-list" role="list" aria-label="Documents">
           <div className="docs-list-heading"><span>Document</span><span>Status</span></div>
           {docs.length === 0 && (
-            <div className="docs-empty">No documents here yet. Prepare an estimate or add an agreement from the job's Docs section.</div>
+            <div className="docs-empty">No documents here yet. Prepare an estimate or add an agreement from the job&apos;s Docs section.</div>
           )}
           {docs.map((item) => {
             const selectable = Boolean(item.documentId && item.signLink && item.status === "Prepared");
