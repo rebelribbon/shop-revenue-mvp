@@ -202,7 +202,7 @@ export function DocumentShare({
           </label>
           <p className="muted">Preview the exact customer packet before sending. The app records provider acceptance, not whether the recipient opened it. SMS opens your texting app; it is not sent automatically.</p>
           <a className="btn secondary" href={previewPath} target="_blank" rel="noreferrer">
-            Preview customer's view
+            Preview customer view
           </a>
           <div className="money-actions">
             {canText && (
