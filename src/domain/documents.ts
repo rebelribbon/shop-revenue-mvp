@@ -711,7 +711,7 @@ export async function jobCabinet(
     .orderBy(desc(document.createdAt));
   for (const d of docs) {
     if (d.kind === "esign") {
-      const token = d.status === "sent" ? unseal(d.shareTokenCiphertext) : null;
+      const token = d.status === "sent" && (!d.expiresAt || d.expiresAt > new Date()) ? unseal(d.shareTokenCiphertext) : null;
       items.push({
         id: d.id,
         group: "Signed & sent",
