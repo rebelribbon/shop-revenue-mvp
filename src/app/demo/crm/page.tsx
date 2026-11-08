@@ -39,7 +39,7 @@ const tabs = [
   "Jobs",
   "Vehicles",
   "History",
-  "Files",
+  "Customer Files",
   "Details",
 ] as const;
 
@@ -92,8 +92,8 @@ export default async function CrmPreview({
                 <article className="card customer-overview-card">
                   <h2>Scheduled service</h2>
                   <p>Front brake service · Alex Example</p>
-                  <Link href="/demo/job" className="btn primary">
-                    Open job & pricing
+                  <Link href="/demo/appointment?customer=alex" className="btn primary">
+                    + Book appointment
                   </Link>
                 </article>
                 <article className="card customer-overview-card">
@@ -244,12 +244,12 @@ export default async function CrmPreview({
                   </Link>
                   <Link
                     className="btn secondary"
-                    href={`/demo/crm?customer=${who.id}&tab=Files`}
+                    href="/demo/appointment?customer=alex"
                   >
-                    Files
+                    + Appointment
                   </Link>
                   <Link className="btn primary" href="/demo/job">
-                    + Job
+                    + New RO
                   </Link>
                 </div>
               </header>
@@ -308,14 +308,14 @@ export default async function CrmPreview({
                       </article>
                       <article className="card customer-overview-card">
                         <div className="section-heading">
-                          <h2>Current work</h2>
-                          <Link href="/demo/job">All jobs</Link>
+                          <h2>Recent ROs</h2>
+                          <Link href="/demo/job">RO history</Link>
                         </div>
                         <Link
                           className="customer-work-row"
                           href={`${url}&tab=Jobs`}
                         >
-                          <strong>Brake service</strong>
+                          <strong>RO #10042 · Brake service</strong>
                           <span>Awaiting approval</span>
                           <span>$1,284.75 due</span>
                         </Link>
@@ -347,7 +347,7 @@ export default async function CrmPreview({
                       <h2>{activeTab}</h2>
                       <p className="muted">
                         {activeTab === "Jobs"
-                          ? "Brake service · Awaiting customer authorization · $1,284.75"
+                          ? "RO #10042 · Brake service · Awaiting customer authorization · $1,284.75"
                           : activeTab === "Vehicles"
                             ? who.asset
                             : activeTab === "History"
@@ -361,12 +361,12 @@ export default async function CrmPreview({
                           Open job setup & pricing
                         </Link>
                       )}
-                      {activeTab === "Files" && (
+                      {activeTab === "Customer Files" && (
                         <Link
                           href="/demo/job?stage=docs"
                           className="btn secondary"
                         >
-                          Open documents and estimate preview
+                          Open RO documents and estimate preview
                         </Link>
                       )}
                     </section>
