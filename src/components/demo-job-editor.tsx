@@ -134,7 +134,7 @@ export function DemoJobEditor({ initialStage = "setup" }: { initialStage?: Stage
       {stage === "docs" && (
         <section className="demo-job-panel">
           <div className="demo-job-section-head">
-            <div><h2>Documents</h2><p>Select an agreement, preview the customer's estimate, then share.</p></div>
+            <div><h2>Documents</h2><p>Select an agreement, preview the customer&apos;s estimate, then share.</p></div>
             <button className="btn secondary" type="button" onClick={() => setShowCustomerView((v) => !v)}>
               {showCustomerView ? "Close preview" : "Preview customer view"}
             </button>
