@@ -51,6 +51,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      - name: Temporary format capture for five-tab CRM architecture
+        run: |
+          pnpm exec prettier --write "src/components/workspace-navigation.tsx" "src/components/workspace-icon.tsx" "src/app/app/layout.tsx" "src/app/app/schedule/page.tsx" "src/app/app/customers/[customerId]/page.tsx" "src/app/app/jobs/page.tsx" "src/app/app/reports/page.tsx" "src/app/app/reports/build/page.tsx" "src/app/demo/crm/page.tsx" "src/app/demo/appointment/page.tsx" "src/components/demo-job-editor.tsx" "src/lib/job-reference.ts" "e2e/navigation-five-tabs.spec.ts" "e2e/demo-crm-flow.spec.ts"
+          node -e 'const fs=require("fs");for(const p of process.argv.slice(1)){const s=JSON.stringify(fs.readFileSync(p,"utf8"));for(let i=0;i<s.length;i+=2500)console.log("FORMATTED_FILE|"+p+"|"+Math.floor(i/2500)+"|"+s.slice(i,i+2500));}' "src/components/workspace-navigation.tsx" "src/components/workspace-icon.tsx" "src/app/app/layout.tsx" "src/app/app/schedule/page.tsx" "src/app/app/customers/[customerId]/page.tsx" "src/app/app/jobs/page.tsx" "src/app/app/reports/page.tsx" "src/app/app/reports/build/page.tsx" "src/app/demo/crm/page.tsx" "src/app/demo/appointment/page.tsx" "src/components/demo-job-editor.tsx" "src/lib/job-reference.ts" "e2e/navigation-five-tabs.spec.ts" "e2e/demo-crm-flow.spec.ts"
+
       - name: Generate per-run role passwords
         run: |
           for v in MIGRATION_OWNER APP_USER WORKER_USER ADMIN_USER; do
