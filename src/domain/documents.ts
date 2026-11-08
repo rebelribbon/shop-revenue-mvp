@@ -557,6 +557,7 @@ export type CabinetItem = {
   href: string | null;
   documentId?: string;
   signLink?: string;
+  estimateShareId?: string;
 };
 
 // Everything for one job: estimates, signed approvals, invoices, e-sign
@@ -593,6 +594,7 @@ export async function jobCabinet(
       at: v.createdAt,
       status: a ? "Signed" : v.revokedAt ? "Replaced" : "Sent",
       href: `/app/estimates?jobId=${jobId}`,
+      estimateShareId: !a && !v.revokedAt && v.expiresAt > new Date() && v.id === versions[0]?.v.id ? v.id : undefined,
     });
     if (a)
       items.push({
