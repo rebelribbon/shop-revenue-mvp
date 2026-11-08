@@ -2970,3 +2970,15 @@ a.card.create-tile:hover {
   .docs-toolbar-actions .btn { flex: 1; text-align: center; }
   .docs-status { max-width: 110px; white-space: normal; text-align: center; }
 }
+
+.docs-prep-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; }
+.docs-prep-toolbar h3, .docs-prep-toolbar p { margin: 0; }
+.docs-prep-toolbar h3 { font-size: 1.1rem; }
+.docs-add-menu { position: relative; }
+.docs-add-menu summary { list-style: none; cursor: pointer; }
+.docs-add-menu summary::-webkit-details-marker { display: none; }
+.docs-add-menu[open] { width: min(100%, 360px); }
+.docs-add-menu[open] > form, .docs-add-menu[open] > a {
+  display: grid; gap: 10px; margin-top: 10px; padding: 15px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+}
