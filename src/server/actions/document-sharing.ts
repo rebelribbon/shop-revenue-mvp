@@ -3,7 +3,11 @@ import { z } from "zod";
 import { getSessionState } from "../auth/session";
 import { assertSessionAssurance } from "../auth/assurance";
 import { withTenant } from "@/db/tenant";
-import { getDocumentShare, getEstimatePacketDocuments, customerPacketPath } from "@/domain/document-sharing";
+import {
+  getDocumentShare,
+  getEstimatePacketDocuments,
+  customerPacketPath,
+} from "@/domain/document-sharing";
 import { AppError } from "@/lib/errors";
 import { emailProvider } from "@/providers/email";
 import { recordActivity } from "@/domain/records";
@@ -22,12 +26,17 @@ export async function prepareDocumentShare(raw: unknown) {
     await assertSessionAssurance();
     return {
       ok: true as const,
-      data: await withTenant(s.session.businessId, s.session.actor, async (tx) => ({
-        ...(await getDocumentShare(tx, input.data.id, input.data.kind)),
-        documents: input.data.kind === "estimate"
-          ? await getEstimatePacketDocuments(tx, input.data.id)
-          : [],
-      })),
+      data: await withTenant(
+        s.session.businessId,
+        s.session.actor,
+        async (tx) => ({
+          ...(await getDocumentShare(tx, input.data.id, input.data.kind)),
+          documents:
+            input.data.kind === "estimate"
+              ? await getEstimatePacketDocuments(tx, input.data.id)
+              : [],
+        }),
+      ),
     };
   } catch (e) {
     return {
@@ -77,19 +86,35 @@ export async function emailCustomerDocument(raw: unknown) {
     await assertSessionAssurance();
     const s = state.session;
     const { recipient, selectedDocuments } = await withTenant(
-      s.businessId, s.actor, async (tx) => {
-        const recipient = await getDocumentShare(tx, parsed.data.id, parsed.data.kind);
+      s.businessId,
+      s.actor,
+      async (tx) => {
+        const recipient = await getDocumentShare(
+          tx,
+          parsed.data.id,
+          parsed.data.kind,
+        );
         if (parsed.data.kind !== "estimate" && parsed.data.documentIds.length)
-          throw new AppError("VALIDATION", "Documents can only accompany an estimate.");
-        const available = parsed.data.kind === "estimate"
-          ? await getEstimatePacketDocuments(tx, parsed.data.id)
-          : [];
-        if (new Set(parsed.data.documentIds).size !== parsed.data.documentIds.length)
+          throw new AppError(
+            "VALIDATION",
+            "Documents can only accompany an estimate.",
+          );
+        const available =
+          parsed.data.kind === "estimate"
+            ? await getEstimatePacketDocuments(tx, parsed.data.id)
+            : [];
+        if (
+          new Set(parsed.data.documentIds).size !==
+          parsed.data.documentIds.length
+        )
           throw new AppError("VALIDATION", "A document was selected twice.");
         const selectedDocuments = parsed.data.documentIds.map((id) => {
           const document = available.find((doc) => doc.id === id);
           if (!document)
-            throw new AppError("VALIDATION", "A selected document is no longer available. Review the packet again.");
+            throw new AppError(
+              "VALIDATION",
+              "A selected document is no longer available. Review the packet again.",
+            );
           return document;
         });
         return { recipient, selectedDocuments };
@@ -107,15 +132,18 @@ export async function emailCustomerDocument(raw: unknown) {
         message: "Document delivery isn't configured for this site.",
       };
 
-    const path = parsed.data.kind === "estimate"
-      ? customerPacketPath(recipient.path, selectedDocuments)
-      : recipient.path;
+    const path =
+      parsed.data.kind === "estimate"
+        ? customerPacketPath(recipient.path, selectedDocuments)
+        : recipient.path;
     const url = new URL(path, base).href;
     const title =
       parsed.data.kind === "estimate" ? "estimate for approval" : "invoice";
     const delivery = await emailProvider().send({
       to: parsed.data.email,
-      subject: parsed.data.subject || `${recipient.senderName || "Your shop"} — ${title}`,
+      subject:
+        parsed.data.subject ||
+        `${recipient.senderName || "Your shop"} — ${title}`,
       fromName: recipient.senderName,
       text: `Hello ${recipient.name},\n\n${parsed.data.message || `${recipient.senderName || "Your shop"} has prepared your ${title}.`}\n\nReview and sign the documents here: ${url}\n\nIf you weren't expecting this, contact the shop directly.\n\n${recipient.senderAddress || ""}`,
     });
