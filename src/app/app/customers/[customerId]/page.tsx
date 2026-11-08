@@ -141,10 +141,16 @@ export default async function CustomerDetailPage(props: {
     });
   const tabs = [
     ["overview", "Overview"],
-    ["jobs", `${auto ? "ROs" : "Jobs"}${jobs.length ? ` (${jobs.length})` : ""}`],
+    [
+      "jobs",
+      `${auto ? "ROs" : "Jobs"}${jobs.length ? ` (${jobs.length})` : ""}`,
+    ],
     ["history", "History"],
     ["assets", auto ? "Vehicles" : "Properties"],
-    ["files", `Customer files${attachments.length ? ` (${attachments.length})` : ""}`],
+    [
+      "files",
+      `Customer files${attachments.length ? ` (${attachments.length})` : ""}`,
+    ],
     ["details", "Details"],
   ] as const;
 
@@ -213,7 +219,10 @@ export default async function CustomerDetailPage(props: {
             </Link>
           )}
           {!readOnly && (
-            <Link className="btn secondary" href={`/app/schedule?new=1&customerId=${customerId}`}>
+            <Link
+              className="btn secondary"
+              href={`/app/schedule?new=1&customerId=${customerId}`}
+            >
               + Appointment
             </Link>
           )}
@@ -486,7 +495,9 @@ export default async function CustomerDetailPage(props: {
                 <article className="card customer-overview-card">
                   <div className="section-heading">
                     <h2>{auto ? "Recent ROs" : "Recent jobs"}</h2>
-                    <Link href={`${base}?view=jobs`}>{auto ? "All ROs" : "All jobs"}</Link>
+                    <Link href={`${base}?view=jobs`}>
+                      {auto ? "All ROs" : "All jobs"}
+                    </Link>
                   </div>
                   {jobs.slice(0, 2).map((j) => (
                     <Link
@@ -494,7 +505,12 @@ export default async function CustomerDetailPage(props: {
                       className="customer-work-row"
                       href={`/app/jobs?job=${j.id}`}
                     >
-                      <strong><span className="customer-job-ref">{jobReference(j.id, auto)}</span> · {j.title}</strong>
+                      <strong>
+                        <span className="customer-job-ref">
+                          {jobReference(j.id, auto)}
+                        </span>{" "}
+                        · {j.title}
+                      </strong>
                       <span className={statusTone(j.status)}>
                         {statusLabels[j.status]}
                       </span>
@@ -541,7 +557,18 @@ export default async function CustomerDetailPage(props: {
             <section aria-label={auto ? "Repair orders" : "Jobs"} id="jobs">
               <div className="section-heading">
                 <h2>{auto ? "Repair order history" : "Job history"}</h2>
-                {!readOnly && <Link className="btn primary" href={assetCount ? `/app/jobs?customerId=${customerId}` : `${base}?view=assets`}>{auto ? "+ New RO" : "+ New job"}</Link>}
+                {!readOnly && (
+                  <Link
+                    className="btn primary"
+                    href={
+                      assetCount
+                        ? `/app/jobs?customerId=${customerId}`
+                        : `${base}?view=assets`
+                    }
+                  >
+                    {auto ? "+ New RO" : "+ New job"}
+                  </Link>
+                )}
               </div>
               {jobs.length > 1 && (
                 <div className="chip-links" role="group" aria-label="Show jobs">
@@ -563,7 +590,9 @@ export default async function CustomerDetailPage(props: {
                 </div>
               )}
               {!jobs.length && (
-                <p className="muted">No previous jobs. Start a new one from this customer.</p>
+                <p className="muted">
+                  No previous jobs. Start a new one from this customer.
+                </p>
               )}
               <ul className="row-list">
                 {shownJobs.map((j) => (
@@ -571,8 +600,13 @@ export default async function CustomerDetailPage(props: {
                     <Link href={`/app/jobs?job=${j.id}`}>
                       <span className="row-main">
                         <strong>
-                          <span className="customer-job-ref">{auto ? "RO" : "Job"} {j.id.slice(0, 12).toUpperCase()}</span>
-                          {" · "}{j.repeats && "↻ "}{j.title}
+                          <span className="customer-job-ref">
+                            {auto ? "RO" : "Job"}{" "}
+                            {j.id.slice(0, 12).toUpperCase()}
+                          </span>
+                          {" · "}
+                          {j.repeats && "↻ "}
+                          {j.title}
                         </strong>
                         <span className="muted">
                           {j.plan && j.plan.status !== "ended"
