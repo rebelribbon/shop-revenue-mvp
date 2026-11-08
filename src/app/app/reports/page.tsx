@@ -58,7 +58,7 @@ export default async function ReportsPage({
   }
   const p = await searchParams;
   const key = (REPORTS.find((r) => r.key === p.report)?.key ??
-    "sales") as ReportKey;
+    "appointments") as ReportKey;
   const { report, range, preset, saved } = await withTenant(
     s.businessId,
     s.actor,
@@ -96,6 +96,10 @@ export default async function ReportsPage({
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Reports</h1>
+      <p className="muted">
+        Appointments, customer growth, service plans, sales and business
+        performance.
+      </p>
       <a
         className="btn primary"
         data-page-primary

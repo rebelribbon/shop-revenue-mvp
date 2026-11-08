@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: "CRM workspace preview | Shop Revenue",
   robots: { index: false, follow: false },
 };
-export const dynamic = "force-static";
 
 const customers = [
   {
@@ -34,14 +33,7 @@ const customers = [
     contact: "(210) 555-0133",
   },
 ];
-const tabs = [
-  "Overview",
-  "Jobs",
-  "Vehicles",
-  "History",
-  "Customer Files",
-  "Details",
-] as const;
+const tabs = ["Overview", "Jobs", "Vehicles", "History", "Details"] as const;
 
 export default async function CrmPreview({
   searchParams,
@@ -385,21 +377,11 @@ export default async function CrmPreview({
                             ? who.asset
                             : activeTab === "History"
                               ? "Estimate prepared today · Customer called yesterday"
-                              : activeTab === "Customer Files"
-                                ? "Work authorization · Inspection summary"
-                                : "Contact details and communication preferences"}
+                              : "Contact details and communication preferences"}
                       </p>
                       {activeTab === "Jobs" && (
                         <Link href="/demo/job" className="btn primary">
                           Open job setup & pricing
-                        </Link>
-                      )}
-                      {activeTab === "Customer Files" && (
-                        <Link
-                          href="/demo/job?stage=docs"
-                          className="btn secondary"
-                        >
-                          Open RO documents and estimate preview
                         </Link>
                       )}
                     </section>

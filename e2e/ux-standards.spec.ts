@@ -218,12 +218,15 @@ test("core pages stay within three homepage clicks and primary actions follow th
   await finder.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/customers\?q=/);
   await expect(
-    page.getByRole("link", { name: `Job ${info.project.name}`, exact: true }),
+    page.getByRole("link", {
+      name: `Open Job ${info.project.name}`,
+      exact: true,
+    }),
   ).toBeVisible();
   await page.goto("/app");
-  await page.getByRole("link", { name: "Jobs", exact: true }).click();
+  await page.getByRole("link", { name: "Repair orders", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Jobs", exact: true }),
+    page.getByRole("heading", { name: "Repair orders", exact: true }),
   ).toBeVisible();
   await expect(page.getByLabel("Job name", { exact: true })).toHaveCount(0);
   await page.getByLabel("Find a job", { exact: true }).focus();

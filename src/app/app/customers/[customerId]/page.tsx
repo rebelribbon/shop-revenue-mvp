@@ -7,13 +7,6 @@ import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
 import { Notes } from "@/components/memory";
 import { RememberCustomer } from "@/components/recent-customers";
-import { FileUploader } from "@/components/file-uploader";
-import {
-  ATTACHMENT_CATEGORIES,
-  categoryLabel,
-  listAttachments,
-} from "@/domain/documents";
-import { removeDocumentAction } from "@/server/actions/documents";
 import type { HistoryItem } from "@/domain/customer-profile";
 import { listNotes } from "@/domain/memory";
 import Link from "next/link";
@@ -67,7 +60,6 @@ export default async function CustomerDetailPage(props: {
     assets,
     jobs,
     money,
-    attachments,
     portal,
     reviewLink,
     lastReview,
@@ -80,7 +72,6 @@ export default async function CustomerDetailPage(props: {
       listServiceAssets(tx, customerId),
       listCustomerJobs(tx, customerId),
       customerMoney(tx, customerId),
-      listAttachments(tx, customerId),
       portalLink(tx, customerId),
       readReviewSettings(tx).then((r) => r.link),
       lastReviewRequest(tx, customerId),
@@ -106,14 +97,9 @@ export default async function CustomerDetailPage(props: {
   const readOnly = s.actor.type === "support";
   const c = data.customer;
   const { view: requestedView, add: adding } = await props.searchParams;
-  const view = [
-    "overview",
-    "jobs",
-    "assets",
-    "history",
-    "details",
-    "files",
-  ].includes(requestedView ?? "")
+  const view = ["overview", "jobs", "assets", "history", "details"].includes(
+    requestedView ?? "",
+  )
     ? requestedView!
     : "overview";
   const auto = isAutomotive(profile?.businessType ?? "automotive");
@@ -147,10 +133,6 @@ export default async function CustomerDetailPage(props: {
     ],
     ["history", "History"],
     ["assets", auto ? "Vehicles" : "Properties"],
-    [
-      "files",
-      `Customer files${attachments.length ? ` (${attachments.length})` : ""}`,
-    ],
     ["details", "Details"],
   ] as const;
 
@@ -373,13 +355,6 @@ export default async function CustomerDetailPage(props: {
               >
                 + Note
               </Link>
-              <Link
-                className="btn secondary"
-                href={`${base}?view=files&add=attachment`}
-                aria-current={adding === "attachment" ? "true" : undefined}
-              >
-                + Attachment
-              </Link>
             </div>
           )}
           {adding === "note" && !readOnly && (
@@ -424,17 +399,6 @@ export default async function CustomerDetailPage(props: {
               <Link href={`${base}?view=${view}`}>Done</Link>
             </section>
           )}
-          {adding === "attachment" && !readOnly && (
-            <section className="card add-panel" aria-label="Add an attachment">
-              <h2>Add an attachment</h2>
-              <FileUploader
-                customerId={customerId}
-                categories={ATTACHMENT_CATEGORIES}
-                buttonLabel="Choose file"
-              />
-              <Link href={`${base}?view=files`}>Done</Link>
-            </section>
-          )}
           <nav
             className="section-tabs customer-record-tabs"
             aria-label="Customer sections"
@@ -442,7 +406,7 @@ export default async function CustomerDetailPage(props: {
             {tabs.map(([key, label]) => (
               <Link
                 key={key}
-                href={`${base}${key === "jobs" ? "" : `?view=${key}`}`}
+                href={`${base}?view=${key}`}
                 aria-current={view === key ? "page" : undefined}
               >
                 {label}
@@ -581,7 +545,7 @@ export default async function CustomerDetailPage(props: {
                   ).map((f) => (
                     <Link
                       key={f.key}
-                      href={`${base}?jobs=${f.key}`}
+                      href={`${base}?view=jobs&jobs=${f.key}`}
                       aria-current={filter.key === f.key ? "true" : undefined}
                     >
                       {f.label}
@@ -601,8 +565,7 @@ export default async function CustomerDetailPage(props: {
                       <span className="row-main">
                         <strong>
                           <span className="customer-job-ref">
-                            {auto ? "RO" : "Job"}{" "}
-                            {j.id.slice(0, 12).toUpperCase()}
+                            {jobReference(j.id, auto)}
                           </span>
                           {" · "}
                           {j.repeats && "↻ "}
@@ -651,44 +614,6 @@ export default async function CustomerDetailPage(props: {
                   <Notes customerId={customerId} notes={historyNotes} />
                 </details>
               )}
-            </section>
-          )}
-          {view === "files" && (
-            <section aria-label="Files">
-              {!attachments.length && (
-                <p className="muted">
-                  No files yet. Tap + Attachment to add a license, insurance
-                  card or tax-exempt certificate. Only your shop can see these.
-                </p>
-              )}
-              <ul className="row-list">
-                {attachments.map((d) => (
-                  <li key={d.id}>
-                    <div>
-                      <a
-                        className="row-main"
-                        href={`/media/${d.fileId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <strong>📎 {d.title}</strong>
-                        <span className="muted">
-                          {categoryLabel(d.category)} · {when(d.createdAt)}
-                        </span>
-                      </a>
-                      {!readOnly && (
-                        <ActionForm
-                          action={removeDocumentAction}
-                          hidden={{ documentId: d.id }}
-                          submitLabel="Remove"
-                          variant="secondary"
-                          confirm={`Remove ${d.title}?`}
-                        />
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
             </section>
           )}
           {view === "details" && (

@@ -29,6 +29,13 @@ test("public CRM buttons open working customer and job pricing demos", async ({
   await expect(
     page.getByRole("heading", { name: "Customer approval preview" }),
   ).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "Customer approval preview" })
+    .getByRole("button", { name: "Close preview", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Customer approval preview" }),
+  ).not.toBeVisible();
   await page.getByRole("button", { name: "Next: Share packet" }).click();
   await expect(
     page.getByRole("heading", { name: "Share customer packet" }),

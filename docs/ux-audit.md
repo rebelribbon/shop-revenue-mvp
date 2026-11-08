@@ -118,3 +118,12 @@ a Stripe account and authorizing the connection. Connected shops get one Manage
 Stripe or Finish Stripe setup action, with status reconciliation separate.
 Phone and desktop regression coverage checks the pending state, visible controls,
 refresh, return to Settings, geometry, contrast and browser errors.
+
+
+## November 8 customer and RO navigation
+
+The current workspace has exactly five main destinations on phones and desktop: Appointments, Tasks, Customers, ROs (Jobs for service businesses), and Reports. Quick Find follows the same destinations. Settings and the home link remain header utilities. Payment and document actions are reached from an identified job; global payment and quick-sale creation shortcuts and customer-file creation are removed from the owner navigation. Existing stored files and financial records are retained.
+
+Customer profiles have five sections: overview, job/RO history, activity history, vehicles/assets and details. The job history tab and its filters retain `view=jobs`, and display the same stable reference as the job page. Appointments can be started from the calendar and from a customer with that customer selected. Reports include shop-timezone appointment outcomes and new-customer/lead-source activity alongside financial reports; existing owner-only data protections apply.
+
+The public CRM preview evaluates request search parameters so customers, reports and appointment navigation render their requested screens in production builds. The mobile navigation keeps five icon-and-label targets with 8px gaps, including at 320px. Customer creation remains in the directory header to allow the last row to scroll clear. Floating customer actions retain their viewport width rather than inheriting a full-width grid button rule. Browser audits distinguish header actions from pinned actions while retaining hit-area, gap, overflow and contrast checks.

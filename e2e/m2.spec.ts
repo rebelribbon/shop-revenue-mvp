@@ -57,17 +57,17 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
 
   await page.goto(`/app/customers?q=${vin.slice(-6)}`);
   await expect(
-    page.getByRole("link", { name: `${first} ${last}`, exact: true }),
+    page.getByRole("link", { name: `Open ${first} ${last}`, exact: true }),
   ).toBeVisible();
   await page.goto(
     `/app/customers?q=${encodeURIComponent(phone.replace(/[()-]/g, " "))}`,
   );
   await expect(
-    page.getByRole("link", { name: `${first} ${last}`, exact: true }),
+    page.getByRole("link", { name: `Open ${first} ${last}`, exact: true }),
   ).toBeVisible();
   await page.goto(`/app/customers?q=${plate}`);
   await expect(
-    page.getByRole("link", { name: `${first} ${last}`, exact: true }),
+    page.getByRole("link", { name: `Open ${first} ${last}`, exact: true }),
   ).toBeVisible();
 
   await page.goto("/app/schedule?new=1");
@@ -77,7 +77,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page.getByLabel("Date and time").fill(chicagoTomorrow());
   await page.getByLabel("Reason").fill("Brake inspection");
   await page.getByRole("button", { name: "Book visit" }).click();
-  await expect(page.getByRole("status")).toContainText("Visit booked");
+  await expect(page.getByRole("status")).toContainText("Appointment booked");
 
   const tomorrow = page
     .getByRole("heading", { name: "Tomorrow" })
@@ -86,7 +86,7 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
 
   await page.goto("/app/customers");
   await page
-    .getByRole("link", { name: `${first} ${last}`, exact: true })
+    .getByRole("link", { name: `Open ${first} ${last}`, exact: true })
     .click();
   await page.getByRole("link", { name: "History", exact: true }).click();
   await expect(page.getByText(/Visit booked/)).toBeVisible();
@@ -117,11 +117,11 @@ test("M2 mobile navigation reaches focused job and customer creation without ove
   await page.goto("/app/customers");
   const nav = page.getByRole("navigation", { name: "Mobile navigation" });
   await expect(nav).toBeVisible();
-  // Today, Customers, Jobs, Tasks, Money (the calendar opens from Today).
+  // Appointments, Tasks, Customers, repair orders and Reports.
   await expect(nav.getByRole("link")).toHaveCount(5);
-  await nav.getByRole("link", { name: "Jobs", exact: true }).click();
+  await nav.getByRole("link", { name: "Repair orders", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Jobs", exact: true }),
+    page.getByRole("heading", { name: "Repair orders", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "New job", exact: true }).click();
   await expect(

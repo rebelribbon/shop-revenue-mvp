@@ -27,7 +27,7 @@ test("mobile customer list scrolls above navigation and actions fit the viewport
 
   await page.goto("/demo/crm?customer=alex");
   const actionButtons = page.locator(".customer-hero-actions > .btn");
-  await expect(actionButtons).toHaveCount(4);
+  await expect(actionButtons).toHaveCount(5);
   for (const button of await actionButtons.all()) {
     const bounds = await button.boundingBox();
     expect(bounds).not.toBeNull();

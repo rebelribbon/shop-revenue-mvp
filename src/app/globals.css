@@ -3966,7 +3966,7 @@ main.customer-index-page {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
-  .customer-hero-actions > .btn {
+  .customer-hero-actions > .btn:not([data-ux-primary]) {
     width: 100%;
     min-height: 48px;
     padding: 8px !important;
@@ -4466,7 +4466,7 @@ main.customer-index-page {
 @media (max-width: 899px) {
   .shop-mobile-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
+    gap: 8px;
     padding-inline: 8px;
   }
   .shop-mobile-nav a,
@@ -4512,7 +4512,7 @@ main.customer-index-page {
   }
   .crm-sample-mobile-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
+    gap: 8px;
     padding-inline: 8px;
     align-items: center;
   }

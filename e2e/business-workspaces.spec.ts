@@ -28,7 +28,10 @@ test("home-service setup creates a real property and equipment job without vehic
     await expect(page.getByRole("status")).toContainText(
       "Business profile updated",
     );
-    await page.getByRole("link", { name: "Today", exact: true }).click();
+    await page
+      .locator("nav:visible")
+      .getByRole("link", { name: /^(Jobs|Repair orders)$/ })
+      .click();
     await expect(
       page.getByRole("link", { name: "New job", exact: true }),
     ).toBeVisible();
@@ -158,7 +161,10 @@ test("home-service setup creates a real property and equipment job without vehic
       await expect(page.getByRole("status")).toContainText(
         "Business profile updated",
       );
-      await page.getByRole("link", { name: "Today", exact: true }).click();
+      await page
+        .locator("nav:visible")
+        .getByRole("link", { name: /^(Jobs|Repair orders)$/ })
+        .click();
       await expect(page.locator("main")).not.toContainText(
         /properties|equipment/i,
       );

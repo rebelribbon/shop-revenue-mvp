@@ -96,7 +96,7 @@ test("Put a tech on a job; it shows on their day and the board", async ({
   await page.getByLabel("Date and time").fill(chicagoTomorrow());
   await page.getByLabel("Reason").fill(`Visit ${name}`);
   await page.getByRole("button", { name: "Book visit" }).click();
-  await expect(page.getByRole("status")).toContainText("Visit booked");
+  await expect(page.getByRole("status")).toContainText("Appointment booked");
   const visit = page
     .locator("article.appointment-row")
     .filter({ hasText: `Visit ${name}` });

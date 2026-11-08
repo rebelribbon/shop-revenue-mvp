@@ -103,7 +103,7 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     .getByLabel("Reason", { exact: true })
     .fill(`Thursday brake visit ${name}`);
   await page.getByRole("button", { name: "Book visit", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Visit booked");
+  await expect(page.getByRole("status")).toContainText("Appointment booked");
   await expect(
     page.getByText(`Thursday brake visit ${name}`, { exact: false }),
   ).toBeVisible();
