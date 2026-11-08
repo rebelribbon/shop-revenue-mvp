@@ -2982,3 +2982,57 @@ a.card.create-tile:hover {
   display: grid; gap: 10px; margin-top: 10px; padding: 15px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
 }
+
+/* Native read-only document paper, built from the frozen shop snapshot. */
+.docs-paper {
+  width: min(100% - 36px, 650px);
+  min-height: 570px;
+  margin: 20px auto;
+  padding: clamp(20px, 4vw, 38px);
+  background: #fff;
+  color: #1f2937;
+  border: 1px solid #e1e5e9;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 7%);
+}
+.docs-paper-heading { padding-bottom: 18px; border-bottom: 2px solid #e2e8f0; }
+.docs-paper-heading h4 { margin: 8px 0 12px; font-size: 1.3rem; color: #101828; }
+.docs-paper-heading small { font-size: .68rem; color: #64748b; font-weight: 700; letter-spacing: .08em; }
+.docs-paper-heading p { margin: 5px 0; color: #475467; }
+.docs-paper-lines { width: 100%; border-collapse: collapse; margin-top: 24px; font-size: .9rem; }
+.docs-paper-lines td, .docs-paper-lines th { padding: 12px 7px; border-bottom: 1px solid #e2e8f0; }
+.docs-paper-lines th { text-align: left; color: #475467; font-weight: 700; background: #f5f7f9; }
+.docs-paper-lines td:last-child, .docs-paper-lines th:last-child { text-align: right; }
+.docs-paper-lines td:nth-child(2), .docs-paper-lines th:nth-child(2) { text-align: center; }
+.docs-paper-totals { display: grid; grid-template-columns: 1fr auto; gap: 8px 20px; border-top: 1px solid #d8dee5; margin-top: 22px; padding-top: 16px; text-align: right; }
+.docs-paper-totals strong { font-size: 1.1rem; }
+.docs-paper-note, .docs-paper-footer { font-size: .78rem; line-height: 1.6; color: #64748b; }
+.docs-paper-note { margin-top: 24px; }
+.docs-paper-footer { margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 14px; }
+.docs-paper-body { padding: 24px 0; font-size: .95rem; line-height: 1.7; white-space: pre-wrap; }
+.docs-paper-fields { display: grid; gap: 12px; margin-top: 16px; }
+.docs-paper-fields > div, .docs-paper-sign { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; border-bottom: 1px solid #e2e8f0; padding: 10px 0; }
+.docs-paper-blank { color: #667085; }
+.docs-paper-sign { margin-top: 40px; font-weight: 600; }
+.docs-demo-composer { display: grid; gap: 12px; max-width: 480px; }
+.docs-demo-composer p { margin: 0; }
+.docs-public-demo { min-height: 100vh; max-width: 1500px; margin: 0 auto; background: var(--bg); }
+.docs-public-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 26px; background: var(--ink); color: white; }
+.docs-public-heading h1 { color: white; font-size: 1.35rem; margin: 5px 0; }
+.docs-public-heading p { margin: 0; color: #c9d3dd; }
+.docs-demo-eyebrow { color: #6ae7c5; font-weight: 700; font-size: .7rem; letter-spacing: .1em; }
+.docs-demo-status { background: #294355; color: #e9f4fa; border-radius: 20px; padding: 9px 12px; font-size: .78rem; }
+.docs-demo-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); min-height: 80vh; }
+.docs-demo-nav { display: flex; flex-direction: column; gap: 3px; padding: 22px 10px; background: var(--surface); border-right: 1px solid var(--line); }
+.docs-demo-nav > * { display: block; padding: 16px 14px; border-radius: 6px; }
+.docs-demo-nav > strong { color: var(--accent); background: var(--hover); border-left: 3px solid var(--accent); }
+.docs-demo-main { min-width: 0; padding: 20px; }
+.docs-demo-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.docs-demo-summary > span { display: grid; gap: 5px; flex: 1 1 155px; padding: 13px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.docs-demo-summary small { color: var(--muted); font-size: .74rem; }
+@media (max-width: 800px) {
+  .docs-demo-layout { grid-template-columns: minmax(0, 1fr); }
+  .docs-demo-nav { flex-direction: row; overflow-x: auto; padding: 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .docs-demo-nav > * { white-space: nowrap; padding: 10px 12px; }
+  .docs-demo-main { padding: 12px; }
+  .docs-paper { width: min(100% - 20px, 650px); padding: 18px; margin: 12px auto; }
+}
