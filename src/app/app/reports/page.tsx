@@ -10,7 +10,7 @@ import {
   type ReportKey,
 } from "@/domain/reports";
 import { localDateKey } from "@/lib/timezone";
-import { requireOwnerView } from "@/server/views/shop";
+import { requireShopSession } from "@/server/views/shop";
 import { listSavedReports } from "@/domain/report-builder";
 
 const PRESETS = [
@@ -40,7 +40,15 @@ export default async function ReportsPage({
     to?: string;
   }>;
 }) {
-  const s = await requireOwnerView("/app/reports");
+  const s = await requireShopSession("/app/reports");
+  if (s.role === "staff" || s.role === "technician") {
+    return (
+      <HydratedMain id="main-content" tabIndex={-1}>
+        <h1>Reports</h1>
+        <section className="card"><h2>Owner access required</h2><p>Business-wide financial and performance reports are available to owners. Your appointments, tasks, customers, and assigned jobs remain accessible from the main tabs.</p></section>
+      </HydratedMain>
+    );
+  }
   const p = await searchParams;
   const key = (REPORTS.find((r) => r.key === p.report)?.key ??
     "sales") as ReportKey;
