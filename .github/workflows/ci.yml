@@ -51,6 +51,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      - name: Temporary format capture for job UX
+        run: |
+          pnpm exec prettier --write "src/app/app/jobs/page.tsx"
+          node -e 'const fs=require("fs");const p="src/app/app/jobs/page.tsx";const s=JSON.stringify(fs.readFileSync(p,"utf8"));for(let i=0;i<s.length;i+=2500)console.log("FORMATTED_FILE|"+p+"|"+Math.floor(i/2500)+"|"+s.slice(i,i+2500));'
+
       - name: Generate per-run role passwords
         run: |
           for v in MIGRATION_OWNER APP_USER WORKER_USER ADMIN_USER; do
