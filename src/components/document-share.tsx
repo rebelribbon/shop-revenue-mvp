@@ -130,7 +130,7 @@ export function DocumentShare({
               </a>
             )}
             {canEmail && emailAddress.trim() && (
-              <button type="button" className={`btn ${primary ? "primary" : "secondary"}`} disabled={sendingEmail || !ready || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(emailAddress.trim())} onClick={async () => {
+              <button type="button" className={`btn ${primary ? "primary" : "secondary"}`} disabled={sendingEmail || !ready || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())} onClick={async () => {
                 setSendingEmail(true);
                 setMessage("");
                 try {
