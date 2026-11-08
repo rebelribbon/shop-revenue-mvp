@@ -26,9 +26,27 @@ const sample: CabinetItem[] = [
       totalCents: 128475,
       taxCents: 3475,
       lines: [
-        { id: "a", description: "Front brake pads", quantity: 1, unitPriceCents: 23500, totalCents: 23500 },
-        { id: "b", description: "Front brake rotors", quantity: 2, unitPriceCents: 18900, totalCents: 37800 },
-        { id: "c", description: "Brake labor", quantity: 1, unitPriceCents: 63700, totalCents: 63700 },
+        {
+          id: "a",
+          description: "Front brake pads",
+          quantity: 1,
+          unitPriceCents: 23500,
+          totalCents: 23500,
+        },
+        {
+          id: "b",
+          description: "Front brake rotors",
+          quantity: 2,
+          unitPriceCents: 18900,
+          totalCents: 37800,
+        },
+        {
+          id: "c",
+          description: "Brake labor",
+          quantity: 1,
+          unitPriceCents: 63700,
+          totalCents: 63700,
+        },
       ],
     },
   },
@@ -46,7 +64,12 @@ const sample: CabinetItem[] = [
       shopName: "Sample Auto Service",
       customerName: "Alex Example",
       body: "I authorize the shop to perform the work listed in the attached estimate. I understand that any additional work or pricing requires a new authorization. The work and price have been prepared by the shop.",
-      fields: [{ label: "I have reviewed the work and estimated price", type: "checkbox" }],
+      fields: [
+        {
+          label: "I have reviewed the work and estimated price",
+          type: "checkbox",
+        },
+      ],
     },
   },
   {
@@ -95,11 +118,15 @@ export default function DocumentsPreviewPage() {
     <main className="docs-public-demo" id="main-content" tabIndex={-1}>
       <header className="docs-public-heading">
         <div>
-          <span className="docs-demo-eyebrow">SHOP REVENUE · LAYOUT PREVIEW</span>
+          <span className="docs-demo-eyebrow">
+            SHOP REVENUE · LAYOUT PREVIEW
+          </span>
           <h1>Brake Service · Job #10042</h1>
           <p>Alex Example · 2019 Ford F-150 · Sample Auto Service</p>
         </div>
-        <span className="docs-demo-status">Sample data · No login required</span>
+        <span className="docs-demo-status">
+          Sample data · No login required
+        </span>
       </header>
       <div className="docs-demo-layout">
         <nav className="docs-demo-nav" aria-label="Sample job sections">
@@ -110,10 +137,22 @@ export default function DocumentsPreviewPage() {
         </nav>
         <div className="docs-demo-main">
           <div className="docs-demo-summary">
-            <span><small>Customer</small><strong>Alex Example</strong></span>
-            <span><small>Vehicle</small><strong>2019 Ford F-150</strong></span>
-            <span><small>Estimated total</small><strong>$1,284.75</strong></span>
-            <span><small>Approval</small><strong>Ready to share</strong></span>
+            <span>
+              <small>Customer</small>
+              <strong>Alex Example</strong>
+            </span>
+            <span>
+              <small>Vehicle</small>
+              <strong>2019 Ford F-150</strong>
+            </span>
+            <span>
+              <small>Estimated total</small>
+              <strong>$1,284.75</strong>
+            </span>
+            <span>
+              <small>Approval</small>
+              <strong>Ready to share</strong>
+            </span>
           </div>
           <FileCabinet
             items={sample}
@@ -123,7 +162,10 @@ export default function DocumentsPreviewPage() {
             customerPhone={null}
             timeZone="America/Chicago"
           />
-          <p className="muted">This is a visual and interaction preview with invented data. No document is sent, signed, or paid from this page.</p>
+          <p className="muted">
+            This is a visual and interaction preview with invented data. No
+            document is sent, signed, or paid from this page.
+          </p>
           <Link href="https://www.shoprevenue.app">Shop Revenue</Link>
         </div>
       </div>
