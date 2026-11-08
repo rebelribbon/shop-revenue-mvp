@@ -13,10 +13,12 @@ const workPaths = ["/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
   canSeeMoney = true,
+  automotive = false,
   counts = {},
 }: {
   mobile?: boolean;
   canSeeMoney?: boolean;
+  automotive?: boolean;
   counts?: Record<string, number>;
 }) {
   const path = usePathname();
@@ -34,7 +36,7 @@ export function WorkspaceNavigation({
           <Link
             key={item.href}
             href={item.href}
-            aria-label={item.label}
+            aria-label={item.href === "/app/jobs" && automotive ? "Repair orders" : item.label}
             aria-current={
               (
                 item.href === "/app/schedule"
@@ -52,7 +54,7 @@ export function WorkspaceNavigation({
             }
           >
             <WorkspaceIcon name={item.icon} />
-            <span>{mobile ? item.mobile : item.label}</span>
+            <span>{item.href === "/app/jobs" && automotive ? "ROs" : mobile ? item.mobile : item.label}</span>
             {!mobile && (counts[item.href] ?? 0) > 0 && (
               <span
                 className="nav-count"
