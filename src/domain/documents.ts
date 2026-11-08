@@ -198,15 +198,14 @@ export const STARTER_TEMPLATES: z.infer<typeof templateInput>[] = [
   },
   {
     name: "Change order",
-    body: 'This change order adds to or changes the work for "{{job_title}}" at {{job_location}}.\n\nDescribe the change:\n\nThe customer approves the change and any added cost. All other terms stay the same.\n\nCustomer: {{customer_name}} · Date: {{today}}',
+    body: 'Shop-prepared change order for "{{job_title}}" at {{job_location}}.\n\nChanges: {{change_summary}}\nPrice change: {{change_delta}}\nRevised estimated total: {{job_total}}\n\nI have reviewed the above changes and acknowledge the revised work and price. Any further changes require a new authorization.\n\nCustomer: {{customer_name}} · Date: {{today}}',
     fields: [
       {
-        key: "change",
-        label: "What is changing",
-        type: "text",
+        key: "confirm_change",
+        label: "I reviewed the shop-prepared changes and price",
+        type: "checkbox",
         required: true,
       },
-      { key: "added_cost", label: "Added cost", type: "text", required: true },
     ],
   },
   {
@@ -245,8 +244,12 @@ async function mergeValues(tx: TenantTx, jobId: string) {
     .select()
     .from(business)
     .where(eq(business.id, tx.businessId));
-  const [latest] = await tx
-    .select({ snapshot: estimateVersion.snapshot })
+  const [latest, previous] = await tx
+    .select({
+      snapshot: estimateVersion.snapshot,
+      version: estimateVersion.version,
+      supplementReason: estimateVersion.supplementReason,
+    })
     .from(estimateVersion)
     .where(
       and(
@@ -255,11 +258,12 @@ async function mergeValues(tx: TenantTx, jobId: string) {
       ),
     )
     .orderBy(desc(estimateVersion.version))
-    .limit(1);
+    .limit(2);
   const join = (...p: (string | null | undefined)[]) =>
     p.filter(Boolean).join(", ");
   return {
     customerId: input.customerId,
+    changeOrderReady: Boolean(latest && previous && latest.supplementReason?.trim()),
     values: {
       customer_name: c.displayName,
       customer_address: join(
@@ -283,6 +287,10 @@ async function mergeValues(tx: TenantTx, jobId: string) {
                   [v.year, v.make, v.model, v.plate].filter(Boolean).join(" "),
               )
             : ""),
+      change_summary: latest?.supplementReason?.trim() ?? "",
+      change_delta: latest && previous
+        ? `${latest.snapshot.totalCents - previous.snapshot.totalCents >= 0 ? "+" : "-"}${money(Math.abs(latest.snapshot.totalCents - previous.snapshot.totalCents))}`
+        : "—",
       // The sent estimate's total (with tax), or the job's quoted subtotal.
       job_total: latest
         ? money(latest.snapshot.totalCents)
@@ -326,7 +334,15 @@ export async function sendDocument(
       ),
     );
   if (!t) throw notFound("That template");
-  const { customerId, values } = await mergeValues(tx, input.jobId);
+  const { customerId, values, changeOrderReady } = await mergeValues(tx, input.jobId);
+  const isChangeOrder = t.name.trim().toLowerCase() === "change order";
+  if (isChangeOrder && !changeOrderReady)
+    throw new AppError("VALIDATION", "Create and publish the updated estimate with its change reason before preparing a change order.");
+  // Legacy templates may ask the signer to invent the change and its price.
+  // Never let a customer decide the amount of work or money on a change order.
+  const safeChangeTemplate = STARTER_TEMPLATES.find((item) => item.name === "Change order")!;
+  const frozenBody = fillMerge(isChangeOrder ? safeChangeTemplate.body : t.body, values);
+  const signerFields = isChangeOrder ? safeChangeTemplate.fields : t.fields;
   const token = newToken();
   const [row] = await tx
     .insert(document)
@@ -339,8 +355,8 @@ export async function sendDocument(
       category: "esign",
       title: t.name,
       templateId: t.id,
-      body: fillMerge(t.body, values),
-      fields: t.fields,
+      body: frozenBody,
+      fields: signerFields,
       tokenHash: token.hash,
       shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 30 * 86400000),
@@ -360,7 +376,7 @@ export async function sendDocument(
     summary: `Sent for signature: ${t.name}`,
     data: { documentId: row.id, jobId: input.jobId },
   });
-  return { id: row.id, path: `/sign/${token.token}` };
+  return { id: row.id, path: `/sign/${token.token}`, jobId: input.jobId };
 }
 
 export async function voidDocument(
@@ -703,6 +719,11 @@ export async function readPublicDocument(
   });
 }
 
+export function unsafeCustomerPricedChangeOrder(doc: Pick<PublicDocument, "title" | "fields">) {
+  return doc.title.trim().toLowerCase() === "change order" &&
+    doc.fields.some((field) => ["change", "added_cost", "cost", "price", "amount"].includes(field.key));
+}
+
 export function checkValues(
   fields: DocumentField[],
   raw: Record<string, unknown>,
@@ -810,6 +831,8 @@ export async function signDocument(
 ) {
   const doc = await readPublicDocument(token);
   if (!doc || doc.status !== "sent") throw notFound("That document");
+  if (unsafeCustomerPricedChangeOrder(doc))
+    throw new AppError("VALIDATION", "This older change order needs to be replaced by a shop-prepared version before it can be signed.");
   const name = raw.name?.trim() ?? "";
   if (name.length < 2) throw new AppError("VALIDATION", "Type your full name.");
   const signature = signatureSchema.safeParse(raw.signature);
