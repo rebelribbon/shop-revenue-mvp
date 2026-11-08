@@ -68,15 +68,15 @@ export default async function VisitsPage({
     });
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <h1>{creating ? "Book a visit" : "Visits"}</h1>
+      <h1>{creating ? "New appointment" : "Appointments"}</h1>
       {p.booked === "1" && (
         <p className="notice ok" role="status">
-          Visit booked.
+          Appointment booked.
         </p>
       )}
       {creating ? (
         <>
-          <Link href="/app/schedule">← All visits</Link>
+          <Link href="/app/schedule">← Appointments</Link>
           <VisitEditor
             options={data.options!}
             auto={isAutomotive(data.profile?.businessType ?? "automotive")}
@@ -99,7 +99,7 @@ export default async function VisitsPage({
             className="btn primary"
             data-page-primary
           >
-            Book visit
+            + Appointment
           </Link>
           <div className="money-actions">
             <Link href={`/app/schedule?week=${addLocalDays(data.start, -7)}`}>
@@ -137,7 +137,7 @@ export default async function VisitsPage({
                 </h2>
                 {!data.visits.rows.some(
                   (a) => localDateKey(a.startsAt, data.visits.timezone) === day,
-                ) && <p className="muted">No visits.</p>}
+                ) && <p className="muted">No appointments.</p>}
                 {data.visits.rows
                   .filter(
                     (a) =>
