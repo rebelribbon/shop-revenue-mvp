@@ -3,7 +3,10 @@ import { useActionHydration } from "./action-hydration";
 import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
 import { useEffect, useState } from "react";
-import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
+import {
+  emailCustomerDocument,
+  prepareDocumentShare,
+} from "@/server/actions/document-sharing";
 import type { ShareRecipient } from "@/domain/document-sharing";
 
 export type ShareData = ShareRecipient & { path: string };
@@ -31,7 +34,14 @@ export function DocumentShare({
   const [sendingEmail, setSendingEmail] = useState(false);
   const [needsReplacement, setNeedsReplacement] = useState(false),
     [revisionPath, setRevisionPath] = useState<string | undefined>();
-  const url = data ? new URL(data.path, typeof window === "undefined" ? "https://example.invalid" : window.location.origin).href : "";
+  const url = data
+    ? new URL(
+        data.path,
+        typeof window === "undefined"
+          ? "https://example.invalid"
+          : window.location.origin,
+      ).href
+    : "";
   const from = data?.senderName ? ` from ${data.senderName}` : "";
   // Texts carry the opt-out line the FCC's standard keywords rely on.
   const textBody = `Hi ${data?.name ?? ""}, here is your ${kind}${from}: ${url}\n\nReply STOP to opt out.`;
@@ -47,21 +57,28 @@ export function DocumentShare({
   useEffect(() => {
     if (!autoOpen || initial) return;
     let canceled = false;
-    void prepareDocumentShare({ id, kind }).then((r) => {
-      if (canceled) return;
-      if (r.ok) {
-        setData(r.data);
-        setEmailAddress(r.data.email ?? "");
-        setPhoneNumber(r.data.phone ?? "");
-      } else {
-        setMessage(r.message);
-        setNeedsReplacement("needsReplacement" in r && r.needsReplacement === true);
-        setRevisionPath("revisionPath" in r ? r.revisionPath : undefined);
-      }
-    }).catch(() => {
-      if (!canceled) setMessage("Sharing is unavailable. Try opening it again.");
-    });
-    return () => { canceled = true; };
+    void prepareDocumentShare({ id, kind })
+      .then((r) => {
+        if (canceled) return;
+        if (r.ok) {
+          setData(r.data);
+          setEmailAddress(r.data.email ?? "");
+          setPhoneNumber(r.data.phone ?? "");
+        } else {
+          setMessage(r.message);
+          setNeedsReplacement(
+            "needsReplacement" in r && r.needsReplacement === true,
+          );
+          setRevisionPath("revisionPath" in r ? r.revisionPath : undefined);
+        }
+      })
+      .catch(() => {
+        if (!canceled)
+          setMessage("Sharing is unavailable. Try opening it again.");
+      });
+    return () => {
+      canceled = true;
+    };
   }, [autoOpen, id, kind, initial]);
   const ios =
     typeof navigator !== "undefined" &&
@@ -83,8 +100,7 @@ export function DocumentShare({
                 setData(r.data);
                 setEmailAddress(r.data.email ?? "");
                 setPhoneNumber(r.data.phone ?? "");
-              }
-              else {
+              } else {
                 setMessage(r.message);
                 setNeedsReplacement(
                   "needsReplacement" in r && r.needsReplacement === true,
@@ -105,20 +121,39 @@ export function DocumentShare({
       ) : (
         <section aria-label={`Send ${kind}`}>
           <h4>Send {kind} for customer review</h4>
-          <p><strong>Recipient:</strong> {data.name}. Confirm the email or phone below before sending. The estimate is already saved in the job file cabinet.</p>
+          <p>
+            <strong>Recipient:</strong> {data.name}. Confirm the email or phone
+            below before sending. The estimate is already saved in the job file
+            cabinet.
+          </p>
           {!data.emailStoppedOn && (
             <label>
               Customer email address
-              <input type="email" value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)} placeholder="customer@example.com" autoComplete="email" />
+              <input
+                type="email"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                placeholder="customer@example.com"
+                autoComplete="email"
+              />
             </label>
           )}
           {!data.textStoppedOn && (
             <label>
               Customer mobile number
-              <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Customer mobile number" autoComplete="tel" />
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Customer mobile number"
+                autoComplete="tel"
+              />
             </label>
           )}
-          <p className="muted">Send email submits through Shop Revenue. Text opens your phone’s texting app so you can review and send the message yourself.</p>
+          <p className="muted">
+            Send email submits through Shop Revenue. Text opens your phone’s
+            texting app so you can review and send the message yourself.
+          </p>
           <div className="money-actions">
             {canText && (
               <a
@@ -130,16 +165,33 @@ export function DocumentShare({
               </a>
             )}
             {canEmail && emailAddress.trim() && (
-              <button type="button" className={`btn ${primary ? "primary" : "secondary"}`} disabled={sendingEmail || !ready || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())} onClick={async () => {
-                setSendingEmail(true);
-                setMessage("");
-                try {
-                  const r = await emailCustomerDocument({ id, kind, email: emailAddress.trim() });
-                  setMessage(r.message);
-                } catch {
-                  setMessage("Email could not be submitted. Use Open email app or Copy link instead.");
-                } finally { setSendingEmail(false); }
-              }}>
+              <button
+                type="button"
+                className={`btn ${primary ? "primary" : "secondary"}`}
+                disabled={
+                  sendingEmail ||
+                  !ready ||
+                  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())
+                }
+                onClick={async () => {
+                  setSendingEmail(true);
+                  setMessage("");
+                  try {
+                    const r = await emailCustomerDocument({
+                      id,
+                      kind,
+                      email: emailAddress.trim(),
+                    });
+                    setMessage(r.message);
+                  } catch {
+                    setMessage(
+                      "Email could not be submitted. Use Open email app or Copy link instead.",
+                    );
+                  } finally {
+                    setSendingEmail(false);
+                  }
+                }}
+              >
                 {sendingEmail ? "Submitting…" : "Send email now"}
               </button>
             )}
