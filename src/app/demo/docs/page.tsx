@@ -28,7 +28,7 @@ const sample: CabinetItem[] = [
       lines: [
         { id: "a", description: "Front brake pads", quantity: 1, unitPriceCents: 23500, totalCents: 23500 },
         { id: "b", description: "Front brake rotors", quantity: 2, unitPriceCents: 18900, totalCents: 37800 },
-        { id: "c", description: "Brake labor", quantity: 3, unitPriceCents: 17500, totalCents: 52500 },
+        { id: "c", description: "Brake labor", quantity: 1, unitPriceCents: 63700, totalCents: 63700 },
       ],
     },
   },
