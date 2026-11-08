@@ -38,7 +38,10 @@ export function FileCabinet({
   const [previewError, setPreviewError] = useState("");
   const active = items.find((item) => item.id === activeId) ?? items[0];
   const eligible = items.filter(
-    (item) => (item.signLink || (demoMode && item.preview?.type === "agreement")) && item.documentId && item.status === "Prepared",
+    (item) =>
+      (item.signLink || (demoMode && item.preview?.type === "agreement")) &&
+      item.documentId &&
+      item.status === "Prepared",
   );
   const selectedDocuments = eligible
     .filter((item) => checkedIds.includes(item.documentId!))
@@ -59,9 +62,11 @@ export function FileCabinet({
     (active?.estimateShareId ? estimatePreview : null) ??
     active?.href ??
     null;
-  const money = (cents: number) => new Intl.NumberFormat("en-US", {
-    style: "currency", currency: "USD",
-  }).format(cents / 100);
+  const money = (cents: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(cents / 100);
   const date = (d: Date) =>
     new Date(d).toLocaleDateString("en-US", {
       timeZone,
@@ -161,10 +166,21 @@ export function FileCabinet({
           </div>
           {demoMode ? (
             <div className="docs-demo-composer">
-              <p><strong>Recipient</strong></p>
-              <input aria-label="Demo customer email" type="email" placeholder="customer@example.com" />
-              <p className="muted">The real Share action sends one customer link for the estimate and selected agreements.</p>
-              <button type="button" className="btn primary" disabled>Send (disabled in public preview)</button>
+              <p>
+                <strong>Recipient</strong>
+              </p>
+              <input
+                aria-label="Demo customer email"
+                type="email"
+                placeholder="customer@example.com"
+              />
+              <p className="muted">
+                The real Share action sends one customer link for the estimate
+                and selected agreements.
+              </p>
+              <button type="button" className="btn primary" disabled>
+                Send (disabled in public preview)
+              </button>
             </div>
           ) : estimate?.estimateShareId ? (
             <DocumentShare
@@ -218,7 +234,10 @@ export function FileCabinet({
           )}
           {docs.map((item) => {
             const selectable = Boolean(
-              item.documentId && (item.signLink || (demoMode && item.preview?.type === "agreement")) && item.status === "Prepared",
+              item.documentId &&
+              (item.signLink ||
+                (demoMode && item.preview?.type === "agreement")) &&
+              item.status === "Prepared",
             );
             return (
               <div
@@ -282,18 +301,31 @@ export function FileCabinet({
                 )}
               </div>
               {active.preview ? (
-                <article className="docs-paper" aria-label={`Document content: ${active.title}`}>
+                <article
+                  className="docs-paper"
+                  aria-label={`Document content: ${active.title}`}
+                >
                   <div className="docs-paper-heading">
                     <small>SHOP REVENUE · CUSTOMER DOCUMENT</small>
                     <h4>{active.title}</h4>
-                    {active.preview.shopName && <strong>{active.preview.shopName}</strong>}
-                    {active.preview.customerName && <p>Prepared for {active.preview.customerName}</p>}
+                    {active.preview.shopName && (
+                      <strong>{active.preview.shopName}</strong>
+                    )}
+                    {active.preview.customerName && (
+                      <p>Prepared for {active.preview.customerName}</p>
+                    )}
                     {active.preview.subject && <p>{active.preview.subject}</p>}
                   </div>
                   {active.preview.type === "estimate" && (
                     <>
                       <table className="docs-paper-lines">
-                        <thead><tr><th scope="col">Work / item</th><th scope="col">Qty</th><th scope="col">Amount</th></tr></thead>
+                        <thead>
+                          <tr>
+                            <th scope="col">Work / item</th>
+                            <th scope="col">Qty</th>
+                            <th scope="col">Amount</th>
+                          </tr>
+                        </thead>
                         <tbody>
                           {(active.preview.lines ?? []).map((line) => (
                             <tr key={line.id}>
@@ -305,38 +337,75 @@ export function FileCabinet({
                         </tbody>
                       </table>
                       <div className="docs-paper-totals">
-                        <span>Tax</span><span>{money(active.preview.taxCents ?? 0)}</span>
-                        <strong>Estimated total</strong><strong>{money(active.preview.totalCents ?? 0)}</strong>
+                        <span>Tax</span>
+                        <span>{money(active.preview.taxCents ?? 0)}</span>
+                        <strong>Estimated total</strong>
+                        <strong>{money(active.preview.totalCents ?? 0)}</strong>
                       </div>
-                      <p className="docs-paper-note">Customer approves or declines each priced item and signs the authorization. Amounts cannot be changed by the customer.</p>
+                      <p className="docs-paper-note">
+                        Customer approves or declines each priced item and signs
+                        the authorization. Amounts cannot be changed by the
+                        customer.
+                      </p>
                     </>
                   )}
                   {active.preview.type === "agreement" && (
                     <>
-                      <div className="docs-paper-body">{active.preview.body}</div>
+                      <div className="docs-paper-body">
+                        {active.preview.body}
+                      </div>
                       {(active.preview.fields ?? []).length > 0 && (
                         <div className="docs-paper-fields">
                           {(active.preview.fields ?? []).map((field, idx) => (
-                            <div key={idx}><span>{field.label}</span><span className="docs-paper-blank">{field.type === "checkbox" ? "☐" : "________________"}</span></div>
+                            <div key={idx}>
+                              <span>{field.label}</span>
+                              <span className="docs-paper-blank">
+                                {field.type === "checkbox"
+                                  ? "☐"
+                                  : "________________"}
+                              </span>
+                            </div>
                           ))}
                         </div>
                       )}
-                      <div className="docs-paper-sign"><span>Customer signature</span><span>________________________________</span></div>
+                      <div className="docs-paper-sign">
+                        <span>Customer signature</span>
+                        <span>________________________________</span>
+                      </div>
                     </>
                   )}
                   {active.preview.type === "invoice" && (
                     <div className="docs-paper-totals">
-                      <strong>Invoice total</strong><strong>{money(active.preview.totalCents ?? 0)}</strong>
+                      <strong>Invoice total</strong>
+                      <strong>{money(active.preview.totalCents ?? 0)}</strong>
                     </div>
                   )}
-                  <div className="docs-paper-footer">Read-only preview · No approval, signature, or payment is recorded here.</div>
+                  <div className="docs-paper-footer">
+                    Read-only preview · No approval, signature, or payment is
+                    recorded here.
+                  </div>
                 </article>
               ) : (
                 <div className="docs-preview-placeholder">
-                  <span className="docs-preview-glyph" aria-hidden="true">▤</span>
+                  <span className="docs-preview-glyph" aria-hidden="true">
+                    ▤
+                  </span>
                   <h4>{active.title}</h4>
-                  <p>{previewError && active.estimateShareId ? previewError : "Use Full preview to view this attachment or signed copy."}</p>
-                  {previewPath && <a className="btn secondary" href={previewPath} target="_blank" rel="noreferrer">Open document</a>}
+                  <p>
+                    {previewError && active.estimateShareId
+                      ? previewError
+                      : "Use Full preview to view this attachment or signed copy."}
+                  </p>
+                  {previewPath && (
+                    <a
+                      className="btn secondary"
+                      href={previewPath}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open document
+                    </a>
+                  )}
                 </div>
               )}
               {active.signLink && !readOnly && (
