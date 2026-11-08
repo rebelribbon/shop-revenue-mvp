@@ -126,7 +126,10 @@ test("home-service setup creates a real property and equipment job without vehic
       .locator("xpath=ancestor::article[1]");
     await expect(saved).toBeVisible();
     await saved
-      .getByRole("button", { name: "Prepare estimate & choose recipient", exact: true })
+      .getByRole("button", {
+        name: "Prepare estimate & choose recipient",
+        exact: true,
+      })
       .click();
     const link = saved.getByRole("link", {
       name: "Open customer estimate",
