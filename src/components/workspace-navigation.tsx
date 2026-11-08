@@ -26,7 +26,7 @@ const shopItems = [
   },
   {
     href: "/app/jobs",
-    label: "Jobs / ROs",
+    label: "Jobs",
     mobile: "Jobs",
     icon: "work",
     phone: true,
