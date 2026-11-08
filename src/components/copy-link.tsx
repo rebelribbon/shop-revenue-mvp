@@ -78,7 +78,7 @@ export function CopyLink({
             <button
               type="button"
               className="btn secondary"
-              disabled={!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipientEmail.trim())}
+              disabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())}
               onClick={() => window.location.assign(
                 `mailto:${encodeURIComponent(recipientEmail.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`
               )}
