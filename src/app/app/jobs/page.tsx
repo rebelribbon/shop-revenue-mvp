@@ -454,7 +454,7 @@ export default async function JobsPage({
                   </Link>
                 </nav>
                 <p className="muted">
-                  Enter work and prices first. Preview the customer's documents, then choose the recipient and send one approval link.
+                  Enter work and prices first. Preview the customer&apos;s documents, then choose the recipient and send one approval link.
                 </p>
                 {data.headsUp.map((n, i) => (
                   <p
@@ -861,7 +861,7 @@ export default async function JobsPage({
                       {s.actor.type !== "support" && s.role !== "technician" && (
                         <section className="record-details" aria-label="Add agreement to packet">
                           <h4>Add a document to sign</h4>
-                          <p>Choose an agreement to include in the customer's packet. It will not be sent until you press Share.</p>
+                          <p>Choose an agreement to include in the customer&apos;s packet. It will not be sent until you press Share.</p>
                           {data.templates.length ? (
                             <ActionForm
                               action={sendDocumentAction}
