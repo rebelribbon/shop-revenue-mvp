@@ -2,6 +2,7 @@
 export const demoCustomers = [
   {
     id: "alex",
+    status: "sent" as const,
     roNumber: 10042,
     name: "Alex Example",
     asset: "2019 Ford F-150",
@@ -9,6 +10,7 @@ export const demoCustomers = [
   },
   {
     id: "jordan",
+    status: "in_progress" as const,
     roNumber: 10043,
     name: "Jordan Sample",
     asset: "2022 Toyota Camry",
@@ -16,6 +18,7 @@ export const demoCustomers = [
   },
   {
     id: "taylor",
+    status: "paid" as const,
     roNumber: 10044,
     name: "Taylor Demo",
     asset: "2021 Honda Civic",
@@ -23,9 +26,12 @@ export const demoCustomers = [
   },
   {
     id: "morgan",
+    status: "scheduled" as const,
     roNumber: 10045,
     name: "Morgan Test",
     asset: "2023 Ford Explorer",
     contact: "(210) 555-0133",
   },
 ];
+
+export type DemoCustomer = (typeof demoCustomers)[number];

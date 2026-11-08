@@ -1,3 +1,5 @@
+import { RecordSection, WorkCard } from "@/components/record-section";
+import { groupWork } from "@/lib/work-sections";
 import { formatPhone } from "@/lib/phone-format";
 import { jobReference } from "@/lib/job-reference";
 import { HydratedMain } from "@/components/hydrated-main";
@@ -117,6 +119,9 @@ export default async function CustomerDetailPage(props: {
     />
   );
   const assetCount = data.vehicles.length + assets.length;
+  const activeJobs = jobs.filter(
+    (j) => !["paid", "lost", "ended"].includes(j.status),
+  );
 
   const when = (d: Date) =>
     d.toLocaleDateString("en-US", {
@@ -262,88 +267,92 @@ export default async function CustomerDetailPage(props: {
               <strong>{formatMoney(money.paidCents)}</strong> paid you, all time
             </span>
           </p>
-          <div className="portal-box">
-            <h2>Customer link</h2>
-            <p className="muted">
-              One link for their estimates, invoices, papers to sign and visits.
-            </p>
-            {portal ? (
-              <CopyLink
-                path={portal}
-                label="Copy customer link"
-                intro="Here’s your account: estimates, invoices and visits in one place."
-                title={`Your account with ${profile?.dba || profile?.legalName || "us"}`}
-                phone={c.textOptedOutAt ? null : c.phoneE164}
-                email={c.emailOptedOutAt ? null : c.email}
-              />
-            ) : (
-              !readOnly && (
-                <ActionForm
-                  action={createPortalLinkAction}
-                  hidden={{ customerId }}
-                  submitLabel="Create customer link"
-                  variant="secondary"
-                />
-              )
-            )}
-          </div>
-          <div className="portal-box">
-            <h2>Found us</h2>
-            {readOnly ? (
-              <p>
-                {leadSourceLabel(c.leadSource)}
-                {c.leadSourceDetail && ` · ${c.leadSourceDetail}`}
-              </p>
-            ) : (
-              <ActionForm
-                action={setLeadSourceAction}
-                hidden={{ customerId }}
-                submitLabel="Save"
-                variant="secondary"
-              >
-                <label htmlFor="lead-source">How did they find you?</label>
-                <select
-                  id="lead-source"
-                  name="leadSource"
-                  defaultValue={c.leadSource ?? ""}
-                >
-                  <option value="">Not set</option>
-                  {LEAD_SOURCES.map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <label htmlFor="lead-detail">
-                  Details <span className="muted">(who referred them)</span>
-                </label>
-                <input
-                  id="lead-detail"
-                  name="leadSourceDetail"
-                  maxLength={200}
-                  defaultValue={c.leadSourceDetail ?? ""}
-                />
-              </ActionForm>
-            )}
-          </div>
-          {reviewLink && (
+          <details className="record-customer-tools">
+            <summary>Customer options</summary>
             <div className="portal-box">
-              <h2>Review</h2>
+              <h2>Customer link</h2>
               <p className="muted">
-                {lastReview
-                  ? `${lastReview.status === "sent" ? "Asked" : "Tried to ask"} ${lastReview.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
-                  : "Not asked yet."}
+                One link for their estimates, invoices, papers to sign and
+                visits.
               </p>
-              {!readOnly && c.email && !c.emailOptedOutAt && (
-                <ActionForm
-                  action={askForReviewAction}
-                  hidden={{ customerId }}
-                  submitLabel="★ Ask for a review"
-                  variant="secondary"
+              {portal ? (
+                <CopyLink
+                  path={portal}
+                  label="Copy customer link"
+                  intro="Here’s your account: estimates, invoices and visits in one place."
+                  title={`Your account with ${profile?.dba || profile?.legalName || "us"}`}
+                  phone={c.textOptedOutAt ? null : c.phoneE164}
+                  email={c.emailOptedOutAt ? null : c.email}
                 />
+              ) : (
+                !readOnly && (
+                  <ActionForm
+                    action={createPortalLinkAction}
+                    hidden={{ customerId }}
+                    submitLabel="Create customer link"
+                    variant="secondary"
+                  />
+                )
               )}
             </div>
-          )}
+            <div className="portal-box">
+              <h2>Found us</h2>
+              {readOnly ? (
+                <p>
+                  {leadSourceLabel(c.leadSource)}
+                  {c.leadSourceDetail && ` · ${c.leadSourceDetail}`}
+                </p>
+              ) : (
+                <ActionForm
+                  action={setLeadSourceAction}
+                  hidden={{ customerId }}
+                  submitLabel="Save"
+                  variant="secondary"
+                >
+                  <label htmlFor="lead-source">How did they find you?</label>
+                  <select
+                    id="lead-source"
+                    name="leadSource"
+                    defaultValue={c.leadSource ?? ""}
+                  >
+                    <option value="">Not set</option>
+                    {LEAD_SOURCES.map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <label htmlFor="lead-detail">
+                    Details <span className="muted">(who referred them)</span>
+                  </label>
+                  <input
+                    id="lead-detail"
+                    name="leadSourceDetail"
+                    maxLength={200}
+                    defaultValue={c.leadSourceDetail ?? ""}
+                  />
+                </ActionForm>
+              )}
+            </div>
+            {reviewLink && (
+              <div className="portal-box">
+                <h2>Review</h2>
+                <p className="muted">
+                  {lastReview
+                    ? `${lastReview.status === "sent" ? "Asked" : "Tried to ask"} ${lastReview.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+                    : "Not asked yet."}
+                </p>
+                {!readOnly && c.email && !c.emailOptedOutAt && (
+                  <ActionForm
+                    action={askForReviewAction}
+                    hidden={{ customerId }}
+                    submitLabel="★ Ask for a review"
+                    variant="secondary"
+                  />
+                )}
+              </div>
+            )}
+          </details>
         </aside>
         <div className="profile-main customer-profile-main">
           {!readOnly && (
@@ -419,73 +428,38 @@ export default async function CustomerDetailPage(props: {
               aria-label="Customer overview"
             >
               <div className="customer-overview-grid">
-                <article className="card customer-overview-card">
+                <article className="card customer-overview-card customer-work-overview">
                   <div className="section-heading">
-                    <h2>Contact</h2>
-                    <Link href={`${base}?view=details`}>Edit</Link>
-                  </div>
-                  {c.phoneE164 && (
-                    <div className="customer-fact">
-                      <strong>Mobile</strong>
-                      <a href={`tel:${c.phoneE164}`}>
-                        {formatPhone(c.phoneE164)}
-                      </a>
-                    </div>
-                  )}
-                  {c.email && (
-                    <div className="customer-fact">
-                      <strong>Email</strong>
-                      <a href={`mailto:${c.email}`}>{c.email}</a>
-                    </div>
-                  )}
-                  {address && (
-                    <div className="customer-fact">
-                      <strong>Address</strong>
-                      <a
-                        href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {address}
-                      </a>
-                    </div>
-                  )}
-                  {!c.phoneE164 && !c.email && !address && (
-                    <p className="muted">
-                      Add contact details to reach this customer.
-                    </p>
-                  )}
-                </article>
-                <article className="card customer-overview-card">
-                  <div className="section-heading">
-                    <h2>{auto ? "Recent ROs" : "Recent jobs"}</h2>
+                    <h2>{auto ? "Active ROs" : "Active jobs"}</h2>
                     <Link href={`${base}?view=jobs`}>
                       {auto ? "All ROs" : "All jobs"}
                     </Link>
                   </div>
-                  {jobs.slice(0, 2).map((j) => (
-                    <Link
-                      key={j.id}
-                      className="customer-work-row"
-                      href={`/app/jobs?job=${j.id}`}
-                    >
-                      <strong>
-                        <span className="customer-job-ref">
-                          {jobReference(j.id, auto)}
-                        </span>{" "}
-                        · {j.title}
-                      </strong>
-                      <span className={statusTone(j.status)}>
-                        {statusLabels[j.status]}
-                      </span>
-                      {j.balanceCents > 0 && (
-                        <span>{formatMoney(j.balanceCents)} due</span>
-                      )}
-                    </Link>
-                  ))}
-                  {!jobs.length && (
+                  <div className="record-work-grid">
+                    {activeJobs.slice(0, 3).map((j) => (
+                      <WorkCard
+                        key={j.id}
+                        href={`/app/jobs?job=${j.id}`}
+                        reference={jobReference(j.id, auto)}
+                        title={j.title}
+                        status={statusLabels[j.status]}
+                        statusClass={statusTone(j.status)}
+                        amount={
+                          j.balanceCents > 0
+                            ? formatMoney(j.balanceCents)
+                            : j.amountCents !== null
+                              ? formatMoney(j.amountCents)
+                              : undefined
+                        }
+                        amountLabel={
+                          j.balanceCents > 0 ? "Balance due" : "Estimate"
+                        }
+                      />
+                    ))}
+                  </div>
+                  {!activeJobs.length && (
                     <p className="muted">
-                      No jobs yet. Create one to prepare an estimate.
+                      No active work. Start a new job or open the work history.
                     </p>
                   )}
                 </article>
@@ -518,7 +492,11 @@ export default async function CustomerDetailPage(props: {
             </section>
           )}
           {view === "jobs" && (
-            <section aria-label={auto ? "Repair orders" : "Jobs"} id="jobs">
+            <section
+              aria-label={auto ? "Repair orders" : "Jobs"}
+              id="jobs"
+              className="customer-job-history"
+            >
               <div className="section-heading">
                 <h2>{auto ? "Repair order history" : "Job history"}</h2>
                 {!readOnly && (
@@ -558,48 +536,53 @@ export default async function CustomerDetailPage(props: {
                   No previous jobs. Start a new one from this customer.
                 </p>
               )}
-              <ul className="row-list">
-                {shownJobs.map((j) => (
-                  <li key={j.id}>
-                    <Link href={`/app/jobs?job=${j.id}`}>
-                      <span className="row-main">
-                        <strong>
-                          <span className="customer-job-ref">
-                            {jobReference(j.id, auto)}
-                          </span>
-                          {" · "}
-                          {j.repeats && "↻ "}
-                          {j.title}
-                        </strong>
-                        <span className="muted">
-                          {j.plan && j.plan.status !== "ended"
-                            ? cadenceText(j.plan.repeat)
-                            : when(j.createdAt)}
-                        </span>
-                      </span>
-                      <span className="row-side">
-                        {j.balanceCents > 0 ? (
-                          <strong>owes {formatMoney(j.balanceCents)}</strong>
-                        ) : (
-                          j.amountCents !== null && (
-                            <span>
-                              {formatMoney(j.amountCents)}
-                              {j.plan ? "/visit" : ""}
-                            </span>
-                          )
-                        )}
-                        <span className={statusTone(j.status)}>
-                          {statusLabels[j.status]}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
+              {groupWork(shownJobs, (j) => j.status)
+                .filter((group) => group.items.length > 0)
+                .map((group) => (
+                  <RecordSection
+                    key={group.key}
+                    title={group.title}
+                    description={group.description}
+                    count={group.items.length}
+                    className={`record-section-${group.key}`}
+                  >
+                    <ul className="record-work-grid">
+                      {group.items.map((j) => (
+                        <li key={j.id}>
+                          <WorkCard
+                            href={`/app/jobs?job=${j.id}`}
+                            reference={jobReference(j.id, auto)}
+                            title={`${j.repeats ? "↻ " : ""}${j.title}`}
+                            detail={
+                              j.plan && j.plan.status !== "ended"
+                                ? cadenceText(j.plan.repeat)
+                                : when(j.createdAt)
+                            }
+                            status={statusLabels[j.status]}
+                            statusClass={statusTone(j.status)}
+                            amount={
+                              j.balanceCents > 0
+                                ? formatMoney(j.balanceCents)
+                                : j.amountCents !== null
+                                  ? formatMoney(j.amountCents)
+                                  : undefined
+                            }
+                            amountLabel={
+                              j.balanceCents > 0 ? "Balance due" : "Estimate"
+                            }
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </RecordSection>
                 ))}
-              </ul>
             </section>
           )}
           {view === "history" && (
-            <section aria-label="History">
+            <RecordSection
+              title="Customer history"
+              description="Calls, appointments and previous work in date order."
+            >
               <ul className="row-list">
                 {history.map((e) => (
                   <li key={e.id}>
@@ -614,7 +597,7 @@ export default async function CustomerDetailPage(props: {
                   <Notes customerId={customerId} notes={historyNotes} />
                 </details>
               )}
-            </section>
+            </RecordSection>
           )}
           {view === "details" && (
             <>

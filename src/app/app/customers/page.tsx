@@ -1,3 +1,4 @@
+import { RecordSection } from "@/components/record-section";
 import { formatPhone } from "@/lib/phone-format";
 import { HydratedMain } from "@/components/hydrated-main";
 import { getBusinessProfile } from "@/domain/business-profile";
@@ -75,84 +76,96 @@ export default async function CustomersPage(props: {
           Add customer
         </Link>
       </div>
-      <form method="get" className="search-form inline-search" role="search">
-        <label htmlFor="q">Search customers</label>
-        <div className="search-controls">
-          <input
-            id="q"
-            name="q"
-            type="search"
-            defaultValue={q}
-            placeholder={
-              auto
-                ? "Name, phone, plate or last 6 of VIN"
-                : "Name, phone, address or serial number"
-            }
-          />
-          <button className="btn secondary" type="submit">
-            Search
-          </button>
-          {q && (
-            <Link className="btn secondary" href="/app/customers">
-              Clear
-            </Link>
-          )}
-        </div>
-      </form>
-      {customers.length > 0 ? (
-        <ul className="customer-directory" aria-label="Customer results">
-          {customers.map((c) => {
-            const linked = byCustomer.get(c.id) ?? [];
-            const things = linked
-              .slice(0, 2)
-              .map(
-                (v) =>
-                  [v.year, v.make, v.model].filter(Boolean).join(" ") ||
-                  "Vehicle",
-              );
-            if (linked.length > 2) things.push(`+${linked.length - 2} more`);
-            return (
-              <li key={c.id}>
-                <Link
-                  href={`/app/customers/${c.id}`}
-                  aria-label={`Open ${c.displayName}`}
-                  className="customer-directory-row"
-                >
-                  <span className="customer-avatar" aria-hidden="true">
-                    {c.displayName.trim().charAt(0).toUpperCase()}
-                  </span>
-                  <span className="customer-directory-main">
-                    <strong>{c.displayName}</strong>
-                    <span className="muted">
-                      {things.length ? things.join(" · ") : "Customer"}
-                    </span>
-                    <span className="customer-directory-contact">
-                      {[c.phoneE164 && formatPhone(c.phoneE164), c.email]
-                        .filter(Boolean)
-                        .join(" · ") || "No contact details yet"}
-                    </span>
-                  </span>
-                  <span
-                    className="customer-directory-chevron"
-                    aria-hidden="true"
+      <RecordSection title="Find a customer" className="record-page-tools">
+        <form method="get" className="search-form inline-search" role="search">
+          <label htmlFor="q">Search customers</label>
+          <div className="search-controls">
+            <input
+              id="q"
+              name="q"
+              type="search"
+              defaultValue={q}
+              placeholder={
+                auto
+                  ? "Name, phone, plate or last 6 of VIN"
+                  : "Name, phone, address or serial number"
+              }
+            />
+            <button className="btn secondary" type="submit">
+              Search
+            </button>
+            {q && (
+              <Link className="btn secondary" href="/app/customers">
+                Clear
+              </Link>
+            )}
+          </div>
+        </form>
+      </RecordSection>
+      <RecordSection
+        title="Customer directory"
+        count={customers.length}
+        description={
+          q
+            ? "Matching customers"
+            : "Contact details, vehicles and work history in each record."
+        }
+      >
+        {customers.length > 0 ? (
+          <ul className="customer-directory" aria-label="Customer results">
+            {customers.map((c) => {
+              const linked = byCustomer.get(c.id) ?? [];
+              const things = linked
+                .slice(0, 2)
+                .map(
+                  (v) =>
+                    [v.year, v.make, v.model].filter(Boolean).join(" ") ||
+                    "Vehicle",
+                );
+              if (linked.length > 2) things.push(`+${linked.length - 2} more`);
+              return (
+                <li key={c.id}>
+                  <Link
+                    href={`/app/customers/${c.id}`}
+                    aria-label={`Open ${c.displayName}`}
+                    className="customer-directory-row"
                   >
-                    ›
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="empty-records">
-          <h2>{q ? "No matching customers" : "No customers yet"}</h2>
-          <p className="muted">
-            {q
-              ? "Try a name, phone number or a different search term."
-              : "Add your first customer to start keeping their work and history together."}
-          </p>
-        </div>
-      )}
+                    <span className="customer-avatar" aria-hidden="true">
+                      {c.displayName.trim().charAt(0).toUpperCase()}
+                    </span>
+                    <span className="customer-directory-main">
+                      <strong>{c.displayName}</strong>
+                      <span className="muted">
+                        {things.length ? things.join(" · ") : "Customer"}
+                      </span>
+                      <span className="customer-directory-contact">
+                        {[c.phoneE164 && formatPhone(c.phoneE164), c.email]
+                          .filter(Boolean)
+                          .join(" · ") || "No contact details yet"}
+                      </span>
+                    </span>
+                    <span
+                      className="customer-directory-chevron"
+                      aria-hidden="true"
+                    >
+                      ›
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="empty-records">
+            <h2>{q ? "No matching customers" : "No customers yet"}</h2>
+            <p className="muted">
+              {q
+                ? "Try a name, phone number or a different search term."
+                : "Add your first customer to start keeping their work and history together."}
+            </p>
+          </div>
+        )}
+      </RecordSection>
     </HydratedMain>
   );
 }

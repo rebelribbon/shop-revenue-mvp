@@ -1,3 +1,5 @@
+import { RecordSection, WorkCard } from "@/components/record-section";
+import { groupWork } from "@/lib/work-sections";
 import { FileUploader } from "@/components/file-uploader";
 import { jobReference } from "@/lib/job-reference";
 import { JOB_FILE_CATEGORIES } from "@/domain/documents";
@@ -419,7 +421,7 @@ export default async function JobsPage({
                   Job saved.
                 </p>
               )}
-              <article className="card job-profile">
+              <article className="card job-profile record-job-profile">
                 <header className="profile-head">
                   <div>
                     <p className="customer-job-ref">
@@ -805,14 +807,19 @@ export default async function JobsPage({
                 {tab === "work" && (
                   <>
                     {flow && (
-                      <JobWorkflow
-                        flow={flow}
-                        jobId={selected.id}
-                        timezone={data.profile?.timezone || "America/Chicago"}
-                        readOnly={s.actor.type === "support"}
-                        technicianOnly={s.role === "technician"}
-                        canEditEstimate={!selected.documentOnly}
-                      />
+                      <RecordSection
+                        title="Work & approval"
+                        description="Customer authorization, the next step and progress on this job."
+                      >
+                        <JobWorkflow
+                          flow={flow}
+                          jobId={selected.id}
+                          timezone={data.profile?.timezone || "America/Chicago"}
+                          readOnly={s.actor.type === "support"}
+                          technicianOnly={s.role === "technician"}
+                          canEditEstimate={!selected.documentOnly}
+                        />
+                      </RecordSection>
                     )}
                   </>
                 )}
@@ -1139,7 +1146,11 @@ export default async function JobsPage({
           >
             {labels.newJob}
           </Link>
-          <div className="view-toggle" role="group" aria-label="Show jobs as">
+          <div
+            className="view-toggle record-view-controls"
+            role="group"
+            aria-label="Show jobs as"
+          >
             <Link
               href="/app/jobs?view=board"
               aria-current={data.pipeline ? "true" : undefined}
@@ -1243,61 +1254,67 @@ export default async function JobsPage({
             </div>
           ) : (
             <>
-              <form
-                className="inline-search job-search"
-                method="get"
-                role="search"
+              <RecordSection
+                title={auto ? "Find repair orders" : "Find jobs"}
+                description="Search and filter the work below."
+                className="record-page-tools"
               >
-                <input type="hidden" name="show" value={filter.key} />
-                <div className="job-search-fields">
-                  <div>
-                    <label htmlFor="job-search">Find a job</label>
-                    <div className="search-controls">
-                      <input
-                        id="job-search"
-                        name="q"
-                        type="search"
-                        defaultValue={q ?? ""}
-                        maxLength={100}
-                        placeholder="Job or customer name"
-                      />
-                      <button className="btn secondary">Search</button>
+                <form
+                  className="inline-search job-search"
+                  method="get"
+                  role="search"
+                >
+                  <input type="hidden" name="show" value={filter.key} />
+                  <div className="job-search-fields">
+                    <div>
+                      <label htmlFor="job-search">Find a job</label>
+                      <div className="search-controls">
+                        <input
+                          id="job-search"
+                          name="q"
+                          type="search"
+                          defaultValue={q ?? ""}
+                          maxLength={100}
+                          placeholder="Job or customer name"
+                        />
+                        <button className="btn secondary">Search</button>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="job-sort">Sort</label>
+                      <select
+                        id="job-sort"
+                        name="sort"
+                        defaultValue={sort ?? "newest"}
+                      >
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                        <option value="status">By status</option>
+                        <option value="amount">Biggest first</option>
+                      </select>
                     </div>
                   </div>
-                  <div>
-                    <label htmlFor="job-sort">Sort</label>
-                    <select
-                      id="job-sort"
-                      name="sort"
-                      defaultValue={sort ?? "newest"}
+                </form>
+                <div className="chip-links" role="group" aria-label="Show jobs">
+                  {JOB_FILTERS.map((f) => (
+                    <Link
+                      key={f.key}
+                      href={`/app/jobs?${new URLSearchParams({ show: f.key, ...(q ? { q } : {}), ...(sort ? { sort } : {}) })}`}
+                      aria-current={filter.key === f.key ? "true" : undefined}
                     >
-                      <option value="newest">Newest first</option>
-                      <option value="oldest">Oldest first</option>
-                      <option value="status">By status</option>
-                      <option value="amount">Biggest first</option>
-                    </select>
-                  </div>
+                      {f.label} (
+                      {
+                        data.jobs.filter((j) =>
+                          (f.statuses as readonly string[]).includes(
+                            statusOf(j.id),
+                          ),
+                        ).length
+                      }
+                      )
+                    </Link>
+                  ))}
                 </div>
-              </form>
-              <div className="chip-links" role="group" aria-label="Show jobs">
-                {JOB_FILTERS.map((f) => (
-                  <Link
-                    key={f.key}
-                    href={`/app/jobs?${new URLSearchParams({ show: f.key, ...(q ? { q } : {}), ...(sort ? { sort } : {}) })}`}
-                    aria-current={filter.key === f.key ? "true" : undefined}
-                  >
-                    {f.label} (
-                    {
-                      data.jobs.filter((j) =>
-                        (f.statuses as readonly string[]).includes(
-                          statusOf(j.id),
-                        ),
-                      ).length
-                    }
-                    )
-                  </Link>
-                ))}
-              </div>
+              </RecordSection>
               {!rows.length ? (
                 <div className="empty-records">
                   <h2>
@@ -1314,58 +1331,55 @@ export default async function JobsPage({
                   </p>
                 </div>
               ) : (
-                <ul className="row-list card" aria-label="Jobs">
-                  {rows.map((j) => {
-                    const input = jobInput.parse(j.data),
-                      t = calculateJob(input.parts, input.labor),
-                      flow = data.workflows.get(j.id),
-                      owes =
-                        flow?.currentInvoice && flow.balanceCents > 0
-                          ? flow.balanceCents
-                          : 0,
-                      customer = data.options.customers.find(
-                        (c) => c.id === input.customerId,
-                      )?.name;
-                    return (
-                      <li key={j.id}>
-                        <Link
-                          href={`/app/jobs?job=${j.id}`}
-                          aria-label={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
-                        >
-                          <span className="row-main">
-                            <strong>
-                              {input.repeat && "↻ "}
-                              {j.title}
-                            </strong>
-                            <span className="muted">
-                              {[
-                                customer,
-                                j.createdAt.toLocaleDateString("en-US", {
-                                  timeZone:
-                                    data.profile?.timezone || "America/Chicago",
-                                  month: "short",
-                                  day: "numeric",
-                                }),
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </span>
-                          </span>
-                          <span className="row-side">
-                            {owes > 0 ? (
-                              <strong>owes {money(owes)}</strong>
-                            ) : (
-                              <span>{money(t.subtotalCents)}</span>
-                            )}
-                            <span className={statusTone(statusOf(j.id))}>
-                              {statusLabels[statusOf(j.id)]}
-                            </span>
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <div className="record-work-sections" aria-label="Jobs">
+                  {groupWork(rows, (j) => statusOf(j.id))
+                    .filter((group) => group.items.length > 0)
+                    .map((group) => (
+                      <RecordSection
+                        key={group.key}
+                        title={group.title}
+                        description={group.description}
+                        count={group.items.length}
+                        className={`record-section-${group.key}`}
+                      >
+                        <ul className="record-work-grid">
+                          {group.items.map((j) => {
+                            const input = jobInput.parse(j.data);
+                            const totals = calculateJob(
+                              input.parts,
+                              input.labor,
+                            );
+                            const flow = data.workflows.get(j.id);
+                            const owed =
+                              flow?.currentInvoice && flow.balanceCents > 0
+                                ? flow.balanceCents
+                                : 0;
+                            const customerName = data.options.customers.find(
+                              (c) => c.id === input.customerId,
+                            )?.name;
+                            return (
+                              <li key={j.id}>
+                                <WorkCard
+                                  href={`/app/jobs?job=${j.id}`}
+                                  reference={jobReference(j.id, auto)}
+                                  title={`${input.repeat ? "↻ " : ""}${j.title}`}
+                                  customer={customerName}
+                                  detail={`Opened ${j.createdAt.toLocaleDateString("en-US", { timeZone: data.profile?.timezone || "America/Chicago", month: "short", day: "numeric" })}`}
+                                  status={statusLabels[statusOf(j.id)]}
+                                  statusClass={statusTone(statusOf(j.id))}
+                                  amount={money(owed || totals.subtotalCents)}
+                                  amountLabel={
+                                    owed ? "Balance due" : "Estimate"
+                                  }
+                                  ariaLabel={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
+                                />
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </RecordSection>
+                    ))}
+                </div>
               )}
             </>
           )}

@@ -4579,3 +4579,450 @@ main.customer-index-page {
     padding: 16px;
   }
 }
+
+/* Bounded workspaces: tools, records and history each have a labelled home. */
+.record-section {
+  min-width: 0;
+  margin: 0 0 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: clip;
+}
+.record-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--hover);
+}
+.record-section-header > div {
+  min-width: 0;
+}
+.record-section-header h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 20px;
+  line-height: 32px;
+}
+.record-section-header p {
+  margin: 8px 0 0;
+}
+.record-section-body {
+  padding: 24px;
+  min-width: 0;
+}
+.record-section-body > :first-child {
+  margin-top: 0;
+}
+.record-section-body > :last-child {
+  margin-bottom: 0;
+}
+.record-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.record-section-actions a {
+  margin: 0;
+}
+.record-count {
+  display: inline-flex;
+  min-width: 32px;
+  justify-content: center;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 16px;
+}
+.record-work-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.record-work-grid > li {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.record-work-card {
+  display: flex !important;
+  height: 100%;
+  flex-direction: column;
+  align-items: stretch !important;
+  justify-content: start !important;
+  gap: 8px !important;
+  padding: 16px !important;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  min-width: 0;
+}
+.record-work-card:hover {
+  background: var(--hover);
+  border-color: var(--accent);
+}
+.record-work-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.record-work-reference {
+  color: var(--accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.record-work-title {
+  font-size: 18px;
+  line-height: 24px;
+}
+.record-work-customer {
+  font-weight: 600;
+}
+.record-work-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+}
+.record-work-bottom > span:first-child {
+  display: grid;
+  gap: 8px;
+}
+.record-open {
+  color: var(--accent);
+  font-weight: 600;
+}
+.record-section-attention {
+  border-top: 4px solid var(--warn-text);
+}
+.record-section-active {
+  border-top: 4px solid var(--accent);
+}
+.record-section-closed {
+  border-top: 4px solid var(--muted);
+}
+.record-section .empty-records {
+  border: 0;
+  padding: 16px 0;
+  margin: 0;
+}
+.record-section .search-form {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.record-section .customer-directory {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.record-section .customer-directory > li {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.record-section .customer-directory-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  height: 100%;
+  min-height: 120px;
+  padding: 16px;
+}
+.record-section .customer-directory-contact {
+  display: block;
+}
+.record-directory-caption {
+  margin: 0;
+}
+.record-page-tools {
+  margin-bottom: 24px;
+}
+.record-page-tools .view-toggle {
+  margin: 0;
+}
+.record-page-tools .chip-links {
+  margin-bottom: 0;
+}
+.record-page-tools .job-search-fields {
+  margin: 16px 0 0;
+}
+.customer-profile-main .customer-record-tabs {
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.customer-profile-main .customer-overview-grid {
+  align-items: start;
+}
+.customer-profile-main .customer-overview-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: clip;
+}
+.customer-overview-card > .section-heading {
+  padding: 16px;
+  margin: -16px -16px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--hover);
+}
+.customer-work-overview {
+  grid-column: 1 / -1;
+}
+.customer-work-overview .record-work-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.customer-profile-side .profile-head {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.customer-profile-side .stat-strip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px;
+  margin: 16px 0;
+  background: var(--hover);
+  border-radius: 8px;
+}
+.customer-profile-side .stat-strip > span {
+  display: grid;
+  gap: 8px;
+}
+.record-customer-tools {
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 8px;
+}
+.record-customer-tools > summary {
+  font-weight: 600;
+}
+.record-customer-tools .portal-box {
+  margin-top: 16px;
+}
+.record-job-profile > .profile-head {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+.record-job-profile > .section-tabs {
+  background: var(--hover);
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.record-job-profile > .stat-strip {
+  background: var(--hover);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 24px 0;
+}
+.record-job-profile .job-workflow > details {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 16px 0;
+  background: var(--surface);
+}
+.record-job-profile .job-workflow > details > summary {
+  font-weight: 600;
+}
+.demo-setup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.5fr);
+  gap: 24px;
+  align-items: start;
+}
+.demo-setup-layout .demo-job-field-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.demo-setup-layout .record-section-header {
+  padding: 16px;
+}
+.demo-setup-layout .record-section-body {
+  padding: 16px;
+}
+.demo-setup-layout .demo-job-totals {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.demo-setup-layout .demo-job-line {
+  background: var(--surface);
+}
+.demo-setup-layout .demo-job-line-head {
+  display: none;
+}
+.demo-job-editor .demo-setup-panel {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.demo-setup-panel > .demo-job-section-head {
+  padding: 16px 0;
+  margin: 0 0 8px;
+}
+.demo-setup-panel > .demo-job-bottom-actions {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+@media (max-width: 1099px) {
+  .demo-setup-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 699px) {
+  .record-section-header,
+  .record-section-body {
+    padding: 16px;
+  }
+  .record-work-grid,
+  .record-section .customer-directory,
+  .customer-work-overview .record-work-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .record-section-header {
+    gap: 8px;
+  }
+  .record-section-actions {
+    width: 100%;
+  }
+  .record-section .customer-directory-row {
+    min-height: 104px;
+  }
+  .record-section .customer-directory-contact {
+    display: none;
+  }
+  .record-work-top .pill {
+    white-space: normal;
+  }
+  .demo-setup-layout {
+    gap: 0;
+  }
+}
+.record-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.record-summary-grid > div {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.record-summary-grid strong {
+  font-size: 24px;
+  line-height: 32px;
+}
+.record-information-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+.record-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.record-facts {
+  margin: 0;
+}
+.record-facts > div {
+  display: grid;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.record-facts > div:first-child {
+  padding-top: 0;
+}
+.record-facts > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.record-facts dt {
+  color: var(--muted);
+}
+.record-facts dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.record-timeline {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+.record-timeline li {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 16px 16px;
+  border-left: 4px solid var(--line);
+}
+.record-timeline li:last-child {
+  padding-bottom: 0;
+}
+.record-view-controls {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  width: fit-content;
+}
+@media (max-width: 699px) {
+  .record-two-column,
+  .record-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .record-section .customer-directory-row {
+    gap: 8px;
+    grid-template-columns: 48px minmax(0, 1fr) 16px;
+  }
+}

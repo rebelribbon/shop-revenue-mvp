@@ -1,14 +1,46 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { WorkspaceIcon } from "@/components/workspace-icon";
-import { demoCustomers as customers } from "@/lib/demo-customers";
+import { RecordSection, WorkCard } from "@/components/record-section";
+import {
+  demoCustomers as customers,
+  type DemoCustomer,
+} from "@/lib/demo-customers";
+import { groupWork } from "@/lib/work-sections";
+import { jobStatusLabels, statusTone } from "@/lib/job-status";
 
 export const metadata: Metadata = {
   title: "CRM workspace preview | Shop Revenue",
   robots: { index: false, follow: false },
 };
-
 const tabs = ["Overview", "Jobs", "Vehicles", "History", "Details"] as const;
+const statusLabels = jobStatusLabels("automotive");
+function SampleWork({
+  customer,
+  profile = false,
+}: {
+  customer: DemoCustomer;
+  profile?: boolean;
+}) {
+  return (
+    <WorkCard
+      href={`/demo/job?customer=${customer.id}`}
+      reference={`RO #${customer.roNumber}`}
+      title="Front brake service"
+      customer={profile ? undefined : customer.name}
+      detail={customer.asset}
+      status={statusLabels[customer.status]}
+      statusClass={statusTone(customer.status)}
+      amount={customer.status === "paid" ? "$0.00" : "$1,188.57"}
+      amountLabel={customer.status === "paid" ? "Balance due" : "Estimate"}
+      ariaLabel={
+        profile
+          ? "Open job setup & pricing"
+          : `Open RO ${customer.roNumber} for ${customer.name}`
+      }
+    />
+  );
+}
 
 export default async function CrmPreview({
   searchParams,
@@ -32,6 +64,43 @@ export default async function CrmPreview({
     ? (tab as (typeof tabs)[number])
     : "Overview";
   const url = who ? `/demo/crm?customer=${who.id}` : "/demo/crm";
+  const destinations = [
+    {
+      label: "Appointments",
+      mobile: "Appts",
+      href: "/demo/crm?view=appointments",
+      icon: "schedule",
+      current: !who && view === "appointments",
+    },
+    {
+      label: "Tasks",
+      mobile: "Tasks",
+      href: "/demo/crm?view=tasks",
+      icon: "tasks",
+      current: !who && view === "tasks",
+    },
+    {
+      label: "Customers",
+      mobile: "Customers",
+      href: "/demo/crm",
+      icon: "customers",
+      current: Boolean(who) || !view,
+    },
+    {
+      label: "Jobs / ROs",
+      mobile: "Jobs",
+      href: "/demo/crm?view=jobs",
+      icon: "work",
+      current: !who && view === "jobs",
+    },
+    {
+      label: "Reports",
+      mobile: "Reports",
+      href: "/demo/crm?view=reports",
+      icon: "reports",
+      current: !who && view === "reports",
+    },
+  ] as const;
   return (
     <main id="main-content" className="crm-sample" tabIndex={-1}>
       <header className="crm-sample-head">
@@ -47,193 +116,220 @@ export default async function CrmPreview({
           className="crm-sample-side"
           aria-label="Sample workspace navigation"
         >
-          <Link
-            href="/demo/crm?view=appointments"
-            aria-current={!who && view === "appointments" ? "page" : undefined}
-          >
-            Appointments
-          </Link>
-          <Link
-            href="/demo/crm?view=tasks"
-            aria-current={!who && view === "tasks" ? "page" : undefined}
-          >
-            Tasks
-          </Link>
-          <Link
-            href="/demo/crm"
-            aria-current={who || !view ? "page" : undefined}
-          >
-            Customers
-          </Link>
-          <Link
-            href="/demo/crm?view=jobs"
-            aria-current={!who && view === "jobs" ? "page" : undefined}
-          >
-            Jobs / ROs
-          </Link>
-          <Link
-            href="/demo/crm?view=reports"
-            aria-current={!who && view === "reports" ? "page" : undefined}
-          >
-            Reports
-          </Link>
+          {destinations.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={item.current ? "page" : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
         <div className="crm-sample-content">
           {!who && view === "appointments" ? (
-            <section className="demo-job-panel">
+            <>
               <h1>Appointments</h1>
-              <p>Book and manage customer appointments from here.</p>
-              <div className="customer-overview-grid">
-                <article className="card customer-overview-card">
-                  <h2>Scheduled service</h2>
-                  <p>Front brake service · Alex Example</p>
+              <RecordSection
+                title="Scheduled service"
+                description="Customer appointments and the work planned for each visit."
+                actions={
                   <Link
                     href="/demo/appointment?customer=alex"
                     className="btn primary"
                   >
                     + Book appointment
                   </Link>
+                }
+              >
+                <article className="record-information-card">
+                  <strong>Front brake service</strong>
+                  <span>Alex Example · 2019 Ford F-150</span>
+                  <span className="pill">Scheduled</span>
                 </article>
-                <article className="card customer-overview-card">
-                  <h2>Follow-up</h2>
-                  <p>Contact Alex Example about the estimate.</p>
-                  <Link href="/demo/crm?view=tasks" className="btn secondary">
-                    View tasks
-                  </Link>
-                </article>
-              </div>
-            </section>
+              </RecordSection>
+              <RecordSection title="Appointment follow-up">
+                <p>Contact Alex Example about the estimate.</p>
+                <Link href="/demo/crm?view=tasks" className="btn secondary">
+                  View tasks
+                </Link>
+              </RecordSection>
+            </>
           ) : !who && view === "tasks" ? (
-            <section className="demo-job-panel">
+            <>
               <h1>Tasks</h1>
-              <p>Pending follow-ups for sample customers.</p>
-              <Link
-                href="/demo/crm?customer=alex"
-                className="customer-work-row"
+              <RecordSection
+                title="Due today"
+                count={2}
+                description="The next actions for your customers and ROs."
               >
-                <strong>Follow up with Alex Example</strong>
-                <span>Due today</span>
-              </Link>
-              <Link href="/demo/job" className="customer-work-row">
-                <strong>Send brake service estimate</strong>
-                <span>Awaiting approval</span>
-              </Link>
-            </section>
+                <div className="record-work-grid">
+                  <Link
+                    href="/demo/crm?customer=alex"
+                    className="record-information-card"
+                  >
+                    <strong>Follow up with Alex Example</strong>
+                    <span>Customer follow-up</span>
+                  </Link>
+                  <Link href="/demo/job" className="record-information-card">
+                    <strong>Send brake service estimate</strong>
+                    <span>Awaiting approval</span>
+                  </Link>
+                </div>
+              </RecordSection>
+            </>
           ) : !who && view === "jobs" ? (
-            <section className="demo-job-panel">
-              <h1>Jobs / ROs</h1>
-              <p>
-                Every job belongs to a customer. Open an RO for work, documents
-                and payment.
-              </p>
-              <Link className="customer-work-row" href="/demo/job">
-                <strong>RO #10042 · Front brake service</strong>
-                <span>Alex Example · Awaiting approval</span>
-              </Link>
-              <Link
-                className="btn primary"
-                href="/demo/crm?customer=alex&tab=Jobs"
+            <>
+              <div className="customer-list-heading">
+                <div>
+                  <h1>Jobs / ROs</h1>
+                  <p className="muted">
+                    Work is grouped by what needs to happen next.
+                  </p>
+                </div>
+                <Link
+                  className="btn primary"
+                  href="/demo/crm?customer=alex&tab=Jobs"
+                >
+                  View customer&apos;s RO history
+                </Link>
+              </div>
+              <RecordSection
+                title="Work overview"
+                description="Open an RO to manage its work, documents and payments."
               >
-                View customer&apos;s RO history
-              </Link>
-            </section>
+                <div className="record-summary-grid">
+                  {groupWork(customers, (c) => c.status).map((group) => (
+                    <div key={group.key}>
+                      <span className="muted">{group.title}</span>
+                      <strong>{group.items.length}</strong>
+                    </div>
+                  ))}
+                </div>
+              </RecordSection>
+              {groupWork(customers, (c) => c.status).map((group) => (
+                <RecordSection
+                  key={group.key}
+                  title={group.title}
+                  description={group.description}
+                  count={group.items.length}
+                  className={`record-section-${group.key}`}
+                >
+                  <ul className="record-work-grid">
+                    {group.items.map((c) => (
+                      <li key={c.id}>
+                        <SampleWork customer={c} />
+                      </li>
+                    ))}
+                  </ul>
+                </RecordSection>
+              ))}
+            </>
           ) : !who && view === "reports" ? (
-            <section className="demo-job-panel">
+            <>
               <h1>Reports</h1>
-              <p>
+              <p className="muted">
                 Operational and financial performance, separate from job
                 payments.
               </p>
-              <div className="customer-overview-grid">
-                <article className="card customer-overview-card">
-                  <h2>Appointments</h2>
-                  <p>Scheduled: 4 · Completed: 3</p>
-                </article>
-                <article className="card customer-overview-card">
-                  <h2>Work</h2>
-                  <p>ROs opened: 8 · Awaiting approval: 2</p>
-                </article>
-                <article className="card customer-overview-card">
-                  <h2>Customers</h2>
-                  <p>New: 6 · Returning: 12</p>
-                </article>
-                <article className="card customer-overview-card">
-                  <h2>Revenue</h2>
-                  <p>Invoiced: $8,420 · Collected: $6,800</p>
-                </article>
-              </div>
-              <p className="muted">
-                Illustrative report data. The authenticated Reports tab uses
-                real shop data.
-              </p>
-            </section>
+              <RecordSection
+                title="Business performance"
+                description="Illustrative report data. The authenticated Reports tab uses real shop data."
+              >
+                <div className="record-summary-grid">
+                  {[
+                    ["Appointments", "4 scheduled"],
+                    ["Work", "8 ROs opened"],
+                    ["Customers", "6 new"],
+                    ["Revenue", "$6,800 collected"],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <span className="muted">{label}</span>
+                      <strong>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </RecordSection>
+            </>
           ) : !who ? (
             <>
               <div className="customer-list-heading">
                 <div>
                   <h1>Customers</h1>
                   <p className="muted">
-                    Find people, open their history, and get right to work.
+                    Contact details, vehicles and work history in each record.
                   </p>
                 </div>
                 <Link className="btn primary" href="/demo/customer/new">
                   + Customer
                 </Link>
               </div>
-              <form
-                className="crm-sample-search-form"
-                method="get"
-                action="/demo/crm"
-                role="search"
+              <RecordSection
+                title="Find a customer"
+                className="record-page-tools"
               >
-                <label htmlFor="demo-customer-search">Find customer</label>
-                <div className="crm-sample-search-controls">
-                  <input
-                    id="demo-customer-search"
-                    name="q"
-                    type="search"
-                    defaultValue={search}
-                    placeholder="Search customers"
-                  />
-                  <button className="btn secondary" type="submit">
-                    Search
-                  </button>
-                </div>
-              </form>
-              <Link href="/demo/job" className="crm-sample-pricing-link">
-                Try job setup & pricing →
-              </Link>
-              <p className="muted">Sample customers</p>
-              <ul className="customer-directory">
-                {filtered.map((c) => (
-                  <li key={c.id}>
-                    <Link
-                      className="customer-directory-row"
-                      href={`/demo/crm?customer=${c.id}`}
-                    >
-                      <span className="customer-avatar" aria-hidden="true">
-                        {c.name.charAt(0)}
-                      </span>
-                      <span className="customer-directory-main">
-                        <strong>{c.name}</strong>
-                        <span className="muted">{c.asset}</span>
-                        <span className="customer-directory-contact">
-                          {c.contact}
-                        </span>
-                      </span>
-                      <span
-                        className="customer-directory-chevron"
-                        aria-hidden="true"
+                <form
+                  className="crm-sample-search-form"
+                  method="get"
+                  action="/demo/crm"
+                  role="search"
+                >
+                  <label htmlFor="demo-customer-search">Find customer</label>
+                  <div className="crm-sample-search-controls">
+                    <input
+                      id="demo-customer-search"
+                      name="q"
+                      type="search"
+                      defaultValue={search}
+                      placeholder="Search customers"
+                    />
+                    <button className="btn secondary" type="submit">
+                      Search
+                    </button>
+                  </div>
+                </form>
+              </RecordSection>
+              <RecordSection
+                title="Customer directory"
+                count={filtered.length}
+                description="Sample customers"
+                actions={
+                  <Link href="/demo/job" className="crm-sample-pricing-link">
+                    Try job setup & pricing →
+                  </Link>
+                }
+              >
+                <ul className="customer-directory">
+                  {filtered.map((c) => (
+                    <li key={c.id}>
+                      <Link
+                        className="customer-directory-row"
+                        href={`/demo/crm?customer=${c.id}`}
                       >
-                        ›
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              {!filtered.length && (
-                <p className="muted">No matching sample customers.</p>
-              )}
+                        <span className="customer-avatar" aria-hidden="true">
+                          {c.name.charAt(0)}
+                        </span>
+                        <span className="customer-directory-main">
+                          <strong>{c.name}</strong>
+                          <span className="muted">{c.asset}</span>
+                          <span className="customer-directory-contact">
+                            {c.contact}
+                          </span>
+                        </span>
+                        <span
+                          className="customer-directory-chevron"
+                          aria-hidden="true"
+                        >
+                          ›
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                {!filtered.length && (
+                  <p className="muted">No matching sample customers.</p>
+                )}
+              </RecordSection>
             </>
           ) : (
             <>
@@ -242,7 +338,7 @@ export default async function CrmPreview({
               </Link>
               <header className="customer-hero">
                 <div className="customer-hero-main">
-                  <div className="customer-hero-avatar">
+                  <div className="customer-hero-avatar" aria-hidden="true">
                     {who.name.charAt(0)}
                   </div>
                   <div>
@@ -255,16 +351,10 @@ export default async function CrmPreview({
                   className="customer-hero-actions"
                   aria-label="Sample actions"
                 >
-                  <Link
-                    className="btn secondary"
-                    href={`/demo/crm?customer=${who.id}&tab=Details`}
-                  >
+                  <Link className="btn secondary" href={`${url}&tab=Details`}>
                     Contact
                   </Link>
-                  <Link
-                    className="btn secondary"
-                    href={`/demo/crm?customer=${who.id}&tab=History`}
-                  >
+                  <Link className="btn secondary" href={`${url}&tab=History`}>
                     History
                   </Link>
                   <Link
@@ -282,22 +372,38 @@ export default async function CrmPreview({
                 </div>
               </header>
               <div className="profile-layout customer-profile-layout">
-                <aside className="card profile-card customer-profile-side">
-                  <h2>Customer details</h2>
-                  <p className="muted">
-                    Customer profile, saved preferences, and account links live
-                    here.
-                  </p>
-                  <p>
-                    <strong>Outstanding</strong> &nbsp; $1,284.75
-                  </p>
-                  <p>
-                    <strong>Lifetime payments</strong> &nbsp; $4,750.00
-                  </p>
-                  <p className="muted">
-                    Additional settings stay accessible without cluttering the
-                    main screen.
-                  </p>
+                <aside className="customer-profile-side">
+                  <RecordSection title="Contact details">
+                    <dl className="record-facts">
+                      <div>
+                        <dt>Mobile</dt>
+                        <dd>{who.contact}</dd>
+                      </div>
+                      <div>
+                        <dt>Email</dt>
+                        <dd>{who.id}@example.test</dd>
+                      </div>
+                      <div>
+                        <dt>Location</dt>
+                        <dd>San Antonio, TX</dd>
+                      </div>
+                    </dl>
+                  </RecordSection>
+                  <RecordSection title="Account summary">
+                    <dl className="record-facts">
+                      <div>
+                        <dt>Outstanding</dt>
+                        <dd>{who.status === "paid" ? "$0.00" : "$1,188.57"}</dd>
+                      </div>
+                      <div>
+                        <dt>Lifetime payments</dt>
+                        <dd>$4,750.00</dd>
+                      </div>
+                    </dl>
+                    <Link href={`${url}&tab=Details`} className="btn secondary">
+                      Customer options
+                    </Link>
+                  </RecordSection>
                 </aside>
                 <div className="profile-main customer-profile-main">
                   <nav
@@ -315,82 +421,123 @@ export default async function CrmPreview({
                     ))}
                   </nav>
                   {activeTab === "Overview" ? (
-                    <section className="customer-overview-grid">
-                      <article className="card customer-overview-card">
-                        <div className="section-heading">
-                          <h2>Contact</h2>
-                          <span className="muted">Edit</span>
-                        </div>
-                        <div className="customer-fact">
-                          <strong>Mobile</strong>
-                          <span>{who.contact}</span>
-                        </div>
-                        <div className="customer-fact">
-                          <strong>Email</strong>
-                          <span>{who.id}@example.test</span>
-                        </div>
-                        <div className="customer-fact">
-                          <strong>Address</strong>
-                          <span>San Antonio, TX</span>
-                        </div>
-                      </article>
-                      <article className="card customer-overview-card">
-                        <div className="section-heading">
-                          <h2>Recent ROs</h2>
+                    <>
+                      <RecordSection
+                        title="Active ROs"
+                        count={who.status === "paid" ? 0 : 1}
+                        description="Current work for this customer."
+                        actions={
                           <Link href={`${url}&tab=Jobs`}>RO history</Link>
-                        </div>
-                        <Link
-                          className="customer-work-row"
-                          href={`${url}&tab=Jobs`}
+                        }
+                        className="record-section-active"
+                      >
+                        {who.status === "paid" ? (
+                          <p className="muted">
+                            No active work. Previous ROs are in their work
+                            history.
+                          </p>
+                        ) : (
+                          <div className="record-work-grid">
+                            <SampleWork customer={who} profile />
+                          </div>
+                        )}
+                      </RecordSection>
+                      <div className="record-two-column">
+                        <RecordSection
+                          title="Vehicles"
+                          count={1}
+                          actions={
+                            <Link href={`${url}&tab=Vehicles`}>View all</Link>
+                          }
                         >
-                          <strong>RO #{who.roNumber} · Brake service</strong>
-                          <span>Awaiting approval</span>
-                          <span>$1,284.75 due</span>
-                        </Link>
+                          <article className="record-information-card">
+                            <strong>{who.asset}</strong>
+                            <span className="muted">Vehicle on file</span>
+                          </article>
+                        </RecordSection>
+                        <RecordSection
+                          title="Recent activity"
+                          actions={
+                            <Link href={`${url}&tab=History`}>History</Link>
+                          }
+                        >
+                          <ul className="record-timeline">
+                            <li>
+                              <strong>Estimate prepared</strong>
+                              <span className="muted">Today</span>
+                            </li>
+                            <li>
+                              <strong>Customer called</strong>
+                              <span className="muted">Yesterday</span>
+                            </li>
+                          </ul>
+                        </RecordSection>
+                      </div>
+                    </>
+                  ) : activeTab === "Jobs" ? (
+                    <>
+                      <div className="section-heading">
+                        <h2>Repair order history</h2>
+                      </div>
+                      {groupWork([who], (c) => c.status)
+                        .filter((group) => group.items.length)
+                        .map((group) => (
+                          <RecordSection
+                            key={group.key}
+                            title={group.title}
+                            count={group.items.length}
+                            description={group.description}
+                            className={`record-section-${group.key}`}
+                          >
+                            <div className="record-work-grid">
+                              <SampleWork customer={who} profile />
+                            </div>
+                          </RecordSection>
+                        ))}
+                    </>
+                  ) : activeTab === "Vehicles" ? (
+                    <RecordSection title="Vehicles" count={1}>
+                      <article className="record-information-card">
+                        <strong>{who.asset}</strong>
+                        <span className="muted">
+                          Vehicle on file for {who.name}
+                        </span>
                       </article>
-                      <article className="card customer-overview-card">
-                        <div className="section-heading">
-                          <h2>Recent activity</h2>
-                          <Link href={`${url}&tab=History`}>History</Link>
-                        </div>
-                        <div className="customer-activity-row">
-                          Estimate prepared{" "}
-                          <small className="muted">Today</small>
-                        </div>
-                        <div className="customer-activity-row">
-                          Customer called{" "}
-                          <small className="muted">Yesterday</small>
-                        </div>
-                      </article>
-                      <article className="card customer-overview-card">
-                        <div className="section-heading">
-                          <h2>Vehicles</h2>
-                          <Link href={`${url}&tab=Vehicles`}>View all</Link>
-                        </div>
-                        <p>{who.asset}</p>
-                      </article>
-                    </section>
+                    </RecordSection>
+                  ) : activeTab === "History" ? (
+                    <RecordSection
+                      title="Customer history"
+                      description="The record of calls, appointments and work."
+                    >
+                      <ul className="record-timeline">
+                        <li>
+                          <strong>Estimate prepared</strong>
+                          <span className="muted">Today</span>
+                        </li>
+                        <li>
+                          <strong>Customer called</strong>
+                          <span className="muted">Yesterday</span>
+                        </li>
+                      </ul>
+                    </RecordSection>
                   ) : (
-                    <section className="card customer-overview-card">
-                      <h2>{activeTab}</h2>
-                      <p className="muted">
-                        {activeTab === "Jobs"
-                          ? `RO #${who.roNumber} · Brake service · Awaiting customer authorization · $1,284.75`
-                          : activeTab === "Vehicles"
-                            ? who.asset
-                            : activeTab === "History"
-                              ? "Estimate prepared today · Customer called yesterday"
-                              : "Contact details and communication preferences"}
-                      </p>
-                      {activeTab === "Jobs" && (
-                        <Link
-                          href={`/demo/job?customer=${who.id}`}
-                          className="btn primary"
-                        >
-                          Open job setup & pricing
-                        </Link>
-                      )}
-                    </section>
+                    <RecordSection title="Customer preferences">
+                      <p>Contact details and communication preferences</p>
+                      <dl className="record-facts">
+                        <div>
+                          <dt>Customer</dt>
+                          <dd>{who.name}</dd>
+                        </div>
+                        <div>
+                          <dt>Email</dt>
+                          <dd>{who.id}@example.test</dd>
+                        </div>
+                        <div>
+                          <dt>Mobile</dt>
+                          <dd>{who.contact}</dd>
+                        </div>
+                      </dl>
+                    </RecordSection>
                   )}
                 </div>
               </div>
@@ -402,48 +549,15 @@ export default async function CrmPreview({
         className="crm-sample-mobile-nav"
         aria-label="Mobile sample navigation"
       >
-        {(
-          [
-            {
-              label: "Appts",
-              href: "/demo/crm?view=appointments",
-              icon: "schedule",
-              current: !who && view === "appointments",
-            },
-            {
-              label: "Tasks",
-              href: "/demo/crm?view=tasks",
-              icon: "tasks",
-              current: !who && view === "tasks",
-            },
-            {
-              label: "Customers",
-              href: "/demo/crm",
-              icon: "customers",
-              current: Boolean(who) || !view,
-            },
-            {
-              label: "Jobs",
-              href: "/demo/crm?view=jobs",
-              icon: "work",
-              current: !who && view === "jobs",
-            },
-            {
-              label: "Reports",
-              href: "/demo/crm?view=reports",
-              icon: "reports",
-              current: !who && view === "reports",
-            },
-          ] as const
-        ).map((item) => (
+        {destinations.map((item) => (
           <Link
-            key={item.label}
+            key={item.href}
             href={item.href}
-            aria-label={item.label}
+            aria-label={item.mobile}
             aria-current={item.current ? "page" : undefined}
           >
             <WorkspaceIcon name={item.icon} />
-            <span>{item.label}</span>
+            <span>{item.mobile}</span>
           </Link>
         ))}
       </nav>

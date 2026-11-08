@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { RecordSection } from "@/components/record-section";
+import { jobStatusLabels } from "@/lib/job-status";
 import { demoCustomers } from "@/lib/demo-customers";
 
 type Stage = "setup" | "docs" | "share" | "payment";
@@ -132,7 +134,9 @@ export function DemoJobEditor({
         <div className="demo-job-summary">
           <small>Estimated total</small>
           <strong>{money(totals.total)}</strong>
-          <span>Draft · Not sent</span>
+          <span>
+            {jobStatusLabels("automotive")[customerRecord.status]} · Sample
+          </span>
         </div>
       </header>
       <div className="demo-job-banner">
@@ -156,162 +160,190 @@ export function DemoJobEditor({
         ))}
       </nav>
       {stage === "setup" && (
-        <section className="demo-job-panel" aria-label="Job and pricing setup">
+        <section
+          className="demo-job-panel demo-setup-panel"
+          aria-label="Job and pricing setup"
+        >
           <div className="demo-job-section-head">
             <div>
               <h2>RO Setup</h2>
               <p>Enter the work once. Customer documents use these prices.</p>
             </div>
           </div>
-          <div className="demo-job-field-grid">
-            <label>
-              Customer{" "}
-              <input
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-              />
-            </label>
-            <label>
-              Vehicle or asset{" "}
-              <input value={asset} onChange={(e) => setAsset(e.target.value)} />
-            </label>
-            <label>
-              Job name{" "}
-              <input
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-              />
-            </label>
-            <label>
-              Work description{" "}
-              <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </label>
-          </div>
-          <div className="demo-job-section-head">
-            <div>
-              <h3>Parts & labor</h3>
-              <p>Edit quantities or prices; totals update instantly.</p>
-            </div>
-          </div>
-          <div className="demo-job-line-head" aria-hidden="true">
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Unit price</span>
-            <span>Amount</span>
-            <span></span>
-          </div>
-          <div className="demo-job-lines">
-            {totals.computed.map((line) => (
-              <div className="demo-job-line" key={line.id}>
-                <label className="demo-job-item">
-                  Item{" "}
-                  <input
-                    aria-label={`Item name ${line.id}`}
-                    value={line.title}
-                    placeholder={line.category === "part" ? "Part" : "Labor"}
-                    onChange={(e) =>
-                      updateLine(line.id, "title", e.target.value)
-                    }
-                  />
-                  <small>{line.category === "part" ? "Part" : "Labor"}</small>
-                </label>
+          <div className="demo-setup-layout">
+            <RecordSection
+              title="RO details"
+              description="Who the work is for and what needs doing."
+            >
+              <div className="demo-job-field-grid">
                 <label>
-                  Qty{" "}
+                  Customer{" "}
                   <input
-                    aria-label={`Quantity ${line.id}`}
-                    inputMode="decimal"
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(line.id, "quantity", e.target.value)
-                    }
+                    value={customer}
+                    onChange={(e) => setCustomer(e.target.value)}
                   />
                 </label>
                 <label>
-                  Unit price{" "}
+                  Vehicle or asset{" "}
                   <input
-                    aria-label={`Unit price ${line.id}`}
-                    inputMode="decimal"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={line.price}
-                    onChange={(e) =>
-                      updateLine(line.id, "price", e.target.value)
-                    }
+                    value={asset}
+                    onChange={(e) => setAsset(e.target.value)}
                   />
                 </label>
-                <strong className="demo-job-line-amount">
-                  {money(line.total)}
-                </strong>
-                <button
-                  type="button"
-                  className="demo-job-remove"
-                  aria-label={`Remove ${line.title || "item"}`}
-                  onClick={() =>
-                    setLines((prev) => prev.filter((v) => v.id !== line.id))
-                  }
-                >
-                  ×
-                </button>
+                <label>
+                  Job name{" "}
+                  <input
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Work description{" "}
+                  <input
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </label>
               </div>
-            ))}
-          </div>
-          <div className="demo-job-row-actions">
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={() => addLine("part")}
-            >
-              + Part
-            </button>
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={() => addLine("labor")}
-            >
-              + Labor
-            </button>
-          </div>
-          <div className="demo-job-totals">
-            <div>
-              <span>Subtotal</span>
-              <strong>{money(totals.subtotal)}</strong>
-            </div>
-            <div>
-              <label>
-                Parts tax (%){" "}
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={taxRate}
-                  onChange={(e) => setTaxRate(e.target.value)}
-                />
-              </label>
-              <strong>{money(totals.tax)}</strong>
-            </div>
-            <div>
-              <label>
-                Discount ($){" "}
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                />
-              </label>
-              <strong>−{money(totals.discountCents)}</strong>
-            </div>
-            <div className="demo-job-grand">
-              <span>Estimated total</span>
-              <strong>{money(totals.total)}</strong>
+            </RecordSection>
+            <div className="demo-setup-pricing">
+              <RecordSection
+                title="Parts & labor"
+                description="The items and labor included in this RO."
+              >
+                <div className="demo-job-line-head" aria-hidden="true">
+                  <span>Item</span>
+                  <span>Qty</span>
+                  <span>Unit price</span>
+                  <span>Amount</span>
+                  <span></span>
+                </div>
+                <div className="demo-job-lines">
+                  {totals.computed.map((line) => (
+                    <div className="demo-job-line" key={line.id}>
+                      <label className="demo-job-item">
+                        Item{" "}
+                        <input
+                          aria-label={`Item name ${line.id}`}
+                          value={line.title}
+                          placeholder={
+                            line.category === "part" ? "Part" : "Labor"
+                          }
+                          onChange={(e) =>
+                            updateLine(line.id, "title", e.target.value)
+                          }
+                        />
+                        <small>
+                          {line.category === "part" ? "Part" : "Labor"}
+                        </small>
+                      </label>
+                      <label>
+                        Qty{" "}
+                        <input
+                          aria-label={`Quantity ${line.id}`}
+                          inputMode="decimal"
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={line.quantity}
+                          onChange={(e) =>
+                            updateLine(line.id, "quantity", e.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        Unit price{" "}
+                        <input
+                          aria-label={`Unit price ${line.id}`}
+                          inputMode="decimal"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.price}
+                          onChange={(e) =>
+                            updateLine(line.id, "price", e.target.value)
+                          }
+                        />
+                      </label>
+                      <strong className="demo-job-line-amount">
+                        {money(line.total)}
+                      </strong>
+                      <button
+                        type="button"
+                        className="demo-job-remove"
+                        aria-label={`Remove ${line.title || "item"}`}
+                        onClick={() =>
+                          setLines((prev) =>
+                            prev.filter((v) => v.id !== line.id),
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="demo-job-row-actions">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={() => addLine("part")}
+                  >
+                    + Part
+                  </button>
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    onClick={() => addLine("labor")}
+                  >
+                    + Labor
+                  </button>
+                </div>
+              </RecordSection>
+              <RecordSection
+                title="Price summary"
+                description="Tax, discount and the customer’s estimate."
+              >
+                <div className="demo-job-totals">
+                  <div>
+                    <span>Subtotal</span>
+                    <strong>{money(totals.subtotal)}</strong>
+                  </div>
+                  <div>
+                    <label>
+                      Parts tax (%){" "}
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={taxRate}
+                        onChange={(e) => setTaxRate(e.target.value)}
+                      />
+                    </label>
+                    <strong>{money(totals.tax)}</strong>
+                  </div>
+                  <div>
+                    <label>
+                      Discount ($){" "}
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={discount}
+                        onChange={(e) => setDiscount(e.target.value)}
+                      />
+                    </label>
+                    <strong>−{money(totals.discountCents)}</strong>
+                  </div>
+                  <div className="demo-job-grand">
+                    <span>Estimated total</span>
+                    <strong>{money(totals.total)}</strong>
+                  </div>
+                </div>
+              </RecordSection>
             </div>
           </div>
           <div className="demo-job-bottom-actions">
