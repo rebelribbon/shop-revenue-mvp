@@ -1,7 +1,10 @@
 import { HydratedMain } from "@/components/hydrated-main";
 import { notFound } from "next/navigation";
 import { SignDocument } from "@/components/sign-document";
-import { readPublicDocument, unsafeCustomerPricedChangeOrder } from "@/domain/documents";
+import {
+  readPublicDocument,
+  unsafeCustomerPricedChangeOrder,
+} from "@/domain/documents";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Document to sign | Shop Revenue",
@@ -26,7 +29,12 @@ export default async function SignPage({
       {unsafeCustomerPricedChangeOrder(d) ? (
         <section className="card" role="alert">
           <h2>A corrected change order is needed</h2>
-          <p>This older document incorrectly asks the customer to enter work or pricing. No signature can be taken. Please ask the shop to prepare an updated estimate and issue a corrected change order with its prices already filled in.</p>
+          <p>
+            This older document incorrectly asks the customer to enter work or
+            pricing. No signature can be taken. Please ask the shop to prepare
+            an updated estimate and issue a corrected change order with its
+            prices already filled in.
+          </p>
         </section>
       ) : d.status === "signed" ? (
         <section className="card">
