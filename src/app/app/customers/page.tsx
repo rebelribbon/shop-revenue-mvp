@@ -53,7 +53,7 @@ export default async function CustomersPage(props: {
     else byCustomer.set(item.customerId, [item]);
   }
   return (
-    <HydratedMain id="main-content" tabIndex={-1}>
+    <HydratedMain id="main-content" tabIndex={-1} className="customer-index-page">
       <div className="customer-list-heading">
         <div>
           <h1>Customers</h1>
