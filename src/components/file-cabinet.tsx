@@ -5,6 +5,7 @@ import {
 } from "@/server/actions/documents";
 import { ActionForm } from "./action-form";
 import { CopyLink } from "./copy-link";
+import { DocumentShare } from "./document-share";
 
 // Every document for a job: what the app created, what was sent to sign, and
 // what someone added.
@@ -75,6 +76,9 @@ export function FileCabinet({
                   >
                     {i.status}
                   </span>
+                )}
+                {i.estimateShareId && !readOnly && (
+                  <DocumentShare id={i.estimateShareId} kind="estimate" label="Send estimate for approval" />
                 )}
                 {i.signLink && !readOnly && (
                   <span className="money-actions">
