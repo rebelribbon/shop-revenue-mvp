@@ -3956,3 +3956,29 @@ main.customer-index-page {
   .crm-sample-mobile-nav { gap: 0; }
   .crm-sample-mobile-nav a { min-width: 0; padding: 8px 2px; }
 }
+
+/* Both the real app and public CRM preview must own their scroll area. */
+.crm-sample {
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+@media (max-width: 899px) {
+  .shop-mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    padding-inline: 8px;
+  }
+  .shop-mobile-nav a {
+    min-width: 0;
+    font-size: clamp(11px, 3vw, 14px);
+    padding: 0 2px !important;
+  }
+}
+@media (max-width: 359px) {
+  .shop-mobile-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
