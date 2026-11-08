@@ -207,27 +207,27 @@ export function DocumentShare({
           )}
           <details className="docs-message-options">
             <summary>Edit email subject or message</summary>
-          <label>
-            Email subject
-            <input
-              value={
-                emailSubject ||
-                `${data.senderName || "Your shop"} — ${kind === "estimate" ? "estimate for approval" : "invoice"}`
-              }
-              onChange={(e) => setEmailSubject(e.target.value)}
-              maxLength={160}
-            />
-          </label>
-          <label>
-            Message to customer
-            <textarea
-              value={emailMessage}
-              onChange={(e) => setEmailMessage(e.target.value)}
-              rows={3}
-              maxLength={1000}
-              placeholder={`Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`}
-            />
-          </label>
+            <label>
+              Email subject
+              <input
+                value={
+                  emailSubject ||
+                  `${data.senderName || "Your shop"} — ${kind === "estimate" ? "estimate for approval" : "invoice"}`
+                }
+                onChange={(e) => setEmailSubject(e.target.value)}
+                maxLength={160}
+              />
+            </label>
+            <label>
+              Message to customer
+              <textarea
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                placeholder={`Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`}
+              />
+            </label>
           </details>
           <p className="muted">
             Check the preview before sharing. Email is sent from Shop Revenue;
