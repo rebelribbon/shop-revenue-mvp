@@ -3,37 +3,13 @@ import Link from "next/link";
 import { WorkspaceIcon } from "./workspace-icon";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  { href: "/app", label: "Today", mobile: "Today", icon: "home", phone: true },
-  {
-    href: "/app/customers",
-    label: "Customers",
-    mobile: "Customers",
-    icon: "customers",
-    phone: true,
-  },
-  {
-    href: "/app/work",
-    label: "Jobs",
-    mobile: "Jobs",
-    icon: "work",
-    phone: true,
-  },
-  {
-    href: "/app/tasks",
-    label: "Tasks",
-    mobile: "Tasks",
-    icon: "tasks",
-    phone: true,
-  },
-  {
-    href: "/app/money",
-    label: "Money",
-    mobile: "Money",
-    icon: "money",
-    phone: true,
-  },
+  { href: "/app/schedule", label: "Appointments", mobile: "Appts", icon: "schedule", phone: true },
+  { href: "/app/tasks", label: "Tasks", mobile: "Tasks", icon: "tasks", phone: true },
+  { href: "/app/customers", label: "Customers", mobile: "Customers", icon: "customers", phone: true },
+  { href: "/app/jobs", label: "Jobs / ROs", mobile: "Jobs", icon: "work", phone: true },
+  { href: "/app/reports", label: "Reports", mobile: "Reports", icon: "reports", phone: true },
 ] as const;
-const workPaths = ["/app/jobs", "/app/estimates", "/app/invoices"];
+const workPaths = ["/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
   canSeeMoney = true,
@@ -52,7 +28,7 @@ export function WorkspaceNavigation({
       aria-label={mobile ? "Mobile navigation" : "Main"}
     >
       {shopItems
-        .filter((item) => canSeeMoney || item.href !== "/app/money")
+        .filter((item) => canSeeMoney || item.href !== "/app/reports")
         .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link
@@ -61,14 +37,14 @@ export function WorkspaceNavigation({
             aria-label={item.label}
             aria-current={
               (
-                item.href === "/app"
-                  ? path === item.href || path.startsWith("/app/schedule")
+                item.href === "/app/schedule"
+                  ? path.startsWith("/app/schedule") || path.startsWith("/app/appointments")
                   : path.startsWith(item.href) ||
                     (item.href === "/app/tasks" &&
                       path.startsWith("/app/opportunities")) ||
-                    (item.href === "/app/money" &&
-                      path.startsWith("/app/revenue")) ||
-                    (item.href === "/app/work" &&
+                    (item.href === "/app/reports" &&
+                      (path.startsWith("/app/money/reports") || path.startsWith("/app/revenue"))) ||
+                    (item.href === "/app/jobs" &&
                       workPaths.some((p) => path.startsWith(p)))
               )
                 ? "page"
