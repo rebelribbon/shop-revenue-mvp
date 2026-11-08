@@ -854,7 +854,9 @@ export default async function JobsPage({
                       {s.actor.type !== "support" &&
                         s.role !== "technician" && (
                           <details className="docs-add-menu">
-                            <summary className="btn secondary">+ Add agreement</summary>
+                            <summary className="btn secondary">
+                              + Add agreement
+                            </summary>
                             {data.templates.length ? (
                               <ActionForm
                                 action={sendDocumentAction}
@@ -863,14 +865,22 @@ export default async function JobsPage({
                                 variant="secondary"
                               >
                                 <label htmlFor="docs-template">Agreement</label>
-                                <select id="docs-template" name="templateId" required>
+                                <select
+                                  id="docs-template"
+                                  name="templateId"
+                                  required
+                                >
                                   {data.templates.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                    <option key={t.id} value={t.id}>
+                                      {t.name}
+                                    </option>
                                   ))}
                                 </select>
                               </ActionForm>
                             ) : (
-                              <Link href="/app/settings/documents">Set up document templates</Link>
+                              <Link href="/app/settings/documents">
+                                Set up document templates
+                              </Link>
                             )}
                           </details>
                         )}
