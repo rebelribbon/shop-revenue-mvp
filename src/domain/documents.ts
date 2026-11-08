@@ -593,8 +593,8 @@ export async function jobCabinet(
       ),
     );
   const emailedIds = new Set(
-    deliveries.map((event) =>
-      typeof event.data?.documentId === "string" ? event.data.documentId : "",
+    deliveries.map(
+      (event) => (event.data as { documentId?: string })?.documentId ?? "",
     ),
   );
   const versions = await tx
