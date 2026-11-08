@@ -105,9 +105,14 @@ export default async function CustomerDetailPage(props: {
   const readOnly = s.actor.type === "support";
   const c = data.customer;
   const { view: requestedView, add: adding } = await props.searchParams;
-  const view = ["overview", "jobs", "assets", "history", "details", "files"].includes(
-    requestedView ?? "",
-  )
+  const view = [
+    "overview",
+    "jobs",
+    "assets",
+    "history",
+    "details",
+    "files",
+  ].includes(requestedView ?? "")
     ? requestedView!
     : "overview";
   const auto = isAutomotive(profile?.businessType ?? "automotive");
@@ -159,7 +164,13 @@ export default async function CustomerDetailPage(props: {
             <p className="muted">
               {auto
                 ? data.vehicles[0]
-                  ? [data.vehicles[0].year, data.vehicles[0].make, data.vehicles[0].model].filter(Boolean).join(" ")
+                  ? [
+                      data.vehicles[0].year,
+                      data.vehicles[0].make,
+                      data.vehicles[0].model,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
                   : "No vehicle on file"
                 : assets.length
                   ? `${assets.length} service asset${assets.length === 1 ? "" : "s"}`
@@ -167,18 +178,38 @@ export default async function CustomerDetailPage(props: {
             </p>
           </div>
         </div>
-        <div className="customer-hero-actions" role="group" aria-label="Contact customer">
-          {c.phoneE164 && <a className="btn secondary" href={`tel:${c.phoneE164}`}>Call</a>}
+        <div
+          className="customer-hero-actions"
+          role="group"
+          aria-label="Contact customer"
+        >
+          {c.phoneE164 && (
+            <a className="btn secondary" href={`tel:${c.phoneE164}`}>
+              Call
+            </a>
+          )}
           {c.phoneE164 && !c.textOptedOutAt && !c.doNotContact && (
-            <a className="btn secondary" href={`sms:${c.phoneE164}`}>Text</a>
+            <a className="btn secondary" href={`sms:${c.phoneE164}`}>
+              Text
+            </a>
           )}
           {c.email && !c.emailOptedOutAt && !c.doNotContact && (
-            <a className="btn secondary" href={`mailto:${c.email}`}>Email</a>
+            <a className="btn secondary" href={`mailto:${c.email}`}>
+              Email
+            </a>
           )}
           {!readOnly && (
-            <Link className="btn primary" data-page-primary href={
-              assetCount ? `/app/jobs?customerId=${customerId}` : `${base}?view=assets`
-            }>+ Job</Link>
+            <Link
+              className="btn primary"
+              data-page-primary
+              href={
+                assetCount
+                  ? `/app/jobs?customerId=${customerId}`
+                  : `${base}?view=assets`
+              }
+            >
+              + Job
+            </Link>
           )}
         </div>
       </header>
@@ -400,7 +431,10 @@ export default async function CustomerDetailPage(props: {
               <Link href={`${base}?view=files`}>Done</Link>
             </section>
           )}
-          <nav className="section-tabs customer-record-tabs" aria-label="Customer sections">
+          <nav
+            className="section-tabs customer-record-tabs"
+            aria-label="Customer sections"
+          >
             {tabs.map(([key, label]) => (
               <Link
                 key={key}
@@ -412,7 +446,10 @@ export default async function CustomerDetailPage(props: {
             ))}
           </nav>
           {view === "overview" && (
-            <section className="customer-overview" aria-label="Customer overview">
+            <section
+              className="customer-overview"
+              aria-label="Customer overview"
+            >
               <div className="customer-overview-grid">
                 <article className="card customer-overview-card">
                   <div className="section-heading">
@@ -420,22 +457,35 @@ export default async function CustomerDetailPage(props: {
                     <Link href={`${base}?view=details`}>Edit</Link>
                   </div>
                   {c.phoneE164 && (
-                    <div className="customer-fact"><strong>Mobile</strong>
-                      <a href={`tel:${c.phoneE164}`}>{formatPhone(c.phoneE164)}</a>
+                    <div className="customer-fact">
+                      <strong>Mobile</strong>
+                      <a href={`tel:${c.phoneE164}`}>
+                        {formatPhone(c.phoneE164)}
+                      </a>
                     </div>
                   )}
                   {c.email && (
-                    <div className="customer-fact"><strong>Email</strong>
+                    <div className="customer-fact">
+                      <strong>Email</strong>
                       <a href={`mailto:${c.email}`}>{c.email}</a>
                     </div>
                   )}
                   {address && (
-                    <div className="customer-fact"><strong>Address</strong>
-                      <a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer">{address}</a>
+                    <div className="customer-fact">
+                      <strong>Address</strong>
+                      <a
+                        href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {address}
+                      </a>
                     </div>
                   )}
                   {!c.phoneE164 && !c.email && !address && (
-                    <p className="muted">Add contact details to reach this customer.</p>
+                    <p className="muted">
+                      Add contact details to reach this customer.
+                    </p>
                   )}
                 </article>
                 <article className="card customer-overview-card">
@@ -444,13 +494,25 @@ export default async function CustomerDetailPage(props: {
                     <Link href={`${base}?view=jobs`}>All jobs</Link>
                   </div>
                   {jobs.slice(0, 2).map((j) => (
-                    <Link key={j.id} className="customer-work-row" href={`/app/jobs?job=${j.id}`}>
+                    <Link
+                      key={j.id}
+                      className="customer-work-row"
+                      href={`/app/jobs?job=${j.id}`}
+                    >
                       <strong>{j.title}</strong>
-                      <span className={statusTone(j.status)}>{statusLabels[j.status]}</span>
-                      {j.balanceCents > 0 && <span>{formatMoney(j.balanceCents)} due</span>}
+                      <span className={statusTone(j.status)}>
+                        {statusLabels[j.status]}
+                      </span>
+                      {j.balanceCents > 0 && (
+                        <span>{formatMoney(j.balanceCents)} due</span>
+                      )}
                     </Link>
                   ))}
-                  {!jobs.length && <p className="muted">No jobs yet. Create one to prepare an estimate.</p>}
+                  {!jobs.length && (
+                    <p className="muted">
+                      No jobs yet. Create one to prepare an estimate.
+                    </p>
+                  )}
                 </article>
                 <article className="card customer-overview-card">
                   <div className="section-heading">
@@ -459,10 +521,13 @@ export default async function CustomerDetailPage(props: {
                   </div>
                   {history.slice(0, 3).map((e) => (
                     <div className="customer-activity-row" key={e.id}>
-                      <span>{e.summary}</span><small className="muted">{when(e.at)}</small>
+                      <span>{e.summary}</span>
+                      <small className="muted">{when(e.at)}</small>
                     </div>
                   ))}
-                  {!history.length && <p className="muted">No activity recorded yet.</p>}
+                  {!history.length && (
+                    <p className="muted">No activity recorded yet.</p>
+                  )}
                 </article>
                 <article className="card customer-overview-card">
                   <div className="section-heading">
