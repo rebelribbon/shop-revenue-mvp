@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { WorkspaceIcon } from "@/components/workspace-icon";
 import { RecordSection, WorkCard } from "@/components/record-section";
 import { CustomerContactSummary } from "@/components/customer-contact-summary";
+import { CustomerContactActions } from "@/components/customer-contact-actions";
 import {
   demoCustomers as customers,
   type DemoCustomer,
@@ -338,6 +339,10 @@ export default async function CrmPreview({
                 ← Customers
               </Link>
               <header className="customer-hero">
+                <CustomerContactActions
+                  phone={`+1${who.contact.replace(/\D/g, "")}`}
+                  email={who.email}
+                />
                 <div className="customer-hero-main">
                   <div className="customer-hero-avatar" aria-hidden="true">
                     {who.name.charAt(0)}
@@ -355,25 +360,19 @@ export default async function CrmPreview({
                 </div>
                 <div
                   className="customer-hero-actions"
-                  aria-label="Sample actions"
+                  aria-label="Customer work actions"
                 >
-                  <Link className="btn secondary" href={`${url}&tab=Details`}>
-                    Contact
-                  </Link>
-                  <Link className="btn secondary" href={`${url}&tab=History`}>
-                    History
+                  <Link
+                    className="btn primary"
+                    href={`/demo/job?customer=${who.id}`}
+                  >
+                    + New RO
                   </Link>
                   <Link
                     className="btn secondary"
                     href={`/demo/appointment?customer=${who.id}`}
                   >
                     + Appointment
-                  </Link>
-                  <Link
-                    className="btn primary"
-                    href={`/demo/job?customer=${who.id}`}
-                  >
-                    + New RO
                   </Link>
                 </div>
               </header>

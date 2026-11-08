@@ -1,5 +1,6 @@
 import { RecordSection, WorkCard } from "@/components/record-section";
 import { CustomerContactSummary } from "@/components/customer-contact-summary";
+import { CustomerContactActions } from "@/components/customer-contact-actions";
 import { groupWork } from "@/lib/work-sections";
 import { formatPhone } from "@/lib/phone-format";
 import { jobReference } from "@/lib/job-reference";
@@ -149,6 +150,12 @@ export default async function CustomerDetailPage(props: {
         <Link href="/app/customers">← Customers</Link>
       </p>
       <header className="customer-hero" aria-label="Customer summary">
+        <CustomerContactActions
+          phone={c.phoneE164}
+          email={c.email}
+          textAllowed={!c.textOptedOutAt && !c.doNotContact}
+          emailAllowed={!c.emailOptedOutAt && !c.doNotContact}
+        />
         <div className="customer-hero-main">
           <div className="customer-hero-avatar" aria-hidden="true">
             {c.displayName.trim().charAt(0).toUpperCase()}
@@ -186,23 +193,8 @@ export default async function CustomerDetailPage(props: {
         <div
           className="customer-hero-actions"
           role="group"
-          aria-label="Contact customer"
+          aria-label="Customer work actions"
         >
-          {c.phoneE164 && (
-            <a className="btn secondary" href={`tel:${c.phoneE164}`}>
-              Call
-            </a>
-          )}
-          {c.phoneE164 && !c.textOptedOutAt && !c.doNotContact && (
-            <a className="btn secondary" href={`sms:${c.phoneE164}`}>
-              Text
-            </a>
-          )}
-          {c.email && !c.emailOptedOutAt && !c.doNotContact && (
-            <a className="btn secondary" href={`mailto:${c.email}`}>
-              Email
-            </a>
-          )}
           {!readOnly && (
             <Link
               className="btn primary"

@@ -4791,6 +4791,21 @@ main.customer-index-page {
 .customer-hero-identity {
   min-width: 0;
 }
+.customer-contact-actions {
+  width: 100%;
+}
+.customer-contact-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 8px;
+  max-width: 384px;
+}
+.customer-contact-buttons > .btn {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+}
 .customer-contact-summary {
   display: grid;
   gap: 8px;

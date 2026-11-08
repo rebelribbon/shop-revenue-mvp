@@ -26,8 +26,32 @@ test("mobile customer list scrolls above navigation and actions fit the viewport
   expect(overflow).toBe(false);
 
   await page.goto("/demo/crm?customer=alex");
+  const contacts = page.getByRole("group", {
+    name: "Contact customer",
+    exact: true,
+  });
+  await expect(contacts.getByRole("link")).toHaveCount(3);
+  for (const [name, href] of [
+    ["Call", "tel:+12105550100"],
+    ["Text", "sms:+12105550100"],
+    ["Email", "mailto:alex@example.test"],
+  ]) {
+    const button = contacts.getByRole("link", { name, exact: true });
+    await expect(button).toHaveAttribute("href", href);
+    await expect(button).toBeInViewport();
+    const bounds = await button.boundingBox();
+    expect(bounds!.width).toBeGreaterThanOrEqual(48);
+    expect(bounds!.height).toBeGreaterThanOrEqual(48);
+  }
+  const contactBounds = await contacts.boundingBox();
+  const nameBounds = await page
+    .getByRole("heading", { name: "Alex Example", exact: true })
+    .boundingBox();
+  expect(contactBounds!.y + contactBounds!.height + 8).toBeLessThanOrEqual(
+    nameBounds!.y,
+  );
   const actionButtons = page.locator(".customer-hero-actions > .btn");
-  await expect(actionButtons).toHaveCount(4);
+  await expect(actionButtons).toHaveCount(2);
   for (const button of await actionButtons.all()) {
     const bounds = await button.boundingBox();
     expect(bounds).not.toBeNull();
