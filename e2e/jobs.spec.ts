@@ -233,6 +233,9 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     page.getByRole("region", { name: "Job workflow" }),
   ).toContainText("Complete");
   await page.getByRole("link", { name: "History", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /^Copy (RO|job) number$/ }),
+  ).not.toHaveAttribute("data-ux-primary", "true");
   await expect(page.locator("ol.workflow-timeline")).toContainText(
     "Work completed",
   );

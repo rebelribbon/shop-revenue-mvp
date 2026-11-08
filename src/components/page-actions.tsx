@@ -14,7 +14,9 @@ function eligible(element: HTMLElement) {
     !element.closest(
       '[hidden], [inert], details:not([open]), [data-ux-ready="false"]',
     ) &&
-    !element.matches('.danger, [data-destructive="true"]') &&
+    !element.matches(
+      '.danger, [data-destructive="true"], [data-ux-utility="true"]',
+    ) &&
     !destructive.test(element.textContent?.trim() ?? "")
   );
 }

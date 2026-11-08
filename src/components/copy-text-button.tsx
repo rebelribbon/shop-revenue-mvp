@@ -21,6 +21,7 @@ export function CopyTextButton({
         type="button"
         className="btn secondary compact-btn"
         aria-label={label}
+        data-ux-utility="true"
         disabled={!ready}
         onClick={async () => {
           try {
