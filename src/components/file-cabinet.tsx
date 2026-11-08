@@ -38,7 +38,7 @@ export function FileCabinet({
   const [previewError, setPreviewError] = useState("");
   const active = items.find((item) => item.id === activeId) ?? items[0];
   const eligible = items.filter(
-    (item) => item.signLink && item.documentId && item.status === "Prepared",
+    (item) => (item.signLink || (demoMode && item.preview?.type === "agreement")) && item.documentId && item.status === "Prepared",
   );
   const selectedDocuments = eligible
     .filter((item) => checkedIds.includes(item.documentId!))
@@ -218,7 +218,7 @@ export function FileCabinet({
           )}
           {docs.map((item) => {
             const selectable = Boolean(
-              item.documentId && item.signLink && item.status === "Prepared",
+              item.documentId && (item.signLink || (demoMode && item.preview?.type === "agreement")) && item.status === "Prepared",
             );
             return (
               <div
