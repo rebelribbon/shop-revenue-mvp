@@ -75,7 +75,7 @@ export function WorkspaceNavigation({
                 : undefined
             }
           >
-            {!mobile && <WorkspaceIcon name={item.icon} />}
+            <WorkspaceIcon name={item.icon} />
             <span>{mobile ? item.mobile : item.label}</span>
             {!mobile && (counts[item.href] ?? 0) > 0 && (
               <span
