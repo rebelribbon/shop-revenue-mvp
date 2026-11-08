@@ -52,6 +52,11 @@ export function EstimatePublisher({
           Your customer can approve or decline each priced item and sign. You
           can track the result on the job.
         </p>
+        {path && (
+          <a href={path} target="_blank" rel="noreferrer">
+            Open customer estimate
+          </a>
+        )}
         <Link href={`/app/jobs?job=${jobId}`}>
           Job timeline &amp; next step
         </Link>
