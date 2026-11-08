@@ -4461,3 +4461,107 @@ main.customer-index-page {
     width: 100%;
   }
 }
+
+/* Compact mobile navigation: predictable icon + one-line label, no wrapping. */
+@media (max-width: 899px) {
+  .shop-mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    padding-inline: 8px;
+  }
+  .shop-mobile-nav a,
+  .crm-sample-mobile-nav a {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 0;
+    width: 100%;
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 500;
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow-wrap: normal;
+    text-align: center;
+  }
+  .shop-mobile-nav a > svg,
+  .crm-sample-mobile-nav a > svg {
+    display: block;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+  }
+  .shop-mobile-nav a > span,
+  .crm-sample-mobile-nav a > span {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    white-space: nowrap;
+    word-break: normal;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+  .shop-mobile-nav a[aria-current="page"],
+  .crm-sample-mobile-nav a[aria-current="page"] {
+    color: var(--accent);
+    font-weight: 700;
+    background: var(--hover);
+    border-radius: 8px;
+  }
+  .crm-sample-mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    padding-inline: 8px;
+    align-items: center;
+  }
+  .crm-sample-mobile-nav a {
+    height: 56px;
+    min-height: 56px;
+    padding: 0 !important;
+  }
+}
+@media (max-width: 359px) {
+  .shop-mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .shop-mobile-nav a[href="/app"] {
+    display: flex !important;
+  }
+  .shop-mobile-nav a > span,
+  .crm-sample-mobile-nav a > span {
+    font-size: 10px;
+  }
+}
+.demo-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 70%);
+}
+.demo-preview-dialog {
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 25%);
+}
+.demo-preview-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.demo-preview-dialog-head h3 { margin: 0; }
+.demo-preview-dialog .demo-job-paper { margin-top: 16px; }
+@media (max-width: 600px) {
+  .demo-preview-dialog { padding: 16px; }
+  .demo-preview-dialog .demo-job-paper { padding: 16px; }
+}
