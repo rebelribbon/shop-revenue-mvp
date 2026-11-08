@@ -53,8 +53,8 @@ jobs:
 
       - name: Temporary canonical formatting capture CRM
         run: |
-          pnpm exec prettier --write "src/app/app/customers/page.tsx" "src/app/app/customers/[customerId]/page.tsx" "src/app/globals.css"
-          node -e 'const fs=require("fs");for(const p of process.argv.slice(1)){const s=JSON.stringify(fs.readFileSync(p,"utf8"));for(let i=0;i<s.length;i+=2500)console.log("FORMATTED_FILE|"+p+"|"+Math.floor(i/2500)+"|"+s.slice(i,i+2500));}' "src/app/app/customers/page.tsx" "src/app/app/customers/[customerId]/page.tsx" "src/app/globals.css"
+          pnpm exec prettier --write "src/app/app/customers/page.tsx" "src/app/app/customers/[customerId]/page.tsx" "src/app/globals.css" "src/app/demo/crm/page.tsx"
+          node -e 'const fs=require("fs");for(const p of process.argv.slice(1)){const s=JSON.stringify(fs.readFileSync(p,"utf8"));for(let i=0;i<s.length;i+=2500)console.log("FORMATTED_FILE|"+p+"|"+Math.floor(i/2500)+"|"+s.slice(i,i+2500));}' "src/app/app/customers/page.tsx" "src/app/app/customers/[customerId]/page.tsx" "src/app/globals.css" "src/app/demo/crm/page.tsx"
 
       - name: Generate per-run role passwords
         run: |
