@@ -10,8 +10,8 @@ const money = (cents: number) => new Intl.NumberFormat("en-US", {
 }).format(cents / 100);
 const dollarsToCents = (value: string) => Math.max(0, Math.round((Number(value) || 0) * 100));
 
-export function DemoJobEditor() {
-  const [stage, setStage] = useState<Stage>("setup");
+export function DemoJobEditor({ initialStage = "setup" }: { initialStage?: Stage }) {
+  const [stage, setStage] = useState<Stage>(initialStage);
   const [customer, setCustomer] = useState("Alex Example");
   const [asset, setAsset] = useState("2019 Ford F-150");
   const [jobTitle, setJobTitle] = useState("Front brake service");
