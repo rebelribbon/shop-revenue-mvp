@@ -54,7 +54,7 @@ export function EstimatePublisher({
         </p>
         {path && (
           <a href={path} target="_blank" rel="noreferrer">
-            Open customer estimate
+            Preview estimate
           </a>
         )}
         <Link href={`/app/jobs?job=${jobId}`}>
