@@ -50,7 +50,9 @@ export default async function DocumentTemplatesPage({
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Documents</h1>
       <p>
-        Create agreements and waivers for the customer to review and sign. Your shop defines all work and prices. Change orders use the published revised estimate; the customer only acknowledges the changes and signs.
+        Create agreements and waivers for the customer to review and sign. Your
+        shop defines all work and prices. Change orders use the published
+        revised estimate; the customer only acknowledges the changes and signs.
       </p>
       {p.saved && (
         <p role="status" className="notice ok">
@@ -83,7 +85,9 @@ export default async function DocumentTemplatesPage({
             <section className="card">
               <h2>Start with ready-made documents</h2>
               <p>
-                Work authorization, shop-priced change order and liability waiver. You can edit the wording; customer signatures do not change prices.
+                Work authorization, shop-priced change order and liability
+                waiver. You can edit the wording; customer signatures do not
+                change prices.
               </p>
               {!readOnly && (
                 <ActionForm
