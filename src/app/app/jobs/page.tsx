@@ -433,7 +433,10 @@ export default async function JobsPage({
                     </span>
                   )}
                 </header>
-                <nav className="section-tabs" aria-label="Job setup and customer approval">
+                <nav
+                  className="section-tabs"
+                  aria-label="Job setup and customer approval"
+                >
                   <Link
                     href={`/app/jobs?edit=${selected.id}`}
                     aria-current={undefined}
@@ -454,7 +457,9 @@ export default async function JobsPage({
                   </Link>
                 </nav>
                 <p className="muted">
-                  Enter work and prices first. Preview the customer&apos;s documents, then choose the recipient and send one approval link.
+                  Enter work and prices first. Preview the customer&apos;s
+                  documents, then choose the recipient and send one approval
+                  link.
                 </p>
                 {data.headsUp.map((n, i) => (
                   <p
@@ -831,9 +836,16 @@ export default async function JobsPage({
                 )}
                 {tab === "files" && (
                   <>
-                    <section className="card" aria-label="Customer documents and preview">
+                    <section
+                      className="card"
+                      aria-label="Customer documents and preview"
+                    >
                       <h3>Customer documents</h3>
-                      <p>Preview the complete customer-facing estimate and agreements before you share them. Only the shop can enter work or pricing.</p>
+                      <p>
+                        Preview the complete customer-facing estimate and
+                        agreements before you share them. Only the shop can
+                        enter work or pricing.
+                      </p>
                       {flow?.latest?.estimate ? (
                         <div className="money-actions">
                           <a
@@ -851,41 +863,72 @@ export default async function JobsPage({
                         </div>
                       ) : (
                         <p className="notice">
-                          No prepared estimate yet. Review the job setup and prepare an estimate before sharing it.
-                          {" "}
-                          <Link href={`/app/jobs?job=${selected.id}&tab=work#job-estimate`}>
+                          No prepared estimate yet. Review the job setup and
+                          prepare an estimate before sharing it.{" "}
+                          <Link
+                            href={`/app/jobs?job=${selected.id}&tab=work#job-estimate`}
+                          >
                             Prepare estimate
                           </Link>
                         </p>
                       )}
-                      {s.actor.type !== "support" && s.role !== "technician" && (
-                        <section className="record-details" aria-label="Add agreement to packet">
-                          <h4>Add a document to sign</h4>
-                          <p>Choose an agreement to include in the customer&apos;s packet. It will not be sent until you press Share.</p>
-                          {data.templates.length ? (
-                            <ActionForm
-                              action={sendDocumentAction}
-                              hidden={{ jobId: selected.id }}
-                              submitLabel="Add document to packet"
-                              variant="secondary"
-                            >
-                              <label htmlFor="docs-template">Agreement</label>
-                              <select id="docs-template" name="templateId" required>
-                                {data.templates.map((t) => (
-                                  <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                              </select>
-                            </ActionForm>
-                          ) : (
-                            <p>No agreements configured. <Link href="/app/settings/documents">Set up document templates</Link>.</p>
-                          )}
-                        </section>
-                      )}
+                      {s.actor.type !== "support" &&
+                        s.role !== "technician" && (
+                          <section
+                            className="record-details"
+                            aria-label="Add agreement to packet"
+                          >
+                            <h4>Add a document to sign</h4>
+                            <p>
+                              Choose an agreement to include in the
+                              customer&apos;s packet. It will not be sent until
+                              you press Share.
+                            </p>
+                            {data.templates.length ? (
+                              <ActionForm
+                                action={sendDocumentAction}
+                                hidden={{ jobId: selected.id }}
+                                submitLabel="Add document to packet"
+                                variant="secondary"
+                              >
+                                <label htmlFor="docs-template">Agreement</label>
+                                <select
+                                  id="docs-template"
+                                  name="templateId"
+                                  required
+                                >
+                                  {data.templates.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                      {t.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </ActionForm>
+                            ) : (
+                              <p>
+                                No agreements configured.{" "}
+                                <Link href="/app/settings/documents">
+                                  Set up document templates
+                                </Link>
+                                .
+                              </p>
+                            )}
+                          </section>
+                        )}
                     </section>
                     <div id="share-customer-packet">
                       <h3>Preview &amp; share</h3>
-                      <p>Open the current estimate below, choose which agreements to include, preview exactly what the customer sees, then enter an email and send.</p>
-                      {!flow?.latest?.estimate && <p className="muted">The Share option appears as soon as an estimate is prepared.</p>}
+                      <p>
+                        Open the current estimate below, choose which agreements
+                        to include, preview exactly what the customer sees, then
+                        enter an email and send.
+                      </p>
+                      {!flow?.latest?.estimate && (
+                        <p className="muted">
+                          The Share option appears as soon as an estimate is
+                          prepared.
+                        </p>
+                      )}
                     </div>
                     <FileCabinet
                       items={data.cabinet}
