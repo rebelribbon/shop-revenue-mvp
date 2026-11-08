@@ -1,4 +1,5 @@
 import { FileUploader } from "@/components/file-uploader";
+import { jobReference } from "@/lib/job-reference";
 import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
@@ -33,7 +34,6 @@ import {
 } from "@/lib/business-types";
 import { localDateKey } from "@/lib/timezone";
 import { notFound } from "next/navigation";
-import { WorkNavigation } from "@/components/work-navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { and, eq } from "drizzle-orm";
 import { appointment, estimateVersion, recommendation } from "@/db/schema";
@@ -329,10 +329,8 @@ export default async function JobsPage({
     }).format(c / 100);
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <h1>{editing ? (selected ? "Edit job" : labels.newJob) : labels.jobs}</h1>
-      {!editing && !selected && (
-        <WorkNavigation current="jobs" businessType={type} />
-      )}
+      <h1>{editing ? (selected ? (isAutomotive(type) ? "Edit RO" : "Edit job") : labels.newJob) : isAutomotive(type) ? "Repair orders" : labels.jobs}</h1>
+
       {editing ? (
         <>
           <p>
@@ -414,6 +412,7 @@ export default async function JobsPage({
               <article className="card job-profile">
                 <header className="profile-head">
                   <div>
+                    <p className="customer-job-ref">{jobReference(selected.id, isAutomotive(type))}</p>
                     <h2 className="profile-title">
                       {input.repeat && "↻ "}
                       {selected.title}
