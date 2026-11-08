@@ -89,11 +89,11 @@ jobs:
 
 
   preview-ci:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue' || github.ref == 'refs/heads/m9-launch-hardening')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.ref_protected
     uses: ./.github/workflows/ci.yml
 
   preview:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/m2-customer-vehicle-memory' || github.ref == 'refs/heads/m3-job-costing' || github.ref == 'refs/heads/m4-invoices-payments' || github.ref == 'refs/heads/m7-money-finder' || github.ref == 'refs/heads/m8-recovered-revenue' || github.ref == 'refs/heads/m9-launch-hardening')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.ref_protected
     needs: [e2e, preview-ci]
     runs-on: ubuntu-latest
     environment: staging
@@ -129,7 +129,7 @@ jobs:
           test -n "$VERCEL_TOKEN"
           npx --yes vercel@63.1.0 deploy --yes > deploy-url.txt
           scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
-          if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ] || [ "$GITHUB_REF_NAME" = "m9-launch-hardening" ]; then
+          if [ "$GITHUB_REF_NAME" = "main" ] || [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ] || [ "$GITHUB_REF_NAME" = "m9-launch-hardening" ]; then
             npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"
           fi
           echo "Preview: $(tail -n 1 deploy-url.txt)" >> "$GITHUB_STEP_SUMMARY"
