@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CabinetItem } from "@/domain/documents";
 import { prepareDocumentShare } from "@/server/actions/document-sharing";
-import { removeDocumentAction, voidDocumentAction } from "@/server/actions/documents";
+import {
+  removeDocumentAction,
+  voidDocumentAction,
+} from "@/server/actions/documents";
 import { ActionForm } from "./action-form";
 import { DocumentShare } from "./document-share";
 
@@ -24,7 +27,9 @@ export function FileCabinet({
 }) {
   const estimate = items.find((item) => item.estimateShareId);
   const [view, setView] = useState<View>("all");
-  const [activeId, setActiveId] = useState<string>(estimate?.id ?? items[0]?.id ?? "");
+  const [activeId, setActiveId] = useState<string>(
+    estimate?.id ?? items[0]?.id ?? "",
+  );
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [shareOpen, setShareOpen] = useState(autoOpenShare);
   const [estimatePreview, setEstimatePreview] = useState<string | null>(null);
@@ -36,56 +41,85 @@ export function FileCabinet({
   const selectedDocuments = eligible
     .filter((item) => checkedIds.includes(item.documentId!))
     .map((item) => item.documentId!);
-  const docs = useMemo(() => items.filter((item) =>
-    view === "uploaded" ? item.group === "Added files" :
-    view === "generated" ? item.group !== "Added files" : true,
-  ), [items, view]);
-  const previewPath = active?.signLink
-    ?? (active?.estimateShareId ? estimatePreview : null)
-    ?? active?.href
-    ?? null;
-  const iframePreview = Boolean(previewPath && (
-    previewPath.startsWith("/sign/") ||
-    previewPath.startsWith("/estimate/") ||
-    previewPath.startsWith("/packet") ||
-    previewPath.startsWith("/media/")
-  ));
-  const date = (d: Date) => new Date(d).toLocaleDateString("en-US", {
-    timeZone, month: "short", day: "numeric", year: "numeric",
-  });
+  const docs = useMemo(
+    () =>
+      items.filter((item) =>
+        view === "uploaded"
+          ? item.group === "Added files"
+          : view === "generated"
+            ? item.group !== "Added files"
+            : true,
+      ),
+    [items, view],
+  );
+  const previewPath =
+    active?.signLink ??
+    (active?.estimateShareId ? estimatePreview : null) ??
+    active?.href ??
+    null;
+  const iframePreview = Boolean(
+    previewPath &&
+    (previewPath.startsWith("/sign/") ||
+      previewPath.startsWith("/estimate/") ||
+      previewPath.startsWith("/packet") ||
+      previewPath.startsWith("/media/")),
+  );
+  const date = (d: Date) =>
+    new Date(d).toLocaleDateString("en-US", {
+      timeZone,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
 
   useEffect(() => {
     if (!active?.estimateShareId) return;
     let live = true;
     const id = active.estimateShareId;
-    void prepareDocumentShare({ id, kind: "estimate" }).then((result) => {
-      if (!live) return;
-      if (result.ok) {
-        setEstimatePreview(result.data.path);
-        setPreviewError("");
-      } else {
-        setEstimatePreview(null);
-        setPreviewError(result.message);
-      }
-    }).catch(() => {
-      if (live) setPreviewError("Preview unavailable. Try again.");
-    });
-    return () => { live = false; };
+    void prepareDocumentShare({ id, kind: "estimate" })
+      .then((result) => {
+        if (!live) return;
+        if (result.ok) {
+          setEstimatePreview(result.data.path);
+          setPreviewError("");
+        } else {
+          setEstimatePreview(null);
+          setPreviewError(result.message);
+        }
+      })
+      .catch(() => {
+        if (live) setPreviewError("Preview unavailable. Try again.");
+      });
+    return () => {
+      live = false;
+    };
   }, [active?.estimateShareId]);
 
   return (
-    <section className="docs-workspace" id="file-cabinet" aria-label="Documents and customer packet">
+    <section
+      className="docs-workspace"
+      id="file-cabinet"
+      aria-label="Documents and customer packet"
+    >
       <header className="docs-toolbar">
         <div>
-          <h3>Documents <span className="docs-counter">{items.length}</span></h3>
-          <p className="muted">Select a document to preview. Tick agreements to include in the customer packet.</p>
+          <h3>
+            Documents <span className="docs-counter">{items.length}</span>
+          </h3>
+          <p className="muted">
+            Select a document to preview. Tick agreements to include in the
+            customer packet.
+          </p>
         </div>
         <div className="docs-toolbar-actions">
           <button
             type="button"
             className="btn secondary"
             disabled={!previewPath}
-            onClick={() => { if (previewPath) window.open(previewPath, "_blank", "noopener,noreferrer"); }}
+            onClick={() => {
+              if (previewPath)
+                window.open(previewPath, "_blank", "noopener,noreferrer");
+            }}
           >
             Open preview
           </button>
@@ -105,13 +139,27 @@ export function FileCabinet({
       </header>
 
       {shareOpen && estimate?.estimateShareId && !readOnly && (
-        <section id="docs-share-panel" className="docs-share-panel" aria-label="Share customer documents">
+        <section
+          id="docs-share-panel"
+          className="docs-share-panel"
+          aria-label="Share customer documents"
+        >
           <div className="docs-share-heading">
             <div>
               <h4>Share with customer</h4>
-              <p className="muted">{1 + selectedDocuments.length} document{selectedDocuments.length ? "s" : ""} in this packet · Review recipients and send</p>
+              <p className="muted">
+                {1 + selectedDocuments.length} document
+                {selectedDocuments.length ? "s" : ""} in this packet · Review
+                recipients and send
+              </p>
             </div>
-            <button className="btn secondary" type="button" onClick={() => setShareOpen(false)}>Close</button>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => setShareOpen(false)}
+            >
+              Close
+            </button>
           </div>
           <DocumentShare
             id={estimate.estimateShareId}
@@ -124,19 +172,47 @@ export function FileCabinet({
       )}
 
       <div className="docs-tabs" role="group" aria-label="Document types">
-        <button type="button" className={view === "all" ? "is-active" : ""} onClick={() => setView("all")}>All ({items.length})</button>
-        <button type="button" className={view === "generated" ? "is-active" : ""} onClick={() => setView("generated")}>Generated ({items.filter((item) => item.group !== "Added files").length})</button>
-        <button type="button" className={view === "uploaded" ? "is-active" : ""} onClick={() => setView("uploaded")}>Uploaded ({items.filter((item) => item.group === "Added files").length})</button>
+        <button
+          type="button"
+          className={view === "all" ? "is-active" : ""}
+          onClick={() => setView("all")}
+        >
+          All ({items.length})
+        </button>
+        <button
+          type="button"
+          className={view === "generated" ? "is-active" : ""}
+          onClick={() => setView("generated")}
+        >
+          Generated (
+          {items.filter((item) => item.group !== "Added files").length})
+        </button>
+        <button
+          type="button"
+          className={view === "uploaded" ? "is-active" : ""}
+          onClick={() => setView("uploaded")}
+        >
+          Uploaded (
+          {items.filter((item) => item.group === "Added files").length})
+        </button>
       </div>
 
       <div className="docs-split">
         <div className="docs-list" role="list" aria-label="Documents">
-          <div className="docs-list-heading"><span>Document</span><span>Status</span></div>
+          <div className="docs-list-heading">
+            <span>Document</span>
+            <span>Status</span>
+          </div>
           {docs.length === 0 && (
-            <div className="docs-empty">No documents here yet. Prepare an estimate or add an agreement from the job&apos;s Docs section.</div>
+            <div className="docs-empty">
+              No documents here yet. Prepare an estimate or add an agreement
+              from the job&apos;s Docs section.
+            </div>
           )}
           {docs.map((item) => {
-            const selectable = Boolean(item.documentId && item.signLink && item.status === "Prepared");
+            const selectable = Boolean(
+              item.documentId && item.signLink && item.status === "Prepared",
+            );
             return (
               <div
                 className={`docs-list-row ${active?.id === item.id ? "is-selected" : ""}`}
@@ -149,10 +225,19 @@ export function FileCabinet({
                       type="checkbox"
                       aria-label={`Include ${item.title} in packet`}
                       checked={checkedIds.includes(item.documentId!)}
-                      onChange={(event) => setCheckedIds((ids) =>
-                        event.target.checked ? [...ids, item.documentId!] : ids.filter((id) => id !== item.documentId))}
+                      onChange={(event) =>
+                        setCheckedIds((ids) =>
+                          event.target.checked
+                            ? [...ids, item.documentId!]
+                            : ids.filter((id) => id !== item.documentId),
+                        )
+                      }
                     />
-                  ) : <span className="docs-row-icon" aria-hidden="true">▤</span>}
+                  ) : (
+                    <span className="docs-row-icon" aria-hidden="true">
+                      ▤
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="docs-doc-select"
@@ -160,10 +245,14 @@ export function FileCabinet({
                     aria-current={active?.id === item.id ? "true" : undefined}
                   >
                     <strong>{item.title}</strong>
-                    <small>{item.detail} · {date(item.at)}</small>
+                    <small>
+                      {item.detail} · {date(item.at)}
+                    </small>
                   </button>
                 </div>
-                <span className={`docs-status ${item.status === "Signed" ? "is-done" : ""}`}>
+                <span
+                  className={`docs-status ${item.status === "Signed" ? "is-done" : ""}`}
+                >
                   {item.status || "Filed"}
                 </span>
               </div>
@@ -175,8 +264,15 @@ export function FileCabinet({
           {active ? (
             <>
               <div className="docs-preview-head">
-                <div><strong>{active.title}</strong><small>{active.status || "Filed"}</small></div>
-                {previewPath && <a href={previewPath} target="_blank" rel="noreferrer">Full preview</a>}
+                <div>
+                  <strong>{active.title}</strong>
+                  <small>{active.status || "Filed"}</small>
+                </div>
+                {previewPath && (
+                  <a href={previewPath} target="_blank" rel="noreferrer">
+                    Full preview
+                  </a>
+                )}
               </div>
               {iframePreview && previewPath ? (
                 <iframe
@@ -188,10 +284,25 @@ export function FileCabinet({
                 />
               ) : (
                 <div className="docs-preview-placeholder">
-                  <span className="docs-preview-glyph" aria-hidden="true">▤</span>
+                  <span className="docs-preview-glyph" aria-hidden="true">
+                    ▤
+                  </span>
                   <h4>{active.title}</h4>
-                  <p>{previewError && active.estimateShareId ? previewError : "This document opens in its own view. Select Full preview to see the complete document."}</p>
-                  {previewPath && <a className="btn secondary" href={previewPath} target="_blank" rel="noreferrer">View document</a>}
+                  <p>
+                    {previewError && active.estimateShareId
+                      ? previewError
+                      : "This document opens in its own view. Select Full preview to see the complete document."}
+                  </p>
+                  {previewPath && (
+                    <a
+                      className="btn secondary"
+                      href={previewPath}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View document
+                    </a>
+                  )}
                 </div>
               )}
               {active.signLink && !readOnly && (
@@ -206,27 +317,35 @@ export function FileCabinet({
                   />
                 </div>
               )}
-              {active.group === "Added files" && active.documentId && !readOnly && (
-                <div className="docs-preview-foot">
-                  <ActionForm
-                    action={removeDocumentAction}
-                    hidden={{ documentId: active.documentId }}
-                    submitLabel="Remove file"
-                    variant="danger"
-                    confirm={`Remove ${active.title}?`}
-                  />
-                </div>
-              )}
+              {active.group === "Added files" &&
+                active.documentId &&
+                !readOnly && (
+                  <div className="docs-preview-foot">
+                    <ActionForm
+                      action={removeDocumentAction}
+                      hidden={{ documentId: active.documentId }}
+                      submitLabel="Remove file"
+                      variant="danger"
+                      confirm={`Remove ${active.title}?`}
+                    />
+                  </div>
+                )}
             </>
           ) : (
             <div className="docs-preview-placeholder">
               <h4>No documents yet</h4>
-              <p>Prepare the estimate from the Job Setup view and it will appear here automatically.</p>
+              <p>
+                Prepare the estimate from the Job Setup view and it will appear
+                here automatically.
+              </p>
             </div>
           )}
         </aside>
       </div>
-      <p className="docs-footnote">Shop pricing and document content are fixed before sharing. Customer signatures and signed copies stay attached to this job.</p>
+      <p className="docs-footnote">
+        Shop pricing and document content are fixed before sharing. Customer
+        signatures and signed copies stay attached to this job.
+      </p>
     </section>
   );
 }
