@@ -66,20 +66,20 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .getByRole("heading", { name: `Brakes ${info.project.name}`, exact: true })
     .locator("xpath=ancestor::article[1]");
   await card
-    .getByRole("button", { name: "Send estimate", exact: true })
+    .getByRole("button", { name: "Prepare estimate & choose recipient", exact: true })
     .click();
   await expect(
     card.getByRole("link", { name: "Text to customer", exact: true }),
   ).toHaveAttribute(
     "href",
-    new RegExp(`^sms:\\${mobile}[?&]body=.*%2Festimate%2F`),
+    new RegExp(`^sms:\\${mobile}[?&]body=.*%2Fpacket%3F`),
   );
   await expect(
-    card.getByRole("link", { name: "Email to customer", exact: true }),
+    card.getByRole("link", { name: "Open email app instead", exact: true }),
   ).toHaveAttribute(
     "href",
     new RegExp(
-      `^mailto:job-${info.project.name}@example\\.test\\?subject=.*&body=.*%2Festimate%2F`,
+      `^mailto:job-${info.project.name}@example\\.test\\?subject=.*&body=.*%2Fpacket%3F`,
     ),
   );
   await expect(
