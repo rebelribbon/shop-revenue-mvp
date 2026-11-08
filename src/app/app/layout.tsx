@@ -70,7 +70,6 @@ export default async function ShopLayout({
             {b?.dba || b?.legalName}
           </Link>
           <WorkspaceNavigation
-            canSeeMoney={s.role === "owner"}
             automotive={isAutomotive(b?.businessType ?? "automotive")}
             counts={{ "/app/tasks": tasksDue }}
           />
@@ -155,7 +154,6 @@ export default async function ShopLayout({
         </div>
         <WorkspaceNavigation
           mobile
-          canSeeMoney={s.role === "owner"}
           automotive={isAutomotive(b?.businessType ?? "automotive")}
           counts={{ "/app/tasks": tasksDue }}
         />
