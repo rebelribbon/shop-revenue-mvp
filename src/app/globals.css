@@ -3739,3 +3739,28 @@ a.card.create-tile:hover {
     margin-bottom: 16px;
   }
 }
+
+
+/* Public sample of the exact responsive CRM classes; never uses customer data. */
+.crm-sample { min-height: 100vh; background: var(--bg); padding-bottom: 88px; }
+.crm-sample-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.crm-sample-head a.crm-sample-brand { font-weight: 800; font-size: 1.15rem; text-decoration: none; }
+.crm-sample-shell { display: grid; grid-template-columns: 192px minmax(0,1fr); }
+.crm-sample-side { display: flex; flex-direction: column; gap: 8px; background: var(--ink); min-height: calc(100vh - 120px); padding: 24px 16px; }
+.crm-sample-side a { display: block; padding: 16px; border-radius: 8px; color: var(--ink-text); text-decoration: none; }
+.crm-sample-side a[aria-current="page"] { background: var(--ink-raised); font-weight: 700; color: white; }
+.crm-sample-content { min-width: 0; max-width: 1400px; padding: 24px; }
+.crm-sample-search { padding: 16px; margin: 0 0 24px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: var(--surface); max-width: 720px; }
+.crm-sample-back { display: inline-block; margin-bottom: 8px; }
+.crm-sample-mobile-nav { display: none; }
+@media (max-width: 790px) {
+  .crm-sample { padding-bottom: 88px; }
+  .crm-sample-head { padding: 16px; }
+  .crm-sample-head .muted { font-size: .75rem; }
+  .crm-sample-shell { display: block; }
+  .crm-sample-side { display: none; }
+  .crm-sample-content { padding: 16px; }
+  .crm-sample-mobile-nav { display: grid; position: fixed; bottom: 0; left: 0; right: 0; grid-template-columns: repeat(5,minmax(0,1fr)); padding: 8px 0 calc(8px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); z-index: 10; }
+  .crm-sample-mobile-nav a { display: grid; place-items: center; min-height: 48px; padding: 8px 0; font-size: .73rem; text-decoration: none; color: var(--muted); }
+  .crm-sample-mobile-nav a[aria-current="page"] { color: var(--accent); font-weight: 700; }
+}
