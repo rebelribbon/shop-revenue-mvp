@@ -4778,6 +4778,7 @@ main.customer-index-page {
   margin: 16px 0 0;
 }
 .customer-profile-main .customer-record-tabs {
+  position: static;
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;

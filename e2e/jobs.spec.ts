@@ -275,11 +275,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     fullPage: true,
   });
   await page.goto("/app/jobs");
-  await expect(
-    page.getByRole("link", {
-      name: new RegExp(`^Open job: Brakes ${info.project.name}`),
-    }),
-  ).toContainText("owes $150.00");
+  const workCard = page.getByRole("link", {
+    name: new RegExp(`^Open job: Brakes ${info.project.name}`),
+  });
+  await expect(workCard).toContainText("Balance due");
+  await expect(workCard).toContainText("$150.00");
   await page.goto(invoiceUrl);
   await invoice.getByText("Correct this entry", { exact: true }).click();
   await invoice
