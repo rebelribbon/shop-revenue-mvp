@@ -15,7 +15,7 @@ test("public CRM buttons open working customer and job pricing demos", async ({
   await page.getByRole("button", { name: "Save demo customer" }).click();
   await expect(page.getByText("Customer created in this demo")).toBeVisible();
   await page.getByRole("link", { name: "+ Set up job & pricing" }).click();
-  await expect(page.getByRole("heading", { name: "Job Setup" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "RO Setup" })).toBeVisible();
 
   const before = await page.locator(".demo-job-grand strong").textContent();
   await page.getByRole("spinbutton", { name: "Unit price 3" }).fill("220");
@@ -75,7 +75,7 @@ test("demo navigation doesn't cover customers and can jump directly to pricing",
     expect(last!.y + last!.height).toBeLessThanOrEqual(bottom!.y - 8);
   }
   await page.getByRole("link", { name: "Try job setup & pricing" }).click();
-  await expect(page.getByRole("heading", { name: "Job Setup" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "RO Setup" })).toBeVisible();
   await page.getByRole("button", { name: "4. Payment" }).click();
   await expect(page.getByRole("heading", { name: "Payments" })).toBeVisible();
 });
