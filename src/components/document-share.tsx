@@ -7,9 +7,9 @@ import {
   emailCustomerDocument,
   prepareDocumentShare,
 } from "@/server/actions/document-sharing";
-import type { ShareRecipient } from "@/domain/document-sharing";
+import type { ShareRecipient, PacketDocument } from "@/domain/document-sharing";
 
-export type ShareData = ShareRecipient & { path: string };
+export type ShareData = ShareRecipient & { path: string; documents?: PacketDocument[] };
 export function DocumentShare({
   id,
   kind,
@@ -32,15 +32,21 @@ export function DocumentShare({
   const [emailAddress, setEmailAddress] = useState(initial?.email ?? "");
   const [phoneNumber, setPhoneNumber] = useState(initial?.phone ?? "");
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
   const [needsReplacement, setNeedsReplacement] = useState(false),
     [revisionPath, setRevisionPath] = useState<string | undefined>();
+  const selected = (data?.documents ?? []).filter((doc) => selectedDocuments.includes(doc.id));
+  const previewPath = data && kind === "estimate"
+    ? `/packet?${new URLSearchParams([
+        ["e", data.path.split("/").at(-1) ?? ""],
+        ...selected.map((doc): [string, string] => ["d", doc.path.split("/").at(-1) ?? ""]),
+      ]).toString()}`
+    : data?.path ?? "";
   const url = data
-    ? new URL(
-        data.path,
-        typeof window === "undefined"
-          ? "https://example.invalid"
-          : window.location.origin,
-      ).href
+    ? new URL(previewPath,
+        typeof window === "undefined" ? "https://example.invalid" : window.location.origin).href
     : "";
   const from = data?.senderName ? ` from ${data.senderName}` : "";
   // Texts carry the opt-out line the FCC's standard keywords rely on.
@@ -150,10 +156,54 @@ export function DocumentShare({
               />
             </label>
           )}
-          <p className="muted">
-            Send email submits through Shop Revenue. Text opens your phone’s
-            texting app so you can review and send the message yourself.
-          </p>
+          {kind === "estimate" && (
+            <section className="card" aria-label="Customer signing packet">
+              <h4>Documents included in this request</h4>
+              <p>Estimate &amp; work authorization (required)</p>
+              {(data.documents ?? []).map((doc) => (
+                <label key={doc.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedDocuments.includes(doc.id)}
+                    onChange={(e) => setSelectedDocuments((previous) =>
+                      e.target.checked
+                        ? [...previous, doc.id]
+                        : previous.filter((id) => id !== doc.id))}
+                  />
+                  {doc.title} · additional signature
+                </label>
+              ))}
+              {!data.documents?.length && (
+                <p className="muted">No additional unsigned agreements have been prepared for this job.</p>
+              )}
+              <p className="muted">
+                One link will show the estimate and {selected.length} additional agreement{selected.length === 1 ? "" : "s"}.
+                Any newly added work or price needs a new shop-prepared estimate.
+              </p>
+            </section>
+          )}
+          <label>
+            Email subject
+            <input
+              value={emailSubject || `${data.senderName || "Your shop"} — ${kind === "estimate" ? "estimate for approval" : "invoice"}`}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              maxLength={160}
+            />
+          </label>
+          <label>
+            Message to customer
+            <textarea
+              value={emailMessage}
+              onChange={(e) => setEmailMessage(e.target.value)}
+              rows={3}
+              maxLength={1000}
+              placeholder={`Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`}
+            />
+          </label>
+          <p className="muted">Preview the exact customer packet before sending. The app records provider acceptance, not whether the recipient opened it. SMS opens your texting app; it is not sent automatically.</p>
+          <a className="btn secondary" href={previewPath} target="_blank" rel="noreferrer">
+            Preview customer's view
+          </a>
           <div className="money-actions">
             {canText && (
               <a
@@ -181,6 +231,9 @@ export function DocumentShare({
                       id,
                       kind,
                       email: emailAddress.trim(),
+                      subject: emailSubject.trim() || `${data.senderName || "Your shop"} — ${kind === "estimate" ? "estimate for approval" : "invoice"}`,
+                      message: emailMessage.trim() || `Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`,
+                      documentIds: kind === "estimate" ? selected.map((doc) => doc.id) : [],
                     });
                     setMessage(r.message);
                   } catch {
