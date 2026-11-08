@@ -14,6 +14,16 @@ test("customer search, directory and profile information have distinct panels", 
   });
   await expect(search).toBeVisible();
   await expect(directory.locator(".customer-directory-row")).toHaveCount(4);
+  for (const card of await directory.locator(".customer-directory-row").all()) {
+    expect(
+      await card.evaluate((el) =>
+        Math.abs(
+          el.getBoundingClientRect().width -
+            el.parentElement!.getBoundingClientRect().width,
+        ),
+      ),
+    ).toBeLessThanOrEqual(1);
+  }
   const searchBounds = await search.boundingBox();
   const directoryBounds = await directory.boundingBox();
   expect(directoryBounds!.y).toBeGreaterThanOrEqual(

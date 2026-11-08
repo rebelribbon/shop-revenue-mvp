@@ -4748,7 +4748,11 @@ main.customer-index-page {
   margin: 0;
   border: 0;
 }
-.record-section .customer-directory-row {
+.record-section a.customer-directory-row:not(.btn) {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 16px;
+  gap: 16px;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   height: 100%;
@@ -4920,7 +4924,7 @@ main.customer-index-page {
   .record-section-actions {
     width: 100%;
   }
-  .record-section .customer-directory-row {
+  .record-section a.customer-directory-row:not(.btn) {
     min-height: 104px;
   }
   .record-section .customer-directory-contact {
@@ -4958,6 +4962,11 @@ main.customer-index-page {
   border-radius: 8px;
   color: var(--text);
   text-decoration: none;
+}
+.record-section .record-section-body a.record-information-card {
+  display: grid;
+  width: 100%;
+  padding: 16px;
 }
 .record-two-column {
   display: grid;
@@ -5021,7 +5030,7 @@ main.customer-index-page {
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }
-  .record-section .customer-directory-row {
+  .record-section a.customer-directory-row:not(.btn) {
     gap: 8px;
     grid-template-columns: 48px minmax(0, 1fr) 16px;
   }
