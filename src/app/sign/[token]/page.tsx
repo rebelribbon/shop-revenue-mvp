@@ -26,7 +26,7 @@ export default async function SignPage({
       <section className="card">
         <p style={{ whiteSpace: "pre-wrap" }}>{d.body}</p>
       </section>
-      {unsafeCustomerPricedChangeOrder(d) ? (
+      {d.status === "sent" && unsafeCustomerPricedChangeOrder(d) ? (
         <section className="card" role="alert">
           <h2>A corrected change order is needed</h2>
           <p>
