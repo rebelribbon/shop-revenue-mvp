@@ -1,4 +1,5 @@
 import { RecordSection, WorkCard } from "@/components/record-section";
+import { CustomerContactSummary } from "@/components/customer-contact-summary";
 import { groupWork } from "@/lib/work-sections";
 import { formatPhone } from "@/lib/phone-format";
 import { jobReference } from "@/lib/job-reference";
@@ -152,10 +153,20 @@ export default async function CustomerDetailPage(props: {
           <div className="customer-hero-avatar" aria-hidden="true">
             {c.displayName.trim().charAt(0).toUpperCase()}
           </div>
-          <div>
+          <div className="customer-hero-identity">
             <p className="customer-eyebrow">Customer record</p>
             <h1>{c.displayName}</h1>
-            <p className="muted">
+            <CustomerContactSummary
+              phone={c.phoneE164 ? formatPhone(c.phoneE164) : null}
+              email={c.email}
+              address={address}
+              addressHref={
+                address
+                  ? `https://maps.google.com/?q=${encodeURIComponent(address)}`
+                  : undefined
+              }
+            />
+            <p className="muted customer-hero-asset">
               {auto
                 ? data.vehicles[0]
                   ? [
@@ -219,31 +230,14 @@ export default async function CustomerDetailPage(props: {
         <aside className="card profile-card customer-profile-side">
           <header className="profile-head">
             <div>
-              <h2 className="profile-title">Customer details</h2>
-              <p className="profile-meta">
-                {[
-                  address ? (
-                    <a
-                      key="a"
-                      href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {address}
-                    </a>
-                  ) : null,
-                  c.phoneE164
-                    ? `${formatPhone(c.phoneE164)}${c.textOptedOutAt ? " (no texts)" : ""}`
-                    : null,
-                  c.email
-                    ? `${c.email}${c.emailOptedOutAt ? " (no emails)" : ""}`
-                    : null,
-                  `customer since ${c.createdAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", year: "numeric" })}`,
-                ]
-                  .filter(Boolean)
-                  .map((part, i) => (
-                    <span key={i}>{part}</span>
-                  ))}
+              <h2 className="profile-title">Account summary</h2>
+              <p className="muted">
+                Customer since{" "}
+                {c.createdAt.toLocaleDateString("en-US", {
+                  timeZone: tz,
+                  month: "short",
+                  year: "numeric",
+                })}
               </p>
             </div>
           </header>

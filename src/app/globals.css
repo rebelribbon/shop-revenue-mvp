@@ -4784,6 +4784,40 @@ main.customer-index-page {
   border-radius: 8px;
   background: var(--surface);
 }
+.customer-hero .customer-hero-main {
+  flex: 1;
+  align-items: flex-start;
+}
+.customer-hero-identity {
+  min-width: 0;
+}
+.customer-contact-summary {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+.customer-contact-summary > div {
+  min-width: 0;
+}
+.customer-contact-summary dt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.customer-contact-summary dd {
+  margin: 0;
+  font-size: 16px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+.customer-hero .customer-hero-asset {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
 .customer-profile-main .customer-overview-grid {
   align-items: start;
 }

@@ -7,6 +7,8 @@ export const demoCustomers = [
     name: "Alex Example",
     asset: "2019 Ford F-150",
     contact: "(210) 555-0100",
+    email: "alex@example.test",
+    address: "100 Example Lane, San Antonio, TX 78201",
   },
   {
     id: "jordan",
@@ -15,6 +17,8 @@ export const demoCustomers = [
     name: "Jordan Sample",
     asset: "2022 Toyota Camry",
     contact: "(210) 555-0111",
+    email: "jordan@example.test",
+    address: "200 Example Lane, San Antonio, TX 78201",
   },
   {
     id: "taylor",
@@ -23,6 +27,8 @@ export const demoCustomers = [
     name: "Taylor Demo",
     asset: "2021 Honda Civic",
     contact: "(210) 555-0122",
+    email: "taylor@example.test",
+    address: "300 Example Lane, San Antonio, TX 78201",
   },
   {
     id: "morgan",
@@ -31,6 +37,8 @@ export const demoCustomers = [
     name: "Morgan Test",
     asset: "2023 Ford Explorer",
     contact: "(210) 555-0133",
+    email: "morgan@example.test",
+    address: "400 Example Lane, San Antonio, TX 78201",
   },
 ];
 

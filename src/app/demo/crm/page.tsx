@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { WorkspaceIcon } from "@/components/workspace-icon";
 import { RecordSection, WorkCard } from "@/components/record-section";
+import { CustomerContactSummary } from "@/components/customer-contact-summary";
 import {
   demoCustomers as customers,
   type DemoCustomer,
@@ -341,10 +342,15 @@ export default async function CrmPreview({
                   <div className="customer-hero-avatar" aria-hidden="true">
                     {who.name.charAt(0)}
                   </div>
-                  <div>
+                  <div className="customer-hero-identity">
                     <p className="customer-eyebrow">Customer record</p>
                     <h1>{who.name}</h1>
-                    <p className="muted">{who.asset}</p>
+                    <CustomerContactSummary
+                      phone={who.contact}
+                      email={who.email}
+                      address={who.address}
+                    />
+                    <p className="muted customer-hero-asset">{who.asset}</p>
                   </div>
                 </div>
                 <div
@@ -373,22 +379,6 @@ export default async function CrmPreview({
               </header>
               <div className="profile-layout customer-profile-layout">
                 <aside className="customer-profile-side">
-                  <RecordSection title="Contact details">
-                    <dl className="record-facts">
-                      <div>
-                        <dt>Mobile</dt>
-                        <dd>{who.contact}</dd>
-                      </div>
-                      <div>
-                        <dt>Email</dt>
-                        <dd>{who.id}@example.test</dd>
-                      </div>
-                      <div>
-                        <dt>Location</dt>
-                        <dd>San Antonio, TX</dd>
-                      </div>
-                    </dl>
-                  </RecordSection>
                   <RecordSection title="Account summary">
                     <dl className="record-facts">
                       <div>
@@ -530,11 +520,15 @@ export default async function CrmPreview({
                         </div>
                         <div>
                           <dt>Email</dt>
-                          <dd>{who.id}@example.test</dd>
+                          <dd>{who.email}</dd>
                         </div>
                         <div>
                           <dt>Mobile</dt>
                           <dd>{who.contact}</dd>
+                        </div>
+                        <div>
+                          <dt>Address</dt>
+                          <dd>{who.address}</dd>
                         </div>
                       </dl>
                     </RecordSection>

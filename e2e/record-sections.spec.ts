@@ -37,7 +37,6 @@ test("customer search, directory and profile information have distinct panels", 
     page.getByRole("heading", { name: "Jordan Sample", exact: true }),
   ).toBeVisible();
   for (const name of [
-    "Contact details",
     "Account summary",
     "Active ROs",
     "Vehicles",
@@ -50,6 +49,24 @@ test("customer search, directory and profile information have distinct panels", 
       await panel.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
   }
+  const identity = page.locator(".customer-hero-identity");
+  const contact = identity.locator(".customer-contact-summary");
+  await expect(contact.locator("dd")).toHaveText([
+    "(210) 555-0111",
+    "jordan@example.test",
+    "200 Example Lane, San Antonio, TX 78201",
+  ]);
+  const nameBounds = await identity.getByRole("heading").boundingBox();
+  const contactBounds = await contact.boundingBox();
+  const assetBounds = await identity
+    .locator(".customer-hero-asset")
+    .boundingBox();
+  expect(contactBounds!.y).toBeGreaterThanOrEqual(
+    nameBounds!.y + nameBounds!.height + 8,
+  );
+  expect(assetBounds!.y).toBeGreaterThanOrEqual(
+    contactBounds!.y + contactBounds!.height + 8,
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
