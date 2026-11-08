@@ -90,7 +90,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   const job = page
     .getByRole("heading", { name: title, exact: true })
     .locator("xpath=ancestor::article[1]");
-  await job.getByRole("button", { name: "Send estimate", exact: true }).click();
+  await job.getByRole("button", { name: "Prepare estimate & choose recipient", exact: true }).click();
   await expect(
     job.getByRole("link", { name: "Open customer estimate", exact: true }),
   ).toBeVisible();
