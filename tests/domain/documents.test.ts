@@ -208,28 +208,43 @@ it("keeps customer attachments separate from job files", async () => {
   ).rejects.toThrow(/PDF/);
 });
 
-
 it("keeps change order scope and prices controlled by the shop, not the signer", () => {
   const change = STARTER_TEMPLATES.find((t) => t.name === "Change order")!;
   expect(change.fields).not.toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ key: "added_cost" }),
-    ]),
+    expect.arrayContaining([expect.objectContaining({ key: "added_cost" })]),
   );
   expect(change.fields).toEqual([
-    expect.objectContaining({ key: "confirm_change", type: "checkbox", required: true }),
+    expect.objectContaining({
+      key: "confirm_change",
+      type: "checkbox",
+      required: true,
+    }),
   ]);
   expect(change.body).toContain("{{change_summary}}");
   expect(change.body).toContain("{{change_delta}}");
-  expect(unsafeCustomerPricedChangeOrder({
-    title: "Change order",
-    fields: [
-      { key: "change", type: "text", required: true, label: "What is changing" },
-      { key: "added_cost", type: "text", required: true, label: "Added cost" },
-    ],
-  })).toBe(true);
-  expect(unsafeCustomerPricedChangeOrder({
-    title: "Change order",
-    fields: change.fields,
-  })).toBe(false);
+  expect(
+    unsafeCustomerPricedChangeOrder({
+      title: "Change order",
+      fields: [
+        {
+          key: "change",
+          type: "text",
+          required: true,
+          label: "What is changing",
+        },
+        {
+          key: "added_cost",
+          type: "text",
+          required: true,
+          label: "Added cost",
+        },
+      ],
+    }),
+  ).toBe(true);
+  expect(
+    unsafeCustomerPricedChangeOrder({
+      title: "Change order",
+      fields: change.fields,
+    }),
+  ).toBe(false);
 });
