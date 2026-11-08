@@ -689,12 +689,13 @@ export default async function JobsPage({
                       className="card add-panel"
                       aria-label="Send a document to sign"
                     >
-                      <h3>Send a document to sign</h3>
+                      <h3>Prepare a document for signature</h3>
+                      <p>Choose a shop-prepared agreement. The customer may review it and sign, but cannot change the work or price. The file is saved to this job first.</p>
                       {data.templates.length ? (
                         <ActionForm
                           action={sendDocumentAction}
                           hidden={{ jobId: selected.id }}
-                          submitLabel="Send for signature"
+                          submitLabel="Prepare & open document packet"
                           variant="primary"
                         >
                           <label htmlFor="send-template">Document</label>
@@ -719,8 +720,7 @@ export default async function JobsPage({
                         </p>
                       )}
                       <p className="muted">
-                        The signing link appears in the file cabinet below,
-                        ready to text or email.
+                        After preparation, you’ll return to the job’s file cabinet to copy or share the signing link. This step does not send a message automatically.
                       </p>
                       <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
                         Done
