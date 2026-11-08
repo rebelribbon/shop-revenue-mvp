@@ -72,9 +72,9 @@ export default async function CrmPreview({
           <Link href="/demo/crm" aria-current="page">
             Customers
           </Link>
-          <Link href="/demo/crm?customer=alex&tab=Jobs">Jobs</Link>
+          <Link href="/demo/job">Jobs</Link>
           <Link href="/demo/crm?customer=alex&tab=History">Tasks</Link>
-          <Link href="/demo/crm?customer=alex&tab=Overview">Money</Link>
+          <Link href="/demo/job?stage=payment">Money</Link>
         </nav>
         <div className="crm-sample-content">
           {!who ? (
@@ -86,9 +86,9 @@ export default async function CrmPreview({
                     Find people, open their history, and get right to work.
                   </p>
                 </div>
-                <span className="btn primary" aria-disabled="true">
+                <Link className="btn primary" href="/demo/customer/new">
                   + Customer
-                </span>
+                </Link>
               </div>
               <div className="crm-sample-search">⌕ &nbsp; Search customers</div>
               <p className="muted">Sample customers</p>
@@ -140,18 +140,10 @@ export default async function CrmPreview({
                   className="customer-hero-actions"
                   aria-label="Sample actions"
                 >
-                  <span className="btn secondary" aria-disabled="true">
-                    Call
-                  </span>
-                  <span className="btn secondary" aria-disabled="true">
-                    Text
-                  </span>
-                  <span className="btn secondary" aria-disabled="true">
-                    Email
-                  </span>
-                  <span className="btn primary" aria-disabled="true">
-                    + Job
-                  </span>
+                  <Link className="btn secondary" href={`/demo/crm?customer=${who.id}&tab=Details`}>Contact</Link>
+                  <Link className="btn secondary" href={`/demo/crm?customer=${who.id}&tab=History`}>History</Link>
+                  <Link className="btn secondary" href={`/demo/crm?customer=${who.id}&tab=Files`}>Files</Link>
+                  <Link className="btn primary" href="/demo/job">+ Job</Link>
                 </div>
               </header>
               <div className="profile-layout customer-profile-layout">
@@ -210,7 +202,7 @@ export default async function CrmPreview({
                       <article className="card customer-overview-card">
                         <div className="section-heading">
                           <h2>Current work</h2>
-                          <Link href={`${url}&tab=Jobs`}>All jobs</Link>
+                          <Link href="/demo/job">All jobs</Link>
                         </div>
                         <Link
                           className="customer-work-row"
@@ -257,6 +249,12 @@ export default async function CrmPreview({
                                 ? "Work authorization · Inspection summary"
                                 : "Contact details and communication preferences"}
                       </p>
+                      {activeTab === "Jobs" && (
+                        <Link href="/demo/job" className="btn primary">Open job setup & pricing</Link>
+                      )}
+                      {activeTab === "Files" && (
+                        <Link href="/demo/job?stage=docs" className="btn secondary">Open documents and estimate preview</Link>
+                      )}
                     </section>
                   )}
                 </div>
