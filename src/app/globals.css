@@ -4261,3 +4261,30 @@ main.customer-index-page {
   .demo-job-bottom-actions .btn { width: 100%; text-align: center; }
   .demo-customer-form-page > .demo-job-panel { margin: 16px; }
 }
+
+.crm-sample-search-form {
+  max-width: 720px;
+  margin: 0 0 24px;
+  padding: 0;
+}
+.crm-sample-search-form label { margin: 0 0 8px; }
+.crm-sample-search-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.crm-sample-search-controls input { min-width: 0; width: 100%; margin: 0; }
+.crm-sample-search-controls button { margin: 0; min-height: 48px; }
+.crm-sample-pricing-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  margin: 0 0 16px;
+  font-weight: 700;
+  color: var(--accent);
+}
+@media (max-width: 420px) {
+  .crm-sample-search-controls { grid-template-columns: minmax(0, 1fr); }
+  .crm-sample-search-controls button { width: 100%; }
+}
