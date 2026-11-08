@@ -8,6 +8,7 @@ import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { z } from "zod";
 import {
+  activity,
   business,
   customer,
   document,
@@ -582,6 +583,16 @@ export async function jobCabinet(
   unseal: (cipher: string | null) => string | null,
 ): Promise<CabinetItem[]> {
   const items: CabinetItem[] = [];
+  const deliveries = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(and(
+      eq(activity.businessId, tx.businessId),
+      eq(activity.kind, "document.email_submitted"),
+    ));
+  const emailedIds = new Set(deliveries.map((event) =>
+    typeof event.data?.documentId === "string" ? event.data.documentId : "",
+  ));
   const versions = await tx
     .select({ v: estimateVersion, a: estimateAuthorization })
     .from(estimateVersion)
@@ -606,7 +617,7 @@ export async function jobCabinet(
       title: `Estimate · version ${v.version}`,
       detail: money(v.snapshot.totalCents),
       at: v.createdAt,
-      status: a ? "Signed" : v.revokedAt ? "Replaced" : "Sent",
+      status: a ? "Signed" : v.revokedAt ? "Replaced" : emailedIds.has(v.id) ? "Email submitted" : "Ready to send",
       href: `/app/estimates?jobId=${jobId}`,
       estimateShareId:
         !a &&
@@ -676,7 +687,7 @@ export async function jobCabinet(
             ? "Signed"
             : d.status === "void"
               ? "Void"
-              : "Waiting",
+              : "Prepared",
         href: d.status === "signed" ? `/app/documents/${d.id}/pdf` : null,
         documentId: d.id,
         signLink: token ? `/sign/${token}` : undefined,
