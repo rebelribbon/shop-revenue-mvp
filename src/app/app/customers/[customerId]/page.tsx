@@ -352,17 +352,6 @@ export default async function CustomerDetailPage(props: {
           {!readOnly && (
             <div className="action-bar" role="group" aria-label="Add">
               <Link
-                className="btn primary"
-                data-page-primary
-                href={
-                  assetCount
-                    ? `/app/jobs?customerId=${customerId}`
-                    : `${base}?view=assets`
-                }
-              >
-                {assetCount ? "+ Job" : auto ? "+ Vehicle" : "+ Property"}
-              </Link>
-              <Link
                 className="btn secondary"
                 href={`${base}?view=${view}&add=note`}
                 aria-current={adding === "note" ? "true" : undefined}
