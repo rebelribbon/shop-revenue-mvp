@@ -121,7 +121,9 @@ export function FileCabinet({
             disabled={!previewPath && !active?.preview}
             onClick={() => {
               if (active?.preview) {
-                document.querySelector(".docs-preview-pane")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                document
+                  .querySelector(".docs-preview-pane")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
               } else if (previewPath) {
                 window.open(previewPath, "_blank", "noopener,noreferrer");
               }
