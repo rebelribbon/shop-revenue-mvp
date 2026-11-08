@@ -20,6 +20,7 @@ export function DocumentShare({
   label,
   initial,
   autoOpen = false,
+  selectedDocumentIds,
 }: {
   id: string;
   kind: "estimate" | "invoice";
@@ -27,6 +28,7 @@ export function DocumentShare({
   label?: string;
   initial?: ShareData;
   autoOpen?: boolean;
+  selectedDocumentIds?: string[];
 }) {
   const ready = useActionHydration();
   const [data, setData] = useState<ShareData | null>(initial ?? null),
@@ -40,8 +42,9 @@ export function DocumentShare({
   const [emailMessage, setEmailMessage] = useState("");
   const [needsReplacement, setNeedsReplacement] = useState(false),
     [revisionPath, setRevisionPath] = useState<string | undefined>();
+  const currentDocumentIds = selectedDocumentIds ?? selectedDocuments;
   const selected = (data?.documents ?? []).filter((doc) =>
-    selectedDocuments.includes(doc.id),
+    currentDocumentIds.includes(doc.id),
   );
   const previewPath =
     data && kind === "estimate"
@@ -169,7 +172,7 @@ export function DocumentShare({
               />
             </label>
           )}
-          {kind === "estimate" && (
+          {kind === "estimate" && selectedDocumentIds === undefined && (
             <section className="card" aria-label="Customer signing packet">
               <h4>Documents included in this request</h4>
               <p>Estimate &amp; work authorization (required)</p>
@@ -202,6 +205,8 @@ export function DocumentShare({
               </p>
             </section>
           )}
+          <details className="docs-message-options">
+            <summary>Edit email subject or message</summary>
           <label>
             Email subject
             <input
@@ -223,10 +228,10 @@ export function DocumentShare({
               placeholder={`Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`}
             />
           </label>
+          </details>
           <p className="muted">
-            Preview the exact customer packet before sending. The app records
-            provider acceptance, not whether the recipient opened it. SMS opens
-            your texting app; it is not sent automatically.
+            Check the preview before sharing. Email is sent from Shop Revenue;
+            SMS opens your texting app for you to send manually.
           </p>
           <a
             className="btn secondary"
