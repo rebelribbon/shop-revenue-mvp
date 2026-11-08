@@ -76,7 +76,10 @@ export default async function CrmPreview({
         </span>
       </header>
       <div className="crm-sample-shell">
-        <nav className="crm-sample-side" aria-label="Sample workspace navigation">
+        <nav
+          className="crm-sample-side"
+          aria-label="Sample workspace navigation"
+        >
           <Link href="/demo/crm?view=appointments">Appointments</Link>
           <Link href="/demo/crm?view=tasks">Tasks</Link>
           <Link href="/demo/crm">Customers</Link>
@@ -92,7 +95,10 @@ export default async function CrmPreview({
                 <article className="card customer-overview-card">
                   <h2>Scheduled service</h2>
                   <p>Front brake service · Alex Example</p>
-                  <Link href="/demo/appointment?customer=alex" className="btn primary">
+                  <Link
+                    href="/demo/appointment?customer=alex"
+                    className="btn primary"
+                  >
                     + Book appointment
                   </Link>
                 </article>
@@ -124,23 +130,50 @@ export default async function CrmPreview({
           ) : !who && view === "jobs" ? (
             <section className="demo-job-panel">
               <h1>Jobs / ROs</h1>
-              <p>Every job belongs to a customer. Open an RO for work, documents and payment.</p>
+              <p>
+                Every job belongs to a customer. Open an RO for work, documents
+                and payment.
+              </p>
               <Link className="customer-work-row" href="/demo/job">
-                <strong>RO #10042 · Front brake service</strong><span>Alex Example · Awaiting approval</span>
+                <strong>RO #10042 · Front brake service</strong>
+                <span>Alex Example · Awaiting approval</span>
               </Link>
-              <Link className="btn primary" href="/demo/crm?customer=alex&tab=Jobs">View customer&apos;s RO history</Link>
+              <Link
+                className="btn primary"
+                href="/demo/crm?customer=alex&tab=Jobs"
+              >
+                View customer&apos;s RO history
+              </Link>
             </section>
           ) : !who && view === "reports" ? (
             <section className="demo-job-panel">
               <h1>Reports</h1>
-              <p>Operational and financial performance, separate from job payments.</p>
+              <p>
+                Operational and financial performance, separate from job
+                payments.
+              </p>
               <div className="customer-overview-grid">
-                <article className="card customer-overview-card"><h2>Appointments</h2><p>Scheduled: 4 · Completed: 3</p></article>
-                <article className="card customer-overview-card"><h2>Work</h2><p>ROs opened: 8 · Awaiting approval: 2</p></article>
-                <article className="card customer-overview-card"><h2>Customers</h2><p>New: 6 · Returning: 12</p></article>
-                <article className="card customer-overview-card"><h2>Revenue</h2><p>Invoiced: $8,420 · Collected: $6,800</p></article>
+                <article className="card customer-overview-card">
+                  <h2>Appointments</h2>
+                  <p>Scheduled: 4 · Completed: 3</p>
+                </article>
+                <article className="card customer-overview-card">
+                  <h2>Work</h2>
+                  <p>ROs opened: 8 · Awaiting approval: 2</p>
+                </article>
+                <article className="card customer-overview-card">
+                  <h2>Customers</h2>
+                  <p>New: 6 · Returning: 12</p>
+                </article>
+                <article className="card customer-overview-card">
+                  <h2>Revenue</h2>
+                  <p>Invoiced: $8,420 · Collected: $6,800</p>
+                </article>
               </div>
-              <p className="muted">Illustrative report data. The authenticated Reports tab uses real shop data.</p>
+              <p className="muted">
+                Illustrative report data. The authenticated Reports tab uses
+                real shop data.
+              </p>
             </section>
           ) : !who ? (
             <>
@@ -377,16 +410,52 @@ export default async function CrmPreview({
           )}
         </div>
       </div>
-      <nav className="crm-sample-mobile-nav" aria-label="Mobile sample navigation">
-        {([
-          { label: "Appts", href: "/demo/crm?view=appointments", icon: "schedule", current: !who && view === "appointments" },
-          { label: "Tasks", href: "/demo/crm?view=tasks", icon: "tasks", current: !who && view === "tasks" },
-          { label: "Customers", href: "/demo/crm", icon: "customers", current: Boolean(who) || !view },
-          { label: "Jobs", href: "/demo/crm?view=jobs", icon: "work", current: !who && view === "jobs" },
-          { label: "Reports", href: "/demo/crm?view=reports", icon: "reports", current: !who && view === "reports" },
-        ] as const).map((item) => (
-          <Link key={item.label} href={item.href} aria-label={item.label} aria-current={item.current ? "page" : undefined}>
-            <WorkspaceIcon name={item.icon} /><span>{item.label}</span>
+      <nav
+        className="crm-sample-mobile-nav"
+        aria-label="Mobile sample navigation"
+      >
+        {(
+          [
+            {
+              label: "Appts",
+              href: "/demo/crm?view=appointments",
+              icon: "schedule",
+              current: !who && view === "appointments",
+            },
+            {
+              label: "Tasks",
+              href: "/demo/crm?view=tasks",
+              icon: "tasks",
+              current: !who && view === "tasks",
+            },
+            {
+              label: "Customers",
+              href: "/demo/crm",
+              icon: "customers",
+              current: Boolean(who) || !view,
+            },
+            {
+              label: "Jobs",
+              href: "/demo/crm?view=jobs",
+              icon: "work",
+              current: !who && view === "jobs",
+            },
+            {
+              label: "Reports",
+              href: "/demo/crm?view=reports",
+              icon: "reports",
+              current: !who && view === "reports",
+            },
+          ] as const
+        ).map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            aria-label={item.label}
+            aria-current={item.current ? "page" : undefined}
+          >
+            <WorkspaceIcon name={item.icon} />
+            <span>{item.label}</span>
           </Link>
         ))}
       </nav>
