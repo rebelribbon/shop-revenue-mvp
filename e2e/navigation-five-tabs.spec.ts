@@ -27,5 +27,5 @@ test("appointment can be started from a customer's profile and RO history remain
   await page.goto("/demo/crm?customer=alex&tab=Jobs");
   await expect(page.getByText("RO #10042", { exact: false })).toBeVisible();
   await page.getByRole("link", { name: "Open job setup & pricing" }).click();
-  await expect(page.getByRole("heading", { name: "Job Setup" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "RO Setup" })).toBeVisible();
 });
