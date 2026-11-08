@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { DemoJobEditor } from "@/components/demo-job-editor";
 
 export const metadata: Metadata = {
-  title: "Interactive job pricing demo | Shop Revenue",
+  title: "Interactive RO pricing demo | Shop Revenue",
   robots: { index: false, follow: false },
 };
 
