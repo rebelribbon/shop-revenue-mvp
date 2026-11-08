@@ -130,10 +130,10 @@ export default function DocumentsPreviewPage() {
       </header>
       <div className="docs-demo-layout">
         <nav className="docs-demo-nav" aria-label="Sample job sections">
-          <span>Job Setup</span>
+          <Link href="/demo/job">Job Setup</Link>
           <strong aria-current="page">Documents</strong>
-          <span>Payment</span>
-          <span>History</span>
+          <Link href="/demo/job?stage=payment">Payment</Link>
+          <Link href="/demo/crm?customer=alex&tab=History">History</Link>
         </nav>
         <div className="docs-demo-main">
           <div className="docs-demo-summary">
