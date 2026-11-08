@@ -88,7 +88,10 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
   await page
     .getByRole("link", { name: `Open ${first} ${last}`, exact: true })
     .click();
-  await page.getByRole("link", { name: "History", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Customer sections" })
+    .getByRole("link", { name: "History", exact: true })
+    .click();
   await expect(page.getByText(/Visit booked/)).toBeVisible();
 });
 

@@ -47,6 +47,15 @@ test("authenticated Add Customer stays in the page flow above the list", async (
   await expect(button).toBeVisible();
   await expect(button).toHaveCSS("position", "static");
   const main = page.locator("main.customer-index-page");
+  const contentRect = await main.boundingBox();
+  const navigationRect = await page
+    .getByRole("navigation", { name: "Mobile navigation" })
+    .boundingBox();
+  expect(contentRect).not.toBeNull();
+  expect(navigationRect).not.toBeNull();
+  expect(contentRect!.y + contentRect!.height).toBeLessThanOrEqual(
+    navigationRect!.y - 8,
+  );
   await main.evaluate((el) => {
     el.scrollTop = el.scrollHeight;
   });

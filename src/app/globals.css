@@ -3900,8 +3900,9 @@ main.customer-index-page {
 }
 @media (max-width: 899px) {
   main.customer-index-page {
-    margin-bottom: 0 !important;
-    padding-bottom: calc(120px + var(--safe-bottom)) !important;
+    margin-bottom: calc(80px + var(--safe-bottom)) !important;
+    padding-bottom: 24px !important;
+    scroll-padding-bottom: 24px;
     overflow-y: auto;
   }
   .customer-index-page .customer-list-heading {

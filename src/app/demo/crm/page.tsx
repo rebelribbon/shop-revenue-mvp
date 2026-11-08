@@ -273,7 +273,10 @@ export default async function CrmPreview({
                   >
                     + Appointment
                   </Link>
-                  <Link className="btn primary" href="/demo/job">
+                  <Link
+                    className="btn primary"
+                    href={`/demo/job?customer=${who.id}`}
+                  >
                     + New RO
                   </Link>
                 </div>
@@ -324,7 +327,7 @@ export default async function CrmPreview({
                         </div>
                         <div className="customer-fact">
                           <strong>Email</strong>
-                          <span>alex@example.test</span>
+                          <span>{who.id}@example.test</span>
                         </div>
                         <div className="customer-fact">
                           <strong>Address</strong>
@@ -340,7 +343,7 @@ export default async function CrmPreview({
                           className="customer-work-row"
                           href={`${url}&tab=Jobs`}
                         >
-                          <strong>RO #10042 · Brake service</strong>
+                          <strong>RO #{who.roNumber} · Brake service</strong>
                           <span>Awaiting approval</span>
                           <span>$1,284.75 due</span>
                         </Link>
@@ -372,7 +375,7 @@ export default async function CrmPreview({
                       <h2>{activeTab}</h2>
                       <p className="muted">
                         {activeTab === "Jobs"
-                          ? "RO #10042 · Brake service · Awaiting customer authorization · $1,284.75"
+                          ? `RO #${who.roNumber} · Brake service · Awaiting customer authorization · $1,284.75`
                           : activeTab === "Vehicles"
                             ? who.asset
                             : activeTab === "History"
@@ -380,7 +383,10 @@ export default async function CrmPreview({
                               : "Contact details and communication preferences"}
                       </p>
                       {activeTab === "Jobs" && (
-                        <Link href="/demo/job" className="btn primary">
+                        <Link
+                          href={`/demo/job?customer=${who.id}`}
+                          className="btn primary"
+                        >
                           Open job setup & pricing
                         </Link>
                       )}

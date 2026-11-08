@@ -52,14 +52,19 @@ jobs:
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
       - run: timeout 180 pnpm exec playwright install chromium
       - name: Playwright (phone 390x844 and desktop)
-        run: pnpm e2e --max-failures=0 --grep-invert @mfa
+        run: |
+          pnpm e2e --project=phone --max-failures=0 --grep-invert @mfa
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm e2e --project=desktop --max-failures=0 --grep-invert @mfa
       - name: Job form development-mode smoke
         run: |
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
           PORT=3001 nohup pnpm dev > dev-web.log 2>&1 &
           for i in $(seq 1 45); do curl -fsS -o /dev/null http://localhost:3001/sign-in && break; sleep 2; done
           E2E_BASE_URL=http://localhost:3001 pnpm exec playwright test e2e/owner-usability.spec.ts --project=phone
       - name: Enforced MFA for every shop and internal role
         run: |
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
           REQUIRE_MFA=true PORT=3002 nohup pnpm start > mfa-web.log 2>&1 &
           for i in $(seq 1 45); do curl -fsS -o /dev/null http://localhost:3002/sign-in && break; sleep 2; done
           E2E_MFA=true E2E_BASE_URL=http://localhost:3002 pnpm exec playwright test e2e/mfa-enforcement.spec.ts --project=phone --output=test-results/mfa

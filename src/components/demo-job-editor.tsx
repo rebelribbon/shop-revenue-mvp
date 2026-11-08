@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { demoCustomers } from "@/lib/demo-customers";
 
 type Stage = "setup" | "docs" | "share" | "payment";
 type Line = {
@@ -21,12 +22,14 @@ const dollarsToCents = (value: string) =>
 
 export function DemoJobEditor({
   initialStage = "setup",
+  customerRecord = demoCustomers[0],
 }: {
   initialStage?: Stage;
+  customerRecord?: (typeof demoCustomers)[number];
 }) {
   const [stage, setStage] = useState<Stage>(initialStage);
-  const [customer, setCustomer] = useState("Alex Example");
-  const [asset, setAsset] = useState("2019 Ford F-150");
+  const [customer, setCustomer] = useState(customerRecord.name);
+  const [asset, setAsset] = useState(customerRecord.asset);
   const [jobTitle, setJobTitle] = useState("Front brake service");
   const [notes, setNotes] = useState(
     "Customer reports vibration when braking.",
@@ -57,7 +60,9 @@ export function DemoJobEditor({
   const [taxRate, setTaxRate] = useState("8.25");
   const [discount, setDiscount] = useState("0");
   const [agreements, setAgreements] = useState(["Work authorization"]);
-  const [recipient, setRecipient] = useState("alex@example.test");
+  const [recipient, setRecipient] = useState(
+    `${customerRecord.id}@example.test`,
+  );
   const [message, setMessage] = useState(
     "Please review the estimate and authorize the work.",
   );
@@ -113,9 +118,11 @@ export function DemoJobEditor({
     <main id="main-content" className="demo-job-editor" tabIndex={-1}>
       <header className="demo-job-header">
         <div>
-          <Link href="/demo/crm?customer=alex">← Customer profile</Link>
+          <Link href={`/demo/crm?customer=${customerRecord.id}`}>
+            ← Customer profile
+          </Link>
           <h1>
-            RO #10042{" "}
+            RO #{customerRecord.roNumber}{" "}
             <span className="demo-job-muted">· {jobTitle || "New job"}</span>
           </h1>
           <p>

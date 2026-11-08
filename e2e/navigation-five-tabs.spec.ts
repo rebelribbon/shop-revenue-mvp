@@ -100,3 +100,22 @@ test("customer RO history and appointment context work in the authenticated work
   ).toHaveAttribute("href", /report=customer-growth/);
   await auditUX(page);
 });
+
+test("opening an RO keeps its customer and vehicle through the document preview", async ({
+  page,
+}) => {
+  await page.goto("/demo/crm?customer=jordan&tab=Jobs");
+  await expect(page.getByText("RO #10043", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Open job setup & pricing" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Customer", exact: true }),
+  ).toHaveValue("Jordan Sample");
+  await expect(
+    page.getByRole("textbox", { name: "Vehicle or asset", exact: true }),
+  ).toHaveValue("2022 Toyota Camry");
+  await page.getByRole("button", { name: "Next: Preview Documents" }).click();
+  await expect(page.locator(".demo-job-paper")).toContainText("Jordan Sample");
+  await expect(
+    page.getByRole("link", { name: "Customer profile", exact: false }),
+  ).toHaveAttribute("href", "/demo/crm?customer=jordan");
+});
