@@ -66,7 +66,10 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .getByRole("heading", { name: `Brakes ${info.project.name}`, exact: true })
     .locator("xpath=ancestor::article[1]");
   await card
-    .getByRole("button", { name: "Prepare estimate & choose recipient", exact: true })
+    .getByRole("button", {
+      name: "Prepare estimate & choose recipient",
+      exact: true,
+    })
     .click();
   await expect(
     card.getByRole("link", { name: "Text to customer", exact: true }),
