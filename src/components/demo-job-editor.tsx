@@ -104,7 +104,7 @@ export function DemoJobEditor({
     setPacketReady(false);
   };
   const stages: { value: Stage; label: string }[] = [
-    { value: "setup", label: "1. Job Setup" },
+    { value: "setup", label: "1. RO Setup" },
     { value: "docs", label: "2. Documents" },
     { value: "share", label: "3. Share" },
     { value: "payment", label: "4. Payment" },
@@ -115,7 +115,7 @@ export function DemoJobEditor({
         <div>
           <Link href="/demo/crm?customer=alex">← Customer profile</Link>
           <h1>
-            Job #10042{" "}
+            RO #10042{" "}
             <span className="demo-job-muted">· {jobTitle || "New job"}</span>
           </h1>
           <p>
@@ -152,7 +152,7 @@ export function DemoJobEditor({
         <section className="demo-job-panel" aria-label="Job and pricing setup">
           <div className="demo-job-section-head">
             <div>
-              <h2>Job Setup</h2>
+              <h2>RO Setup</h2>
               <p>Enter the work once. Customer documents use these prices.</p>
             </div>
           </div>
