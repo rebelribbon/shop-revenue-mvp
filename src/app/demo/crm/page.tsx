@@ -45,9 +45,11 @@ const tabs = [
 export default async function CrmPreview({
   searchParams,
 }: {
-  searchParams: Promise<{ customer?: string; tab?: string }>;
+  searchParams: Promise<{ customer?: string; tab?: string; q?: string; view?: string }>;
 }) {
-  const { customer, tab } = await searchParams;
+  const { customer, tab, q, view } = await searchParams;
+  const search = (q ?? "").trim();
+  const filtered = customers.filter((c) => `${c.name} ${c.asset} ${c.contact}`.toLowerCase().includes(search.toLowerCase()));
   const who = customers.find((c) => c.id === customer);
   const activeTab = tabs.includes(tab as (typeof tabs)[number])
     ? (tab as (typeof tabs)[number])
@@ -68,16 +70,40 @@ export default async function CrmPreview({
           className="crm-sample-side"
           aria-label="Sample workspace navigation"
         >
-          <Link href="/demo/crm">Today</Link>
+          <Link href="/demo/crm?view=today">Today</Link>
           <Link href="/demo/crm" aria-current="page">
             Customers
           </Link>
           <Link href="/demo/job">Jobs</Link>
-          <Link href="/demo/crm?customer=alex&tab=History">Tasks</Link>
+          <Link href="/demo/crm?view=tasks">Tasks</Link>
           <Link href="/demo/job?stage=payment">Money</Link>
         </nav>
         <div className="crm-sample-content">
-          {!who ? (
+          {!who && view === "today" ? (
+            <section className="demo-job-panel">
+              <h1>Today</h1>
+              <p>Quick access to the work that needs attention.</p>
+              <div className="customer-overview-grid">
+                <article className="card customer-overview-card">
+                  <h2>Approval needed</h2>
+                  <p>Front brake service · Alex Example</p>
+                  <Link href="/demo/job" className="btn primary">Open job & pricing</Link>
+                </article>
+                <article className="card customer-overview-card">
+                  <h2>Follow-up</h2>
+                  <p>Contact Alex Example about the estimate.</p>
+                  <Link href="/demo/crm?view=tasks" className="btn secondary">View tasks</Link>
+                </article>
+              </div>
+            </section>
+          ) : !who && view === "tasks" ? (
+            <section className="demo-job-panel">
+              <h1>Tasks</h1>
+              <p>Pending follow-ups for sample customers.</p>
+              <Link href="/demo/crm?customer=alex" className="customer-work-row"><strong>Follow up with Alex Example</strong><span>Due today</span></Link>
+              <Link href="/demo/job" className="customer-work-row"><strong>Send brake service estimate</strong><span>Awaiting approval</span></Link>
+            </section>
+          ) : !who ? (
             <>
               <div className="customer-list-heading">
                 <div>
@@ -90,10 +116,17 @@ export default async function CrmPreview({
                   + Customer
                 </Link>
               </div>
-              <div className="crm-sample-search">⌕ &nbsp; Search customers</div>
+              <form className="crm-sample-search-form" method="get" action="/demo/crm" role="search">
+                <label htmlFor="demo-customer-search">Find customer</label>
+                <div className="crm-sample-search-controls">
+                  <input id="demo-customer-search" name="q" type="search" defaultValue={search}
+                    placeholder="Search customers" />
+                  <button className="btn secondary" type="submit">Search</button>
+                </div>
+              </form>
               <p className="muted">Sample customers</p>
               <ul className="customer-directory">
-                {customers.map((c) => (
+                {filtered.map((c) => (
                   <li key={c.id}>
                     <Link
                       className="customer-directory-row"
@@ -119,6 +152,7 @@ export default async function CrmPreview({
                   </li>
                 ))}
               </ul>
+              {!filtered.length && <p className="muted">No matching sample customers.</p>}
             </>
           ) : (
             <>
