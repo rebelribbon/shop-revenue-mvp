@@ -362,7 +362,7 @@ export default async function CrmPreview({
         </div>
       </div>
       <nav className="crm-sample-mobile-nav" aria-label="Mobile sample navigation">
-        {[
+        {([
           { label: "Today", href: "/demo/crm?view=today", icon: "home", current: !who && view === "today" },
           { label: "Customers", href: "/demo/crm", icon: "customers", current: (!who && view !== "today" && view !== "tasks") || Boolean(who) },
           { label: "Jobs", href: "/demo/job", icon: "work", current: false },
