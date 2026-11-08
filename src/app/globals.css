@@ -3853,7 +3853,10 @@ a.card.create-tile:hover {
 }
 
 /* Customer list: keep the create action in the header, never across the final row. */
-body:has(main.customer-index-page) main.customer-index-page .customer-list-heading [data-ux-primary] {
+body:has(main.customer-index-page)
+  main.customer-index-page
+  .customer-list-heading
+  [data-ux-primary] {
   position: static;
   inset: auto;
   bottom: auto;
@@ -3887,7 +3890,9 @@ main.customer-index-page {
   min-width: 88px;
   margin: 0;
 }
-.customer-hero-actions > .btn { min-width: 80px; }
+.customer-hero-actions > .btn {
+  min-width: 80px;
+}
 @media (max-width: 899px) {
   main.customer-index-page {
     margin-bottom: 0 !important;
@@ -3910,11 +3915,19 @@ main.customer-index-page {
     grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 8px;
   }
-  .customer-index-page .inline-search .search-controls input { min-width: 0; }
+  .customer-index-page .inline-search .search-controls input {
+    min-width: 0;
+  }
   .customer-index-page .inline-search .search-controls button,
-  .customer-index-page .inline-search .search-controls a { min-width: 72px; }
-  .customer-hero-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .customer-hero-actions > .btn { min-width: 0; }
+  .customer-index-page .inline-search .search-controls a {
+    min-width: 72px;
+  }
+  .customer-hero-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .customer-hero-actions > .btn {
+    min-width: 0;
+  }
   .crm-sample {
     margin-bottom: 0 !important;
     padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
@@ -3927,7 +3940,10 @@ main.customer-index-page {
     grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
-  body:has(main.customer-index-page) main.customer-index-page .customer-list-heading [data-ux-primary] {
+  body:has(main.customer-index-page)
+    main.customer-index-page
+    .customer-list-heading
+    [data-ux-primary] {
     width: 100%;
     min-width: 0;
   }
@@ -3939,8 +3955,13 @@ main.customer-index-page {
     grid-column: 1 / -1;
     width: 100%;
   }
-  .customer-index-page .inline-search .search-controls button { width: 100%; }
-  .customer-index-page .inline-search .search-controls a { width: 100%; text-align: center; }
+  .customer-index-page .inline-search .search-controls button {
+    width: 100%;
+  }
+  .customer-index-page .inline-search .search-controls a {
+    width: 100%;
+    text-align: center;
+  }
   .customer-hero-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -3952,9 +3973,16 @@ main.customer-index-page {
     margin: 0;
     text-align: center;
   }
-  .crm-sample-content { padding-bottom: 96px; }
-  .crm-sample-mobile-nav { gap: 0; }
-  .crm-sample-mobile-nav a { min-width: 0; padding: 8px 2px; }
+  .crm-sample-content {
+    padding-bottom: 96px;
+  }
+  .crm-sample-mobile-nav {
+    gap: 0;
+  }
+  .crm-sample-mobile-nav a {
+    min-width: 0;
+    padding: 8px 2px;
+  }
 }
 
 /* Both the real app and public CRM preview must own their scroll area. */
