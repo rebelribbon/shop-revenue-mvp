@@ -124,6 +124,7 @@ export default async function CrmPreview({
                   <button className="btn secondary" type="submit">Search</button>
                 </div>
               </form>
+              <Link href="/demo/job" className="crm-sample-pricing-link">Try job setup & pricing →</Link>
               <p className="muted">Sample customers</p>
               <ul className="customer-directory">
                 {filtered.map((c) => (
