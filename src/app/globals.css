@@ -3468,3 +3468,110 @@ a.card.create-tile:hover {
     margin: 16px auto;
   }
 }
+
+
+/* Customer workspace — one CRM record across desktop and mobile. */
+.customer-list-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.customer-list-heading h1,
+.customer-list-heading p { margin: 0; }
+.customer-list-heading p { margin-top: 8px; }
+.customer-directory {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.customer-directory > li + li { border-top: 1px solid var(--line); }
+.customer-directory-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 24px;
+  min-height: 88px;
+  color: var(--text);
+  text-decoration: none;
+}
+.customer-directory-row:hover, .customer-directory-row:focus-visible {
+  background: var(--hover);
+  text-decoration: none;
+}
+.customer-directory-main { display: grid; flex: 1; min-width: 0; gap: 8px; }
+.customer-directory-main strong { font-size: 1.05rem; color: var(--text); }
+.customer-directory-main .muted { font-size: .85rem; }
+.customer-directory-contact { color: var(--muted); font-size: .8rem; overflow-wrap: anywhere; }
+.customer-avatar, .customer-hero-avatar {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--hover);
+  color: var(--accent);
+  font-weight: 800;
+}
+.customer-avatar { width: 48px; height: 48px; font-size: 1.1rem; }
+.customer-directory-chevron { font-size: 1.7rem; color: var(--muted); }
+.customer-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  margin: 16px 0 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.customer-hero-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.customer-hero-avatar { width: 64px; height: 64px; font-size: 1.5rem; }
+.customer-hero h1 { margin: 0; font-size: 1.6rem; overflow-wrap: anywhere; }
+.customer-hero p { margin: 8px 0 0; }
+.customer-eyebrow { color: var(--muted); font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.customer-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.customer-hero-actions .btn { margin: 0; }
+.customer-profile-layout > .customer-profile-main { flex: 999 1 560px; }
+.customer-profile-layout > .customer-profile-side { flex: 1 1 280px; max-width: 360px; }
+.customer-record-tabs { margin: 0 0 24px; }
+.customer-overview-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.customer-overview-card { margin: 0; padding: 24px; }
+.customer-overview-card h2 { font-size: 1.05rem; margin: 0; }
+.customer-overview-card .section-heading { margin-bottom: 16px; }
+.customer-fact { display: grid; gap: 8px; border-top: 1px solid var(--line); padding: 16px 0; overflow-wrap: anywhere; }
+.customer-fact strong { font-size: .8rem; color: var(--muted); }
+.customer-work-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 0; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.customer-work-row strong { flex: 1 1 160px; }
+.customer-activity-row { display: grid; gap: 8px; padding: 16px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.customer-profile-side > .profile-head .profile-title { font-size: 1rem; margin: 0; }
+@media (max-width: 900px) {
+  .customer-profile-layout { display: flex; flex-direction: column; align-items: stretch; }
+  .customer-profile-layout > .customer-profile-main { order: 0; flex: auto; }
+  .customer-profile-layout > .customer-profile-side { order: 1; flex: auto; max-width: none; }
+}
+@media (max-width: 600px) {
+  .customer-list-heading { align-items: stretch; }
+  .customer-list-heading > .btn { width: 100%; text-align: center; }
+  .customer-directory { border-radius: 8px; }
+  .customer-directory-row { min-height: 88px; padding: 16px; gap: 16px; }
+  .customer-directory-contact { display: none; }
+  .customer-avatar { width: 48px; height: 48px; }
+  .customer-hero { padding: 16px; gap: 16px; border-radius: 8px; margin: 8px 0 16px; }
+  .customer-hero-main { align-items: center; }
+  .customer-hero-avatar { width: 56px; height: 56px; }
+  .customer-hero h1 { font-size: 1.35rem; }
+  .customer-hero-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); width: 100%; }
+  .customer-hero-actions .btn { padding: 8px 0; min-width: 0; text-align: center; }
+  .customer-overview-grid { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .customer-overview-card { padding: 16px; }
+  .customer-record-tabs { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+  .customer-profile-main > .action-bar:first-child { margin-bottom: 16px; }
+}
