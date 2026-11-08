@@ -586,13 +586,17 @@ export async function jobCabinet(
   const deliveries = await tx
     .select({ data: activity.data })
     .from(activity)
-    .where(and(
-      eq(activity.businessId, tx.businessId),
-      eq(activity.kind, "document.email_submitted"),
-    ));
-  const emailedIds = new Set(deliveries.map((event) =>
-    typeof event.data?.documentId === "string" ? event.data.documentId : "",
-  ));
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.kind, "document.email_submitted"),
+      ),
+    );
+  const emailedIds = new Set(
+    deliveries.map((event) =>
+      typeof event.data?.documentId === "string" ? event.data.documentId : "",
+    ),
+  );
   const versions = await tx
     .select({ v: estimateVersion, a: estimateAuthorization })
     .from(estimateVersion)
@@ -617,7 +621,13 @@ export async function jobCabinet(
       title: `Estimate · version ${v.version}`,
       detail: money(v.snapshot.totalCents),
       at: v.createdAt,
-      status: a ? "Signed" : v.revokedAt ? "Replaced" : emailedIds.has(v.id) ? "Email submitted" : "Ready to send",
+      status: a
+        ? "Signed"
+        : v.revokedAt
+          ? "Replaced"
+          : emailedIds.has(v.id)
+            ? "Email submitted"
+            : "Ready to send",
       href: `/app/estimates?jobId=${jobId}`,
       estimateShareId:
         !a &&
