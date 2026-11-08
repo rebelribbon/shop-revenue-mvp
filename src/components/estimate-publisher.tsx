@@ -33,17 +33,19 @@ export function EstimatePublisher({
   if (path || publishedId)
     return (
       <section data-ux-ready={ready}>
-        <h4>Estimate ready</h4>
+        <h4>Estimate saved — send it for authorization</h4>
+        <p>Step 2 of 2: Confirm a customer email or phone number and send the secure approval link. The estimate is already in this job’s file cabinet.</p>
         {publishedId && (
           <DocumentShare
             id={publishedId}
             kind="estimate"
             primary
+            autoOpen
             initial={share}
           />
         )}
         <p role="status">
-          Choose Text or Email to send this estimate from your own app.
+          Your customer can approve or decline each priced item and sign. You can track the result on the job.
         </p>
         <Link href={`/app/jobs?job=${jobId}`}>
           Job timeline &amp; next step
@@ -71,7 +73,7 @@ export function EstimatePublisher({
             setPath(data.path ?? "");
             setPublishedId((result.data as { id: string }).id);
             setShare((result.data as { share?: typeof share }).share);
-            setMessage("Estimate ready. Choose Text or Email to send it.");
+            setMessage("Estimate prepared. Choose a recipient to send it.");
             setRequestId(crypto.randomUUID());
             router.refresh();
           } else setMessage(result.error.message);
@@ -83,7 +85,8 @@ export function EstimatePublisher({
       }}
     >
       <fieldset className="hydration-fields" disabled={!ready}>
-        <h4>Send estimate</h4>
+        <h4>Step 1 of 2 — Prepare the estimate</h4>
+        <p>Review the work and prices. This saves a fixed estimate in the job and opens the recipient and delivery options; it does not send anything until you confirm a recipient.</p>
         {taxRateBps === 0 && (
           <p className="muted" role="note">
             <strong>Sales tax is set to 0%.</strong> Taxable items will go out
@@ -131,7 +134,7 @@ export function EstimatePublisher({
           data-page-primary={!existingVersion ? "true" : undefined}
           disabled={pending}
         >
-          {pending ? "Preparing…" : "Send estimate"}
+          {pending ? "Preparing…" : "Prepare estimate & choose recipient"}
         </button>
         <p role="status">{message}</p>
         {path && (
