@@ -78,6 +78,7 @@ export default async function JobsPage({
     fromMedia?: string;
     add?: string;
     tab?: string;
+    share?: string;
     view?: string;
     tech?: string;
   }>;
@@ -100,6 +101,7 @@ export default async function JobsPage({
     fromMedia,
     add,
     tab: requestedTab,
+    share,
     view,
     tech,
   } = await searchParams;
@@ -450,7 +452,7 @@ export default async function JobsPage({
                     2. Docs &amp; preview
                   </Link>
                   <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files#share-customer-packet`}
+                    href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
                     aria-label="Share customer packet"
                   >
                     3. Share
@@ -932,6 +934,7 @@ export default async function JobsPage({
                     </div>
                     <FileCabinet
                       items={data.cabinet}
+                      autoOpenShare={share === "1"}
                       customerPhone={
                         data.contact && !data.contact.textOff
                           ? data.contact.phone
