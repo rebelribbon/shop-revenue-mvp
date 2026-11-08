@@ -3,7 +3,7 @@ import { useActionHydration } from "./action-hydration";
 import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
 import { useState } from "react";
-import { prepareDocumentShare } from "@/server/actions/document-sharing";
+import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
 import type { ShareRecipient } from "@/domain/document-sharing";
 
 export type ShareData = ShareRecipient & { path: string };
@@ -24,9 +24,12 @@ export function DocumentShare({
   const [data, setData] = useState<ShareData | null>(initial ?? null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [emailAddress, setEmailAddress] = useState(initial?.email ?? "");
+  const [phoneNumber, setPhoneNumber] = useState(initial?.phone ?? "");
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [needsReplacement, setNeedsReplacement] = useState(false),
     [revisionPath, setRevisionPath] = useState<string | undefined>();
-  const url = data ? new URL(data.path, window.location.origin).href : "";
+  const url = data ? new URL(data.path, typeof window === "undefined" ? "https://example.invalid" : window.location.origin).href : "";
   const from = data?.senderName ? ` from ${data.senderName}` : "";
   // Texts carry the opt-out line the FCC's standard keywords rely on.
   const textBody = `Hi ${data?.name ?? ""}, here is your ${kind}${from}: ${url}\n\nReply STOP to opt out.`;
@@ -37,8 +40,8 @@ export function DocumentShare({
     [data?.senderName, data?.senderAddress].filter(Boolean).join("\n"),
     "To stop emails from us, reply “unsubscribe”.",
   ].join("\n");
-  const canText = Boolean(data?.phone && !data.textStoppedOn);
-  const canEmail = Boolean(data?.email && !data.emailStoppedOn);
+  const canText = Boolean(phoneNumber.trim() && !data?.textStoppedOn);
+  const canEmail = Boolean(!data?.emailStoppedOn);
   const ios =
     typeof navigator !== "undefined" &&
     (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -55,7 +58,11 @@ export function DocumentShare({
             setBusy(true);
             try {
               const r = await prepareDocumentShare({ id, kind });
-              if (r.ok) setData(r.data);
+              if (r.ok) {
+                setData(r.data);
+                setEmailAddress(r.data.email ?? "");
+                setPhoneNumber(r.data.phone ?? "");
+              }
               else {
                 setMessage(r.message);
                 setNeedsReplacement(
@@ -76,27 +83,52 @@ export function DocumentShare({
         </button>
       ) : (
         <section aria-label={`Send ${kind}`}>
-          <h4>
-            Send {kind} to {data.name}
-          </h4>
-          <p>Choose Text or Email, then tap Send in your own app.</p>
+          <h4>Send {kind} for customer review</h4>
+          <p><strong>Recipient:</strong> {data.name}. Confirm the email or phone below before sending. The estimate is already saved in the job file cabinet.</p>
+          {!data.emailStoppedOn && (
+            <label>
+              Customer email address
+              <input type="email" value={emailAddress} onChange={(e) => setEmailAddress(e.target.value)} placeholder="customer@example.com" autoComplete="email" />
+            </label>
+          )}
+          {!data.textStoppedOn && (
+            <label>
+              Customer mobile number
+              <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="Customer mobile number" autoComplete="tel" />
+            </label>
+          )}
+          <p className="muted">Send email submits through Shop Revenue. Text opens your phone’s texting app so you can review and send the message yourself.</p>
           <div className="money-actions">
             {canText && (
               <a
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
-                href={`sms:${data.phone}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
+                href={`sms:${encodeURIComponent(phoneNumber)}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
               >
                 Text to customer
               </a>
             )}
-            {canEmail && (
+            {canEmail && emailAddress.trim() && (
+              <button type="button" className={`btn ${primary ? "primary" : "secondary"}`} disabled={sendingEmail || !ready || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(emailAddress.trim())} onClick={async () => {
+                setSendingEmail(true);
+                setMessage("");
+                try {
+                  const r = await emailCustomerDocument({ id, kind, email: emailAddress.trim() });
+                  setMessage(r.message);
+                } catch {
+                  setMessage("Email could not be submitted. Use Open email app or Copy link instead.");
+                } finally { setSendingEmail(false); }
+              }}>
+                {sendingEmail ? "Submitting…" : "Send email now"}
+              </button>
+            )}
+            {canEmail && emailAddress.trim() && (
               <a
                 className={`btn ${primary && !canText ? "primary" : "secondary"}`}
                 data-page-primary={primary && !canText ? true : undefined}
-                href={`mailto:${encodeURIComponent(data.email ?? "").replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}
+                href={`mailto:${encodeURIComponent(emailAddress.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}
               >
-                Email to customer
+                Open email app instead
               </a>
             )}
             {typeof navigator !== "undefined" &&
@@ -145,10 +177,9 @@ export function DocumentShare({
               . Hand them the link in person or use the other option.
             </p>
           )}
-          {!data.phone && !data.email && (
+          {!phoneNumber.trim() && !emailAddress.trim() && (
             <p>
-              Add a phone number or email on the customer record, or copy the
-              link below.
+              Enter a recipient above, or copy the secure customer link below.
             </p>
           )}
           <details>
@@ -201,6 +232,8 @@ export function DocumentShare({
                 const result = await prepareDocumentShare({ id, kind });
                 if (result.ok) {
                   setData(result.data);
+                  setEmailAddress(result.data.email ?? "");
+                  setPhoneNumber(result.data.phone ?? "");
                   setNeedsReplacement(false);
                   setMessage("");
                 } else setMessage(result.message);
