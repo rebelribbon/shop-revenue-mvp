@@ -385,7 +385,7 @@ export default async function CrmPreview({
                             ? who.asset
                             : activeTab === "History"
                               ? "Estimate prepared today · Customer called yesterday"
-                              : activeTab === "Files"
+                              : activeTab === "Customer Files"
                                 ? "Work authorization · Inspection summary"
                                 : "Contact details and communication preferences"}
                       </p>
