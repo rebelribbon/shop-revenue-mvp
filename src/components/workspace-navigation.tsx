@@ -42,12 +42,10 @@ const shopItems = [
 const workPaths = ["/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
-  canSeeMoney = true,
   automotive = false,
   counts = {},
 }: {
   mobile?: boolean;
-  canSeeMoney?: boolean;
   automotive?: boolean;
   counts?: Record<string, number>;
 }) {
@@ -60,7 +58,6 @@ export function WorkspaceNavigation({
       aria-label={mobile ? "Mobile navigation" : "Main"}
     >
       {shopItems
-        .filter((item) => canSeeMoney || item.href !== "/app/reports")
         .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link
