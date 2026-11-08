@@ -361,15 +361,46 @@ export default async function CrmPreview({
           )}
         </div>
       </div>
-      <nav className="crm-sample-mobile-nav" aria-label="Mobile sample navigation">
-        {([
-          { label: "Today", href: "/demo/crm?view=today", icon: "home", current: !who && view === "today" },
-          { label: "Customers", href: "/demo/crm", icon: "customers", current: (!who && view !== "today" && view !== "tasks") || Boolean(who) },
-          { label: "Jobs", href: "/demo/job", icon: "work", current: false },
-          { label: "Tasks", href: "/demo/crm?view=tasks", icon: "tasks", current: !who && view === "tasks" },
-          { label: "Money", href: "/demo/job?stage=payment", icon: "money", current: false },
-        ] as const).map((item) => (
-          <Link key={item.label} href={item.href} aria-label={item.label} aria-current={item.current ? "page" : undefined}>
+      <nav
+        className="crm-sample-mobile-nav"
+        aria-label="Mobile sample navigation"
+      >
+        {(
+          [
+            {
+              label: "Today",
+              href: "/demo/crm?view=today",
+              icon: "home",
+              current: !who && view === "today",
+            },
+            {
+              label: "Customers",
+              href: "/demo/crm",
+              icon: "customers",
+              current:
+                (!who && view !== "today" && view !== "tasks") || Boolean(who),
+            },
+            { label: "Jobs", href: "/demo/job", icon: "work", current: false },
+            {
+              label: "Tasks",
+              href: "/demo/crm?view=tasks",
+              icon: "tasks",
+              current: !who && view === "tasks",
+            },
+            {
+              label: "Money",
+              href: "/demo/job?stage=payment",
+              icon: "money",
+              current: false,
+            },
+          ] as const
+        ).map((item) => (
+          <Link
+            key={item.label}
+            href={item.href}
+            aria-label={item.label}
+            aria-current={item.current ? "page" : undefined}
+          >
             <WorkspaceIcon name={item.icon} />
             <span>{item.label}</span>
           </Link>
