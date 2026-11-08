@@ -19,6 +19,8 @@ export function CopyLink({
   email?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState(email ?? "");
+  const [recipientPhone, setRecipientPhone] = useState(phone ?? "");
   const url = () => `${window.location.origin}${path}`;
   const message = () =>
     `${intro ? `${intro}\n` : title ? `Please review and sign: ${title}\n` : ""}${url()}`;
@@ -39,32 +41,53 @@ export function CopyLink({
       >
         {copied ? "Copied" : label}
       </button>
-      {phone && (
-        <button
-          type="button"
-          className="btn secondary"
-          onClick={() =>
-            window.location.assign(
-              `sms:${phone}?&body=${encodeURIComponent(message())}`,
-            )
-          }
-        >
-          Text it
-        </button>
-      )}
-      {email && (
-        <button
-          type="button"
-          className="btn secondary"
-          onClick={() =>
-            window.location.assign(
-              `mailto:${email}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`,
-            )
-          }
-        >
-          Email it
-        </button>
-      )}
+      <details className="record-details">
+        <summary>Send signing link</summary>
+        <p>Confirm where to send it. Opening your messaging app does not send the link automatically.</p>
+        <label>
+          Recipient email
+          <input
+            type="email"
+            value={recipientEmail}
+            onChange={(e) => setRecipientEmail(e.target.value)}
+            placeholder="customer@example.com"
+            autoComplete="email"
+          />
+        </label>
+        <label>
+          Recipient mobile number
+          <input
+            type="tel"
+            value={recipientPhone}
+            onChange={(e) => setRecipientPhone(e.target.value)}
+            placeholder="Customer mobile number"
+            autoComplete="tel"
+          />
+        </label>
+        <div className="money-actions">
+          {recipientPhone.trim() && (
+            <button type="button" className="btn secondary"
+              onClick={() => window.location.assign(
+                `sms:${recipientPhone.trim()}?body=${encodeURIComponent(message())}`
+              )}
+            >
+              Open text message
+            </button>
+          )}
+          {recipientEmail.trim() && (
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipientEmail.trim())}
+              onClick={() => window.location.assign(
+                `mailto:${encodeURIComponent(recipientEmail.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`
+              )}
+            >
+              Open email message
+            </button>
+          )}
+        </div>
+      </details>
     </>
   );
 }
