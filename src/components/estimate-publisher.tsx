@@ -34,7 +34,11 @@ export function EstimatePublisher({
     return (
       <section data-ux-ready={ready}>
         <h4>Estimate saved — send it for authorization</h4>
-        <p>Step 2 of 2: Confirm a customer email or phone number and send the secure approval link. The estimate is already in this job’s file cabinet.</p>
+        <p>
+          Step 2 of 2: Confirm a customer email or phone number and send the
+          secure approval link. The estimate is already in this job’s file
+          cabinet.
+        </p>
         {publishedId && (
           <DocumentShare
             id={publishedId}
@@ -45,7 +49,8 @@ export function EstimatePublisher({
           />
         )}
         <p role="status">
-          Your customer can approve or decline each priced item and sign. You can track the result on the job.
+          Your customer can approve or decline each priced item and sign. You
+          can track the result on the job.
         </p>
         <Link href={`/app/jobs?job=${jobId}`}>
           Job timeline &amp; next step
@@ -86,7 +91,11 @@ export function EstimatePublisher({
     >
       <fieldset className="hydration-fields" disabled={!ready}>
         <h4>Step 1 of 2 — Prepare the estimate</h4>
-        <p>Review the work and prices. This saves a fixed estimate in the job and opens the recipient and delivery options; it does not send anything until you confirm a recipient.</p>
+        <p>
+          Review the work and prices. This saves a fixed estimate in the job and
+          opens the recipient and delivery options; it does not send anything
+          until you confirm a recipient.
+        </p>
         {taxRateBps === 0 && (
           <p className="muted" role="note">
             <strong>Sales tax is set to 0%.</strong> Taxable items will go out
