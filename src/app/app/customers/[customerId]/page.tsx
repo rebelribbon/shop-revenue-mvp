@@ -1,4 +1,5 @@
 import { formatPhone } from "@/lib/phone-format";
+import { jobReference } from "@/lib/job-reference";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ServiceAssets } from "@/components/service-assets";
 import { listServiceAssets } from "@/domain/service-assets";
@@ -493,7 +494,7 @@ export default async function CustomerDetailPage(props: {
                       className="customer-work-row"
                       href={`/app/jobs?job=${j.id}`}
                     >
-                      <strong><span className="customer-job-ref">{auto ? "RO" : "Job"} {j.id.slice(0, 12).toUpperCase()}</span> · {j.title}</strong>
+                      <strong><span className="customer-job-ref">{jobReference(j.id, auto)}</span> · {j.title}</strong>
                       <span className={statusTone(j.status)}>
                         {statusLabels[j.status]}
                       </span>
