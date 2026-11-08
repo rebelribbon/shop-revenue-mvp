@@ -405,7 +405,7 @@ export function DemoJobEditor({
                   <h3>Customer approval preview</h3>
                   <button className="btn secondary" type="button" aria-label="Close preview" onClick={() => setShowCustomerView(false)}>Close</button>
                 </header>
-                <p className="muted">This is the customer's view. No approval or signature is recorded.</p>
+                <p className="muted">This is the customer&apos;s view. No approval or signature is recorded.</p>
                 <div className="demo-job-paper">
                   <strong>{jobTitle}</strong>
                   <p>{customer} · {asset}</p>
