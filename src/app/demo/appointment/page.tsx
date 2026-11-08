@@ -1,9 +1,18 @@
 "use client";
-import { useState } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
+import { demoCustomers } from "@/lib/demo-customers";
 
-export default function DemoAppointmentPage() {
-  const [customer, setCustomer] = useState("Alex Example");
+export default function DemoAppointmentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ customer?: string }>;
+}) {
+  const params = use(searchParams);
+  const selected =
+    demoCustomers.find((c) => c.id === params.customer) ?? demoCustomers[0];
+  const profileUrl = `/demo/crm?customer=${selected.id}`;
+  const [customer, setCustomer] = useState(selected.name);
   const [date, setDate] = useState("2026-11-10T09:00");
   const [reason, setReason] = useState("Brake service");
   const [saved, setSaved] = useState(false);
@@ -16,7 +25,7 @@ export default function DemoAppointmentPage() {
         <span className="muted">Appointment preview · Sample only</span>
       </header>
       <section className="demo-job-panel">
-        <Link href="/demo/crm?customer=alex">← Customer profile</Link>
+        <Link href={profileUrl}>← Customer profile</Link>
         <h1>New appointment</h1>
         {saved ? (
           <div className="demo-job-confirm" role="status">
@@ -63,7 +72,7 @@ export default function DemoAppointmentPage() {
               />
             </label>
             <div className="demo-job-bottom-actions">
-              <Link className="btn secondary" href="/demo/crm?customer=alex">
+              <Link className="btn secondary" href={profileUrl}>
                 Cancel
               </Link>
               <button className="btn primary" type="submit">

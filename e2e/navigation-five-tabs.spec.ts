@@ -33,11 +33,14 @@ test("mobile app navigation uses five purpose-built sections", async ({
 test("appointment can be started from a customer's profile and RO history remains visible", async ({
   page,
 }) => {
-  await page.goto("/demo/crm?customer=alex");
+  await page.goto("/demo/crm?customer=jordan");
   await page.getByRole("link", { name: "+ Appointment" }).click();
   await expect(
     page.getByRole("heading", { name: "New appointment" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Customer", exact: true }),
+  ).toHaveValue("Jordan Sample");
   await page.getByRole("button", { name: "Save appointment" }).click();
   await expect(page.getByText("Appointment saved in this demo")).toBeVisible();
   await page.goto("/demo/crm?customer=alex&tab=Jobs");

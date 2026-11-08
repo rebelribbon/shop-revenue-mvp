@@ -3780,6 +3780,11 @@ a.card.create-tile:hover {
   color: var(--ink-text);
   text-decoration: none;
 }
+.crm-sample-side a:hover,
+.crm-sample-side a:focus-visible {
+  background: var(--ink-raised);
+  color: var(--ink-text);
+}
 .crm-sample-side a[aria-current="page"] {
   background: var(--ink-raised);
   font-weight: 700;

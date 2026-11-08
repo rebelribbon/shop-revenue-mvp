@@ -1,38 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { WorkspaceIcon } from "@/components/workspace-icon";
+import { demoCustomers as customers } from "@/lib/demo-customers";
 
 export const metadata: Metadata = {
   title: "CRM workspace preview | Shop Revenue",
   robots: { index: false, follow: false },
 };
 
-const customers = [
-  {
-    id: "alex",
-    name: "Alex Example",
-    asset: "2019 Ford F-150",
-    contact: "(210) 555-0100",
-  },
-  {
-    id: "jordan",
-    name: "Jordan Sample",
-    asset: "2022 Toyota Camry",
-    contact: "(210) 555-0111",
-  },
-  {
-    id: "taylor",
-    name: "Taylor Demo",
-    asset: "2021 Honda Civic",
-    contact: "(210) 555-0122",
-  },
-  {
-    id: "morgan",
-    name: "Morgan Test",
-    asset: "2023 Ford Explorer",
-    contact: "(210) 555-0133",
-  },
-];
 const tabs = ["Overview", "Jobs", "Vehicles", "History", "Details"] as const;
 
 export default async function CrmPreview({
@@ -72,11 +47,36 @@ export default async function CrmPreview({
           className="crm-sample-side"
           aria-label="Sample workspace navigation"
         >
-          <Link href="/demo/crm?view=appointments">Appointments</Link>
-          <Link href="/demo/crm?view=tasks">Tasks</Link>
-          <Link href="/demo/crm">Customers</Link>
-          <Link href="/demo/crm?view=jobs">Jobs / ROs</Link>
-          <Link href="/demo/crm?view=reports">Reports</Link>
+          <Link
+            href="/demo/crm?view=appointments"
+            aria-current={!who && view === "appointments" ? "page" : undefined}
+          >
+            Appointments
+          </Link>
+          <Link
+            href="/demo/crm?view=tasks"
+            aria-current={!who && view === "tasks" ? "page" : undefined}
+          >
+            Tasks
+          </Link>
+          <Link
+            href="/demo/crm"
+            aria-current={who || !view ? "page" : undefined}
+          >
+            Customers
+          </Link>
+          <Link
+            href="/demo/crm?view=jobs"
+            aria-current={!who && view === "jobs" ? "page" : undefined}
+          >
+            Jobs / ROs
+          </Link>
+          <Link
+            href="/demo/crm?view=reports"
+            aria-current={!who && view === "reports" ? "page" : undefined}
+          >
+            Reports
+          </Link>
         </nav>
         <div className="crm-sample-content">
           {!who && view === "appointments" ? (
@@ -269,7 +269,7 @@ export default async function CrmPreview({
                   </Link>
                   <Link
                     className="btn secondary"
-                    href="/demo/appointment?customer=alex"
+                    href={`/demo/appointment?customer=${who.id}`}
                   >
                     + Appointment
                   </Link>
@@ -334,7 +334,7 @@ export default async function CrmPreview({
                       <article className="card customer-overview-card">
                         <div className="section-heading">
                           <h2>Recent ROs</h2>
-                          <Link href="/demo/job">RO history</Link>
+                          <Link href={`${url}&tab=Jobs`}>RO history</Link>
                         </div>
                         <Link
                           className="customer-work-row"
