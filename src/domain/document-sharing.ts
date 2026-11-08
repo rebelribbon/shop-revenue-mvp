@@ -1,4 +1,4 @@
-import { and, eq, sql, inArray, isNull } from "drizzle-orm";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { business, customer, document, estimateVersion, invoice } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { openShareToken } from "@/lib/share-token";
