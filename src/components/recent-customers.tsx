@@ -75,7 +75,7 @@ export function RecentCustomers({
   return (
     <RecordSection
       title="Recently viewed customers"
-      description="Pick up where you left off on this device."
+      className="record-recent-customers"
     >
       <div className="recent-customer-shortcuts">
         {items.map((r) => (
