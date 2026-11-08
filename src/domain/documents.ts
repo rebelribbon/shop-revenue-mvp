@@ -263,7 +263,9 @@ async function mergeValues(tx: TenantTx, jobId: string) {
     p.filter(Boolean).join(", ");
   return {
     customerId: input.customerId,
-    changeOrderReady: Boolean(latest && previous && latest.supplementReason?.trim()),
+    changeOrderReady: Boolean(
+      latest && previous && latest.supplementReason?.trim(),
+    ),
     values: {
       customer_name: c.displayName,
       customer_address: join(
@@ -288,9 +290,10 @@ async function mergeValues(tx: TenantTx, jobId: string) {
               )
             : ""),
       change_summary: latest?.supplementReason?.trim() ?? "",
-      change_delta: latest && previous
-        ? `${latest.snapshot.totalCents - previous.snapshot.totalCents >= 0 ? "+" : "-"}${money(Math.abs(latest.snapshot.totalCents - previous.snapshot.totalCents))}`
-        : "—",
+      change_delta:
+        latest && previous
+          ? `${latest.snapshot.totalCents - previous.snapshot.totalCents >= 0 ? "+" : "-"}${money(Math.abs(latest.snapshot.totalCents - previous.snapshot.totalCents))}`
+          : "—",
       // The sent estimate's total (with tax), or the job's quoted subtotal.
       job_total: latest
         ? money(latest.snapshot.totalCents)
@@ -334,14 +337,25 @@ export async function sendDocument(
       ),
     );
   if (!t) throw notFound("That template");
-  const { customerId, values, changeOrderReady } = await mergeValues(tx, input.jobId);
+  const { customerId, values, changeOrderReady } = await mergeValues(
+    tx,
+    input.jobId,
+  );
   const isChangeOrder = t.name.trim().toLowerCase() === "change order";
   if (isChangeOrder && !changeOrderReady)
-    throw new AppError("VALIDATION", "Create and publish the updated estimate with its change reason before preparing a change order.");
+    throw new AppError(
+      "VALIDATION",
+      "Create and publish the updated estimate with its change reason before preparing a change order.",
+    );
   // Legacy templates may ask the signer to invent the change and its price.
   // Never let a customer decide the amount of work or money on a change order.
-  const safeChangeTemplate = STARTER_TEMPLATES.find((item) => item.name === "Change order")!;
-  const frozenBody = fillMerge(isChangeOrder ? safeChangeTemplate.body : t.body, values);
+  const safeChangeTemplate = STARTER_TEMPLATES.find(
+    (item) => item.name === "Change order",
+  )!;
+  const frozenBody = fillMerge(
+    isChangeOrder ? safeChangeTemplate.body : t.body,
+    values,
+  );
   const signerFields = isChangeOrder ? safeChangeTemplate.fields : t.fields;
   const token = newToken();
   const [row] = await tx
@@ -594,7 +608,13 @@ export async function jobCabinet(
       at: v.createdAt,
       status: a ? "Signed" : v.revokedAt ? "Replaced" : "Sent",
       href: `/app/estimates?jobId=${jobId}`,
-      estimateShareId: !a && !v.revokedAt && v.expiresAt > new Date() && v.id === versions[0]?.v.id ? v.id : undefined,
+      estimateShareId:
+        !a &&
+        !v.revokedAt &&
+        v.expiresAt > new Date() &&
+        v.id === versions[0]?.v.id
+          ? v.id
+          : undefined,
     });
     if (a)
       items.push({
@@ -721,9 +741,15 @@ export async function readPublicDocument(
   });
 }
 
-export function unsafeCustomerPricedChangeOrder(doc: Pick<PublicDocument, "title" | "fields">) {
-  return doc.title.trim().toLowerCase() === "change order" &&
-    doc.fields.some((field) => ["change", "added_cost", "cost", "price", "amount"].includes(field.key));
+export function unsafeCustomerPricedChangeOrder(
+  doc: Pick<PublicDocument, "title" | "fields">,
+) {
+  return (
+    doc.title.trim().toLowerCase() === "change order" &&
+    doc.fields.some((field) =>
+      ["change", "added_cost", "cost", "price", "amount"].includes(field.key),
+    )
+  );
 }
 
 export function checkValues(
@@ -834,7 +860,10 @@ export async function signDocument(
   const doc = await readPublicDocument(token);
   if (!doc || doc.status !== "sent") throw notFound("That document");
   if (unsafeCustomerPricedChangeOrder(doc))
-    throw new AppError("VALIDATION", "This older change order needs to be replaced by a shop-prepared version before it can be signed.");
+    throw new AppError(
+      "VALIDATION",
+      "This older change order needs to be replaced by a shop-prepared version before it can be signed.",
+    );
   const name = raw.name?.trim() ?? "";
   if (name.length < 2) throw new AppError("VALIDATION", "Type your full name.");
   const signature = signatureSchema.safeParse(raw.signature);
