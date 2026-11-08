@@ -78,7 +78,11 @@ export function FileCabinet({
                   </span>
                 )}
                 {i.estimateShareId && !readOnly && (
-                  <DocumentShare id={i.estimateShareId} kind="estimate" label="Send estimate for approval" />
+                  <DocumentShare
+                    id={i.estimateShareId}
+                    kind="estimate"
+                    label="Send estimate for approval"
+                  />
                 )}
                 {i.signLink && !readOnly && (
                   <span className="money-actions">
