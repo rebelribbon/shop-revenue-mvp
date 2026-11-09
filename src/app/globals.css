@@ -2927,7 +2927,7 @@ a.card.create-tile:hover {
   font-weight: 700;
   border: 1px solid var(--accent);
 }
-.workspace-body:has(.ro-view-switch) main { padding-bottom: 100px; }
+.workspace-body:has(.ro-view-switch) main { padding-bottom: 104px; }
 @media (max-width: 899px) {
   .ro-view-switch {
     left: 16px;
