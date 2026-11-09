@@ -3,37 +3,13 @@ import Link from "next/link";
 import { WorkspaceIcon } from "./workspace-icon";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  { href: "/app", label: "Today", mobile: "Today", icon: "home", phone: true },
-  {
-    href: "/app/customers",
-    label: "Customers",
-    mobile: "Customers",
-    icon: "customers",
-    phone: true,
-  },
-  {
-    href: "/app/work",
-    label: "Jobs",
-    mobile: "Jobs",
-    icon: "work",
-    phone: true,
-  },
-  {
-    href: "/app/tasks",
-    label: "Tasks",
-    mobile: "Tasks",
-    icon: "tasks",
-    phone: true,
-  },
-  {
-    href: "/app/money",
-    label: "Money",
-    mobile: "Money",
-    icon: "money",
-    phone: true,
-  },
+  { href: "/app/schedule", label: "Appointments", mobile: "Appts", icon: "calendar", phone: true },
+  { href: "/app/tasks", label: "Tasks", mobile: "Tasks", icon: "tasks", phone: true },
+  { href: "/app/customers", label: "Customers", mobile: "Customers", icon: "customers", phone: true },
+  { href: "/app/jobs", label: "Jobs / ROs", mobile: "Jobs", icon: "work", phone: true },
+  { href: "/app/money", label: "Reports", mobile: "Reports", icon: "money", phone: true },
 ] as const;
-const workPaths = ["/app/jobs", "/app/estimates", "/app/invoices"];
+const workPaths = ["/app/jobs", "/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
   canSeeMoney = true,
@@ -68,7 +44,7 @@ export function WorkspaceNavigation({
                       path.startsWith("/app/opportunities")) ||
                     (item.href === "/app/money" &&
                       path.startsWith("/app/revenue")) ||
-                    (item.href === "/app/work" &&
+                    (item.href === "/app/jobs" &&
                       workPaths.some((p) => path.startsWith(p)))
               )
                 ? "page"
