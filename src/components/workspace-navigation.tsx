@@ -3,11 +3,41 @@ import Link from "next/link";
 import { WorkspaceIcon } from "./workspace-icon";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  { href: "/app/schedule", label: "Appointments", mobile: "Appts", icon: "calendar", phone: true },
-  { href: "/app/tasks", label: "Tasks", mobile: "Tasks", icon: "tasks", phone: true },
-  { href: "/app/customers", label: "Customers", mobile: "Customers", icon: "customers", phone: true },
-  { href: "/app/jobs", label: "Jobs / ROs", mobile: "Jobs", icon: "work", phone: true },
-  { href: "/app/money", label: "Reports", mobile: "Reports", icon: "money", phone: true },
+  {
+    href: "/app/schedule",
+    label: "Appointments",
+    mobile: "Appts",
+    icon: "calendar",
+    phone: true,
+  },
+  {
+    href: "/app/tasks",
+    label: "Tasks",
+    mobile: "Tasks",
+    icon: "tasks",
+    phone: true,
+  },
+  {
+    href: "/app/customers",
+    label: "Customers",
+    mobile: "Customers",
+    icon: "customers",
+    phone: true,
+  },
+  {
+    href: "/app/jobs",
+    label: "Jobs / ROs",
+    mobile: "Jobs",
+    icon: "work",
+    phone: true,
+  },
+  {
+    href: "/app/money",
+    label: "Reports",
+    mobile: "Reports",
+    icon: "money",
+    phone: true,
+  },
 ] as const;
 const workPaths = ["/app/jobs", "/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({

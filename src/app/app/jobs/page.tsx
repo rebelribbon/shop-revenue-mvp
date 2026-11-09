@@ -381,46 +381,108 @@ export default async function JobsPage({
         (() => {
           const input = jobInput.parse(selected.data);
           const totals = calculateJob(input.parts, input.labor);
-          const customerName = data.options.customers.find((item) => item.id === input.customerId)?.name ?? "Customer";
-          const assetName = flow?.latest?.estimate.snapshot.serviceLabel || flow?.latest?.estimate.snapshot.vehicleLabel || "";
+          const customerName =
+            data.options.customers.find((item) => item.id === input.customerId)
+              ?.name ?? "Customer";
+          const assetName =
+            flow?.latest?.estimate.snapshot.serviceLabel ||
+            flow?.latest?.estimate.snapshot.vehicleLabel ||
+            "";
           return (
-            <section className="card" aria-label="Customer-facing repair order" data-ro-mode="customer">
+            <section
+              className="card"
+              aria-label="Customer-facing repair order"
+              data-ro-mode="customer"
+            >
               <div className="profile-head">
                 <div>
-                  <p className="muted">Customer-facing view · RO #{selected.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="muted">
+                    Customer-facing view · RO #
+                    {selected.id.slice(0, 8).toUpperCase()}
+                  </p>
                   <h2>{selected.title}</h2>
-                  <p>{customerName}{assetName ? ` · ${assetName}` : ""}</p>
+                  <p>
+                    {customerName}
+                    {assetName ? ` · ${assetName}` : ""}
+                  </p>
                 </div>
-                {flow && <span className={statusTone(statusOf(selected.id))}>{statusLabels[statusOf(selected.id)]}</span>}
+                {flow && (
+                  <span className={statusTone(statusOf(selected.id))}>
+                    {statusLabels[statusOf(selected.id)]}
+                  </span>
+                )}
               </div>
-              <p className="muted">Customer prices only. This is a staff presentation view; use the estimate workflow to send an official authorization document.</p>
+              <p className="muted">
+                Customer prices only. This is a staff presentation view; use the
+                estimate workflow to send an official authorization document.
+              </p>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Work</th><th>Quantity / hours</th><th>Customer price</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Work</th>
+                      <th>Quantity / hours</th>
+                      <th>Customer price</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {input.parts.map((line, i) => (
                       <tr key={`part-${i}`}>
                         <td>{line.description}</td>
                         <td>{line.quantity}</td>
-                        <td>{money(Math.round(line.quantity * line.unitPriceCents))}</td>
+                        <td>
+                          {money(
+                            Math.round(line.quantity * line.unitPriceCents),
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {input.labor.map((line, i) => (
                       <tr key={`labor-${i}`}>
                         <td>{line.description}</td>
-                        <td>{(line.estimatedHoursHundredths / 100).toFixed(2)} hours</td>
-                        <td>{money(Math.round(line.estimatedHoursHundredths * line.sellRateCents / 100))}</td>
+                        <td>
+                          {(line.estimatedHoursHundredths / 100).toFixed(2)}{" "}
+                          hours
+                        </td>
+                        <td>
+                          {money(
+                            Math.round(
+                              (line.estimatedHoursHundredths *
+                                line.sellRateCents) /
+                                100,
+                            ),
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot><tr><th colSpan={2}>Subtotal before applicable taxes and fees</th><th>{money(totals.subtotalCents)}</th></tr></tfoot>
+                  <tfoot>
+                    <tr>
+                      <th colSpan={2}>
+                        Subtotal before applicable taxes and fees
+                      </th>
+                      <th>{money(totals.subtotalCents)}</th>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-              <p><Link className="btn secondary" href={`/app/customers/${input.customerId}`}>Customer history</Link></p>
-              <div className="ro-view-switch" aria-label="Repair order display mode">
+              <p>
+                <Link
+                  className="btn secondary"
+                  href={`/app/customers/${input.customerId}`}
+                >
+                  Customer history
+                </Link>
+              </p>
+              <div
+                className="ro-view-switch"
+                aria-label="Repair order display mode"
+              >
                 <strong>View:</strong>
                 <span aria-current="true">Customer</span>
-                <Link href={`/app/jobs?job=${selected.id}&mode=internal`}>Internal</Link>
+                <Link href={`/app/jobs?job=${selected.id}&mode=internal`}>
+                  Internal
+                </Link>
               </div>
             </section>
           );
@@ -460,7 +522,10 @@ export default async function JobsPage({
                 </p>
               )}
               {s.role === "owner" && (
-                <div className="ro-view-switch" aria-label="Repair order display mode">
+                <div
+                  className="ro-view-switch"
+                  aria-label="Repair order display mode"
+                >
                   <strong>View:</strong>
                   <Link href={`/app/jobs?job=${selected.id}`}>Customer</Link>
                   <span aria-current="true">Internal</span>
