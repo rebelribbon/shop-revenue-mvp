@@ -377,7 +377,7 @@ export default async function JobsPage({
             }
           />
         </>
-      ) : selected && s.role === "owner" && mode !== "internal" ? (
+      ) : selected && s.role === "owner" && mode === "customer" ? (
         (() => {
           const input = jobInput.parse(selected.data);
           const totals = calculateJob(input.parts, input.labor);
@@ -480,7 +480,7 @@ export default async function JobsPage({
               >
                 <strong>View:</strong>
                 <span aria-current="true">Customer</span>
-                <Link href={`/app/jobs?job=${selected.id}&mode=internal`}>
+                <Link href={`/app/jobs?job=${selected.id}`}>
                   Internal
                 </Link>
               </div>
@@ -527,7 +527,7 @@ export default async function JobsPage({
                   aria-label="Repair order display mode"
                 >
                   <strong>View:</strong>
-                  <Link href={`/app/jobs?job=${selected.id}`}>Customer</Link>
+                  <Link href={`/app/jobs?job=${selected.id}&mode=customer`}>Customer</Link>
                   <span aria-current="true">Internal</span>
                 </div>
               )}
