@@ -480,9 +480,7 @@ export default async function JobsPage({
               >
                 <strong>View:</strong>
                 <span aria-current="true">Customer</span>
-                <Link href={`/app/jobs?job=${selected.id}`}>
-                  Internal
-                </Link>
+                <Link href={`/app/jobs?job=${selected.id}`}>Internal</Link>
               </div>
             </section>
           );
