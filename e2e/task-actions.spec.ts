@@ -44,6 +44,31 @@ test("a text follow-up opens the customer's number directly and keeps Done separ
   await expect(page).toHaveURL(new RegExp(`${customerPath}$`));
 
   await page.goto("/app/tasks");
+  await task.getByRole("link", { name: "Text", exact: true }).click();
+  const contact = page.getByRole("dialog", { name: "Log customer contact" });
+  await expect(contact.getByLabel("Contact method")).toHaveValue("text");
+  await contact
+    .getByLabel("Short summary")
+    .fill("Sent an update about the estimate.");
+  await contact.getByRole("button", { name: "Save to history" }).click();
+  await expect(contact).not.toBeVisible();
   await task.getByRole("button", { name: "Done", exact: true }).click();
   await expect(task).toHaveCount(0);
+
+  await page.goto(`${customerPath}?view=history`);
+  const history = page.getByRole("region", { name: "Customer history" });
+  await expect(history).toContainText("Text shortcut opened");
+  await expect(history).toContainText(
+    "Text · Sent — Sent an update about the estimate.",
+  );
+  await expect(history).toContainText(`Task completed · ${title}`);
+  await history.getByRole("button", { name: "Log contact" }).click();
+  await contact.getByLabel("What happened?").selectOption("received");
+  await contact
+    .getByLabel("Short summary")
+    .fill("Customer replied with a question about parts.");
+  await contact.getByRole("button", { name: "Save to history" }).click();
+  await expect(history).toContainText(
+    "Text · Received — Customer replied with a question about parts.",
+  );
 });

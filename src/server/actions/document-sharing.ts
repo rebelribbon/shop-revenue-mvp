@@ -150,12 +150,13 @@ export async function emailCustomerDocument(raw: unknown) {
 
     // Best-effort activity record after provider acceptance. A logging failure
     // must never cause the employee to send a second copy inadvertently.
+    let historySaved = true;
     try {
       await withTenant(s.businessId, s.actor, async (tx) => {
         const table =
           parsed.data.kind === "estimate" ? estimateVersion : invoice;
         const [row] = await tx
-          .select({ customerId: table.customerId })
+          .select({ customerId: table.customerId, jobId: table.quoteId })
           .from(table)
           .where(
             and(
@@ -168,9 +169,11 @@ export async function emailCustomerDocument(raw: unknown) {
             kind: "document.email_submitted",
             subjectType: "customer",
             subjectId: row.customerId,
-            summary: `Email submitted to ${parsed.data.email}`,
+            summary: `Email submitted · ${parsed.data.subject || title} — ${parsed.data.email}${parsed.data.message ? ` · ${parsed.data.message}` : ""}`,
             data: {
               documentId: parsed.data.id,
+              jobId: row.jobId,
+              note: parsed.data.message,
               documentKind: parsed.data.kind,
               providerMessageId: delivery.providerMessageId,
               documentIds: selectedDocuments.map((doc) => doc.id),
@@ -179,11 +182,12 @@ export async function emailCustomerDocument(raw: unknown) {
           });
       });
     } catch {
-      // The provider already acknowledged this send; don't request a retry.
+      // The provider already acknowledged this send; do not request a retry.
+      historySaved = false;
     }
     return {
       ok: true as const,
-      message: `Submitted to ${parsed.data.email}. Delivery/opening is not yet confirmed.`,
+      message: `Submitted to ${parsed.data.email}. Delivery/opening is not yet confirmed.${historySaved ? "" : " The history entry could not be saved."}`,
     };
   } catch (error) {
     return {

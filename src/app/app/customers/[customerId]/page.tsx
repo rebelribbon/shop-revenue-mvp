@@ -1,3 +1,4 @@
+import { LogContactButton } from "@/components/correspondence";
 import { RecordSection, WorkCard } from "@/components/record-section";
 import { CustomerContactSummary } from "@/components/customer-contact-summary";
 import { CustomerContactActions } from "@/components/customer-contact-actions";
@@ -155,6 +156,7 @@ export default async function CustomerDetailPage(props: {
       </p>
       <header className="customer-hero" aria-label="Customer summary">
         <CustomerContactActions
+          target={{ customerId }}
           phone={c.phoneE164}
           email={c.email}
           textAllowed={!c.textOptedOutAt && !c.doNotContact}
@@ -268,11 +270,14 @@ export default async function CustomerDetailPage(props: {
               {portal ? (
                 <CopyLink
                   path={portal}
+                  contact={{ customerId }}
                   label="Copy customer link"
                   intro="Here’s your account: estimates, invoices and visits in one place."
                   title={`Your account with ${profile?.dba || profile?.legalName || "us"}`}
-                  phone={c.textOptedOutAt ? null : c.phoneE164}
-                  email={c.emailOptedOutAt ? null : c.email}
+                  phone={
+                    c.doNotContact || c.textOptedOutAt ? null : c.phoneE164
+                  }
+                  email={c.doNotContact || c.emailOptedOutAt ? null : c.email}
                 />
               ) : (
                 !readOnly && (
@@ -571,7 +576,10 @@ export default async function CustomerDetailPage(props: {
           {view === "history" && (
             <RecordSection
               title="Customer history"
-              description="Calls, appointments and previous work in date order."
+              actions={
+                !readOnly && <LogContactButton target={{ customerId }} />
+              }
+              description="Customer contact, appointments and previous work in date order."
             >
               <ul className="row-list">
                 {history.map((e) => (

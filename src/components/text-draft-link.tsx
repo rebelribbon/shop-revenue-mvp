@@ -1,15 +1,19 @@
 "use client";
 
+import { ContactLaunchLink } from "./correspondence";
+import type { CorrespondenceTarget } from "@/lib/correspondence";
 import { smsDraftHref } from "@/lib/sms-draft";
 import { useActionHydration } from "./action-hydration";
 
 export function TextDraftLink({
   phone,
+  target,
   label,
   message,
   approvalPath,
 }: {
   phone: string;
+  target?: CorrespondenceTarget;
   label: string;
   message: string;
   approvalPath?: string;
@@ -23,12 +27,15 @@ export function TextDraftLink({
     .filter(Boolean)
     .join("\n");
   return (
-    <a
+    <ContactLaunchLink
+      contact={target}
+      channel="text"
+      purpose={message}
       className="btn secondary"
       data-ux-ready={ready}
       href={ready ? smsDraftHref(phone, body) : undefined}
     >
       {label}
-    </a>
+    </ContactLaunchLink>
   );
 }

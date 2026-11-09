@@ -1,5 +1,8 @@
 "use client";
 import { useState } from "react";
+import { useContactLog } from "./correspondence";
+import type { CorrespondenceTarget } from "@/lib/correspondence";
+import { smsDraftHref } from "@/lib/sms-draft";
 
 // Copy, text or email a customer link using this site's address.
 export function CopyLink({
@@ -9,8 +12,10 @@ export function CopyLink({
   phone,
   email,
   intro,
+  contact,
 }: {
   path: string;
+  contact?: CorrespondenceTarget;
   // What the text/email says above the link. Defaults to a signing ask.
   intro?: string;
   label?: string;
@@ -18,6 +23,7 @@ export function CopyLink({
   phone?: string | null;
   email?: string | null;
 }) {
+  const log = useContactLog();
   const [copied, setCopied] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState(email ?? "");
   const [recipientPhone, setRecipientPhone] = useState(phone ?? "");
@@ -34,6 +40,15 @@ export function CopyLink({
           try {
             await navigator.clipboard.writeText(url());
             setCopied(true);
+            if (contact)
+              log?.(
+                {
+                  ...contact,
+                  channel: "other",
+                  purpose: "Shared the customer link",
+                },
+                true,
+              );
           } catch {
             window.prompt("Copy this link", url());
           }
@@ -72,11 +87,18 @@ export function CopyLink({
             <button
               type="button"
               className="btn secondary"
-              onClick={() =>
-                window.location.assign(
-                  `sms:${recipientPhone.trim()}?body=${encodeURIComponent(message())}`,
-                )
-              }
+              onClick={() => {
+                if (contact)
+                  log?.(
+                    {
+                      ...contact,
+                      channel: "text",
+                      purpose: "Shared the customer link",
+                    },
+                    true,
+                  );
+                window.location.assign(smsDraftHref(recipientPhone, message()));
+              }}
             >
               Open text message
             </button>
@@ -88,11 +110,20 @@ export function CopyLink({
               disabled={
                 !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())
               }
-              onClick={() =>
+              onClick={() => {
+                if (contact)
+                  log?.(
+                    {
+                      ...contact,
+                      channel: "email",
+                      purpose: "Shared the customer link",
+                    },
+                    true,
+                  );
                 window.location.assign(
                   `mailto:${encodeURIComponent(recipientEmail.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(intro && title ? title : title ? `Please sign: ${title}` : "Document")}&body=${encodeURIComponent(message())}`,
-                )
-              }
+                );
+              }}
             >
               Open email message
             </button>

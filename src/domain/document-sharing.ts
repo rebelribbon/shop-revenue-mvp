@@ -120,6 +120,7 @@ export async function shareRecipient(tx: TenantTx, customerId: string) {
         .join(" ")
     : "";
   return {
+    customerId,
     name: person.name,
     phone: person.phone,
     email: person.email,

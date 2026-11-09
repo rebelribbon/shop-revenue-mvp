@@ -1,3 +1,5 @@
+import { ContactLaunchLink } from "@/components/correspondence";
+import type { CorrespondenceTarget } from "@/lib/correspondence";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -205,10 +207,16 @@ function TaskActionLink({
   action,
   children,
   button = false,
+  target,
+  purpose,
+  prompt,
 }: {
   action: TaskAction;
   children: ReactNode;
   button?: boolean;
+  target?: CorrespondenceTarget;
+  purpose: string;
+  prompt: boolean;
 }) {
   const props = {
     href: action.href,
@@ -217,7 +225,15 @@ function TaskActionLink({
   return action.kind === "work" ? (
     <Link {...props}>{children}</Link>
   ) : (
-    <a {...props}>{children}</a>
+    <ContactLaunchLink
+      {...props}
+      contact={target}
+      channel={action.kind}
+      purpose={purpose}
+      prompt={prompt}
+    >
+      {children}
+    </ContactLaunchLink>
   );
 }
 
@@ -241,6 +257,9 @@ function TaskItem({
         : "Today";
   const rule = { category: t.category, subjectId: t.subjectId };
   const action = readOnly ? undefined : t.action;
+  const target = t.customerId
+    ? { customerId: t.customerId, jobId: t.jobId ?? undefined }
+    : undefined;
   const related = t.href && t.href !== action?.href ? t.href : null;
   const relatedLabel = related?.startsWith("/app/customers/")
     ? "View customer"
@@ -287,7 +306,14 @@ function TaskItem({
         <span className="row-main">
           <strong>
             {action ? (
-              <TaskActionLink action={action}>{t.title}</TaskActionLink>
+              <TaskActionLink
+                action={action}
+                target={target}
+                purpose={t.title}
+                prompt={!canLogCall}
+              >
+                {t.title}
+              </TaskActionLink>
             ) : (
               t.title
             )}
@@ -310,7 +336,13 @@ function TaskItem({
       {(action || canUpdate || related) && (
         <div className="task-actions">
           {action && (
-            <TaskActionLink action={action} button>
+            <TaskActionLink
+              action={action}
+              target={target}
+              purpose={t.title}
+              prompt={!canLogCall}
+              button
+            >
               {action.label}
             </TaskActionLink>
           )}
@@ -359,8 +391,8 @@ function TaskItem({
                   ...rule,
                   action: "contact",
                   method: contactMethod,
-                  ...(action?.kind === "text" ? { note: "Text message" } : {}),
-                  deliveryConfirmed: "true",
+                  note: "Task marked done",
+                  deliveryConfirmed: "false",
                 }}
                 submitLabel="Done"
                 variant="secondary"

@@ -1,3 +1,4 @@
+import { LogContactButton } from "@/components/correspondence";
 import { RecordSection, WorkCard } from "@/components/record-section";
 import { CustomerContactActions } from "@/components/customer-contact-actions";
 import { TextDraftLink } from "@/components/text-draft-link";
@@ -473,6 +474,7 @@ export default async function JobsPage({
               )}
               <article className="card job-profile record-job-profile">
                 <CustomerContactActions
+                  target={{ customerId: input.customerId, jobId: selected.id }}
                   phone={data.contact?.phone}
                   email={data.contact?.email}
                   textAllowed={
@@ -516,6 +518,12 @@ export default async function JobsPage({
                 </header>
                 {canFollowUp && (
                   <div className="job-follow-up-shortcuts">
+                    <LogContactButton
+                      target={{
+                        customerId: input.customerId,
+                        jobId: selected.id,
+                      }}
+                    />
                     <Link
                       href={followUpPath(selected.id)}
                       className="btn secondary"
@@ -524,6 +532,10 @@ export default async function JobsPage({
                     </Link>
                     {draftPhone && data.estimateDraftPath && (
                       <TextDraftLink
+                        target={{
+                          customerId: input.customerId,
+                          jobId: selected.id,
+                        }}
                         phone={draftPhone}
                         label={`Text ${estimateName} ready`}
                         message={`${greeting} your ${estimateName} from ${shopName} is ready to review and approve.`}
@@ -532,6 +544,10 @@ export default async function JobsPage({
                     )}
                     {draftPhone && flow?.work === "completed" && (
                       <TextDraftLink
+                        target={{
+                          customerId: input.customerId,
+                          jobId: selected.id,
+                        }}
                         phone={draftPhone}
                         label={
                           auto ? "Text ready for pickup" : "Text work complete"

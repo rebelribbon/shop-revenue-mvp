@@ -38,6 +38,7 @@ export type TaskRow = {
   kindLabel: string;
   subjectId: string;
   customerId: string | null;
+  jobId?: string | null;
   customerName: string | null;
   title: string;
   detail: string | null;
@@ -129,6 +130,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       kindLabel: categoryLabels[i.category],
       subjectId: i.subjectId,
       customerId: i.customerId,
+      jobId: i.category === "job_update" ? i.subjectId : undefined,
       customerName: i.customerName,
       title:
         i.category === "new_lead" && action?.kind !== "call"
@@ -228,6 +230,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       kindLabel: "Your task",
       subjectId: t.id,
       customerId: t.customerId,
+      jobId: t.jobId,
       customerName: t.customerName,
       title: t.title,
       detail: t.customerName,
@@ -404,6 +407,15 @@ export async function updateTask(
     targetId: input.id,
     after: change,
   });
+  if (completed && row.customerId && !callOutcome) {
+    await recordActivity(tx, {
+      kind: "task.completed",
+      subjectType: "customer",
+      subjectId: row.customerId,
+      summary: `Task completed · ${row.title}`,
+      data: { taskId: row.id, jobId: row.jobId },
+    });
+  }
   if (callOutcome && row.customerId) {
     const note = input.action === "reached" ? input.note?.trim() : undefined;
     const result = completed ? "Reached customer" : "No answer · try tomorrow";

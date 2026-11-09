@@ -1,3 +1,4 @@
+import { CorrespondenceProvider } from "@/components/correspondence";
 import { isAutomotive } from "@/lib/business-types";
 import { QuickFind } from "@/components/quick-find";
 import { WorkspaceIcon } from "@/components/workspace-icon";
@@ -150,7 +151,11 @@ export default async function ShopLayout({
                 {billingLink("Review billing")}
               </div>
             )}
-          {children}
+          {s.actor.type === "user" && s.role !== "technician" ? (
+            <CorrespondenceProvider>{children}</CorrespondenceProvider>
+          ) : (
+            children
+          )}
         </div>
         <WorkspaceNavigation
           mobile

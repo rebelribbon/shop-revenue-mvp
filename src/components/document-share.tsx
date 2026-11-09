@@ -8,6 +8,7 @@ import {
   prepareDocumentShare,
 } from "@/server/actions/document-sharing";
 import type { ShareRecipient, PacketDocument } from "@/domain/document-sharing";
+import { ContactLaunchLink, useContactLog } from "./correspondence";
 import { smsDraftHref } from "@/lib/sms-draft";
 
 export type ShareData = ShareRecipient & {
@@ -75,6 +76,10 @@ export function DocumentShare({
     [data?.senderName, data?.senderAddress].filter(Boolean).join("\n"),
     "To stop emails from us, reply “unsubscribe”.",
   ].join("\n");
+  const logContact = useContactLog();
+  const contactTarget = data
+    ? { customerId: data.customerId, documentId: id, documentKind: kind }
+    : undefined;
   const canText = Boolean(phoneNumber.trim() && !data?.textStoppedOn);
   const canEmail = Boolean(!data?.emailStoppedOn);
   useEffect(() => {
@@ -240,13 +245,16 @@ export function DocumentShare({
           </a>
           <div className="money-actions">
             {canText && (
-              <a
+              <ContactLaunchLink
+                contact={contactTarget}
+                channel="text"
+                purpose={`Shared ${kind} link`}
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
                 href={smsDraftHref(phoneNumber, textBody)}
               >
                 Text to customer
-              </a>
+              </ContactLaunchLink>
             )}
             {canEmail && emailAddress.trim() && (
               <button
@@ -290,13 +298,16 @@ export function DocumentShare({
               </button>
             )}
             {canEmail && emailAddress.trim() && (
-              <a
+              <ContactLaunchLink
+                contact={contactTarget}
+                channel="email"
+                purpose={`Shared ${kind} link`}
                 className={`btn ${primary && !canText ? "primary" : "secondary"}`}
                 data-page-primary={primary && !canText ? true : undefined}
                 href={`mailto:${encodeURIComponent(emailAddress.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}
               >
                 Open email app instead
-              </a>
+              </ContactLaunchLink>
             )}
             {typeof navigator !== "undefined" &&
               typeof navigator.share === "function" && (
@@ -310,6 +321,15 @@ export function DocumentShare({
                         text: `Hi ${data.name}, here is your ${kind}.`,
                         url,
                       });
+                      if (contactTarget)
+                        logContact?.(
+                          {
+                            ...contactTarget,
+                            channel: "other",
+                            purpose: `Shared ${kind} link`,
+                          },
+                          true,
+                        );
                     } catch (e) {
                       if (!(e instanceof Error && e.name === "AbortError"))
                         setMessage("Use Text, Email, or Copy link instead.");
@@ -366,6 +386,15 @@ export function DocumentShare({
                 try {
                   await navigator.clipboard.writeText(url);
                   setMessage("Link copied.");
+                  if (contactTarget)
+                    logContact?.(
+                      {
+                        ...contactTarget,
+                        channel: "other",
+                        purpose: `Shared ${kind} link`,
+                      },
+                      true,
+                    );
                 } catch {
                   setMessage("Select and copy the link above.");
                 }

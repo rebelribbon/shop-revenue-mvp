@@ -6,6 +6,8 @@ import {
   estimateVersion,
   invoice,
   invoicePayment,
+  paymentReminder,
+  reviewRequest,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { loadJobWorkflows, stageLabels } from "./job-workflow";
@@ -160,7 +162,48 @@ export async function customerHistory(
   tx: TenantTx,
   customerId: string,
 ): Promise<HistoryItem[]> {
-  const events = await listCustomerTimeline(tx, customerId);
+  const [events, reminders, reviews] = await Promise.all([
+    listCustomerTimeline(tx, customerId),
+    tx
+      .select({
+        id: paymentReminder.id,
+        invoiceId: paymentReminder.invoiceId,
+        at: paymentReminder.createdAt,
+        status: paymentReminder.status,
+      })
+      .from(paymentReminder)
+      .innerJoin(
+        invoice,
+        and(
+          eq(invoice.businessId, paymentReminder.businessId),
+          eq(invoice.id, paymentReminder.invoiceId),
+        ),
+      )
+      .where(
+        and(
+          eq(paymentReminder.businessId, tx.businessId),
+          eq(invoice.customerId, customerId),
+        ),
+      )
+      .orderBy(desc(paymentReminder.createdAt))
+      .limit(100),
+    tx
+      .select({
+        id: reviewRequest.id,
+        invoiceId: reviewRequest.invoiceId,
+        at: reviewRequest.createdAt,
+        status: reviewRequest.status,
+      })
+      .from(reviewRequest)
+      .where(
+        and(
+          eq(reviewRequest.businessId, tx.businessId),
+          eq(reviewRequest.customerId, customerId),
+        ),
+      )
+      .orderBy(desc(reviewRequest.createdAt))
+      .limit(100),
+  ]);
   const versionIds = [
     ...new Set(
       events
@@ -179,7 +222,7 @@ export async function customerHistory(
           ),
         )
     : [];
-  return events
+  const history = events
     .filter(
       (e) =>
         ![
@@ -211,4 +254,20 @@ export async function customerHistory(
         isNote: e.kind === "note.created" && d.noteKind !== "profile",
       };
     });
+  for (const [label, rows] of [
+    ["Payment reminder", reminders],
+    ["Review request", reviews],
+  ] as const) {
+    for (const row of rows) {
+      history.push({
+        id: row.id,
+        kind: "correspondence.email",
+        summary: `${label} email ${row.status === "sent" ? "submitted" : "failed"}`,
+        at: row.at,
+        href: `/app/invoices?invoiceId=${row.invoiceId}`,
+        isNote: false,
+      });
+    }
+  }
+  return history.sort((a, b) => b.at.getTime() - a.at.getTime()).slice(0, 100);
 }

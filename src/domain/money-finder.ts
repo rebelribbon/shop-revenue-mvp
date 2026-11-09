@@ -584,7 +584,7 @@ export async function updateRecovery(
     subjectId: source.customerId,
     summary: callResult
       ? `${callResult} · ${categoryLabels[input.category]}${input.note?.trim() ? ` — ${input.note.trim()}` : ""}`
-      : `${categoryLabels[input.category]}: ${input.action === "contact" ? "manual contact recorded" : input.action}`,
+      : `${categoryLabels[input.category]} · ${input.action === "contact" ? (input.deliveryConfirmed ? "Manual contact recorded" : "Follow-up logged") : input.action}${input.note?.trim() ? ` — ${input.note.trim()}` : ""}`,
     data: {
       recoveryItemId: row.id,
       category: input.category,
