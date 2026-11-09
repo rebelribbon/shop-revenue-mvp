@@ -527,7 +527,9 @@ export default async function JobsPage({
                   aria-label="Repair order display mode"
                 >
                   <strong>View:</strong>
-                  <Link href={`/app/jobs?job=${selected.id}&mode=customer`}>Customer</Link>
+                  <Link href={`/app/jobs?job=${selected.id}&mode=customer`}>
+                    Customer
+                  </Link>
                   <span aria-current="true">Internal</span>
                 </div>
               )}
