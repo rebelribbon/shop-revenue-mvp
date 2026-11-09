@@ -7,7 +7,7 @@ const shopItems = [
     href: "/app/schedule",
     label: "Appointments",
     mobile: "Appts",
-    icon: "calendar",
+    icon: "schedule",
     phone: true,
   },
   {
@@ -67,8 +67,8 @@ export function WorkspaceNavigation({
             aria-label={item.label}
             aria-current={
               (
-                item.href === "/app"
-                  ? path === item.href || path.startsWith("/app/schedule")
+                item.href === "/app/schedule"
+                  ? path.startsWith("/app/schedule")
                   : path.startsWith(item.href) ||
                     (item.href === "/app/tasks" &&
                       path.startsWith("/app/opportunities")) ||
