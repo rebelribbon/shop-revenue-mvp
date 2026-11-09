@@ -270,12 +270,15 @@ export async function listFollowUpItems(tx: TenantTx, now = new Date()) {
   const rules = await loadFollowUpRules(tx);
   const rows = await tx.execute(sql`${candidates(tx, now, rules)}
     SELECT jsonb_build_object('today',(SELECT today FROM settings),'timezone',(SELECT zone FROM settings),
-      'items',coalesce((SELECT jsonb_agg(${itemJson()} ORDER BY occurred_at) FROM (
-        SELECT * FROM items WHERE status<>'dismissed' LIMIT 500) i),'[]'::jsonb)) AS data`);
+      'items',coalesce((SELECT jsonb_agg(${itemJson()} || jsonb_build_object('textAllowed',text_allowed)
+        ORDER BY occurred_at) FROM (
+        SELECT i.*, c.text_opted_out_at IS NULL AS text_allowed
+        FROM (SELECT * FROM items WHERE status<>'dismissed' LIMIT 500) i
+        JOIN contacts c ON c.id=i.customer_id) available),'[]'::jsonb)) AS data`);
   const data = rows.rows[0].data as {
     today: string;
     timezone: string;
-    items: MoneyItem[];
+    items: (MoneyItem & { textAllowed: boolean })[];
   };
   return {
     rules,

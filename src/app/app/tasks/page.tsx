@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { formatMoney } from "@/components/estimate-document";
 import { HydratedMain } from "@/components/hydrated-main";
@@ -6,7 +7,7 @@ import { TasksNavigation } from "@/components/tasks-navigation";
 import { withTenant } from "@/db/tenant";
 import { listCustomers } from "@/domain/customers";
 import { listTasks, type TaskRow } from "@/domain/tasks";
-import { formatPhone } from "@/lib/phone-format";
+import type { TaskAction } from "@/lib/task-action";
 import { addLocalDays } from "@/lib/timezone";
 import { updateRecoveryAction } from "@/server/actions/money-finder";
 import { addTaskAction, updateTaskAction } from "@/server/actions/tasks";
@@ -33,7 +34,18 @@ export default async function TasksPage(props: {
   const rows = view === "due" ? data.due : data.later;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <h1>Tasks</h1>
+      <header className="customer-list-heading">
+        <h1>Tasks</h1>
+        {!readOnly && !p.add && (
+          <Link
+            className="btn primary"
+            data-page-primary
+            href={`/app/tasks?add=1${p.customerId ? `&customerId=${encodeURIComponent(p.customerId)}` : ""}`}
+          >
+            + Add task
+          </Link>
+        )}
+      </header>
       <TasksNavigation current={view} />
       {p.add && !readOnly && (
         <section className="card add-panel" aria-label="Add a task">
@@ -49,8 +61,13 @@ export default async function TasksPage(props: {
               name="title"
               required
               maxLength={200}
-              placeholder="Call about tires, send photos, order part…"
+              placeholder="Text about estimate, call about tires, order parts…"
+              aria-describedby="task-action-hint"
             />
+            <p id="task-action-hint" className="muted">
+              Start with Text, Call or Email and select a customer to add a
+              shortcut.
+            </p>
             <label htmlFor="task-due">When</label>
             <input
               id="task-due"
@@ -89,10 +106,9 @@ export default async function TasksPage(props: {
         </div>
       ) : (
         <ul className="row-list card task-list" aria-label="Tasks">
-          {rows.map((t, n) => (
+          {rows.map((t) => (
             <TaskItem
               key={t.key}
-              first={n === 0}
               t={t}
               today={data.today}
               later={view === "later"}
@@ -101,34 +117,41 @@ export default async function TasksPage(props: {
           ))}
         </ul>
       )}
-      <div className="task-footer">
-        {!readOnly && !p.add && (
-          <Link
-            className={`btn ${rows.length && view === "due" ? "secondary" : "primary"}`}
-            {...(rows.length && view === "due"
-              ? {}
-              : { "data-page-primary": true })}
-            href={`/app/tasks?add=1${p.customerId ? `&customerId=${p.customerId}` : ""}`}
-          >
-            + Add your own task
-          </Link>
-        )}
-        {s.role === "owner" && (
+      {s.role === "owner" && (
+        <div className="task-footer">
           <Link href="/app/settings/follow-ups">Follow-up rules</Link>
-        )}
-      </div>
+        </div>
+      )}
     </HydratedMain>
+  );
+}
+
+function TaskActionLink({
+  action,
+  children,
+  button = false,
+}: {
+  action: TaskAction;
+  children: ReactNode;
+  button?: boolean;
+}) {
+  const props = {
+    href: action.href,
+    className: button ? "btn secondary" : undefined,
+  };
+  return action.kind === "work" ? (
+    <Link {...props}>{children}</Link>
+  ) : (
+    <a {...props}>{children}</a>
   );
 }
 
 function TaskItem({
   t,
-  first,
   today,
   later,
   readOnly,
 }: {
-  first: boolean;
   t: TaskRow;
   today: string;
   later: boolean;
@@ -142,12 +165,34 @@ function TaskItem({
         ? `Waiting ${t.overdueDays} day${t.overdueDays === 1 ? "" : "s"}`
         : "Today";
   const rule = { category: t.category, subjectId: t.subjectId };
+  const action = readOnly ? undefined : t.action;
+  const related = t.href && t.href !== action?.href ? t.href : null;
+  const relatedLabel = related?.startsWith("/app/customers/")
+    ? "View customer"
+    : related?.startsWith("/app/jobs?")
+      ? "View job"
+      : "View details";
+  const canUpdate = !readOnly && !later && t.source !== "work";
+  const contactMethod =
+    action?.kind === "text"
+      ? "other"
+      : action?.kind === "email"
+        ? "email"
+        : t.phone
+          ? "phone"
+          : t.email
+            ? "email"
+            : "in_person";
   return (
     <li className="task-item">
       <div>
         <span className="row-main">
           <strong>
-            {t.href ? <Link href={t.href}>{t.title}</Link> : t.title}
+            {action ? (
+              <TaskActionLink action={action}>{t.title}</TaskActionLink>
+            ) : (
+              t.title
+            )}
           </strong>
           <span className="muted">
             {[t.source === "rule" ? t.detail : t.customerName, when]
@@ -161,39 +206,22 @@ function TaskItem({
           </span>
         )}
       </div>
-      {!later && !readOnly && t.action && (
-        <div className="task-actions">
-          <Link
-            className="btn secondary"
-            href={t.action.href}
-            {...(first ? { "data-page-primary": true } : {})}
-          >
-            {t.action.label}
-          </Link>
-        </div>
+      {!readOnly && t.actionUnavailable && (
+        <p className="muted task-unavailable">{t.actionUnavailable}</p>
       )}
-      {!later && !readOnly && !t.action && (
+      {(action || canUpdate || related) && (
         <div className="task-actions">
-          {t.phone && (
-            <>
-              <a
-                className="btn secondary"
-                href={`tel:${t.phone}`}
-                {...(first ? { "data-page-primary": true } : {})}
-              >
-                Call {formatPhone(t.phone)}
-              </a>
-              <a className="btn secondary" href={`sms:${t.phone}`}>
-                Text
-              </a>
-            </>
+          {action && (
+            <TaskActionLink action={action} button>
+              {action.label}
+            </TaskActionLink>
           )}
-          {!t.phone && t.email && (
-            <a className="btn secondary" href={`mailto:${t.email}`}>
-              Email
-            </a>
+          {related && (
+            <Link className="btn secondary" href={related}>
+              {relatedLabel}
+            </Link>
           )}
-          {t.source === "manual" ? (
+          {canUpdate && t.source === "manual" && (
             <>
               <ActionForm
                 action={updateTaskAction}
@@ -208,14 +236,16 @@ function TaskItem({
                 variant="secondary"
               />
             </>
-          ) : (
+          )}
+          {canUpdate && t.source === "rule" && (
             <>
               <ActionForm
                 action={updateRecoveryAction}
                 hidden={{
                   ...rule,
                   action: "contact",
-                  method: t.phone ? "phone" : t.email ? "email" : "in_person",
+                  method: contactMethod,
+                  ...(action?.kind === "text" ? { note: "Text message" } : {}),
                   deliveryConfirmed: "true",
                 }}
                 submitLabel="Done"

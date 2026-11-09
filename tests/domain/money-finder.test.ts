@@ -602,6 +602,17 @@ describe("Tasks and follow-up rules", () => {
     const update = t.due.find((r) => r.category === "job_update");
     expect(update?.subjectId).toBe(e.quoteId);
     expect(update?.title).toMatch(/^Update Real History on their Honda Civic/);
+    expect(update?.action?.href).toBe("sms:+15125550123");
+    await run(f, (tx) =>
+      tx
+        .update(customer)
+        .set({ textOptedOutAt: now })
+        .where(eq(customer.id, f.customerId)),
+    );
+    expect(
+      (await tasksFor(f)).due.find((r) => r.category === "job_update")?.action
+        ?.href,
+    ).toBe("tel:+15125550123");
     await setRules(f, { jobUpdate: { on: true, days: 5 } });
     expect(
       (await tasksFor(f)).due.some((r) => r.category === "job_update"),
@@ -708,6 +719,43 @@ describe("Tasks and follow-up rules", () => {
     await run(f, (tx) => updateTask(tx, meta(), { id, action: "done" }));
     t = await tasksFor(f);
     expect([...t.due, ...t.later].some((r) => r.subjectId === id)).toBe(false);
+  });
+
+  it("uses the requested contact method without falling back to a different one", async () => {
+    const f = await fixture();
+    const text = "Text about the estimate";
+    const email = "Email the service history";
+    await run(f, async (tx) => {
+      for (const title of [text, email]) {
+        await addTask(tx, meta(), {
+          title,
+          dueOn: today,
+          customerId: f.customerId,
+        });
+      }
+    });
+    let { due } = await tasksFor(f);
+    expect(due.find((r) => r.title === text)?.action?.href).toBe(
+      "sms:+15125550123",
+    );
+    expect(due.find((r) => r.title === email)).toMatchObject({
+      action: undefined,
+      actionUnavailable: "No email address on file.",
+    });
+    await run(f, (tx) =>
+      tx
+        .update(customer)
+        .set({ textOptedOutAt: now, email: "real@example.test" })
+        .where(eq(customer.id, f.customerId)),
+    );
+    ({ due } = await tasksFor(f));
+    expect(due.find((r) => r.title === text)).toMatchObject({
+      action: undefined,
+      actionUnavailable: "Customer has opted out of texts.",
+    });
+    expect(due.find((r) => r.title === email)?.action?.href).toBe(
+      "mailto:real@example.test",
+    );
   });
 });
 

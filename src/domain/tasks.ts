@@ -10,6 +10,11 @@ import {
   repeatAfterDays,
   type FollowUpRules,
 } from "@/lib/follow-up-rules";
+import {
+  contactKindForTitle,
+  contactTaskAction,
+  type TaskAction,
+} from "@/lib/task-action";
 import { addLocalDays, localDateKey } from "@/lib/timezone";
 import {
   categoryLabels,
@@ -23,8 +28,9 @@ export type TaskRow = {
   key: string;
   source: "rule" | "manual" | "work";
   category: MoneyCategory | "manual" | "work";
-  // Work tasks: the one button that finishes them (e.g. "Create invoice").
-  action?: { label: string; href: string };
+  // The step this task asks for, separate from its related record.
+  action?: TaskAction;
+  actionUnavailable?: string;
   kindLabel: string;
   subjectId: string;
   customerId: string | null;
@@ -103,6 +109,15 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
     const dueOn = [i.snoozedUntil, nextAfterContact, f.today]
       .filter((d): d is string => !!d)
       .reduce((x, y) => (x > y ? x : y));
+    const href = hrefFor(i.category, i.subjectId, i.customerId);
+    const action: TaskAction | undefined =
+      i.category === "unpaid_invoice"
+        ? { kind: "work", label: "Record payment", href }
+        : i.category === "new_lead"
+          ? (contactTaskAction("call", i) ?? contactTaskAction("email", i))
+          : (contactTaskAction("text", i) ??
+            contactTaskAction("email", i) ??
+            contactTaskAction("call", i));
     const row: TaskRow = {
       key: `${i.category}:${i.subjectId}`,
       source: "rule",
@@ -111,12 +126,17 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       subjectId: i.subjectId,
       customerId: i.customerId,
       customerName: i.customerName,
-      title: titleFor(i.category, i.customerName, i.vehicleLabel),
+      title:
+        i.category === "new_lead" && action?.kind !== "call"
+          ? `Follow up with new lead ${i.customerName}`
+          : titleFor(i.category, i.customerName, i.vehicleLabel),
       detail: i.reason,
       amountCents: i.amountCents,
       phone: i.phone,
       email: i.email,
-      href: hrefFor(i.category, i.subjectId, i.customerId),
+      href,
+      action,
+      actionUnavailable: action ? undefined : "No contact details on file.",
       dueOn,
       // How long it's been waiting, for sorting oldest first.
       overdueDays: Math.max(
@@ -143,7 +163,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       phone: null,
       email: null,
       href: w.href,
-      action: { label: w.action, href: w.href },
+      action: { kind: "work", label: w.action, href: w.href },
       dueOn: f.today,
       overdueDays: w.urgent ? 1 : 0,
     });
@@ -158,6 +178,10 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       customerName: customer.displayName,
       phone: customer.phoneE164,
       email: customer.email,
+      customerStatus: customer.status,
+      doNotContact: customer.doNotContact,
+      textOptedOutAt: customer.textOptedOutAt,
+      emailOptedOutAt: customer.emailOptedOutAt,
     })
     .from(task)
     .leftJoin(
@@ -171,6 +195,28 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
     .orderBy(asc(task.dueOn))
     .limit(500);
   for (const t of mine) {
+    const kind = contactKindForTitle(t.title);
+    const canContact = t.customerStatus === "active" && !t.doNotContact;
+    const action =
+      kind && canContact
+        ? contactTaskAction(kind, {
+            phone: t.phone,
+            email: t.emailOptedOutAt ? null : t.email,
+            textAllowed: !t.textOptedOutAt,
+          })
+        : undefined;
+    const actionUnavailable =
+      !kind || action || !t.customerId
+        ? undefined
+        : !canContact
+          ? "Customer contact is unavailable."
+          : kind === "text" && t.textOptedOutAt
+            ? "Customer has opted out of texts."
+            : kind === "email" && t.emailOptedOutAt
+              ? "Customer has opted out of email."
+              : kind === "email"
+                ? "No email address on file."
+                : "No phone number on file.";
     const row: TaskRow = {
       key: `manual:${t.id}`,
       source: "manual",
@@ -184,6 +230,8 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       amountCents: null,
       phone: t.phone,
       email: t.email,
+      action,
+      actionUnavailable,
       href: t.jobId
         ? `/app/jobs?job=${t.jobId}`
         : t.customerId

@@ -14,6 +14,7 @@ import {
 } from "@/lib/demo-customers";
 import { groupWork } from "@/lib/work-sections";
 import { jobStatusLabels, statusTone } from "@/lib/job-status";
+import { contactTaskAction } from "@/lib/task-action";
 
 export const metadata: Metadata = {
   title: "CRM workspace preview | Shop Revenue",
@@ -21,6 +22,43 @@ export const metadata: Metadata = {
 };
 const tabs = ["Overview", "Jobs", "Vehicles", "History", "Details"] as const;
 const statusLabels = jobStatusLabels("automotive");
+
+function SampleContactTask({
+  customer,
+  kind,
+  title,
+}: {
+  customer: DemoCustomer;
+  kind: "text" | "call" | "email";
+  title: string;
+}) {
+  const action = contactTaskAction(kind, {
+    phone: `+1${customer.contact.replace(/\D/g, "")}`,
+    email: customer.email,
+    textAllowed: true,
+  });
+  if (!action) return null;
+  return (
+    <article className="record-information-card">
+      <strong>
+        <a href={action.href}>{title}</a>
+      </strong>
+      <span className="muted">{customer.name}</span>
+      <div className="task-actions sample-task-actions">
+        <a href={action.href} className="btn secondary">
+          {action.label}
+        </a>
+        <Link
+          href={`/demo/crm?customer=${customer.id}`}
+          className="btn secondary"
+        >
+          View customer
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 function SampleWork({
   customer,
   profile = false,
@@ -166,21 +204,41 @@ export default async function CrmPreview({
               <h1>Tasks</h1>
               <RecordSection
                 title="Due today"
-                count={2}
-                description="The next actions for your customers and ROs."
+                count={4}
+                description="Tap a task to take the next step."
               >
                 <div className="record-work-grid">
-                  <Link
-                    href="/demo/crm?customer=alex"
-                    className="record-information-card"
-                  >
-                    <strong>Follow up with Alex Example</strong>
-                    <span>Customer follow-up</span>
-                  </Link>
-                  <Link href="/demo/job" className="record-information-card">
-                    <strong>Send brake service estimate</strong>
-                    <span>Awaiting approval</span>
-                  </Link>
+                  <SampleContactTask
+                    customer={customers[0]}
+                    kind="text"
+                    title="Text about the brake estimate"
+                  />
+                  <SampleContactTask
+                    customer={customers[1]}
+                    kind="call"
+                    title="Call with a repair update"
+                  />
+                  <SampleContactTask
+                    customer={customers[2]}
+                    kind="email"
+                    title="Email about completed work"
+                  />
+                  <article className="record-information-card">
+                    <strong>
+                      <Link href="/demo/job?customer=alex&stage=share">
+                        Share brake service estimate
+                      </Link>
+                    </strong>
+                    <span className="muted">Alex Example · RO #10042</span>
+                    <div className="task-actions sample-task-actions">
+                      <Link
+                        href="/demo/job?customer=alex&stage=share"
+                        className="btn secondary"
+                      >
+                        Open share options
+                      </Link>
+                    </div>
+                  </article>
                 </div>
               </RecordSection>
             </>

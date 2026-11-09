@@ -1911,7 +1911,8 @@ div.overview-row + a.overview-row {
 .task-list > li.task-item {
   padding: 0 0 16px;
 }
-.row-list > li.task-item > .task-actions {
+.row-list > li.task-item > .task-actions,
+.sample-task-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -1926,6 +1927,9 @@ div.overview-row + a.overview-row {
 }
 .task-actions form p[role="status"]:empty {
   display: none;
+}
+.task-item .task-unavailable {
+  margin: 0 0 8px;
 }
 /* Follow-up rules: one block per rule — on/off, then "every [N] days". */
 .rule-row {
