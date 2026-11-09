@@ -1908,6 +1908,22 @@ div.overview-row + a.overview-row {
   margin: 0;
 }
 /* Tasks: who, why, and the buttons to deal with it on one card row. */
+.task-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.task-heading h1 {
+  margin: 0;
+}
+.task-heading [data-ux-primary] {
+  position: static;
+  width: auto;
+  min-width: 48px;
+  box-shadow: none;
+}
 .task-list > li.task-item {
   padding: 0 0 16px;
 }

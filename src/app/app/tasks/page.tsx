@@ -34,7 +34,7 @@ export default async function TasksPage(props: {
   const rows = view === "due" ? data.due : data.later;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <header className="customer-list-heading">
+      <header className="task-heading">
         <h1>Tasks</h1>
         {!readOnly && !p.add && (
           <Link
@@ -53,6 +53,7 @@ export default async function TasksPage(props: {
           <ActionForm
             action={addTaskAction}
             submitLabel="Save task"
+            successText="Task added."
             variant="primary"
           >
             <label htmlFor="task-title">What do you need to do?</label>
