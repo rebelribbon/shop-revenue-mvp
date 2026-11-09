@@ -22,6 +22,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
+  const vehicleId = new URL(page.url()).pathname.split("/").at(-1)!;
   await page.getByRole("link", { name: "New job", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await page.getByLabel(/Warranty in months/).fill("12");
@@ -197,12 +198,13 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     })
     .locator("xpath=ancestor::article[1]");
   await approvedJob.getByRole("link", { name: "Book", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`[?&]vehicleId=${vehicleId}(?:&|$)`));
   await expect(
     page.getByLabel("Customer", { exact: true }).locator("option:checked"),
   ).toHaveText(`Job ${info.project.name}`);
   await expect(
-    page.getByLabel("Vehicle", { exact: true }).locator("option:checked"),
-  ).toHaveText("Honda");
+    page.getByLabel("Vehicle (optional)", { exact: true }),
+  ).toHaveValue(vehicleId);
   await page.goto(jobUrl);
   const workflow = page.getByRole("region", {
     name: "Job workflow",
