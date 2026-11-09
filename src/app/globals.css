@@ -2904,7 +2904,7 @@ a.card.create-tile:hover {
   align-items: center;
   width: max-content;
   max-width: calc(100vw - 304px);
-  padding: 8px 12px;
+  padding: 8px 16px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -2915,7 +2915,7 @@ a.card.create-tile:hover {
   display: inline-flex;
   min-width: 72px;
   min-height: 36px;
-  padding: 6px 10px !important;
+  padding: 8px 8px !important;
   justify-content: center;
   align-items: center;
   border-radius: 6px;
