@@ -7,10 +7,18 @@ import {
   vehicle,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
-import { outcomeLabels, type CallTaskOutcome } from "@/lib/correspondence";
+import {
+  outcomeLabels,
+  type CallTaskOutcome,
+  type TaskContact,
+} from "@/lib/correspondence";
 import { AppError, notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
-import { readFollowUpRules, type FollowUpRules } from "@/lib/follow-up-rules";
+import {
+  readFollowUpRules,
+  repeatAfterDays,
+  type FollowUpRules,
+} from "@/lib/follow-up-rules";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { getVehicle } from "./customers";
 
@@ -266,6 +274,23 @@ export async function loadFollowUpRules(tx: TenantTx) {
   return readFollowUpRules(rows.rows[0]?.rules);
 }
 
+export function followUpDueOn(
+  item: MoneyItem,
+  today: string,
+  timezone: string,
+  rules: FollowUpRules,
+) {
+  const nextAfterContact = item.lastContactAt
+    ? addLocalDays(
+        localDateKey(new Date(item.lastContactAt), timezone),
+        repeatAfterDays(item.category, rules),
+      )
+    : today;
+  return [today, nextAfterContact, item.snoozedUntil ?? today].reduce((a, b) =>
+    a > b ? a : b,
+  );
+}
+
 // Every open (not dismissed) reminder the shop's rules produce, for Tasks.
 export async function listFollowUpItems(tx: TenantTx, now = new Date()) {
   const rules = await loadFollowUpRules(tx);
@@ -352,10 +377,15 @@ async function findCandidate(
   allowRecorded = false,
 ) {
   const rules = await loadFollowUpRules(tx);
-  const rows = await tx.execute(
-    sql`${candidates(tx, new Date(), rules)} SELECT ${itemJson()} AS data FROM items WHERE category=${category} AND subject_id=${subjectId}::uuid`,
-  );
-  let item = rows.rows[0]?.data as unknown as MoneyItem | undefined;
+  const [candidate] = await tx
+    .execute(
+      sql`${candidates(tx, new Date(), rules)}
+      SELECT today::text, zone, (SELECT ${itemJson()} FROM items
+        WHERE category=${category} AND subject_id=${subjectId}::uuid LIMIT 1) AS data
+      FROM settings`,
+    )
+    .then((result) => result.rows);
+  let item = candidate?.data as MoneyItem | null | undefined;
   if (!item && allowRecorded) {
     const recorded =
       await tx.execute(sql`SELECT jsonb_build_object('category',r.category,'subjectId',r.subject_id,'customerId',r.customer_id,'vehicleId',r.vehicle_id,'serviceAssetId',r.service_asset_id,
@@ -371,7 +401,12 @@ async function findCandidate(
     item = recorded.rows[0]?.data as unknown as MoneyItem | undefined;
   }
   if (!item) throw notFound("That opportunity (it may have resolved)");
-  return { ...item, amountCents: safeCents(item.amountCents) };
+  return {
+    source: { ...item, amountCents: safeCents(item.amountCents) },
+    today: String(candidate.today),
+    timezone: String(candidate.zone),
+    rules,
+  };
 }
 
 export async function updateRecovery(
@@ -388,18 +423,32 @@ export async function updateRecovery(
     note?: string;
     days?: 1 | 7 | 30 | 90;
     reason?: string;
+    taskContact?: TaskContact;
   },
 ) {
   await lockRevenue(tx);
   await tx.execute(
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`,
   );
-  const source = await findCandidate(
+  const { source, today, timezone, rules } = await findCandidate(
     tx,
     input.category,
     input.subjectId,
     input.action === "responded" || input.action === "booked",
   );
+  const contact = input.taskContact;
+  if (contact) {
+    if (
+      source.customerId !== contact.customerId ||
+      input.category === "unpaid_invoice"
+    )
+      throw notFound("That customer contact task");
+    if (followUpDueOn(source, today, timezone, rules) > today)
+      throw new AppError(
+        "INVALID_TRANSITION",
+        "This task is already scheduled for later.",
+      );
+  }
   if (
     input.callOutcome &&
     (input.method !== "phone" ||
@@ -447,15 +496,12 @@ export async function updateRecovery(
     change.lastContactMethod = input.method;
     change.snoozedUntil = null;
   } else if (input.action === "snooze") {
-    if (![1, 7, 30, 90].includes(input.days ?? 0))
+    const days = input.days ?? 0;
+    if (!contact?.followUpOn && ![1, 7, 30, 90].includes(days))
       throw new AppError("VALIDATION", "Choose how long to snooze.");
-    const [b] = await tx
-      .execute(sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`)
-      .then((r) => r.rows);
-    change.snoozedUntil = addLocalDays(
-      localDateKey(new Date(), String(b.timezone)),
-      input.days!,
-    );
+    change.snoozedUntil = contact?.followUpOn ?? addLocalDays(today, days);
+    if (change.snoozedUntil <= today)
+      throw new AppError("VALIDATION", "Choose a date after today.");
     if (
       input.callOutcome &&
       row.snoozedUntil &&
@@ -782,7 +828,12 @@ export async function startRecoveryWork(
   await tx.execute(
     sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${tx.businessId}:${input.category}:${input.subjectId}`},0))`,
   );
-  const source = await findCandidate(tx, input.category, input.subjectId, true);
+  const { source } = await findCandidate(
+    tx,
+    input.category,
+    input.subjectId,
+    true,
+  );
   if (source.status === "dismissed")
     throw new AppError("INVALID_TRANSITION", "Restore this opportunity first.");
   await tx

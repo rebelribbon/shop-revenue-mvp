@@ -4,13 +4,13 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { business, customer, task } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
-import { outcomeLabels, type CallTaskOutcome } from "@/lib/correspondence";
-import { AppError, notFound } from "@/lib/errors";
 import {
-  readFollowUpRules,
-  repeatAfterDays,
-  type FollowUpRules,
-} from "@/lib/follow-up-rules";
+  outcomeLabels,
+  type CallTaskOutcome,
+  type TaskContact,
+} from "@/lib/correspondence";
+import { AppError, notFound } from "@/lib/errors";
+import { readFollowUpRules, type FollowUpRules } from "@/lib/follow-up-rules";
 import {
   CONTACT_TASK_KINDS,
   contactKindForTitle,
@@ -22,6 +22,7 @@ import {
 import { addLocalDays, localDateKey } from "@/lib/timezone";
 import {
   categoryLabels,
+  followUpDueOn,
   listFollowUpItems,
   type MoneyCategory,
 } from "./money-finder";
@@ -102,19 +103,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
   const due: TaskRow[] = [];
   const later: TaskRow[] = [];
   for (const i of f.items) {
-    // Done: it comes back when the next reminder is due (unpaid invoices
-    // every day by default, until they're paid).
-    const lastDay = i.lastContactAt
-      ? localDateKey(new Date(i.lastContactAt), f.timezone)
-      : null;
-    const nextAfterContact = lastDay
-      ? addLocalDays(lastDay, repeatAfterDays(i.category, f.rules))
-      : null;
-    // Rule reminders only appear once they're due, so: due today unless
-    // snoozed or recently done.
-    const dueOn = [i.snoozedUntil, nextAfterContact, f.today]
-      .filter((d): d is string => !!d)
-      .reduce((x, y) => (x > y ? x : y));
+    const dueOn = followUpDueOn(i, f.today, f.timezone, f.rules);
     const href = hrefFor(i.category, i.subjectId, i.customerId);
     const action: TaskAction | undefined =
       i.category === "unpaid_invoice"
@@ -367,6 +356,7 @@ export async function updateTask(
     action: "done" | "snooze" | CallTaskOutcome;
     days?: 1 | 7;
     note?: string;
+    taskContact?: TaskContact;
   },
 ) {
   const [row] = await tx
@@ -376,6 +366,14 @@ export async function updateTask(
     .for("update");
   if (!row) throw notFound("That task");
   if (row.doneAt) throw new AppError("INVALID_TRANSITION", "Already done.");
+  const contact = input.taskContact;
+  if (
+    contact &&
+    (row.customerId !== contact.customerId ||
+      row.jobId !== (contact.jobId ?? null) ||
+      contactKindForTitle(row.title) !== contact.channel)
+  )
+    throw notFound("That customer contact task");
   const callOutcome =
     input.action === "done" || input.action === "snooze" ? null : input.action;
   if (
@@ -384,19 +382,22 @@ export async function updateTask(
   )
     throw new AppError("VALIDATION", "Choose a customer call task.");
   const completed = input.action === "done" || input.action === "reached";
-  let change: { doneAt: Date } | { dueOn: string };
-  if (completed) {
-    change = { doneAt: new Date() };
-  } else {
+  let change: { doneAt: Date } | { dueOn: string } = { doneAt: new Date() };
+  if (!completed || contact) {
     const today = await shopToday(tx);
-    if (callOutcome && row.dueOn > today)
+    if ((callOutcome || contact) && row.dueOn > today)
       throw new AppError(
         "INVALID_TRANSITION",
-        "This call is already scheduled for later.",
+        `This ${callOutcome ? "call" : "task"} is already scheduled for later.`,
       );
-    change = {
-      dueOn: addLocalDays(today, callOutcome ? 1 : (input.days ?? 1)),
-    };
+    if (contact?.followUpOn && contact.followUpOn <= today)
+      throw new AppError("VALIDATION", "Choose a date after today.");
+    if (!completed)
+      change = {
+        dueOn:
+          contact?.followUpOn ??
+          addLocalDays(today, callOutcome ? 1 : (input.days ?? 1)),
+      };
   }
   await tx
     .update(task)
@@ -408,7 +409,7 @@ export async function updateTask(
     targetId: input.id,
     after: change,
   });
-  if (completed && row.customerId && !callOutcome) {
+  if (completed && row.customerId && !callOutcome && !contact) {
     await recordActivity(tx, {
       kind: "task.completed",
       subjectType: "customer",

@@ -1,6 +1,7 @@
 import { ContactLaunchLink } from "@/components/correspondence";
 import {
   outcomeLabels,
+  type ContactTask,
   type CorrespondenceTarget,
   type SentSummary,
 } from "@/lib/correspondence";
@@ -224,6 +225,7 @@ function TaskActionLink({
   purpose,
   sentSummary,
   prompt,
+  task,
 }: {
   action: TaskAction;
   children: ReactNode;
@@ -232,6 +234,7 @@ function TaskActionLink({
   purpose: string;
   sentSummary?: SentSummary;
   prompt: boolean;
+  task?: ContactTask;
 }) {
   const props = {
     href: action.href,
@@ -247,6 +250,7 @@ function TaskActionLink({
       purpose={purpose}
       sentSummary={sentSummary}
       prompt={prompt}
+      task={task}
     >
       {children}
     </ContactLaunchLink>
@@ -278,8 +282,19 @@ function TaskItem({
       ? followUpSummaries[t.category]
       : undefined;
   const sentSummary = summary ? { text: summary } : undefined;
-  const target = t.customerId
-    ? { customerId: t.customerId, jobId: t.jobId ?? undefined }
+  const documentKind =
+    t.category === "open_estimate"
+      ? "estimate"
+      : t.category === "warranty_ending"
+        ? "invoice"
+        : undefined;
+  const target: CorrespondenceTarget | undefined = t.customerId
+    ? {
+        customerId: t.customerId,
+        jobId: t.jobId ?? undefined,
+        documentId: documentKind ? t.subjectId : undefined,
+        documentKind,
+      }
     : undefined;
   const related = t.href && t.href !== action?.href ? t.href : null;
   const relatedLabel = related?.startsWith("/app/customers/")
@@ -289,6 +304,29 @@ function TaskItem({
       : "View details";
   const canUpdate = !readOnly && !later && t.source !== "work";
   const canLogCall = canUpdate && action?.kind === "call";
+  let contactTask: ContactTask | undefined;
+  if (
+    canUpdate &&
+    target &&
+    (action?.kind === "text" || action?.kind === "email")
+  ) {
+    const earliestFollowUp = addLocalDays(today, 1);
+    if (t.source === "manual") {
+      contactTask = {
+        target: { source: "manual", id: t.subjectId },
+        earliestFollowUp,
+      };
+    } else if (t.category !== "manual" && t.category !== "work") {
+      contactTask = {
+        target: {
+          source: "rule",
+          category: t.category,
+          subjectId: t.subjectId,
+        },
+        earliestFollowUp,
+      };
+    }
+  }
   const updateOutcome =
     t.source === "manual" ? updateTaskAction : updateRecoveryAction;
   const reached: Record<string, string> =
@@ -335,6 +373,7 @@ function TaskItem({
                 purpose={t.title}
                 sentSummary={sentSummary}
                 prompt={!canLogCall}
+                task={contactTask}
               >
                 {t.title}
               </TaskActionLink>
@@ -366,6 +405,7 @@ function TaskItem({
               purpose={t.title}
               sentSummary={sentSummary}
               prompt={!canLogCall}
+              task={contactTask}
               button
             >
               {action.label}

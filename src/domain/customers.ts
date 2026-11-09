@@ -587,6 +587,9 @@ export async function listCustomerTimeline(tx: TenantTx, customerId: string) {
       kind: activity.kind,
       summary: activity.summary,
       data: activity.data,
+      actorId: activity.actorId,
+      actorType: activity.actorType,
+      subjectId: activity.subjectId,
       occurredAt: activity.occurredAt,
     })
     .from(activity)

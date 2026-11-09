@@ -17,6 +17,8 @@ import {
   outcomeLabels,
   outcomesFor,
   requiresSummary,
+  type ContactTask,
+  type ContactTaskUpdate,
   type CorrespondenceChannel,
   type CorrespondenceOutcome,
   type CorrespondenceTarget,
@@ -28,6 +30,11 @@ type Entry = CorrespondenceTarget & {
   purpose?: string;
   sentSummary?: SentSummary;
   prompt?: boolean;
+  task?: ContactTask;
+};
+type ActiveEntry = Entry & {
+  id: string;
+  opened: boolean;
   openingFailed?: boolean;
 };
 const ContactLog = createContext<
@@ -36,10 +43,10 @@ const ContactLog = createContext<
 export const useContactLog = () => useContext(ContactLog);
 
 export function CorrespondenceProvider({ children }: { children: ReactNode }) {
-  const [entry, setEntry] = useState<(Entry & { id: string }) | null>(null);
+  const [entry, setEntry] = useState<ActiveEntry | null>(null);
   const start = (target: Entry, opened = false) => {
     const id = crypto.randomUUID();
-    if (target.prompt !== false) setEntry({ ...target, id });
+    if (target.prompt !== false) setEntry({ ...target, id, opened });
     if (opened && target.channel) {
       const { customerId, jobId, documentId, documentKind, channel } = target;
       const input = {
@@ -49,6 +56,7 @@ export function CorrespondenceProvider({ children }: { children: ReactNode }) {
         documentKind,
         channel,
         outcome: "opened",
+        interactionId: id,
         clientRequestId: id,
       };
       // Keep the native link's tap gesture. Reuse the same request ID if the
@@ -81,10 +89,11 @@ function CorrespondenceDialog({
   entry,
   close,
 }: {
-  entry: Entry;
+  entry: ActiveEntry;
   close: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const followUpDate = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [channel, setChannel] = useState(entry.channel ?? "text");
   const [outcome, setOutcome] = useState<CorrespondenceOutcome>(
@@ -104,9 +113,13 @@ function CorrespondenceDialog({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [requestId] = useState(() => crypto.randomUUID());
+  const [choosingDate, setChoosingDate] = useState(false);
   useEffect(() => {
     if (!dialog.current?.open) dialog.current?.showModal();
   }, []);
+  useEffect(() => {
+    if (choosingDate) followUpDate.current?.focus();
+  }, [choosingDate]);
   return (
     <dialog
       ref={dialog}
@@ -131,7 +144,18 @@ function CorrespondenceDialog({
       <form
         onSubmit={async (event) => {
           event.preventDefault();
-          const { customerId, jobId, documentId, documentKind } = entry;
+          const { customerId, jobId, documentId, documentKind, task } = entry;
+          const noteOnly =
+            (event.nativeEvent as SubmitEvent).submitter?.getAttribute(
+              "value",
+            ) === "note";
+          let taskChange;
+          if (task) {
+            const update: ContactTaskUpdate = choosingDate
+              ? { kind: "follow_up", dueOn: followUpDate.current?.value ?? "" }
+              : { kind: noteOnly ? "note" : "complete" };
+            taskChange = { target: task.target, update };
+          }
           setPending(true);
           setError("");
           try {
@@ -143,6 +167,8 @@ function CorrespondenceDialog({
               channel,
               outcome,
               summary,
+              interactionId: entry.opened ? entry.id : undefined,
+              task: taskChange,
               clientRequestId: requestId,
             });
             if (result.ok) {
@@ -160,6 +186,7 @@ function CorrespondenceDialog({
         <select
           id="contact-channel"
           value={channel}
+          disabled={Boolean(entry.task)}
           onChange={(event) => {
             const value = event.target.value as CorrespondenceChannel;
             setChannel(value);
@@ -213,6 +240,18 @@ function CorrespondenceDialog({
               : undefined) ?? "What did you or the customer say?"
           }
         />
+        {choosingDate && entry.task && (
+          <>
+            <label htmlFor="contact-follow-up-date">Follow-up date</label>
+            <input
+              id="contact-follow-up-date"
+              ref={followUpDate}
+              type="date"
+              min={entry.task.earliestFollowUp}
+              required
+            />
+          </>
+        )}
         {error && <p role="alert">{error}</p>}
         <div className="job-follow-up-shortcuts">
           <button
@@ -221,8 +260,36 @@ function CorrespondenceDialog({
             data-page-primary
             disabled={pending}
           >
-            {pending ? "Saving…" : "Save to history"}
+            {pending
+              ? "Saving…"
+              : choosingDate
+                ? "Save & follow up"
+                : entry.task
+                  ? "Save & complete task"
+                  : "Save to history"}
           </button>
+          {entry.task && (
+            <>
+              <button
+                type="button"
+                className="btn secondary"
+                disabled={pending}
+                onClick={() => setChoosingDate(!choosingDate)}
+              >
+                {choosingDate ? "Back" : "Save & follow up"}
+              </button>
+              {!choosingDate && (
+                <button
+                  type="submit"
+                  value="note"
+                  className="btn secondary"
+                  disabled={pending}
+                >
+                  Save note
+                </button>
+              )}
+            </>
+          )}
           <button
             type="button"
             className="btn secondary"
@@ -243,6 +310,7 @@ export function ContactLaunchLink({
   purpose,
   sentSummary,
   prompt,
+  task,
   ...props
 }: ComponentProps<"a"> & {
   contact?: CorrespondenceTarget;
@@ -250,6 +318,7 @@ export function ContactLaunchLink({
   purpose?: string;
   sentSummary?: SentSummary;
   prompt?: boolean;
+  task?: ContactTask;
 }) {
   const log = useContactLog();
   return (
@@ -258,7 +327,10 @@ export function ContactLaunchLink({
       onClick={(event) => {
         props.onClick?.(event);
         if (!event.defaultPrevented && props.href && contact)
-          log?.({ ...contact, channel, purpose, sentSummary, prompt }, true);
+          log?.(
+            { ...contact, channel, purpose, sentSummary, prompt, task },
+            true,
+          );
       }}
     />
   );

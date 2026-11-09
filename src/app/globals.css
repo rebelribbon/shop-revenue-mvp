@@ -1711,6 +1711,26 @@ div.overview-row + a.overview-row {
 .row-list > li {
   border-bottom: 1px solid var(--line);
 }
+.contact-history {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.contact-history > summary {
+  margin: 0;
+  padding: 16px 0;
+  border: 0;
+}
+.contact-history > summary .muted {
+  display: block;
+  margin-left: 16px;
+}
+.contact-history-detail {
+  padding: 0 0 8px 16px;
+}
+.contact-history-detail p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
 .row-list > li > a:not(.card):not(.btn),
 .row-list > li > div {
   display: flex;

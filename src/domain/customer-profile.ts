@@ -13,6 +13,7 @@ import type { TenantTx } from "@/db/tenant";
 import { loadJobWorkflows, stageLabels } from "./job-workflow";
 import { listCustomerTimeline } from "./customers";
 import { jobStatus } from "@/lib/job-status";
+import type { ContactTaskUpdate } from "@/lib/correspondence";
 
 export async function listCustomerJobs(tx: TenantTx, customerId: string) {
   const rows = await tx
@@ -148,6 +149,14 @@ export async function customerMoney(tx: TenantTx, customerId: string) {
   };
 }
 
+type ContactHistory = {
+  jobId?: string;
+  loggedBy?: string;
+  fullNote?: string;
+  opened?: { summary: string; at: Date };
+  taskUpdate?: ContactTaskUpdate;
+};
+
 export type HistoryItem = {
   id: string;
   kind: string;
@@ -155,6 +164,7 @@ export type HistoryItem = {
   at: Date;
   href: string | null;
   isNote: boolean;
+  contact?: ContactHistory;
 };
 
 // The customer's timeline, with each entry linked to what it is about.
@@ -222,9 +232,51 @@ export async function customerHistory(
           ),
         )
     : [];
-  const history = events
+  const openings = new Map<string, (typeof events)[number]>();
+  const contactDetails = new Map<string, ContactHistory>();
+  const folded = new Set<string>();
+  const interactionKey = (event: (typeof events)[number], id: string) =>
+    `${event.subjectId}:${event.actorType}:${event.actorId}:${id}`;
+  for (const event of events) {
+    if (event.kind !== "correspondence.opened") continue;
+    const { interactionId } = event.data as { interactionId?: string };
+    if (interactionId)
+      openings.set(interactionKey(event, interactionId), event);
+  }
+  for (const event of events) {
+    if (event.kind !== "correspondence.logged") continue;
+    const data = event.data as Pick<
+      ContactHistory,
+      "jobId" | "loggedBy" | "taskUpdate"
+    > & {
+      interactionId?: string;
+      taskActivityId?: string;
+      note?: string;
+    };
+    const opened = data.interactionId
+      ? openings.get(interactionKey(event, data.interactionId))
+      : undefined;
+    if (opened) folded.add(opened.id);
+    if (data.taskActivityId) folded.add(data.taskActivityId);
+    if (opened || data.loggedBy || data.taskUpdate) {
+      contactDetails.set(event.id, {
+        jobId: data.jobId,
+        loggedBy: data.loggedBy,
+        fullNote:
+          data.note && !event.summary.endsWith(data.note)
+            ? data.note
+            : undefined,
+        opened: opened
+          ? { summary: opened.summary, at: opened.occurredAt }
+          : undefined,
+        taskUpdate: data.taskUpdate,
+      });
+    }
+  }
+  const history: HistoryItem[] = events
     .filter(
       (e) =>
+        !folded.has(e.id) &&
         ![
           "note.updated",
           "note.deleted",
@@ -252,6 +304,7 @@ export async function customerHistory(
         at: e.occurredAt,
         href,
         isNote: e.kind === "note.created" && d.noteKind !== "profile",
+        contact: contactDetails.get(e.id),
       };
     });
   for (const [label, rows] of [

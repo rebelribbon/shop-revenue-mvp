@@ -5,6 +5,7 @@ import { CustomerContactActions } from "@/components/customer-contact-actions";
 import { groupWork } from "@/lib/work-sections";
 import { formatPhone } from "@/lib/phone-format";
 import { jobReference } from "@/lib/job-reference";
+import { formatDateOnly } from "@/lib/timezone";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ServiceAssets } from "@/components/service-assets";
 import { listServiceAssets } from "@/domain/service-assets";
@@ -584,7 +585,7 @@ export default async function CustomerDetailPage(props: {
               <ul className="row-list">
                 {history.map((e) => (
                   <li key={e.id}>
-                    <HistoryRow item={e} timeZone={tz} />
+                    <HistoryRow item={e} timeZone={tz} automotive={auto} />
                   </li>
                 ))}
               </ul>
@@ -811,18 +812,56 @@ export default async function CustomerDetailPage(props: {
 function HistoryRow({
   item,
   timeZone,
+  automotive,
 }: {
   item: HistoryItem;
   timeZone: string;
+  automotive: boolean;
 }) {
-  const when = item.at.toLocaleString("en-US", {
-    timeZone,
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const formatTime = (at: Date) =>
+    at.toLocaleString("en-US", {
+      timeZone,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  const when = formatTime(item.at);
+  if (item.contact) {
+    const { jobId, loggedBy, opened, taskUpdate, fullNote } = item.contact;
+    const reference = jobId ? jobReference(jobId, automotive) : undefined;
+    const taskDetail =
+      taskUpdate?.kind === "follow_up"
+        ? `Follow up on ${formatDateOnly(taskUpdate.dueOn)}`
+        : taskUpdate?.kind === "complete"
+          ? "Task completed"
+          : taskUpdate?.kind === "note"
+            ? "Saved note only"
+            : undefined;
+    return (
+      <details className="contact-history">
+        <summary>
+          {item.summary}
+          {reference && ` · ${reference}`}
+          <span className="muted">{when}</span>
+        </summary>
+        <div className="contact-history-detail">
+          {fullNote && <p>{fullNote}</p>}
+          {loggedBy && <p>Logged by {loggedBy}</p>}
+          {opened && (
+            <p>
+              {opened.summary} · {formatTime(opened.at)}
+            </p>
+          )}
+          {taskDetail && <p>{taskDetail}</p>}
+          {item.href && reference && (
+            <Link href={item.href}>View {reference}</Link>
+          )}
+        </div>
+      </details>
+    );
+  }
   const body = (
     <>
       <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>

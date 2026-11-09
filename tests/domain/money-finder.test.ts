@@ -614,6 +614,42 @@ describe("Tasks and follow-up rules", () => {
     });
   });
 
+  it("moves a contact reminder to the chosen date and rejects a stale update", async () => {
+    const f = await fixture();
+    const person = await lead(f, 2);
+    await run(f, (tx) =>
+      tx
+        .update(customer)
+        .set({ phoneE164: null, email: "lead@example.test" })
+        .where(eq(customer.id, person.id)),
+    );
+    const dueOn = addLocalDays(today, 5);
+    const input = {
+      category: "new_lead",
+      subjectId: person.id,
+      action: "snooze",
+      method: "email",
+      taskContact: {
+        customerId: person.id,
+        channel: "email",
+        followUpOn: dueOn,
+      },
+    } as const;
+    const before = await tasksFor(f);
+    expect(
+      before.due.find((row) => row.customerId === person.id)?.action?.kind,
+    ).toBe("email");
+    await run(f, (tx) => updateRecovery(tx, meta(), input));
+    await expect(
+      run(f, (tx) => updateRecovery(tx, meta(), input)),
+    ).rejects.toThrow("This task is already scheduled for later.");
+    const after = await tasksFor(f);
+    expect(after.due.some((row) => row.customerId === person.id)).toBe(false);
+    expect(after.later.find((row) => row.customerId === person.id)?.dueOn).toBe(
+      dueOn,
+    );
+  });
+
   it("asks for a customer update while work is in progress", async () => {
     const f = await fixture();
     const e = await estimate(f, 5, 30, ["part-0", "labor-0"]);

@@ -1,3 +1,5 @@
+import type { MoneyCategory } from "@/domain/money-finder";
+
 export const correspondenceChannels = [
   "call",
   "text",
@@ -25,6 +27,21 @@ export type CorrespondenceTarget = {
   documentKind?: "estimate" | "invoice";
 };
 export type SentSummary = { text: string; prefill?: boolean };
+export type ContactTask = {
+  target:
+    | { source: "manual"; id: string }
+    | { source: "rule"; category: MoneyCategory; subjectId: string };
+  earliestFollowUp: string;
+};
+export type ContactTaskUpdate =
+  { kind: "complete" | "note" } | { kind: "follow_up"; dueOn: string };
+
+export type TaskContact = {
+  customerId: string;
+  jobId?: string;
+  channel: "text" | "email";
+  followUpOn?: string;
+};
 
 export const channelLabels: Record<CorrespondenceChannel, string> = {
   call: "Call",

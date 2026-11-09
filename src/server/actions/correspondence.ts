@@ -2,9 +2,11 @@
 
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { customer, estimateVersion, invoice } from "@/db/schema";
+import { customer, estimateVersion, invoice, user } from "@/db/schema";
 import { getJob, jobInput } from "@/domain/jobs";
+import { moneyCategories, updateRecovery } from "@/domain/money-finder";
 import { recordActivity } from "@/domain/records";
+import { updateTask } from "@/domain/tasks";
 import { AppError, notFound } from "@/lib/errors";
 import {
   channelLabels,
@@ -26,8 +28,26 @@ export const recordCorrespondenceAction = defineShopAction({
     channel: z.enum(correspondenceChannels),
     outcome: z.enum(["opened", ...correspondenceOutcomes]),
     summary: z.string().trim().max(1000).optional(),
+    interactionId: z.uuid().optional(),
+    task: z
+      .object({
+        target: z.discriminatedUnion("source", [
+          z.object({ source: z.literal("manual"), id: z.uuid() }),
+          z.object({
+            source: z.literal("rule"),
+            category: z.enum(moneyCategories),
+            subjectId: z.uuid(),
+          }),
+        ]),
+        update: z.discriminatedUnion("kind", [
+          z.object({ kind: z.literal("complete") }),
+          z.object({ kind: z.literal("note") }),
+          z.object({ kind: z.literal("follow_up"), dueOn: z.iso.date() }),
+        ]),
+      })
+      .optional(),
   }),
-  async run({ tx }, input) {
+  async run({ tx, meta, session }, input) {
     const [person] = await tx
       .select({ id: customer.id })
       .from(customer)
@@ -75,6 +95,46 @@ export const recordCorrespondenceAction = defineShopAction({
         "VALIDATION",
         "Enter a short summary of what happened.",
       );
+    let taskActivityId: string | undefined;
+    if (input.task) {
+      const { channel } = input;
+      if (opened || (channel !== "text" && channel !== "email"))
+        throw new AppError("VALIDATION", "Choose a text or email outcome.");
+      const { target, update } = input.task;
+      if (update.kind !== "note") {
+        const followUpOn =
+          update.kind === "follow_up" ? update.dueOn : undefined;
+        const taskContact = {
+          customerId: person.id,
+          jobId,
+          channel,
+          followUpOn,
+        };
+        if (target.source === "manual") {
+          await updateTask(tx, meta, {
+            id: target.id,
+            action: followUpOn ? "snooze" : "done",
+            taskContact,
+          });
+        } else {
+          const recovery = await updateRecovery(tx, meta, {
+            category: target.category,
+            subjectId: target.subjectId,
+            action: followUpOn ? "snooze" : "contact",
+            method: channel === "email" ? "email" : "other",
+            taskContact,
+          });
+          taskActivityId = recovery.activityId;
+        }
+      }
+    }
+    const [staff] =
+      !opened && session.userId
+        ? await tx
+            .select({ name: user.displayName })
+            .from(user)
+            .where(eq(user.id, session.userId))
+        : [];
     const label = channelLabels[input.channel];
     const detail = opened ? undefined : input.summary;
     const result = opened
@@ -82,17 +142,28 @@ export const recordCorrespondenceAction = defineShopAction({
         ? "Sharing option used"
         : `${label} shortcut opened`
       : `${label} · ${outcomeLabels[outcome]}`;
+    const summary = detail ? `${result} — ${detail}` : result;
+    const characters = Array.from(summary);
     return await recordActivity(tx, {
       kind: opened ? "correspondence.opened" : "correspondence.logged",
       subjectType: "customer",
       subjectId: person.id,
-      summary: detail ? `${result} — ${detail}` : result,
+      summary:
+        characters.length > 280
+          ? `${characters.slice(0, 279).join("")}…`
+          : summary,
       data: {
         channel: input.channel,
         outcome: input.outcome,
         note: detail,
         jobId,
         documentId: input.documentId,
+        interactionId: input.interactionId,
+        loggedBy: staff?.name,
+        taskUpdate: input.task?.update,
+        taskTarget:
+          input.task?.update.kind !== "note" ? input.task?.target : undefined,
+        taskActivityId,
       },
     }).then((event) => ({ id: event.id }));
   },
