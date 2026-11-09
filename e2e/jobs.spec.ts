@@ -94,8 +94,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(
     call.getByRole("link", { name: "Call", exact: true }),
   ).toHaveAttribute("href", `tel:${mobile}`);
+  await expect(
+    call.getByRole("button", { name: "No answer · try tomorrow", exact: true }),
+  ).toBeVisible();
   await call
-    .getByRole("button", { name: "No answer · try tomorrow", exact: true })
+    .getByRole("button", { name: "Left message · try tomorrow", exact: true })
     .click();
   await expect(call).toHaveCount(0);
   await page.getByRole("link", { name: "Coming up", exact: true }).click();
@@ -103,7 +106,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await page.goto(`${customerUrl}?view=history`);
   await expect(
     page.getByText(
-      `No answer · try tomorrow · Call about Brakes ${info.project.name}`,
+      `Left message · try tomorrow · Call about Brakes ${info.project.name}`,
       { exact: true },
     ),
   ).toBeVisible();
@@ -144,6 +147,18 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   expect(decodeURIComponent(estimateDraft!)).toContain(
     new URL(href!, jobUrl).href,
   );
+  await card
+    .getByRole("link", { name: "Text estimate ready", exact: true })
+    .click();
+  const contact = page.getByRole("dialog", { name: "Log customer contact" });
+  const summary = contact.getByLabel("Short summary");
+  await expect(summary).toHaveValue("Shared the estimate approval link.");
+  await contact.getByLabel("What happened?").selectOption("received");
+  await expect(summary).toHaveValue("");
+  await contact.getByLabel("What happened?").selectOption("sent");
+  await expect(summary).toHaveValue("Shared the estimate approval link.");
+  await contact.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(contact).not.toBeVisible();
   await page.goto(
     `/app/jobs?q=${encodeURIComponent(`Brakes ${info.project.name}`)}`,
   );

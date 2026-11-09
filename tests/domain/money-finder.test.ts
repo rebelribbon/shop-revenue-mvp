@@ -587,6 +587,33 @@ describe("Tasks and follow-up rules", () => {
     ).toBe(false);
   });
 
+  it("logs a left message on a lead call and keeps the retry open", async () => {
+    const f = await fixture();
+    const person = await lead(f, 2);
+    await run(f, (tx) =>
+      updateRecovery(tx, meta(), {
+        category: "new_lead",
+        subjectId: person.id,
+        action: "snooze",
+        method: "phone",
+        callOutcome: "left_message",
+        days: 1,
+      }),
+    );
+    const { due, later } = await tasksFor(f);
+    expect(due.some((row) => row.customerId === person.id)).toBe(false);
+    expect(later.find((row) => row.customerId === person.id)?.dueOn).toBe(
+      addLocalDays(today, 1),
+    );
+    const history = await run(f, (tx) => listCustomerTimeline(tx, person.id));
+    expect(
+      history.find((event) => event.kind === "recovery.snooze"),
+    ).toMatchObject({
+      summary: "Left message · try tomorrow · New leads",
+      data: { callOutcome: "left_message", deliveryConfirmed: false },
+    });
+  });
+
   it("asks for a customer update while work is in progress", async () => {
     const f = await fixture();
     const e = await estimate(f, 5, 30, ["part-0", "labor-0"]);

@@ -7,6 +7,7 @@ import {
   updateTask,
 } from "@/domain/tasks";
 import { CONTACT_TASK_KINDS } from "@/lib/task-action";
+import { callTaskOutcomes } from "@/lib/correspondence";
 import { RULE_TEXT, type FollowUpRules } from "@/lib/follow-up-rules";
 import { defineShopAction } from "./define";
 
@@ -42,7 +43,7 @@ export const updateTaskAction = defineShopAction({
   name: "updateTask",
   input: z.object({
     id: z.uuid(),
-    action: z.enum(["done", "snooze", "reached", "no_answer"]),
+    action: z.enum(["done", "snooze", ...callTaskOutcomes]),
     days: z.enum(["1", "7"]).optional(),
     note: z.string().trim().max(300).optional(),
   }),

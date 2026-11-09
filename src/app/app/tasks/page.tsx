@@ -1,5 +1,9 @@
 import { ContactLaunchLink } from "@/components/correspondence";
-import type { CorrespondenceTarget } from "@/lib/correspondence";
+import {
+  outcomeLabels,
+  type CorrespondenceTarget,
+  type SentSummary,
+} from "@/lib/correspondence";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -203,12 +207,22 @@ export default async function TasksPage(props: {
   );
 }
 
+const followUpSummaries: Partial<Record<TaskRow["category"], string>> = {
+  open_estimate: "Followed up about the estimate.",
+  job_update: "Shared an update on the job.",
+  visit_confirm: "Asked the customer to confirm their appointment.",
+  service_due: "Sent a service reminder.",
+  declined: "Followed up about previously declined work.",
+  warranty_ending: "Sent a reminder about the warranty ending.",
+};
+
 function TaskActionLink({
   action,
   children,
   button = false,
   target,
   purpose,
+  sentSummary,
   prompt,
 }: {
   action: TaskAction;
@@ -216,6 +230,7 @@ function TaskActionLink({
   button?: boolean;
   target?: CorrespondenceTarget;
   purpose: string;
+  sentSummary?: SentSummary;
   prompt: boolean;
 }) {
   const props = {
@@ -230,6 +245,7 @@ function TaskActionLink({
       contact={target}
       channel={action.kind}
       purpose={purpose}
+      sentSummary={sentSummary}
       prompt={prompt}
     >
       {children}
@@ -257,6 +273,11 @@ function TaskItem({
         : "Today";
   const rule = { category: t.category, subjectId: t.subjectId };
   const action = readOnly ? undefined : t.action;
+  const summary =
+    action?.kind === "text" || action?.kind === "email"
+      ? followUpSummaries[t.category]
+      : undefined;
+  const sentSummary = summary ? { text: summary } : undefined;
   const target = t.customerId
     ? { customerId: t.customerId, jobId: t.jobId ?? undefined }
     : undefined;
@@ -280,14 +301,16 @@ function TaskItem({
           callOutcome: "reached",
           deliveryConfirmed: "true",
         };
-  const noAnswer: Record<string, string> =
+  const retryCall = (
+    outcome: "left_message" | "no_answer",
+  ): Record<string, string> =>
     t.source === "manual"
-      ? { id: t.subjectId, action: "no_answer" }
+      ? { id: t.subjectId, action: outcome }
       : {
           ...rule,
           action: "snooze",
           method: "phone",
-          callOutcome: "no_answer",
+          callOutcome: outcome,
           days: "1",
         };
   const contactMethod =
@@ -310,6 +333,7 @@ function TaskItem({
                 action={action}
                 target={target}
                 purpose={t.title}
+                sentSummary={sentSummary}
                 prompt={!canLogCall}
               >
                 {t.title}
@@ -340,6 +364,7 @@ function TaskItem({
               action={action}
               target={target}
               purpose={t.title}
+              sentSummary={sentSummary}
               prompt={!canLogCall}
               button
             >
@@ -359,12 +384,15 @@ function TaskItem({
                 submitLabel="Reached"
                 successText="Call recorded."
               />
-              <ActionForm
-                action={updateOutcome}
-                hidden={noAnswer}
-                submitLabel="No answer · try tomorrow"
-                successText="Call recorded. Follow up tomorrow."
-              />
+              {(["left_message", "no_answer"] as const).map((outcome) => (
+                <ActionForm
+                  key={outcome}
+                  action={updateOutcome}
+                  hidden={retryCall(outcome)}
+                  submitLabel={`${outcomeLabels[outcome]} · try tomorrow`}
+                  successText="Call recorded. Follow up tomorrow."
+                />
+              ))}
             </>
           )}
           {canUpdate && !canLogCall && t.source === "manual" && (

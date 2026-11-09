@@ -4,6 +4,7 @@
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { business, customer, task } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
+import { outcomeLabels, type CallTaskOutcome } from "@/lib/correspondence";
 import { AppError, notFound } from "@/lib/errors";
 import {
   readFollowUpRules,
@@ -363,7 +364,7 @@ export async function updateTask(
   meta: RequestMeta,
   input: {
     id: string;
-    action: "done" | "snooze" | "reached" | "no_answer";
+    action: "done" | "snooze" | CallTaskOutcome;
     days?: 1 | 7;
     note?: string;
   },
@@ -376,7 +377,7 @@ export async function updateTask(
   if (!row) throw notFound("That task");
   if (row.doneAt) throw new AppError("INVALID_TRANSITION", "Already done.");
   const callOutcome =
-    input.action === "reached" || input.action === "no_answer";
+    input.action === "done" || input.action === "snooze" ? null : input.action;
   if (
     callOutcome &&
     (!row.customerId || contactKindForTitle(row.title) !== "call")
@@ -418,7 +419,8 @@ export async function updateTask(
   }
   if (callOutcome && row.customerId) {
     const note = input.action === "reached" ? input.note?.trim() : undefined;
-    const result = completed ? "Reached customer" : "No answer · try tomorrow";
+    const result =
+      outcomeLabels[callOutcome] + (completed ? "" : " · try tomorrow");
     await recordActivity(tx, {
       kind: "task.call_outcome",
       subjectType: "customer",

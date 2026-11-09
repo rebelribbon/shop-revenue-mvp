@@ -539,6 +539,7 @@ export default async function JobsPage({
                         phone={draftPhone}
                         label={`Text ${estimateName} ready`}
                         message={`${greeting} your ${estimateName} from ${shopName} is ready to review and approve.`}
+                        summary={`Shared the ${estimateName} approval link.`}
                         approvalPath={data.estimateDraftPath}
                       />
                     )}
@@ -551,6 +552,9 @@ export default async function JobsPage({
                         phone={draftPhone}
                         label={
                           auto ? "Text ready for pickup" : "Text work complete"
+                        }
+                        summary={
+                          auto ? "Vehicle ready for pickup." : "Work complete."
                         }
                         message={
                           auto

@@ -12,6 +12,7 @@ import {
   correspondenceOutcomes,
   outcomeLabels,
   outcomesFor,
+  requiresSummary,
 } from "@/lib/correspondence";
 import { defineShopAction } from "./define";
 
@@ -69,7 +70,7 @@ export const recordCorrespondenceAction = defineShopAction({
         "VALIDATION",
         "Choose an outcome for this contact method.",
       );
-    if (!opened && input.outcome !== "no_answer" && !input.summary)
+    if (!opened && requiresSummary(outcome) && !input.summary)
       throw new AppError(
         "VALIDATION",
         "Enter a short summary of what happened.",

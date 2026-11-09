@@ -80,6 +80,7 @@ export function DocumentShare({
   const contactTarget = data
     ? { customerId: data.customerId, documentId: id, documentKind: kind }
     : undefined;
+  const sentSummary = { text: `Shared the ${kind} link.`, prefill: true };
   const canText = Boolean(phoneNumber.trim() && !data?.textStoppedOn);
   const canEmail = Boolean(!data?.emailStoppedOn);
   useEffect(() => {
@@ -249,6 +250,7 @@ export function DocumentShare({
                 contact={contactTarget}
                 channel="text"
                 purpose={`Shared ${kind} link`}
+                sentSummary={sentSummary}
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
                 href={smsDraftHref(phoneNumber, textBody)}
@@ -302,6 +304,7 @@ export function DocumentShare({
                 contact={contactTarget}
                 channel="email"
                 purpose={`Shared ${kind} link`}
+                sentSummary={sentSummary}
                 className={`btn ${primary && !canText ? "primary" : "secondary"}`}
                 data-page-primary={primary && !canText ? true : undefined}
                 href={`mailto:${encodeURIComponent(emailAddress.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}

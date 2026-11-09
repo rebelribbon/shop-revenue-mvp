@@ -47,6 +47,10 @@ test("a text follow-up opens the customer's number directly and keeps Done separ
   await task.getByRole("link", { name: "Text", exact: true }).click();
   const contact = page.getByRole("dialog", { name: "Log customer contact" });
   await expect(contact.getByLabel("Contact method")).toHaveValue("text");
+  await expect(contact.getByLabel("Short summary")).toHaveValue("");
+  await expect(
+    contact.getByRole("option", { name: "Left message" }),
+  ).toHaveCount(0);
   await contact
     .getByLabel("Short summary")
     .fill("Sent an update about the estimate.");
@@ -71,4 +75,9 @@ test("a text follow-up opens the customer's number directly and keeps Done separ
   await expect(history).toContainText(
     "Text · Received — Customer replied with a question about parts.",
   );
+  await history.getByRole("button", { name: "Log contact" }).click();
+  await contact.getByLabel("Contact method").selectOption("call");
+  await contact.getByLabel("What happened?").selectOption("left_message");
+  await contact.getByRole("button", { name: "Save to history" }).click();
+  await expect(history).toContainText("Call · Left message");
 });

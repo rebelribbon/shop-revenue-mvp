@@ -16,14 +16,17 @@ import {
   correspondenceChannels,
   outcomeLabels,
   outcomesFor,
+  requiresSummary,
   type CorrespondenceChannel,
   type CorrespondenceOutcome,
   type CorrespondenceTarget,
+  type SentSummary,
 } from "@/lib/correspondence";
 
 type Entry = CorrespondenceTarget & {
   channel?: CorrespondenceChannel;
   purpose?: string;
+  sentSummary?: SentSummary;
   prompt?: boolean;
   openingFailed?: boolean;
 };
@@ -87,6 +90,17 @@ function CorrespondenceDialog({
   const [outcome, setOutcome] = useState<CorrespondenceOutcome>(
     outcomesFor(channel)[0],
   );
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const suggestion =
+    channel === entry.channel && outcome === "sent"
+      ? entry.sentSummary
+      : undefined;
+  const summaryKey = `${channel}:${outcome}`;
+  const summary =
+    summaries[summaryKey] ?? (suggestion?.prefill ? suggestion.text : "");
+  const setSummary = (text: string) =>
+    setSummaries((current) => ({ ...current, [summaryKey]: text }));
+  const summaryRequired = requiresSummary(outcome);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [requestId] = useState(() => crypto.randomUUID());
@@ -117,9 +131,6 @@ function CorrespondenceDialog({
       <form
         onSubmit={async (event) => {
           event.preventDefault();
-          const summary = String(
-            new FormData(event.currentTarget).get("summary") ?? "",
-          );
           const { customerId, jobId, documentId, documentKind } = entry;
           setPending(true);
           setError("");
@@ -175,16 +186,32 @@ function CorrespondenceDialog({
             </option>
           ))}
         </select>
+        {suggestion && !suggestion.prefill && (
+          <button
+            type="button"
+            className="btn secondary"
+            disabled={pending}
+            onClick={() => setSummary(suggestion.text)}
+          >
+            Use “{suggestion.text}”
+          </button>
+        )}
         <label htmlFor="contact-summary">
-          Short summary{outcome === "no_answer" ? " (optional)" : ""}
+          Short summary{summaryRequired ? "" : " (optional)"}
         </label>
         <textarea
           id="contact-summary"
           name="summary"
           rows={3}
           maxLength={1000}
-          required={outcome !== "no_answer"}
-          placeholder={entry.purpose || "What did you or the customer say?"}
+          required={summaryRequired}
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
+          placeholder={
+            (channel === entry.channel && outcome === "sent"
+              ? entry.purpose
+              : undefined) ?? "What did you or the customer say?"
+          }
         />
         {error && <p role="alert">{error}</p>}
         <div className="job-follow-up-shortcuts">
@@ -214,12 +241,14 @@ export function ContactLaunchLink({
   contact,
   channel,
   purpose,
+  sentSummary,
   prompt,
   ...props
 }: ComponentProps<"a"> & {
   contact?: CorrespondenceTarget;
   channel: CorrespondenceChannel;
   purpose?: string;
+  sentSummary?: SentSummary;
   prompt?: boolean;
 }) {
   const log = useContactLog();
@@ -229,7 +258,7 @@ export function ContactLaunchLink({
       onClick={(event) => {
         props.onClick?.(event);
         if (!event.defaultPrevented && props.href && contact)
-          log?.({ ...contact, channel, purpose, prompt }, true);
+          log?.({ ...contact, channel, purpose, sentSummary, prompt }, true);
       }}
     />
   );

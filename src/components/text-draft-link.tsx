@@ -10,12 +10,14 @@ export function TextDraftLink({
   target,
   label,
   message,
+  summary,
   approvalPath,
 }: {
   phone: string;
   target?: CorrespondenceTarget;
   label: string;
   message: string;
+  summary?: string;
   approvalPath?: string;
 }) {
   const ready = useActionHydration();
@@ -31,6 +33,7 @@ export function TextDraftLink({
       contact={target}
       channel="text"
       purpose={message}
+      sentSummary={summary ? { text: summary, prefill: true } : undefined}
       className="btn secondary"
       data-ux-ready={ready}
       href={ready ? smsDraftHref(phone, body) : undefined}

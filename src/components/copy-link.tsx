@@ -94,6 +94,10 @@ export function CopyLink({
                       ...contact,
                       channel: "text",
                       purpose: "Shared the customer link",
+                      sentSummary: {
+                        text: "Shared the customer link.",
+                        prefill: true,
+                      },
                     },
                     true,
                   );
@@ -117,6 +121,10 @@ export function CopyLink({
                       ...contact,
                       channel: "email",
                       purpose: "Shared the customer link",
+                      sentSummary: {
+                        text: "Shared the customer link.",
+                        prefill: true,
+                      },
                     },
                     true,
                   );

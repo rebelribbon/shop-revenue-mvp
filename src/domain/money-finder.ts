@@ -7,6 +7,7 @@ import {
   vehicle,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
+import { outcomeLabels, type CallTaskOutcome } from "@/lib/correspondence";
 import { AppError, notFound } from "@/lib/errors";
 import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
 import { readFollowUpRules, type FollowUpRules } from "@/lib/follow-up-rules";
@@ -383,7 +384,7 @@ export async function updateRecovery(
       "contact" | "responded" | "booked" | "snooze" | "dismiss" | "restore";
     deliveryConfirmed?: boolean;
     method?: "phone" | "email" | "in_person" | "other";
-    callOutcome?: "reached" | "no_answer";
+    callOutcome?: CallTaskOutcome;
     note?: string;
     days?: 1 | 7 | 30 | 90;
     reason?: string;
@@ -456,7 +457,7 @@ export async function updateRecovery(
       input.days!,
     );
     if (
-      input.callOutcome === "no_answer" &&
+      input.callOutcome &&
       row.snoozedUntil &&
       row.snoozedUntil >= change.snoozedUntil
     )
@@ -572,12 +573,10 @@ export async function updateRecovery(
             )
         ).map((r) => r.id)
       : [];
-  const callResult =
-    input.callOutcome === "reached"
-      ? "Reached customer"
-      : input.callOutcome === "no_answer"
-        ? "No answer · try tomorrow"
-        : null;
+  const callResult = input.callOutcome
+    ? outcomeLabels[input.callOutcome] +
+      (input.callOutcome === "reached" ? "" : " · try tomorrow")
+    : null;
   const event = await recordActivity(tx, {
     kind: `recovery.${input.action}`,
     subjectType: "customer",
