@@ -1,5 +1,6 @@
 import { RecordSection, WorkCard } from "@/components/record-section";
 import { CustomerContactActions } from "@/components/customer-contact-actions";
+import { TextDraftLink } from "@/components/text-draft-link";
 import { CopyTextButton } from "@/components/copy-text-button";
 import { groupWork } from "@/lib/work-sections";
 import { FileUploader } from "@/components/file-uploader";
@@ -8,6 +9,8 @@ import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
 import { jobCabinet, listTemplates } from "@/domain/documents";
+import { getDocumentShare } from "@/domain/document-sharing";
+import { AppError } from "@/lib/errors";
 import { openShareToken } from "@/lib/share-token";
 import { customer as customerTable } from "@/db/schema";
 import { z } from "zod";
@@ -61,6 +64,9 @@ import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
 import { requireShopSession } from "@/server/views/shop";
+
+const followUpPath = (jobId: string) => `/app/tasks?add=1&jobId=${jobId}`;
+
 export default async function JobsPage({
   searchParams,
 }: {
@@ -111,6 +117,7 @@ export default async function JobsPage({
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
+  const canFollowUp = s.actor.type === "user" && s.role !== "technician";
   // Technicians see only the jobs they're on.
   const techOnly =
     s.role === "technician" && s.actor.type === "user"
@@ -164,10 +171,9 @@ export default async function JobsPage({
     const selectedCustomer = page.selected
       ? (page.selected.data as { customerId?: string }).customerId
       : undefined;
-    return {
-      ...page,
-      cabinet: page.selected
-        ? await jobCabinet(tx, page.selected.id, (c) => {
+    const [cabinet, [contact], workflows] = await Promise.all([
+      page.selected
+        ? jobCabinet(tx, page.selected.id, (c) => {
             try {
               return c ? openShareToken(c) : null;
             } catch {
@@ -175,26 +181,61 @@ export default async function JobsPage({
             }
           })
         : [],
+      selectedCustomer
+        ? tx
+            .select({
+              firstName: customerTable.firstName,
+              phone: customerTable.phoneE164,
+              email: customerTable.email,
+              status: customerTable.status,
+              textOff: customerTable.textOptedOutAt,
+              emailOff: customerTable.emailOptedOutAt,
+              doNotContact: customerTable.doNotContact,
+            })
+            .from(customerTable)
+            .where(
+              and(
+                eq(customerTable.businessId, tx.businessId),
+                eq(customerTable.id, selectedCustomer),
+              ),
+            )
+        : [],
+      loadJobWorkflows(tx, [
+        ...new Set([
+          ...page.jobs.map((j) => j.id),
+          ...(page.selected ? [page.selected.id] : []),
+        ]),
+      ]),
+    ]);
+    const latest = page.selected
+      ? workflows.get(page.selected.id)?.latest?.estimate
+      : undefined;
+    let estimateDraftPath: string | undefined;
+    if (
+      canFollowUp &&
+      contact?.status === "active" &&
+      contact.phone &&
+      !contact.textOff &&
+      !contact.doNotContact &&
+      latest &&
+      latest.customerId === selectedCustomer &&
+      cabinet.some((item) => item.estimateShareId === latest.id)
+    ) {
+      try {
+        estimateDraftPath = (await getDocumentShare(tx, latest.id, "estimate"))
+          .path;
+      } catch (error) {
+        // Older links can require replacement. Keep sharing available from Docs.
+        if (!(error instanceof AppError)) throw error;
+      }
+    }
+    return {
+      ...page,
+      cabinet,
+      contact,
+      estimateDraftPath,
+      workflows,
       templates: page.selected ? await listTemplates(tx) : [],
-      contact: selectedCustomer
-        ? (
-            await tx
-              .select({
-                phone: customerTable.phoneE164,
-                email: customerTable.email,
-                textOff: customerTable.textOptedOutAt,
-                emailOff: customerTable.emailOptedOutAt,
-                doNotContact: customerTable.doNotContact,
-              })
-              .from(customerTable)
-              .where(
-                and(
-                  eq(customerTable.businessId, tx.businessId),
-                  eq(customerTable.id, selectedCustomer),
-                ),
-              )
-          )[0]
-        : undefined,
       jobMedia: page.selected
         ? await listMedia(tx, { jobId: page.selected.id })
         : [],
@@ -235,12 +276,6 @@ export default async function JobsPage({
       inspection: page.selected
         ? await getInspection(tx, page.selected.id)
         : null,
-      workflows: await loadJobWorkflows(tx, [
-        ...new Set([
-          ...page.jobs.map((j) => j.id),
-          ...(page.selected ? [page.selected.id] : []),
-        ]),
-      ]),
     };
   });
   const techName = (id: string) =>
@@ -262,6 +297,18 @@ export default async function JobsPage({
   );
   const statusLabels = jobStatusLabels(type);
   const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
+  const estimateName = auto ? "estimate" : "bid";
+  const shopName = data.profile?.dba || data.profile?.legalName || "the shop";
+  const draftPhone =
+    canFollowUp &&
+    data.contact?.status === "active" &&
+    !data.contact.textOff &&
+    !data.contact.doNotContact
+      ? data.contact.phone
+      : null;
+  const greeting = data.contact?.firstName
+    ? `Hi ${data.contact.firstName},`
+    : "Hi,";
   // ?stage=plan (older links) shows recurring jobs.
   const filter = jobFilter(
     show ?? (stage?.startsWith("plan") ? "recurring" : undefined),
@@ -467,6 +514,37 @@ export default async function JobsPage({
                     </span>
                   )}
                 </header>
+                {canFollowUp && (
+                  <div className="job-follow-up-shortcuts">
+                    <Link
+                      href={followUpPath(selected.id)}
+                      className="btn secondary"
+                    >
+                      Follow up
+                    </Link>
+                    {draftPhone && data.estimateDraftPath && (
+                      <TextDraftLink
+                        phone={draftPhone}
+                        label={`Text ${estimateName} ready`}
+                        message={`${greeting} your ${estimateName} from ${shopName} is ready to review and approve.`}
+                        approvalPath={data.estimateDraftPath}
+                      />
+                    )}
+                    {draftPhone && flow?.work === "completed" && (
+                      <TextDraftLink
+                        phone={draftPhone}
+                        label={
+                          auto ? "Text ready for pickup" : "Text work complete"
+                        }
+                        message={
+                          auto
+                            ? `${greeting} your vehicle is ready for pickup at ${shopName}.`
+                            : `${greeting} ${shopName} has completed the work. Please let us know if you have any questions.`
+                        }
+                      />
+                    )}
+                  </div>
+                )}
                 <nav
                   className="section-tabs"
                   aria-label="Job setup and customer approval"
@@ -1369,6 +1447,54 @@ export default async function JobsPage({
                               input.labor,
                             );
                             const flow = data.workflows.get(j.id);
+                            const status = statusOf(j.id);
+                            const approvedEstimate = flow?.latest?.estimate;
+                            const awaiting = status === "sent";
+                            const needsAppointment =
+                              status === "won" &&
+                              !flow?.repeats &&
+                              !!approvedEstimate;
+                            const nextAction = !canFollowUp
+                              ? undefined
+                              : awaiting
+                                ? {
+                                    label: "Follow up",
+                                    href: followUpPath(j.id),
+                                  }
+                                : needsAppointment
+                                  ? {
+                                      label: "Book",
+                                      href: `/app/schedule?${new URLSearchParams(
+                                        {
+                                          new: "1",
+                                          customerId:
+                                            approvedEstimate.customerId,
+                                          ...(approvedEstimate.vehicleId
+                                            ? {
+                                                vehicleId:
+                                                  approvedEstimate.vehicleId,
+                                              }
+                                            : {}),
+                                          ...(approvedEstimate.serviceAssetId
+                                            ? {
+                                                serviceAssetId:
+                                                  approvedEstimate.serviceAssetId,
+                                              }
+                                            : {}),
+                                        },
+                                      )}`,
+                                    }
+                                  : undefined;
+                            const waitingDays = flow?.estimateSharedAt
+                              ? Math.max(
+                                  0,
+                                  Math.floor(
+                                    (Date.now() -
+                                      flow.estimateSharedAt.getTime()) /
+                                      86400000,
+                                  ),
+                                )
+                              : null;
                             const owed =
                               flow?.currentInvoice && flow.balanceCents > 0
                                 ? flow.balanceCents
@@ -1383,14 +1509,21 @@ export default async function JobsPage({
                                   reference={jobReference(j.id, auto)}
                                   title={`${input.repeat ? "↻ " : ""}${j.title}`}
                                   customer={customerName}
-                                  detail={`Opened ${j.createdAt.toLocaleDateString("en-US", { timeZone: data.profile?.timezone || "America/Chicago", month: "short", day: "numeric" })}`}
-                                  status={statusLabels[statusOf(j.id)]}
-                                  statusClass={statusTone(statusOf(j.id))}
+                                  detail={
+                                    awaiting && waitingDays !== null
+                                      ? `Waiting for approval · ${waitingDays === 0 ? "today" : `${waitingDays} day${waitingDays === 1 ? "" : "s"}`}`
+                                      : needsAppointment
+                                        ? "Needs an appointment"
+                                        : `Opened ${j.createdAt.toLocaleDateString("en-US", { timeZone: data.profile?.timezone || "America/Chicago", month: "short", day: "numeric" })}`
+                                  }
+                                  status={statusLabels[status]}
+                                  statusClass={statusTone(status)}
                                   amount={money(owed || totals.subtotalCents)}
                                   amountLabel={
                                     owed ? "Balance due" : "Estimate"
                                   }
-                                  ariaLabel={`Open job: ${j.title} · ${statusLabels[statusOf(j.id)]}`}
+                                  ariaLabel={`Open job: ${j.title} · ${statusLabels[status]}`}
+                                  nextAction={nextAction}
                                 />
                               </li>
                             );

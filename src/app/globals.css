@@ -1947,6 +1947,9 @@ div.overview-row + a.overview-row {
 .task-item .task-unavailable {
   margin: 0 0 8px;
 }
+.task-outcome-note {
+  margin: 8px 0 0;
+}
 /* Follow-up rules: one block per rule — on/off, then "every [N] days". */
 .rule-row {
   margin: 0 0 16px;
@@ -4695,6 +4698,33 @@ main.customer-index-page {
 .record-work-card:hover {
   background: var(--hover);
   border-color: var(--accent);
+}
+.record-work-with-action {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.record-work-with-action .record-work-card {
+  flex: 1;
+  height: auto;
+  border: 0;
+}
+.record-work-action {
+  padding: 8px 16px 16px;
+}
+.record-work-action > .btn,
+.job-follow-up-shortcuts > .btn {
+  margin: 0;
+}
+.job-follow-up-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 16px;
 }
 .record-work-top {
   display: flex;

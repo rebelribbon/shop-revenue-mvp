@@ -88,8 +88,8 @@ test("ROs are grouped by work state and open the matching customer's pricing", a
   });
   const active = page.getByRole("region", { name: "In progress", exact: true });
   const closed = page.getByRole("region", { name: "Closed work", exact: true });
-  await expect(attention.locator(".record-work-card")).toHaveCount(1);
-  await expect(active.locator(".record-work-card")).toHaveCount(2);
+  await expect(attention.locator(".record-work-card")).toHaveCount(2);
+  await expect(active.locator(".record-work-card")).toHaveCount(1);
   await expect(closed.locator(".record-work-card")).toHaveCount(1);
   await expect(attention).toContainText("Alex Example");
   await expect(active).toContainText("Jordan Sample");

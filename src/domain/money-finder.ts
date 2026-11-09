@@ -383,6 +383,7 @@ export async function updateRecovery(
       "contact" | "responded" | "booked" | "snooze" | "dismiss" | "restore";
     deliveryConfirmed?: boolean;
     method?: "phone" | "email" | "in_person" | "other";
+    callOutcome?: "reached" | "no_answer";
     note?: string;
     days?: 1 | 7 | 30 | 90;
     reason?: string;
@@ -398,6 +399,15 @@ export async function updateRecovery(
     input.subjectId,
     input.action === "responded" || input.action === "booked",
   );
+  if (
+    input.callOutcome &&
+    (input.method !== "phone" ||
+      !source.phone ||
+      (input.callOutcome === "reached"
+        ? input.action !== "contact"
+        : input.action !== "snooze" || input.days !== 1))
+  )
+    throw new AppError("VALIDATION", "Choose a valid call outcome.");
   await tx
     .insert(recoveryItem)
     .values({
@@ -445,6 +455,15 @@ export async function updateRecovery(
       localDateKey(new Date(), String(b.timezone)),
       input.days!,
     );
+    if (
+      input.callOutcome === "no_answer" &&
+      row.snoozedUntil &&
+      row.snoozedUntil >= change.snoozedUntil
+    )
+      throw new AppError(
+        "INVALID_TRANSITION",
+        "This call is already scheduled for later.",
+      );
   } else if (input.action === "dismiss") {
     if (!input.reason?.trim())
       throw new AppError("VALIDATION", "Enter a dismissal reason.");
@@ -553,17 +572,26 @@ export async function updateRecovery(
             )
         ).map((r) => r.id)
       : [];
+  const callResult =
+    input.callOutcome === "reached"
+      ? "Reached customer"
+      : input.callOutcome === "no_answer"
+        ? "No answer · try tomorrow"
+        : null;
   const event = await recordActivity(tx, {
     kind: `recovery.${input.action}`,
     subjectType: "customer",
     subjectId: source.customerId,
-    summary: `${categoryLabels[input.category]}: ${input.action === "contact" ? "manual contact recorded" : input.action}`,
+    summary: callResult
+      ? `${callResult} · ${categoryLabels[input.category]}${input.note?.trim() ? ` — ${input.note.trim()}` : ""}`
+      : `${categoryLabels[input.category]}: ${input.action === "contact" ? "manual contact recorded" : input.action}`,
     data: {
       recoveryItemId: row.id,
       category: input.category,
       subjectId: input.subjectId,
       amountCents: source.amountCents,
       method: input.method ?? null,
+      ...(input.callOutcome ? { callOutcome: input.callOutcome } : {}),
       note: input.note ?? null,
       deliveryConfirmed:
         input.action === "contact" && input.deliveryConfirmed === true,

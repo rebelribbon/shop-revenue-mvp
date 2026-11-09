@@ -16,7 +16,11 @@ import {
   vehicle,
 } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
-import { createCustomer, createVehicle } from "@/domain/customers";
+import {
+  createCustomer,
+  createVehicle,
+  listCustomerTimeline,
+} from "@/domain/customers";
 import { createJob } from "@/domain/jobs";
 import { createAppointment } from "@/domain/appointments";
 import { recordInvoicePayment, setInvoiceDispute } from "@/domain/invoices";
@@ -44,6 +48,7 @@ import {
 } from "@/domain/money-finder";
 import { localDateKey, addLocalDays } from "@/lib/timezone";
 import {
+  addJobFollowUp,
   addTask,
   listTasks,
   saveFollowUpRules,
@@ -719,6 +724,53 @@ describe("Tasks and follow-up rules", () => {
     await run(f, (tx) => updateTask(tx, meta(), { id, action: "done" }));
     t = await tasksFor(f);
     expect([...t.due, ...t.later].some((r) => r.subjectId === id)).toBe(false);
+  });
+
+  it("saves an RO call outcome and note in the linked customer's history", async () => {
+    const f = await fixture();
+    const job = await run(f, (tx) =>
+      createJob(tx, {
+        title: "Front brake service",
+        customerId: f.customerId,
+        vehicleId: f.vehicleId,
+        parts: [],
+        labor: [],
+      }),
+    );
+    const { id } = await run(f, (tx) =>
+      addJobFollowUp(tx, meta(), {
+        jobId: job.id,
+        method: "call",
+        dueOn: today,
+      }),
+    );
+    const before = await tasksFor(f);
+    expect(before.due.find((row) => row.subjectId === id)).toMatchObject({
+      customerId: f.customerId,
+      href: `/app/jobs?job=${job.id}`,
+      action: { href: "tel:+15125550123" },
+    });
+    await run(f, (tx) =>
+      updateTask(tx, meta(), {
+        id,
+        action: "reached",
+        note: "Customer will drop off Friday.",
+      }),
+    );
+    const history = await run(f, (tx) =>
+      listCustomerTimeline(tx, f.customerId),
+    );
+    expect(
+      history.find((event) => event.kind === "task.call_outcome"),
+    ).toMatchObject({
+      summary:
+        "Reached customer · Call about Front brake service — Customer will drop off Friday.",
+      data: { taskId: id, jobId: job.id, outcome: "reached" },
+    });
+    const after = await tasksFor(f);
+    expect(
+      [...after.due, ...after.later].some((row) => row.subjectId === id),
+    ).toBe(false);
   });
 
   it("uses the requested contact method without falling back to a different one", async () => {

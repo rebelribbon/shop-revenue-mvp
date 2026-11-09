@@ -5,6 +5,7 @@ import Link from "next/link";
 import { RecordSection } from "@/components/record-section";
 import { CustomerContactActions } from "@/components/customer-contact-actions";
 import { CopyTextButton } from "@/components/copy-text-button";
+import { TextDraftLink } from "@/components/text-draft-link";
 import { jobStatusLabels } from "@/lib/job-status";
 import { demoCustomers } from "@/lib/demo-customers";
 
@@ -151,6 +152,29 @@ export function DemoJobEditor({
           </span>
         </div>
       </header>
+      <div className="job-follow-up-shortcuts">
+        <Link
+          className="btn secondary"
+          href={`/demo/crm?view=tasks&followUp=${customerRecord.id}`}
+        >
+          Follow up
+        </Link>
+        {customerRecord.status === "sent" && (
+          <TextDraftLink
+            phone={`+1${customerRecord.contact.replace(/\D/g, "")}`}
+            label="Text estimate ready"
+            message={`Hi ${customerRecord.name.split(" ")[0]}, your estimate is ready to review and approve.`}
+            approvalPath={`/demo/job?customer=${customerRecord.id}&stage=docs`}
+          />
+        )}
+        {customerRecord.status === "paid" && (
+          <TextDraftLink
+            phone={`+1${customerRecord.contact.replace(/\D/g, "")}`}
+            label="Text ready for pickup"
+            message={`Hi ${customerRecord.name.split(" ")[0]}, your vehicle is ready for pickup at Shop Revenue.`}
+          />
+        )}
+      </div>
       <div className="demo-job-banner">
         Interactive demo · Change pricing and preview customer documents.
         Nothing is sent or charged.

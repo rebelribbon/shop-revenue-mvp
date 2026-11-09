@@ -33,6 +33,7 @@ export const updateRecoveryAction = defineShopAction({
     ]),
     deliveryConfirmed: z.enum(["true", "false"]).optional(),
     method: z.enum(["phone", "email", "in_person", "other"]).optional(),
+    callOutcome: z.enum(["reached", "no_answer"]).optional(),
     note: z.string().max(1000).optional(),
     days: z.enum(["1", "7", "30", "90"]).optional(),
     reason: z.string().max(1000).optional(),

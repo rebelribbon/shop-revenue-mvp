@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { formatMoney } from "@/components/estimate-document";
@@ -6,11 +7,18 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { TasksNavigation } from "@/components/tasks-navigation";
 import { withTenant } from "@/db/tenant";
 import { listCustomers } from "@/domain/customers";
-import { listTasks, type TaskRow } from "@/domain/tasks";
-import type { TaskAction } from "@/lib/task-action";
+import { getBusinessProfile } from "@/domain/business-profile";
+import { getJobFollowUp, listTasks, type TaskRow } from "@/domain/tasks";
+import { isAutomotive } from "@/lib/business-types";
+import { jobReference } from "@/lib/job-reference";
+import { contactTaskLabels, type TaskAction } from "@/lib/task-action";
 import { addLocalDays } from "@/lib/timezone";
 import { updateRecoveryAction } from "@/server/actions/money-finder";
-import { addTaskAction, updateTaskAction } from "@/server/actions/tasks";
+import {
+  addJobFollowUpAction,
+  addTaskAction,
+  updateTaskAction,
+} from "@/server/actions/tasks";
 import { requireShopSession } from "@/server/views/shop";
 
 const nice = (key: string) =>
@@ -22,15 +30,31 @@ const nice = (key: string) =>
   });
 
 export default async function TasksPage(props: {
-  searchParams: Promise<{ view?: string; add?: string; customerId?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    add?: string;
+    customerId?: string;
+    jobId?: string;
+    followUp?: string;
+  }>;
 }) {
   const p = await props.searchParams;
   const s = await requireShopSession("/app/tasks");
-  const readOnly = s.actor.type === "support";
+  const readOnly = s.actor.type === "support" || s.role === "technician";
+  const jobId = p.add && !readOnly ? p.jobId : undefined;
   const view = p.view === "later" ? "later" : "due";
-  const [data, customers] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([listTasks(tx), p.add ? listCustomers(tx) : []]),
+  const [data, customers, context, profile] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        listTasks(tx),
+        p.add && !readOnly && !jobId ? listCustomers(tx) : [],
+        jobId ? getJobFollowUp(tx, jobId) : null,
+        jobId ? getBusinessProfile(tx) : null,
+      ]),
   );
+  if (jobId && !context) notFound();
   const rows = view === "due" ? data.due : data.later;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -47,7 +71,57 @@ export default async function TasksPage(props: {
         )}
       </header>
       <TasksNavigation current={view} />
-      {p.add && !readOnly && (
+      {p.followUp === "1" && (
+        <p className="notice ok" role="status">
+          Follow-up scheduled.
+        </p>
+      )}
+      {context && (
+        <section className="card add-panel" aria-label="Add a follow-up">
+          <h2>Add a follow-up</h2>
+          <p>
+            {context.customerName} ·{" "}
+            {jobReference(
+              context.jobId,
+              isAutomotive(profile?.businessType ?? "automotive"),
+            )}{" "}
+            · {context.title}
+          </p>
+          {context.methods.length > 0 ? (
+            <ActionForm
+              action={addJobFollowUpAction}
+              hidden={{ jobId: context.jobId }}
+              submitLabel="Save follow-up"
+              variant="primary"
+            >
+              <label htmlFor="follow-up-method">How will you follow up?</label>
+              <select id="follow-up-method" name="method">
+                {context.methods.map((method) => (
+                  <option key={method} value={method}>
+                    {contactTaskLabels[method]}
+                  </option>
+                ))}
+              </select>
+              <label htmlFor="follow-up-date">Due date</label>
+              <input
+                id="follow-up-date"
+                name="dueOn"
+                type="date"
+                required
+                defaultValue={addLocalDays(data.today, 1)}
+              />
+            </ActionForm>
+          ) : (
+            <p className="muted">
+              No contact method is available for this customer.
+            </p>
+          )}
+          <Link className="panel-close" href={`/app/jobs?job=${context.jobId}`}>
+            Back to job
+          </Link>
+        </section>
+      )}
+      {p.add && !readOnly && !context && (
         <section className="card add-panel" aria-label="Add a task">
           <h2>Add a task</h2>
           <ActionForm
@@ -174,6 +248,29 @@ function TaskItem({
       ? "View job"
       : "View details";
   const canUpdate = !readOnly && !later && t.source !== "work";
+  const canLogCall = canUpdate && action?.kind === "call";
+  const updateOutcome =
+    t.source === "manual" ? updateTaskAction : updateRecoveryAction;
+  const reached: Record<string, string> =
+    t.source === "manual"
+      ? { id: t.subjectId, action: "reached" }
+      : {
+          ...rule,
+          action: "contact",
+          method: "phone",
+          callOutcome: "reached",
+          deliveryConfirmed: "true",
+        };
+  const noAnswer: Record<string, string> =
+    t.source === "manual"
+      ? { id: t.subjectId, action: "no_answer" }
+      : {
+          ...rule,
+          action: "snooze",
+          method: "phone",
+          callOutcome: "no_answer",
+          days: "1",
+        };
   const contactMethod =
     action?.kind === "text"
       ? "other"
@@ -222,7 +319,23 @@ function TaskItem({
               {relatedLabel}
             </Link>
           )}
-          {canUpdate && t.source === "manual" && (
+          {canLogCall && (
+            <>
+              <ActionForm
+                action={updateOutcome}
+                hidden={reached}
+                submitLabel="Reached"
+                successText="Call recorded."
+              />
+              <ActionForm
+                action={updateOutcome}
+                hidden={noAnswer}
+                submitLabel="No answer · try tomorrow"
+                successText="Call recorded. Follow up tomorrow."
+              />
+            </>
+          )}
+          {canUpdate && !canLogCall && t.source === "manual" && (
             <>
               <ActionForm
                 action={updateTaskAction}
@@ -238,7 +351,7 @@ function TaskItem({
               />
             </>
           )}
-          {canUpdate && t.source === "rule" && (
+          {canUpdate && !canLogCall && t.source === "rule" && (
             <>
               <ActionForm
                 action={updateRecoveryAction}
@@ -258,15 +371,36 @@ function TaskItem({
                 submitLabel="Tomorrow"
                 variant="secondary"
               />
-              <ActionForm
-                action={updateRecoveryAction}
-                hidden={{ ...rule, action: "dismiss", reason: "Not needed" }}
-                submitLabel="Not needed"
-                variant="secondary"
-              />
             </>
           )}
+          {canUpdate && t.source === "rule" && (
+            <ActionForm
+              action={updateRecoveryAction}
+              hidden={{ ...rule, action: "dismiss", reason: "Not needed" }}
+              submitLabel="Not needed"
+              variant="secondary"
+            />
+          )}
         </div>
+      )}
+      {canLogCall && (
+        <details className="task-outcome-note">
+          <summary>Reached with a note</summary>
+          <ActionForm
+            action={updateOutcome}
+            hidden={reached}
+            submitLabel="Save call outcome"
+            successText="Call recorded."
+          >
+            <label htmlFor={`call-note-${t.key}`}>Call note</label>
+            <textarea
+              id={`call-note-${t.key}`}
+              name="note"
+              maxLength={300}
+              rows={2}
+            />
+          </ActionForm>
+        </details>
       )}
     </li>
   );

@@ -1,6 +1,12 @@
 "use server";
 import { z } from "zod";
-import { addTask, saveFollowUpRules, updateTask } from "@/domain/tasks";
+import {
+  addJobFollowUp,
+  addTask,
+  saveFollowUpRules,
+  updateTask,
+} from "@/domain/tasks";
+import { CONTACT_TASK_KINDS } from "@/lib/task-action";
 import { RULE_TEXT, type FollowUpRules } from "@/lib/follow-up-rules";
 import { defineShopAction } from "./define";
 
@@ -22,18 +28,30 @@ export const addTaskAction = defineShopAction({
   persist: (r) => ({ ...r, message: "Task added." }),
 });
 
+export const addJobFollowUpAction = defineShopAction({
+  name: "addJobFollowUp",
+  input: z.object({
+    jobId: z.uuid(),
+    method: z.enum(CONTACT_TASK_KINDS),
+    dueOn: z.iso.date(),
+  }),
+  run: ({ tx, meta }, input) => addJobFollowUp(tx, meta, input),
+});
+
 export const updateTaskAction = defineShopAction({
   name: "updateTask",
   input: z.object({
     id: z.uuid(),
-    action: z.enum(["done", "snooze"]),
+    action: z.enum(["done", "snooze", "reached", "no_answer"]),
     days: z.enum(["1", "7"]).optional(),
+    note: z.string().trim().max(300).optional(),
   }),
   run: ({ tx, meta }, i) =>
     updateTask(tx, meta, {
       id: i.id,
       action: i.action,
       days: i.days ? (Number(i.days) as 1 | 7) : undefined,
+      note: i.note,
     }),
   persist: (r) => ({ ...r, message: "Task updated." }),
 });

@@ -1,4 +1,6 @@
-type ContactKind = "text" | "call" | "email";
+export const CONTACT_TASK_KINDS = ["call", "text", "email"] as const;
+export type ContactKind = (typeof CONTACT_TASK_KINDS)[number];
+export const contactTaskLabels = { call: "Call", text: "Text", email: "Email" };
 
 export type TaskAction = {
   kind: ContactKind | "work";

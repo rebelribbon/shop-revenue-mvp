@@ -15,6 +15,8 @@ import {
 import { groupWork } from "@/lib/work-sections";
 import { jobStatusLabels, statusTone } from "@/lib/job-status";
 import { contactTaskAction } from "@/lib/task-action";
+import { localDateKey } from "@/lib/timezone";
+import { DemoFollowUp } from "@/components/demo-follow-up";
 
 export const metadata: Metadata = {
   title: "CRM workspace preview | Shop Revenue",
@@ -66,13 +68,31 @@ function SampleWork({
   customer: DemoCustomer;
   profile?: boolean;
 }) {
+  const nextAction = profile
+    ? undefined
+    : customer.status === "sent"
+      ? {
+          label: "Follow up",
+          href: `/demo/crm?view=tasks&followUp=${customer.id}`,
+        }
+      : customer.status === "won"
+        ? { label: "Book", href: `/demo/appointment?customer=${customer.id}` }
+        : undefined;
   return (
     <WorkCard
       href={`/demo/job?customer=${customer.id}`}
       reference={`RO #${customer.roNumber}`}
       title="Front brake service"
       customer={profile ? undefined : customer.name}
-      detail={customer.asset}
+      detail={
+        profile
+          ? customer.asset
+          : customer.status === "sent"
+            ? `${customer.asset} · Waiting for approval · 2 days`
+            : customer.status === "won"
+              ? `${customer.asset} · Needs an appointment`
+              : customer.asset
+      }
       status={statusLabels[customer.status]}
       statusClass={statusTone(customer.status)}
       amount={customer.status === "paid" ? "$0.00" : "$1,188.57"}
@@ -82,6 +102,7 @@ function SampleWork({
           ? "Open job setup & pricing"
           : `Open RO ${customer.roNumber} for ${customer.name}`
       }
+      nextAction={nextAction}
     />
   );
 }
@@ -94,9 +115,11 @@ export default async function CrmPreview({
     tab?: string;
     q?: string;
     view?: string;
+    followUp?: string;
   }>;
 }) {
-  const { customer, tab, q, view } = await searchParams;
+  const { customer, tab, q, view, followUp } = await searchParams;
+  const followUpCustomer = customers.find((c) => c.id === followUp);
   const search = (q ?? "").trim();
   const filtered = customers.filter((c) =>
     `${c.name} ${c.asset} ${c.contact}`
@@ -202,6 +225,13 @@ export default async function CrmPreview({
           ) : !who && view === "tasks" ? (
             <>
               <h1>Tasks</h1>
+              {followUpCustomer && (
+                <DemoFollowUp
+                  key={followUpCustomer.id}
+                  customer={followUpCustomer}
+                  today={localDateKey(new Date(), "America/Chicago")}
+                />
+              )}
               <RecordSection
                 title="Due today"
                 count={4}

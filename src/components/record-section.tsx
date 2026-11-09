@@ -46,6 +46,7 @@ export function WorkCard({
   amount,
   amountLabel = "Estimate",
   ariaLabel,
+  nextAction,
 }: {
   href: string;
   reference: string;
@@ -57,8 +58,9 @@ export function WorkCard({
   amount?: string;
   amountLabel?: string;
   ariaLabel?: string;
+  nextAction?: { label: string; href: string };
 }) {
-  return (
+  const record = (
     <Link href={href} className="record-work-card" aria-label={ariaLabel}>
       <span className="record-work-top">
         <span className="record-work-reference">{reference}</span>
@@ -74,11 +76,24 @@ export function WorkCard({
             <strong>{amount}</strong>
           </span>
         )}
-        <span className="record-open">
-          Open {reference.startsWith("RO") ? "RO" : "job"}
-          <span aria-hidden="true"> →</span>
-        </span>
+        {!nextAction && (
+          <span className="record-open">
+            Open {reference.startsWith("RO") ? "RO" : "job"}
+            <span aria-hidden="true"> →</span>
+          </span>
+        )}
       </span>
     </Link>
+  );
+  if (!nextAction) return record;
+  return (
+    <article className="record-work-with-action">
+      {record}
+      <div className="record-work-action">
+        <Link href={nextAction.href} className="btn secondary">
+          {nextAction.label}
+        </Link>
+      </div>
+    </article>
   );
 }

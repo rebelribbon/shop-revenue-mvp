@@ -8,6 +8,7 @@ import {
   prepareDocumentShare,
 } from "@/server/actions/document-sharing";
 import type { ShareRecipient, PacketDocument } from "@/domain/document-sharing";
+import { smsDraftHref } from "@/lib/sms-draft";
 
 export type ShareData = ShareRecipient & {
   path: string;
@@ -102,10 +103,6 @@ export function DocumentShare({
       canceled = true;
     };
   }, [autoOpen, id, kind, initial]);
-  const ios =
-    typeof navigator !== "undefined" &&
-    (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
   return (
     <div className="document-sharing" data-ux-ready={ready}>
       {!data ? (
@@ -246,7 +243,7 @@ export function DocumentShare({
               <a
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
-                href={`sms:${phoneNumber.trim()}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
+                href={smsDraftHref(phoneNumber, textBody)}
               >
                 Text to customer
               </a>

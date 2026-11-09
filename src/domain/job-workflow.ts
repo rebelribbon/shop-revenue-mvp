@@ -357,6 +357,14 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
     timeline.sort(
       (a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id),
     );
+    const estimateSharedAt =
+      events.find(
+        (e) =>
+          e.subjectId === jobId &&
+          e.kind === "job.shared" &&
+          e.data.documentId === latest?.estimate.id &&
+          e.data.linkHash === latest?.estimate.tokenHash,
+      )?.occurredAt ?? null;
     result.set(jobId, {
       latest,
       estimates,
@@ -387,15 +395,8 @@ export async function loadJobWorkflows(tx: TenantTx, jobIds: string[]) {
         )?.startsAt ?? null,
       plan,
       repeats: Boolean(latest?.estimate.snapshot.repeat),
-      sharedEstimate: events.some(
-        (e) =>
-          e.subjectId === jobId &&
-          e.kind === "job.shared" &&
-          (e.data as { documentId?: string }).documentId ===
-            latest?.estimate.id &&
-          (e.data as { linkHash?: string }).linkHash ===
-            latest?.estimate.tokenHash,
-      ),
+      sharedEstimate: estimateSharedAt !== null,
+      estimateSharedAt,
       sharedInvoice: events.some(
         (e) =>
           e.subjectId === jobId &&
@@ -445,6 +446,7 @@ type Projection = {
   plan: PlanSummary | null;
   repeats: boolean;
   sharedEstimate: boolean;
+  estimateSharedAt: Date | null;
   sharedInvoice: boolean;
 };
 export type JobWorkflow = Projection;

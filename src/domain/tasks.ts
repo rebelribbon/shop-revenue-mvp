@@ -2,7 +2,7 @@
 // reminders made by the shop's follow-up rules (recovery_item state), and
 // tasks the shop writes itself (app.task).
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import { customer, task } from "@/db/schema";
+import { business, customer, task } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import {
@@ -11,8 +11,11 @@ import {
   type FollowUpRules,
 } from "@/lib/follow-up-rules";
 import {
+  CONTACT_TASK_KINDS,
   contactKindForTitle,
   contactTaskAction,
+  contactTaskLabels,
+  type ContactKind,
   type TaskAction,
 } from "@/lib/task-action";
 import { addLocalDays, localDateKey } from "@/lib/timezone";
@@ -21,7 +24,8 @@ import {
   listFollowUpItems,
   type MoneyCategory,
 } from "./money-finder";
-import { audit, type RequestMeta } from "./records";
+import { getJob, jobInput } from "./jobs";
+import { audit, recordActivity, type RequestMeta } from "./records";
 import { todayAgenda } from "./today";
 
 export type TaskRow = {
@@ -277,10 +281,89 @@ export async function addTask(
   return { id: row.id };
 }
 
+export async function getJobFollowUp(tx: TenantTx, jobId: string) {
+  const job = await getJob(tx, jobId);
+  if (!job) return null;
+  const identity = jobInput.pick({ customerId: true }).safeParse(job.data);
+  if (!identity.success) return null;
+  const { customerId } = identity.data;
+  const [person] = await tx
+    .select({
+      name: customer.displayName,
+      phone: customer.phoneE164,
+      email: customer.email,
+      status: customer.status,
+      doNotContact: customer.doNotContact,
+      textOff: customer.textOptedOutAt,
+      emailOff: customer.emailOptedOutAt,
+    })
+    .from(customer)
+    .where(
+      and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
+    );
+  if (!person) return null;
+  const methods =
+    person.status === "active" && !person.doNotContact
+      ? CONTACT_TASK_KINDS.filter((kind) =>
+          contactTaskAction(kind, {
+            phone: person.phone,
+            email: person.emailOff ? null : person.email,
+            textAllowed: !person.textOff,
+          }),
+        )
+      : [];
+  return {
+    jobId: job.id,
+    title: job.title,
+    customerId,
+    customerName: person.name,
+    methods,
+  };
+}
+
+async function shopToday(tx: TenantTx) {
+  const [profile] = await tx
+    .select({ timezone: business.timezone })
+    .from(business)
+    .where(eq(business.id, tx.businessId));
+  return localDateKey(new Date(), profile.timezone);
+}
+
+export async function addJobFollowUp(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: { jobId: string; method: ContactKind; dueOn: string },
+) {
+  const context = await getJobFollowUp(tx, input.jobId);
+  if (!context) throw notFound("That job");
+  if (!context.methods.includes(input.method))
+    throw new AppError("VALIDATION", "Choose an available contact method.");
+  const title =
+    `${contactTaskLabels[input.method]} about ${context.title}`.slice(0, 200);
+  const result = await addTask(tx, meta, {
+    title,
+    customerId: context.customerId,
+    jobId: context.jobId,
+    dueOn: input.dueOn,
+  });
+  const later = input.dueOn > (await shopToday(tx));
+  return {
+    ...result,
+    redirectTo: later
+      ? "/app/tasks?view=later&followUp=1"
+      : "/app/tasks?followUp=1",
+  };
+}
+
 export async function updateTask(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { id: string; action: "done" | "snooze"; days?: 1 | 7 },
+  input: {
+    id: string;
+    action: "done" | "snooze" | "reached" | "no_answer";
+    days?: 1 | 7;
+    note?: string;
+  },
 ) {
   const [row] = await tx
     .select()
@@ -289,24 +372,28 @@ export async function updateTask(
     .for("update");
   if (!row) throw notFound("That task");
   if (row.doneAt) throw new AppError("INVALID_TRANSITION", "Already done.");
-  const change =
-    input.action === "done"
-      ? { doneAt: new Date() }
-      : {
-          dueOn: addLocalDays(
-            localDateKey(
-              new Date(),
-              String(
-                (
-                  await tx.execute(
-                    sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`,
-                  )
-                ).rows[0].timezone,
-              ),
-            ),
-            input.days ?? 1,
-          ),
-        };
+  const callOutcome =
+    input.action === "reached" || input.action === "no_answer";
+  if (
+    callOutcome &&
+    (!row.customerId || contactKindForTitle(row.title) !== "call")
+  )
+    throw new AppError("VALIDATION", "Choose a customer call task.");
+  const completed = input.action === "done" || input.action === "reached";
+  let change: { doneAt: Date } | { dueOn: string };
+  if (completed) {
+    change = { doneAt: new Date() };
+  } else {
+    const today = await shopToday(tx);
+    if (callOutcome && row.dueOn > today)
+      throw new AppError(
+        "INVALID_TRANSITION",
+        "This call is already scheduled for later.",
+      );
+    change = {
+      dueOn: addLocalDays(today, callOutcome ? 1 : (input.days ?? 1)),
+    };
+  }
   await tx
     .update(task)
     .set(change)
@@ -317,6 +404,17 @@ export async function updateTask(
     targetId: input.id,
     after: change,
   });
+  if (callOutcome && row.customerId) {
+    const note = input.action === "reached" ? input.note?.trim() : undefined;
+    const result = completed ? "Reached customer" : "No answer · try tomorrow";
+    await recordActivity(tx, {
+      kind: "task.call_outcome",
+      subjectType: "customer",
+      subjectId: row.customerId,
+      summary: `${result} · ${row.title}${note ? ` — ${note}` : ""}`,
+      data: { taskId: row.id, jobId: row.jobId, outcome: input.action, note },
+    });
+  }
   return { id: input.id };
 }
 

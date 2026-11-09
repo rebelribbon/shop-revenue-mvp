@@ -32,7 +32,7 @@ export const demoCustomers = [
   },
   {
     id: "morgan",
-    status: "scheduled" as const,
+    status: "won" as const,
     roNumber: 10045,
     name: "Morgan Test",
     asset: "2023 Ford Explorer",
