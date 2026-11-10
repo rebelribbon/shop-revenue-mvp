@@ -500,9 +500,9 @@ export function RoWorkspace({
         >
           Estimate
         </a>
-        <span>Work</span>
+        <a href="#ro-checkout-workspace">Work</a>
         <span>Documents</span>
-        <span>Cashiering</span>
+        <a href="#ro-checkout-workspace">Cashiering</a>
       </div>
       {showAdd && (
         <form id="new-demo-job" className={styles.addForm} onSubmit={addJob}>
@@ -673,6 +673,7 @@ export function RoWorkspace({
           </div>
         </div>
       )}
+      {internal && <AdvisorCheckoutDemo roId={roId} jobs={jobs} />}
       <div className={styles.billingBanner}>
         <div>
           <span className={styles.eyebrow}>APPROVED WORK · BILLING BASIS</span>
@@ -748,7 +749,6 @@ export function RoWorkspace({
           </div>
         </section>
       </div>
-      {internal && <AdvisorCheckoutDemo roId={roId} jobs={jobs} />}
       {internal && <ShareMediaDemo key={roId} roId={roId} />}
       <div className={styles.note}>
         Demo only. Approval and removal buttons simulate decisions for layout
