@@ -1,7 +1,7 @@
 // Who's on each job and visit. Kept apart from the board and "My day" so
 // both can read it without importing each other.
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
-import { activity, appointment, jobAssignment, membership, user } from "@/db/schema";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
+import { appointment, jobAssignment, membership, user } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { currentMemberRole } from "./membership";
