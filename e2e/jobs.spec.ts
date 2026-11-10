@@ -21,7 +21,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
-  await page.getByRole("link", { name: "New job", exact: true }).click();
+  await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await page.getByLabel(/Warranty in months/).fill("12");
   await expect(

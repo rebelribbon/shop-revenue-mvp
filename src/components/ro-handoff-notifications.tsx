@@ -76,7 +76,7 @@ export function RoHandoffNotifications() {
         {tasks.length > 0 && <span aria-hidden="true">{tasks.length}</span>}
         {unavailable && <span aria-hidden="true">!</span>}
       </Link>
-      <span className="sr-only" role="status" aria-live="polite">
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}
       </span>
     </div>

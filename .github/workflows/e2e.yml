@@ -51,8 +51,10 @@ jobs:
           nohup pnpm start > web.log 2>&1 &
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
       - run: timeout 180 pnpm exec playwright install chromium
+      - name: Assigned RO handoffs and technician permissions (phone and desktop)
+        run: pnpm exec playwright test e2e/ro-handoffs.spec.ts e2e/technician-role.spec.ts e2e/tech-board.spec.ts --max-failures=1 --reporter=list,github
       - name: Playwright (phone 390x844 and desktop)
-        run: pnpm e2e --max-failures=0 --grep-invert @mfa
+        run: pnpm e2e --max-failures=0 --grep-invert @mfa --reporter=list,github
       - name: Job form development-mode smoke
         run: |
           PORT=3001 nohup pnpm dev > dev-web.log 2>&1 &
