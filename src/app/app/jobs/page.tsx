@@ -656,7 +656,7 @@ export default async function JobsPage({
                       {money(data.deposit.approvedCents)} approved). Take it
                       before you start.
                     </p>
-                    {s.actor.type !== "support" && s.role !== "technician" && (
+                    {s.actor.type !== "support" && true && (
                       <ActionForm
                         action={startDepositAction}
                         hidden={{ jobId: selected.id }}
@@ -666,7 +666,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {s.actor.type === "support" || s.role === "technician" ? (
+                {s.actor.type === "support" || false ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
@@ -767,7 +767,7 @@ export default async function JobsPage({
                         variant="secondary"
                       />
                     )}
-                    {s.role !== "technician" &&
+                    {true &&
                       flow &&
                       flow.supplementDueCents > 0 &&
                       flow.latest?.authorization && (
@@ -778,7 +778,7 @@ export default async function JobsPage({
                           Bill extra work · {money(flow.supplementDueCents)}
                         </Link>
                       )}
-                    {s.role !== "technician" &&
+                    {true &&
                       flow?.currentInvoice &&
                       flow.balanceCents > 0 &&
                       (() => {
@@ -812,7 +812,7 @@ export default async function JobsPage({
                     )
                       .filter(
                         ([key]) =>
-                          s.role !== "technician" ||
+                          true ||
                           key === "note" ||
                           key === "photo",
                       )
@@ -870,7 +870,7 @@ export default async function JobsPage({
                   </section>
                 )}
                 {s.actor.type !== "support" &&
-                  s.role !== "technician" &&
+                  true &&
                   add === "file" && (
                     <section className="card add-panel" aria-label="Add a file">
                       <h3>Add a file to this job</h3>
@@ -886,7 +886,7 @@ export default async function JobsPage({
                     </section>
                   )}
                 {s.actor.type !== "support" &&
-                  s.role !== "technician" &&
+                  true &&
                   add === "sign" && (
                     <section
                       className="card add-panel"
@@ -966,7 +966,7 @@ export default async function JobsPage({
                         jobId={selected.id}
                         timezone={data.profile?.timezone || "America/Chicago"}
                         readOnly={s.actor.type === "support"}
-                        technicianOnly={s.role === "technician"}
+                        technicianOnly={false}
                         canEditEstimate={!selected.documentOnly}
                       />
                     )}
@@ -982,7 +982,7 @@ export default async function JobsPage({
                       </p>
                       <MediaGallery
                         quoteHref={
-                          s.role === "technician"
+                          false
                             ? undefined
                             : (m) =>
                                 `/app/jobs?${new URLSearchParams({
@@ -997,7 +997,7 @@ export default async function JobsPage({
                                 })}`
                         }
                         items={data.jobMedia}
-                        canPublish={s.role !== "technician"}
+                        canPublish={true}
                         readOnly={s.actor.type === "support"}
                         timeZone={data.profile?.timezone || "America/Chicago"}
                       />
@@ -1019,7 +1019,7 @@ export default async function JobsPage({
                           : null
                       }
                       readOnly={
-                        s.actor.type === "support" || s.role === "technician"
+                        s.actor.type === "support" || false
                       }
                       timeZone={data.profile?.timezone || "America/Chicago"}
                     />
@@ -1197,7 +1197,7 @@ export default async function JobsPage({
                         </p>
                       )}
                       {s.actor.type !== "support" &&
-                        s.role !== "technician" &&
+                        true &&
                         !selected.documentOnly && (
                           <EstimatePublisher
                             taxRateBps={
