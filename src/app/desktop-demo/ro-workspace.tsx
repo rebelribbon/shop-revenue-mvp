@@ -138,7 +138,9 @@ export function RoWorkspace({
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [cost, setCost] = useState("");
-  const [origin, setOrigin] = useState<"requested" | "inspection">("inspection");
+  const [origin, setOrigin] = useState<"requested" | "inspection">(
+    "inspection",
+  );
   const [notes, setNotes] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -247,11 +249,20 @@ export function RoWorkspace({
       return;
     }
     if (editId !== null) {
-      setJobs((old) => old.map((job) =>
-        job.id === editId && job.decision === "pending" && job.addedInDemo
-          ? {...job, name:name.trim(), price:amount, cost:internalCost, origin, notes:notes.trim()}
-          : job,
-      ));
+      setJobs((old) =>
+        old.map((job) =>
+          job.id === editId && job.decision === "pending" && job.addedInDemo
+            ? {
+                ...job,
+                name: name.trim(),
+                price: amount,
+                cost: internalCost,
+                origin,
+                notes: notes.trim(),
+              }
+            : job,
+        ),
+      );
     } else {
       setJobs((old) => [
         ...old,
@@ -290,9 +301,16 @@ export function RoWorkspace({
   }
   function deleteDraftJob() {
     if (deleteId === null) return;
-    setJobs((old) => old.filter((job) =>
-      !(job.id === deleteId && job.decision === "pending" && job.addedInDemo)
-    ));
+    setJobs((old) =>
+      old.filter(
+        (job) =>
+          !(
+            job.id === deleteId &&
+            job.decision === "pending" &&
+            job.addedInDemo
+          ),
+      ),
+    );
     setDeleteId(null);
   }
   function closeEditor() {
@@ -328,8 +346,16 @@ export function RoWorkspace({
               <tr key={job.id}>
                 <td>
                   <strong>{job.name}</strong>
-                  {job.origin && <small className={styles.removalNote}>{job.origin === "requested" ? "Customer-requested" : "Inspection finding"}</small>}
-                  {job.notes && <small className={styles.removalNote}>{job.notes}</small>}
+                  {job.origin && (
+                    <small className={styles.removalNote}>
+                      {job.origin === "requested"
+                        ? "Customer-requested"
+                        : "Inspection finding"}
+                    </small>
+                  )}
+                  {job.notes && (
+                    <small className={styles.removalNote}>{job.notes}</small>
+                  )}
                 </td>
                 <td>{money(job.price)}</td>
                 <td>
@@ -397,8 +423,15 @@ export function RoWorkspace({
                       )}
                       {job.decision === "pending" && job.addedInDemo && (
                         <>
-                          <button type="button" onClick={() => beginEdit(job)}>Edit draft</button>
-                          <button type="button" onClick={() => setDeleteId(job.id)}>Delete draft</button>
+                          <button type="button" onClick={() => beginEdit(job)}>
+                            Edit draft
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteId(job.id)}
+                          >
+                            Delete draft
+                          </button>
                         </>
                       )}
                     </div>
@@ -433,7 +466,10 @@ export function RoWorkspace({
           <button
             type="button"
             className={styles.addButton}
-            onClick={() => { if (showAdd) closeEditor(); else setShowAdd(true); }}
+            onClick={() => {
+              if (showAdd) closeEditor();
+              else setShowAdd(true);
+            }}
             aria-expanded={showAdd}
             aria-controls="new-demo-job"
           >
@@ -455,14 +491,38 @@ export function RoWorkspace({
       {showAdd && (
         <form id="new-demo-job" className={styles.addForm} onSubmit={addJob}>
           <div>
-            <h3>{editId === null ? "Add work found during the visit" : "Edit unsent recommendation"}</h3>
+            <h3>
+              {editId === null
+                ? "Add work found during the visit"
+                : "Edit unsent recommendation"}
+            </h3>
             <p>
-              Use this for requested service or a new inspection finding. Every new item starts pending authorization; it is not billable until approved and completed.
+              Use this for requested service or a new inspection finding. Every
+              new item starts pending authorization; it is not billable until
+              approved and completed.
             </p>
           </div>
-          <div className={styles.workTypeSelector} role="group" aria-label="Source of work">
-            <label><input type="radio" checked={origin === "requested"} onChange={() => setOrigin("requested")}/> Customer-requested work</label>
-            <label><input type="radio" checked={origin === "inspection"} onChange={() => setOrigin("inspection")}/> Inspection recommendation</label>
+          <div
+            className={styles.workTypeSelector}
+            role="group"
+            aria-label="Source of work"
+          >
+            <label>
+              <input
+                type="radio"
+                checked={origin === "requested"}
+                onChange={() => setOrigin("requested")}
+              />{" "}
+              Customer-requested work
+            </label>
+            <label>
+              <input
+                type="radio"
+                checked={origin === "inspection"}
+                onChange={() => setOrigin("inspection")}
+              />{" "}
+              Inspection recommendation
+            </label>
           </div>
           <div className={styles.formFields}>
             <label>
@@ -504,8 +564,15 @@ export function RoWorkspace({
               </label>
             )}
           </div>
-          <label className={styles.workNotesLabel}>Advisor / technician findings (optional)
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={500} rows={2} placeholder="e.g. Brake pads measured at 2mm; technician recommended replacement"/>
+          <label className={styles.workNotesLabel}>
+            Advisor / technician findings (optional)
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="e.g. Brake pads measured at 2mm; technician recommended replacement"
+            />
           </label>
           {error && (
             <p role="alert" className={styles.formError}>
@@ -516,23 +583,37 @@ export function RoWorkspace({
             <button type="submit" className={styles.addButton}>
               {editId === null ? "Add to RO as Pending" : "Save draft changes"}
             </button>
-            <button
-              type="button"
-              onClick={closeEditor}
-            >
+            <button type="button" onClick={closeEditor}>
               Cancel
             </button>
           </div>
         </form>
       )}
       {deleteId !== null && (
-        <div className={styles.removalPanel} role="group" aria-label="Delete unsent draft">
-          <div><strong>Delete this unsent draft recommendation?</strong>
-            <p>{jobs.find((job) => job.id === deleteId)?.name}. This is only allowed for newly added, pending demo work. Once presented to the customer, use a documented withdrawal or revised estimate.</p>
+        <div
+          className={styles.removalPanel}
+          role="group"
+          aria-label="Delete unsent draft"
+        >
+          <div>
+            <strong>Delete this unsent draft recommendation?</strong>
+            <p>
+              {jobs.find((job) => job.id === deleteId)?.name}. This is only
+              allowed for newly added, pending demo work. Once presented to the
+              customer, use a documented withdrawal or revised estimate.
+            </p>
           </div>
           <div className={styles.formButtons}>
-            <button type="button" className={styles.removeApprovalButton} onClick={deleteDraftJob}>Delete draft (demo)</button>
-            <button type="button" onClick={() => setDeleteId(null)}>Keep it</button>
+            <button
+              type="button"
+              className={styles.removeApprovalButton}
+              onClick={deleteDraftJob}
+            >
+              Delete draft (demo)
+            </button>
+            <button type="button" onClick={() => setDeleteId(null)}>
+              Keep it
+            </button>
           </div>
         </div>
       )}
