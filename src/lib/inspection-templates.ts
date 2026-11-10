@@ -1,32 +1,24 @@
 // The checklist a tech walks through, by line of business. Plain names a
 // customer understands; each item gets Good / Watch / Needs work.
 import { isAutomotive } from "./business-types";
+import { inspectionPoints } from "./vehicle-inspection";
 
-export type InspectionStatus = "good" | "watch" | "fix" | "unchecked";
+export type InspectionStatus = "good" | "watch" | "fix" | "na" | "unchecked";
 export type InspectionItem = {
   key: string;
   label: string;
   status: InspectionStatus;
   note: string;
+  recommendedWork?: string;
+  section?: string;
+  hint?: string;
+  measurements?: Partial<Record<"lf"|"rf"|"lr"|"rr"|"spare", string>>;
   // Hours to quote if it becomes estimate work (hundredths).
   hoursHundredths: number;
   addedToJob: boolean;
 };
 
-const AUTO = [
-  ["tires", "Tires & tread", 50],
-  ["brakes-front", "Front brakes", 150],
-  ["brakes-rear", "Rear brakes", 150],
-  ["oil", "Engine oil", 50],
-  ["fluids", "Coolant, brake & transmission fluid", 50],
-  ["battery", "Battery & cables", 50],
-  ["lights", "Lights & signals", 50],
-  ["wipers", "Wiper blades", 25],
-  ["belts", "Belts & hoses", 100],
-  ["suspension", "Steering & suspension", 200],
-  ["exhaust", "Exhaust", 100],
-  ["filters", "Air & cabin filters", 25],
-] as const;
+const AUTO = inspectionPoints.map(item=>[item.id,item.label,100] as const);
 
 const HVAC = [
   ["filter", "Air filter", 25],
@@ -57,16 +49,22 @@ export function inspectionTemplate(businessType: string): InspectionItem[] {
   return list.map(([key, label, hours]) => ({
     key,
     label,
+    ...(isAutomotive(businessType) ? (()=>{
+      const point=inspectionPoints.find(p=>p.id===key);
+      return point? {section:point.section,hint:point.hint} : {};
+    })() : {}),
     status: "unchecked",
     note: "",
+    recommendedWork: "",
     hoursHundredths: hours,
     addedToJob: false,
   }));
 }
 
 export const STATUS_LABELS: Record<InspectionStatus, string> = {
-  good: "Good",
-  watch: "Watch",
-  fix: "Needs work",
+  good: "Satisfactory",
+  watch: "Service Soon",
+  fix: "Service Now",
+  na: "N/A",
   unchecked: "Not checked",
 };
