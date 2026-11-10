@@ -145,3 +145,81 @@
 .shareCustomerBody .tableWrap table{min-width:540px}
 .shareCustomerBody .estimateDisclaimer{border-radius:8px}
 @media(max-width:700px){.shareMediaGrid{grid-template-columns:1fr;padding:16px}.shareCustomerHeader{padding:16px;flex-wrap:wrap}.shareCustomerBody{padding:24px 16px}}
+
+
+/* Mobile-first customer inspection and authorization journey. */
+.mobileCustomer{min-height:100dvh;background:#f3f7f8;color:#172c35;font:16px/1.5 "Public Sans Variable",system-ui,sans-serif;overflow-x:hidden}
+.mobileCustomerHeader{display:flex;justify-content:space-between;gap:16px;align-items:center;background:#153a47;color:#fff;padding:16px max(16px,env(safe-area-inset-right));font-size:12px}
+.mobileShopBrand{font-weight:900;font-size:14px;letter-spacing:.04em}
+.mobileShopBrand span{font-size:10px;border:1px solid #95b8bf;border-radius:5px;padding:4px;margin-left:8px}
+.mobileSecureText{font-size:11px;color:#bed1d5}
+.mobileCustomerContent{max-width:720px;margin:0 auto;padding:20px 16px calc(32px + env(safe-area-inset-bottom))}
+.mobileVisitHero{padding:8px 0 16px}
+.mobileVisitHero h1{font-size:26px;line-height:1.2;margin:8px 0;color:#142f3b}
+.mobileVisitHero p{margin:0;color:#526976;font-size:14px}
+.mobileStepDots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-bottom:1px solid #dce6ea;padding:16px 0 20px;margin-bottom:24px}
+.mobileStepDots>div{display:grid;justify-items:center;text-align:center;gap:8px;opacity:.5}
+.mobileStepDots>div.mobileStepActive{opacity:1}
+.mobileStepDots span{display:grid;place-items:center;background:#d8e3e8;color:#3e5c68;border-radius:50%;height:30px;width:30px;font-size:13px;font-weight:800}
+.mobileStepDots .mobileStepActive span{background:#087857;color:white}
+.mobileStepDots small{font-size:10px;font-weight:700;white-space:nowrap}
+.mobileSection{background:#fff;border:1px solid #d5e2e7;border-radius:16px;padding:24px 20px;box-shadow:0 6px 20px #1b3d4b08}
+.mobileSectionNumber{font-size:11px;letter-spacing:.09em;color:#167556;font-weight:900}
+.mobileSection h2{font-size:24px;line-height:1.22;margin:12px 0;color:#15313d}
+.mobileIntro{color:#506572;margin:0 0 24px}
+.mobileServiceRow{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 0;border-bottom:1px solid #e0e9ed}
+.mobileServiceRow>div{display:grid;gap:4px}
+.mobileServiceRow>div span{font-size:12px;color:#667e88}
+.mobileServiceRow>strong{white-space:nowrap}
+.mobileEstimateTotal{display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:2px solid #dce9e7;padding:16px 0;margin-top:8px;font-size:14px;font-weight:700}
+.mobileEstimateTotal strong{font-size:21px;white-space:nowrap}
+.mobileNextPrompt{background:#ecf7f3;border-left:4px solid #1e9066;padding:16px;border-radius:8px;margin:24px 0;color:#245443;font-size:14px}
+.mobilePrimaryButton{width:100%;border:0;border-radius:10px;min-height:54px;display:flex;align-items:center;justify-content:center;gap:12px;background:#087857;color:white;font:inherit;font-size:15px;font-weight:800;padding:14px 16px;cursor:pointer;text-align:center}
+.mobilePrimaryButton:hover{background:#055f45}
+.mobilePrimaryButton:disabled{background:#acc8bb;color:#355b4b;cursor:not-allowed}
+.mobileTextButton{display:block;background:transparent;border:0;color:#246452;font:inherit;font-weight:700;padding:12px;min-height:44px;text-align:center;cursor:pointer;margin:12px auto 0}
+.mobileInspectionCard{background:#f8fafb;border:1px solid #dce6eb;border-radius:12px;padding:16px;margin:16px 0}
+.mobileInspectionCard h3{font-size:16px;margin:0 0 16px}
+.mobileFindingHeading{display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:15px}
+.mobilePassDot,.mobileAttentionDot{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:900;background:#dff1e6;color:#13683d}
+.mobileAttentionDot{background:#fff0ce;color:#8b5714}
+.mobileFindingRow{display:flex;align-items:center;gap:12px;padding:8px 0;color:#445d69;font-size:14px}
+.mobileFindingRow>span{color:#287d5c;width:20px;text-align:center;font-weight:800}
+.mobileProgressLine{font-size:13px;color:#415f69;font-weight:700;margin:0 0 16px}
+.mobileProgressTrack{height:7px;background:#e1ebe9;border-radius:999px;overflow:hidden;margin:8px 0}
+.mobileProgressTrack span{display:block;height:100%;background:#238e68;transition:width .2s}
+.mobileRecommendation{border:1px solid #d3e0e6;border-radius:12px;padding:20px 16px;margin:16px 0;background:#fff}
+.mobileRecTop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.mobileRecTop h3{font-size:17px;margin:6px 0;line-height:1.35;color:#193744}
+.mobileRecTop>strong{white-space:nowrap;font-size:17px}
+.mobileRecLabel{font-size:10px;letter-spacing:.07em;font-weight:900;color:#99621c}
+.mobileRecDescription{font-size:13px;color:#58707d;margin:8px 0 12px}
+.mobileEvidenceActions{display:flex;flex-wrap:wrap;gap:8px}
+.mobileEvidenceActions button{border:1px solid #b5cbd3;border-radius:8px;background:#f6fafb;color:#205b6a;min-height:44px;font:inherit;font-size:12px;font-weight:800;padding:8px 12px;cursor:pointer}
+.mobileEvidencePanel{background:#edf5f8;border:1px solid #c9dee5;border-radius:10px;padding:12px;margin:12px 0;font-size:13px;color:#455f6d}
+.mobileEvidencePanel>p{margin:0}
+.mobileEvidenceTile{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;align-items:center;margin:8px 0}
+.mobileEvidenceTile p{margin:4px 0}
+.mobileMediaPlaceholder{height:80px;border-radius:8px;background:linear-gradient(120deg,#bdd2de,#dae7ec);display:grid;place-items:center;align-content:center;gap:4px;color:#315967}
+.mobileMediaPlaceholder span{font-size:26px}.mobileMediaPlaceholder small{font-size:8px;font-weight:900}
+.mobileQuestionSaved{color:#4a5f74;background:#f3f6fb;padding:12px;border-radius:8px;font-size:12px}
+.mobileDecisions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.mobileDecisions button{min-height:52px;border:1px solid #afc3cb;border-radius:10px;background:white;color:#31515d;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.mobileDecisions button.mobileApproveSelected{background:#def3e7;color:#13633f;border-color:#178257;box-shadow:0 0 0 2px #17825726}
+.mobileDecisions button.mobileDeclineSelected{background:#fce9e6;color:#913f36;border-color:#c46e62;box-shadow:0 0 0 2px #b7625a26}
+.mobileMustDecide{font-size:12px;color:#715c36;text-align:center}
+.mobileSummaryRow{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;font-size:14px;border-bottom:1px solid #dde7ea;padding:12px 0}
+.mobileSummaryRow:last-child{border-bottom:0}
+.mobileGrandTotal{display:grid;gap:8px;padding:20px;background:#e1f4e9;border-radius:12px;margin:24px 0;color:#165e3b}
+.mobileGrandTotal strong{font-size:28px}
+.mobileInvoiceNotice{padding:16px;border:1px solid #b9d7df;border-radius:12px;background:#f0f8fa;margin-bottom:24px;color:#2e5461}
+.mobileInvoiceNotice p{font-size:13px;line-height:1.6;margin:8px 0 0}
+.mobileQuestionOverlay{position:fixed;inset:0;background:#142b39bb;display:flex;justify-content:center;align-items:flex-end;z-index:40}
+.mobileQuestionSheet{width:100%;max-width:540px;background:white;border-radius:20px 20px 0 0;padding:24px 20px calc(24px + env(safe-area-inset-bottom));max-height:90dvh;overflow:auto}
+.mobileQuestionSheet h2{font-size:21px;margin:0 0 8px}
+.mobileQuestionSheet p{color:#5b707a;font-size:13px}
+.mobileQuestionSheet label{display:block;font-weight:700;font-size:13px;margin:16px 0 8px}
+.mobileQuestionSheet textarea{width:100%;border-radius:8px;border:1px solid #afc4cc;padding:12px;font:inherit;resize:vertical}
+.mobileQuestionButtons{display:grid;gap:4px}
+@media(min-width:720px){.mobileCustomerContent{padding:32px 24px 64px}.mobileSection{padding:32px}.mobileCustomerHeader{padding:20px max(32px,calc((100vw - 720px)/2))}.mobileQuestionOverlay{align-items:center}.mobileQuestionSheet{border-radius:16px}}
+@media(max-width:370px){.mobileStepDots small{font-size:9px}.mobileVisitHero h1{font-size:23px}.mobileRecTop h3{font-size:15px}.mobileSection{padding:20px 14px}}
