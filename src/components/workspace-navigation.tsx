@@ -43,10 +43,12 @@ const workPaths = ["/app/jobs", "/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
   canSeeMoney = true,
+  technicianOnly = false,
   counts = {},
 }: {
   mobile?: boolean;
   canSeeMoney?: boolean;
+  technicianOnly?: boolean;
   counts?: Record<string, number>;
 }) {
   const path = usePathname();
@@ -59,6 +61,7 @@ export function WorkspaceNavigation({
     >
       {shopItems
         .filter((item) => canSeeMoney || item.href !== "/app/money")
+        .filter((item) => !technicianOnly || item.href === "/app/tasks" || item.href === "/app/jobs")
         .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link
