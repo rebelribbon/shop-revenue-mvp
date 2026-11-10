@@ -11,7 +11,7 @@ const allPassed = (): InspectionResults =>
     inspectionPoints.map((point) => [
       point.id,
       {
-        result: "pass" as const,
+        result: "good" as const,
         notes: "",
         recommendedWork: "",
       },
@@ -30,7 +30,7 @@ describe("technician multi-point inspection", () => {
   it("requires findings and proposed work for a failed inspection point", () => {
     const inspection = allPassed();
     inspection.brakes = {
-      result: "attention",
+      result: "bad",
       notes: "",
       recommendedWork: "Replace pads",
     };
@@ -41,7 +41,15 @@ describe("technician multi-point inspection", () => {
     expect(inspectReady(inspection)).toBe(false);
   });
 
-  it("prepopulates only attention recommendations in the advisor estimate", () => {
+  it("allows borderline with findings but without a recommended job", () => {
+    const inspection=allPassed();
+    inspection.tires={result:"borderline",notes:"Tread at 4mm, monitor",recommendedWork:""};
+    expect(inspectReady(inspection)).toBe(true);
+    expect(inspectionRecommendations(inspection)).toEqual([]);
+    inspection.tires.notes="";
+    expect(inspectReady(inspection)).toBe(false);
+  });
+  it("prepopulates only recommended borderline/bad work in the advisor estimate", () => {
     const inspection = allPassed();
     inspection.brakes = {
       result: "attention",
@@ -49,7 +57,7 @@ describe("technician multi-point inspection", () => {
       recommendedWork: "Replace front pads",
     };
     inspection.filters = {
-      result: "not_applicable",
+      result: "na",
       notes: "",
       recommendedWork: "",
     };
