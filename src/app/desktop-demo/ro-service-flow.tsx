@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
+import {demoTechnicians,demoTechnicianById} from "./demo-technicians";
 import {
   inspectionPoints,
   inspectionRecommendations,
@@ -52,13 +53,14 @@ type ServiceRecord = {
   stage: Stage;
   complaint: string;
   assignedTech: string;
+  assignedTechId: string;
   diagnosis: string;
   inspection: string;
   mediaNotes: string;
   techAccepted: boolean;
   bay: string;
   inspectionResults: InspectionResults;
-  handoffs: { to: "technician" | "advisor"; message: string; at: string }[];
+  handoffs: { to: "technician" | "advisor"; message: string; at: string; recipientId?: string }[];
   submittedInspectionAt?: string;
   customerExplanation: string;
   findings: string[];
@@ -79,6 +81,7 @@ const defaults: ServiceRecord = {
   stage: "intake",
   complaint: "",
   assignedTech: "",
+  assignedTechId: "",
   diagnosis: "",
   inspection: "",
   mediaNotes: "",
@@ -156,6 +159,7 @@ export function ServiceFlowDemo({
               : "intake",
             findings: Array.isArray(parsed.findings) ? parsed.findings : [],
             breakdowns: parsed.breakdowns ?? {},
+            assignedTechId: parsed.assignedTechId ?? "",
             techAccepted: !!parsed.techAccepted,
             bay: parsed.bay ?? "",
             inspectionResults: parsed.inspectionResults ?? {},
@@ -217,11 +221,13 @@ export function ServiceFlowDemo({
   function advance(to: Stage, description: string) {
     setMessage("");
     const now = new Date().toISOString();
+    if(to === "inspection" && !selectedTech) return;
     const handoff =
       to === "inspection"
         ? {
             to: "technician" as const,
             message: `RO ${roId} assigned to ${record.assignedTech}. Pick up vehicle, move to a rack/bay and begin diagnosis and MPI.`,
+            recipientId: record.assignedTechId,
             at: now,
           }
         : to === "pricing"
@@ -254,7 +260,7 @@ export function ServiceFlowDemo({
       recommendedWork: "",
     };
     const next = { ...before, [field]: value };
-    if (field === "result" && value !== "attention") {
+    if (field === "result" && value !== "borderline" && value !== "bad") {
       next.recommendedWork = "";
     }
     save({
@@ -294,7 +300,7 @@ export function ServiceFlowDemo({
       inspection: inspectionPoints
         .map((point) => {
           const item = record.inspectionResults[point.id];
-          return `${point.label}: ${item?.result === "attention" ? "NEEDS ATTENTION" : item?.result === "pass" ? "OK" : "N/A"}${item?.notes ? " — " + item.notes : ""}`;
+          return `${point.label}: ${item?.result === "bad" ? "BAD" : item?.result === "borderline" ? "BORDERLINE" : item?.result === "good" ? "GOOD" : "N/A"}${item?.notes ? " — " + item.notes : ""}`;
         })
         .join("\n"),
       handoffs: [...record.handoffs, handoff],
@@ -305,6 +311,7 @@ export function ServiceFlowDemo({
       ],
     });
   }
+  const selectedTech = demoTechnicianById(record.assignedTechId);
   const index = stages.findIndex((s) => s.id === record.stage);
   const approved = jobs.filter((j) => j.decision === "approved");
   const declined = jobs.filter((j) => j.decision === "declined");
@@ -480,18 +487,27 @@ export function ServiceFlowDemo({
                 <p>{record.complaint}</p>
               </div>
               <label>
-                Assigned technician
-                <input
-                  value={record.assignedTech}
-                  onChange={(e) => saveField("assignedTech", e.target.value)}
-                  placeholder="Choose or enter technician"
-                  maxLength={100}
-                />
+                Select technician
+                <select
+                  value={record.assignedTechId}
+                  onChange={(e) => {
+                    const chosen=demoTechnicianById(e.target.value);
+                    save({...record,assignedTechId:chosen?.id ?? "",
+                      assignedTech:chosen?.name ?? "",techAccepted:false,bay:"",
+                      estimateSentAt:undefined,estimate:undefined,declination:undefined,privacy:undefined});
+                  }}
+                >
+                  <option value="">Choose an active technician…</option>
+                  {demoTechnicians.map(tech=>
+                    <option key={tech.id} value={tech.id}>{tech.name} · {tech.role}</option>
+                  )}
+                </select>
               </label>
+              <p className={styles.note}>Fictional preview roster. The live dropdown must load active technicians from this shop and route the task to their user account ID.</p>
               <button
                 type="button"
                 className={styles.mobilePrimaryButton}
-                disabled={!record.assignedTech.trim()}
+                disabled={!selectedTech}
                 onClick={() =>
                   advance(
                     "inspection",
@@ -507,6 +523,7 @@ export function ServiceFlowDemo({
             <div className={styles.focusedStageBody}>
               <div className={styles.workflowAlert} role="status">
                 <strong>New technician task · {record.assignedTech}</strong>
+                <p>Recipient account: {record.assignedTechId || "Not assigned"}</p>
                 <p>
                   {record.handoffs.filter((h) => h.to === "technician").at(-1)
                     ?.message ??
@@ -604,9 +621,10 @@ export function ServiceFlowDemo({
                           >
                             {(
                               [
-                                ["pass", "✓ OK"],
-                                ["attention", "! Attention"],
-                                ["not_applicable", "N/A"],
+                                ["good", "✓ Good"],
+                                ["borderline", "◐ Borderline"],
+                                ["bad", "✕ Bad"],
+                                ["na", "N/A"],
                               ] as const
                             ).map(([value, label]) => (
                               <button
@@ -630,7 +648,7 @@ export function ServiceFlowDemo({
                               </button>
                             ))}
                           </div>
-                          {item.result === "attention" && (
+                          {(item.result === "borderline" || item.result === "bad") && (
                             <>
                               <label>
                                 What did you find?
@@ -664,7 +682,7 @@ export function ServiceFlowDemo({
                               </label>
                             </>
                           )}
-                          {item.result === "pass" && (
+                          {item.result === "good" && (
                             <label>
                               Notes (optional)
                               <input
