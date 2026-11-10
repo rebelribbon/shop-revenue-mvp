@@ -76,6 +76,7 @@ describe("technician 40-point inspection", () => {
         inspectionArea: "Brake fluid",
         name: "Replace front pads",
         notes: "Measured 2 mm",
+        priority: "service_now",
       },
     ]);
   });
