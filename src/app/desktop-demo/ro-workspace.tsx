@@ -540,7 +540,7 @@ export function RoWorkspace({
           <p>{ro.vehicle}</p>
         </div>
         <div className={styles.roActions}>
-          <span className={styles.pill}>In progress</span>
+          {!internal && <span className={styles.pill}>Demo RO</span>}
           {(!internal || workflowStage === "authorization") && (
             <button
               type="button"
