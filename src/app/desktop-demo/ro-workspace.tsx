@@ -42,26 +42,54 @@ const initialJobs: DemoJob[] = [
     decision: "declined",
   },
 ];
+const roRecords = {
+  "RO-10482": {
+    title: "Brake Service",
+    vehicle: "2021 Ford F-150 · VIN ending 4821",
+    jobs: initialJobs,
+  },
+  "RO-10193": {
+    title: "Oil Change & Inspection",
+    vehicle: "2021 Ford F-150 · VIN ending 4821",
+    jobs: [
+      { id: 1, name: "Engine oil and filter change", price: 115, cost: 42, decision: "approved" },
+      { id: 2, name: "Tire rotation", price: 45, cost: 12, decision: "approved" },
+      { id: 3, name: "Air filter replacement", price: 55, cost: 16, decision: "declined" },
+    ] satisfies DemoJob[],
+  },
+  "RO-09914": {
+    title: "Battery Replacement",
+    vehicle: "2018 Honda Accord · VIN ending 9134",
+    jobs: [
+      { id: 1, name: "Battery replacement", price: 285, cost: 112, decision: "approved" },
+      { id: 2, name: "Charging system diagnostic", price: 89, cost: 26, decision: "approved" },
+      { id: 3, name: "Clean corroded terminals", price: 35, cost: 8, decision: "pending" },
+    ] satisfies DemoJob[],
+  },
+} as const;
+type RoId = keyof typeof roRecords;
 const money = (value: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     value,
   );
 
-export function RoWorkspace({ internal }: { internal: boolean }) {
-  const [jobs, setJobs] = useState(initialJobs);
+export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId }) {
+  const ro = roRecords[roId];
+  const storageKey = `shop-revenue-desktop-demo-ro-v2:${roId}`;
+  const [jobs, setJobs] = useState<DemoJob[]>(() => [...ro.jobs]);
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [cost, setCost] = useState("");
   const [error, setError] = useState("");
-  const [nextId, setNextId] = useState(5);
+  const [nextId, setNextId] = useState(() => Math.max(0, ...ro.jobs.map((job) => job.id)) + 1);
   const [restored, setRestored] = useState(false);
   const [removalId, setRemovalId] = useState<number | null>(null);
   const [removalReason, setRemovalReason] = useState("Customer changed their mind");
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem("shop-revenue-desktop-demo-ro-v1");
+      const raw = sessionStorage.getItem(storageKey);
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
         if (
@@ -79,7 +107,7 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
         ) {
           const previous = parsed as DemoJob[];
           setJobs(previous);
-          setNextId(Math.max(4, ...previous.map((item) => item.id)) + 1);
+          setNextId(Math.max(0, ...previous.map((item) => item.id)) + 1);
         }
       }
     } catch {
@@ -87,19 +115,19 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
     } finally {
       setRestored(true);
     }
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     if (!restored) return;
     try {
       sessionStorage.setItem(
-        "shop-revenue-desktop-demo-ro-v1",
+        storageKey,
         JSON.stringify(jobs),
       );
     } catch {
       // Session persistence is only a preview convenience.
     }
-  }, [jobs, restored]);
+  }, [jobs, restored, storageKey]);
   const approved = jobs.filter((job) => job.decision === "approved");
   const recommendations = jobs.filter((job) => job.decision !== "approved");
   const approvedTotal = approved.reduce((sum, job) => sum + job.price, 0);
@@ -275,9 +303,9 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
     <>
       <div className={styles.roHead}>
         <div>
-          <div className={styles.eyebrow}>REPAIR ORDER · RO-10482</div>
-          <h2>Brake Service</h2>
-          <p>2021 Ford F-150 · VIN ending 4821</p>
+          <div className={styles.eyebrow}>REPAIR ORDER · {roId}</div>
+          <h2>{ro.title}</h2>
+          <p>{ro.vehicle}</p>
         </div>
         <div className={styles.roActions}>
           <span className={styles.pill}>In progress</span>
