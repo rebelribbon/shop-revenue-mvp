@@ -231,13 +231,27 @@ export function RoWorkspace({
   );
   const costKnown = approved.every((job) => job.cost !== null);
   const approvedCosts = approved.reduce((sum, job) => sum + (job.cost ?? 0), 0);
+  function preventChangesAfterInvoice() {
+    try {
+      const saved = sessionStorage.getItem(`shop-revenue-desktop-demo-checkout-v1:${roId}`);
+      if (saved) {
+        const phase = (JSON.parse(saved) as {phase?:string}).phase;
+        if (phase === "invoice_ready" || phase === "paid" || phase === "delivered") {
+          setError("This RO has a finalized invoice. To change authorized work, start a documented correction or supplementary estimate, not an untracked edit.");
+          return true;
+        }
+      }
+    } catch { /* Session-only demo data. */ }
+    return false;
+  }
   function setDecision(id: number, decision: Decision) {
+    if (preventChangesAfterInvoice()) return;
     setJobs((old) =>
       old.map((job) => (job.id === id ? { ...job, decision } : job)),
     );
   }
   function removeApprovedJob() {
-    if (removalId === null) return;
+    if (removalId === null || preventChangesAfterInvoice()) return;
     setJobs((old) =>
       old.map((job) =>
         job.id === removalId
@@ -250,6 +264,7 @@ export function RoWorkspace({
   }
   function addJob(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (preventChangesAfterInvoice()) return;
     const amount = Number(price);
     const internalCost = cost.trim() === "" ? null : Number(cost);
     if (
@@ -320,7 +335,7 @@ export function RoWorkspace({
     setError("");
   }
   function deleteDraftJob() {
-    if (deleteId === null) return;
+    if (deleteId === null || preventChangesAfterInvoice()) return;
     setJobs((old) =>
       old.filter(
         (job) =>
