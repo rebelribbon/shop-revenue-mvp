@@ -480,11 +480,21 @@ export function ServiceFlowDemo({
       ) : documentsCurrent ? (
         <div className={styles.workflowAuthorized}>
           <strong>✓ Customer authorization complete</strong>
-          <p>The approved estimate, applicable declinations and privacy acknowledgment match this RO. The active task is now in the repair/QC/billing panel below. Prior forms are no longer displayed.</p>
+          <p>
+            The approved estimate, applicable declinations and privacy
+            acknowledgment match this RO. The active task is now in the
+            repair/QC/billing panel below. Prior forms are no longer displayed.
+          </p>
           <details>
             <summary>Review authorization handoff</summary>
-            <p>{approved.length} approved jobs · {declined.length} declined · {pending.length} pending.</p>
-            <p>Customer documents and technician inspection are available in the RO Records drawer.</p>
+            <p>
+              {approved.length} approved jobs · {declined.length} declined ·{" "}
+              {pending.length} pending.
+            </p>
+            <p>
+              Customer documents and technician inspection are available in the
+              RO Records drawer.
+            </p>
           </details>
         </div>
       ) : (
