@@ -79,14 +79,22 @@ export function CustomerMobileFlow({
   const [accepted, setAccepted] = useState(false);
   const [signer, setSigner] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const {state: checkoutState, loaded: checkoutLoaded} = useDemoCheckout(roId);
+  const { state: checkoutState, loaded: checkoutLoaded } =
+    useDemoCheckout(roId);
   const phase = checkoutState.phase;
   const checkoutReady = ["invoice_ready", "paid", "delivered"].includes(phase);
-  const statusLabel = phase === "working" ? "Technician working" : phase === "qc"
-    ? "Ready for final quality check" : phase === "invoice_draft"
-      ? "Invoice being prepared" : phase === "invoice_ready"
-        ? "Invoice ready for payment" : phase === "paid"
-          ? "Paid · awaiting pickup" : "Delivered · RO closed";
+  const statusLabel =
+    phase === "working"
+      ? "Technician working"
+      : phase === "qc"
+        ? "Ready for final quality check"
+        : phase === "invoice_draft"
+          ? "Invoice being prepared"
+          : phase === "invoice_ready"
+            ? "Invoice ready for payment"
+            : phase === "paid"
+              ? "Paid · awaiting pickup"
+              : "Delivered · RO closed";
 
   // Work ordered by the customer is not an inspection recommendation.
   const requested = jobs.filter(
@@ -161,16 +169,32 @@ export function CustomerMobileFlow({
         </div>
         <div className={styles.mobileServiceStatus} role="status">
           <div>
-            <strong>Vehicle status: {checkoutLoaded ? statusLabel : "Loading service status"}</strong>
-            <p>{phase === "working" ? "Your technician is finishing authorized work. Inspection recommendations are reviewed separately."
-              : phase === "qc" ? "All authorized work has been completed and is undergoing final QC."
-              : phase === "invoice_draft" ? "Work and QC are finished. Your advisor is reviewing the invoice."
-              : checkoutReady ? "Your invoice and payment or pickup status are available."
-              : "The shop is updating your service visit."}</p>
+            <strong>
+              Vehicle status:{" "}
+              {checkoutLoaded ? statusLabel : "Loading service status"}
+            </strong>
+            <p>
+              {phase === "working"
+                ? "Your technician is finishing authorized work. Inspection recommendations are reviewed separately."
+                : phase === "qc"
+                  ? "All authorized work has been completed and is undergoing final QC."
+                  : phase === "invoice_draft"
+                    ? "Work and QC are finished. Your advisor is reviewing the invoice."
+                    : checkoutReady
+                      ? "Your invoice and payment or pickup status are available."
+                      : "The shop is updating your service visit."}
+            </p>
           </div>
-          {checkoutReady ?
-            <Link className={styles.mobileCheckoutLink} href={`/desktop-demo?screen=checkout&ro=${encodeURIComponent(roId)}`}>Review invoice / payment →</Link> :
-            <span>Checkout not available yet</span>}
+          {checkoutReady ? (
+            <Link
+              className={styles.mobileCheckoutLink}
+              href={`/desktop-demo?screen=checkout&ro=${encodeURIComponent(roId)}`}
+            >
+              Review invoice / payment →
+            </Link>
+          ) : (
+            <span>Checkout not available yet</span>
+          )}
         </div>
         <div className={styles.mobileStepDots} aria-label="Review steps">
           {steps.map((s, i) => (
@@ -497,13 +521,15 @@ export function CustomerMobileFlow({
             </div>
             <div className={styles.mobileInvoiceNotice}>
               <strong>What happens next?</strong>
-              <p>{additional > 0
-                ? "Approved recommendations enter the technician’s work queue. Only completed, authorized work is eligible for the final invoice."
-                : checkoutReady
-                  ? "No additional recommendations were approved. Your shop has finalized the invoice for completed work."
-                  : phase === "working"
-                    ? "You declined all additional recommendations. The shop will finish your original services."
-                    : "You declined all additional recommendations. The shop is completing quality control and billing."}</p>
+              <p>
+                {additional > 0
+                  ? "Approved recommendations enter the technician’s work queue. Only completed, authorized work is eligible for the final invoice."
+                  : checkoutReady
+                    ? "No additional recommendations were approved. Your shop has finalized the invoice for completed work."
+                    : phase === "working"
+                      ? "You declined all additional recommendations. The shop will finish your original services."
+                      : "You declined all additional recommendations. The shop is completing quality control and billing."}
+              </p>
             </div>
             {!accepted ? (
               <div className={styles.mobileConfirmation}>
@@ -551,13 +577,28 @@ export function CustomerMobileFlow({
 
             {accepted && (
               <div className={styles.mobileCheckoutStatus}>
-                <h3>{checkoutReady ? "Invoice and checkout available" : phase === "working" ? "Your service visit continues" : "Work completed — final invoice pending"}</h3>
-                <p>{checkoutReady
-                  ? "Your advisor has finalized your bill. Review your invoice, payment and pickup status."
-                  : phase === "working"
-                    ? "The shop is finishing your authorized services."
-                    : "Quality control and invoice preparation are underway."}</p>
-                {checkoutReady && <Link className={styles.mobileCheckoutLink} href={`/desktop-demo?screen=checkout&ro=${encodeURIComponent(roId)}`}>Review invoice and checkout →</Link>}
+                <h3>
+                  {checkoutReady
+                    ? "Invoice and checkout available"
+                    : phase === "working"
+                      ? "Your service visit continues"
+                      : "Work completed — final invoice pending"}
+                </h3>
+                <p>
+                  {checkoutReady
+                    ? "Your advisor has finalized your bill. Review your invoice, payment and pickup status."
+                    : phase === "working"
+                      ? "The shop is finishing your authorized services."
+                      : "Quality control and invoice preparation are underway."}
+                </p>
+                {checkoutReady && (
+                  <Link
+                    className={styles.mobileCheckoutLink}
+                    href={`/desktop-demo?screen=checkout&ro=${encodeURIComponent(roId)}`}
+                  >
+                    Review invoice and checkout →
+                  </Link>
+                )}
               </div>
             )}
             <p className={styles.estimateDisclaimer}>
