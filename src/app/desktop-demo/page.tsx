@@ -38,6 +38,7 @@ export default async function DesktopDemo({
 }) {
   const params = await searchParams;
   const customerScreen = params.screen !== "ro";
+  const listScreen = params.screen === "customers";
   const internal = !customerScreen && params.mode === "internal";
   return (
     <main id="main-content" className={styles.demo}>
@@ -62,7 +63,7 @@ export default async function DesktopDemo({
             </span>
             <Link
               className={customerScreen ? styles.selected : ""}
-              href="/desktop-demo?screen=customer"
+              href="/desktop-demo?screen=customers"
             >
               ♙ <span>Customers</span>
             </Link>
@@ -110,9 +111,9 @@ export default async function DesktopDemo({
           </header>
           <div className={styles.page}>
             <div className={styles.breadcrumb}>
-              Customers / John Smith {!customerScreen && "/ RO-10482"}
+              {listScreen ? "Customers" : <>Customers / John Smith {!customerScreen && "/ RO-10482"}</>}
             </div>
-            <div className={styles.customerHead}>
+            {!listScreen && <div className={styles.customerHead}>
               <div className={styles.initials}>JS</div>
               <div className={styles.identity}>
                 <div className={styles.titleRow}>
@@ -125,7 +126,7 @@ export default async function DesktopDemo({
                 </div>
               </div>
             </div>
-            <div className={styles.metrics}>
+            {!listScreen && <div className={styles.metrics}>
               <div>
                 <span>REPAIR ORDERS</span>
                 <strong>3</strong>
@@ -143,8 +144,31 @@ export default async function DesktopDemo({
                 <strong>Nov 9</strong>
               </div>
             </div>
-            {customerScreen ? (
-              <div className={styles.panel}>
+            {listScreen ? (
+              <section className={styles.panel} aria-label="Customer directory">
+                <div className={styles.panelHeader}>
+                  <div>
+                    <h2>All Customers</h2>
+                    <p>Browse customer records and open a profile. Sample data only.</p>
+                  </div>
+                  <span className={styles.pill}>3 customers</span>
+                </div>
+                <div className={styles.tableWrap}>
+                  <table>
+                    <thead><tr><th>Customer</th><th>Contact</th><th>Vehicle</th><th>ROs</th><th>Profile</th></tr></thead>
+                    <tbody>
+                      <tr><td><strong>John Smith</strong></td><td>john@example.com</td><td>2021 Ford F-150</td><td>3</td><td><Link href="/desktop-demo?screen=customer">Open profile →</Link></td></tr>
+                      <tr><td><strong>Maria Garcia</strong></td><td>maria@example.com</td><td>2020 Honda CR-V</td><td>2</td><td><Link href="/desktop-demo?screen=customer">Open sample profile →</Link></td></tr>
+                      <tr><td><strong>Alex Johnson</strong></td><td>alex@example.com</td><td>2019 Chevrolet Silverado</td><td>1</td><td><Link href="/desktop-demo?screen=customer">Open sample profile →</Link></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className={styles.note}>The preview uses one interactive customer record (John Smith); other rows are illustrative.</div>
+              </section>
+            ) : customerScreen ? (
+              <>
+                <p className={styles.customerReturn}><Link className={styles.returnButton} href="/desktop-demo?screen=customers">← All Customers</Link></p>
+                <div className={styles.panel}>
                 <div className={styles.panelHeader}>
                   <div>
                     <h2>Customer history</h2>
@@ -192,6 +216,7 @@ export default async function DesktopDemo({
                   </table>
                 </div>
               </div>
+              </>
             ) : (
               <>
                 <RoWorkspace
