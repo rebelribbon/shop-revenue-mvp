@@ -49,3 +49,7 @@
 .removalPanel select{display:block;width:100%;min-height:40px;margin-top:8px;border:1px solid #b2bfc9;border-radius:8px;padding:8px 16px;background:white;color:#182838;font:inherit}
 .removalPanel .formButtons{grid-column:1/-1}
 @media(max-width:700px){.removalPanel{grid-template-columns:1fr;padding:16px}}
+
+.customerReturn{margin:0 0 16px}
+.returnButton{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid #a4b9c6;background:#fff;color:#145e4c!important;text-decoration:none;font-weight:700}
+.returnButton:hover{background:#e7f4ee;color:#145e4c!important}
