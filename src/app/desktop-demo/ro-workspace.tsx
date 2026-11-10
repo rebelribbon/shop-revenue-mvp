@@ -180,13 +180,17 @@ export function RoWorkspace({
           previous = parsed as DemoJob[];
         }
       }
-      const customerRaw = sessionStorage.getItem(`shop-revenue-desktop-demo-customer-choices-v1:${roId}`);
+      const customerRaw = sessionStorage.getItem(
+        `shop-revenue-desktop-demo-customer-choices-v1:${roId}`,
+      );
       if (customerRaw) {
         const choices: unknown = JSON.parse(customerRaw);
         if (choices && typeof choices === "object" && !Array.isArray(choices)) {
           customerChoices = Object.fromEntries(
-            Object.entries(choices).filter(([id, v]) =>
-              Number.isSafeInteger(Number(id)) && (v === "approved" || v === "declined")
+            Object.entries(choices).filter(
+              ([id, v]) =>
+                Number.isSafeInteger(Number(id)) &&
+                (v === "approved" || v === "declined"),
             ),
           ) as Record<string, Decision>;
         }
