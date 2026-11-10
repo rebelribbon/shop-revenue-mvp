@@ -174,7 +174,7 @@ export function ServiceFlowDemo({
           <section className={styles.serviceFlowStep}>
             <h3>1 · Advisor intake</h3>
             <label>
-              Customer-reported concern (record the customer's words)
+              Customer-reported concern (record the customer’s words)
               <textarea
                 rows={3}
                 value={record.complaint}
@@ -398,7 +398,7 @@ export function ServiceFlowDemo({
             <p className={styles.note}>
               In production, freeze the priced estimate and declined items into
               immutable document versions, capture enforceable e-signature
-              evidence, retain receipts and media per the shop's retention
+              evidence, retain receipts and media per the shop’s retention
               policy, and allow retrieval from the RO.
             </p>
           </section>
