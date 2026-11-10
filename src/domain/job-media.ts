@@ -8,7 +8,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { createUploadUrl, statObject } from "@/lib/media-storage";
 import { getCustomerWithVehicles } from "./customers";
 import { currentMemberRole } from "./membership";
-import { recordActivity, type RequestMeta } from "./records";
+import { audit, recordActivity, type RequestMeta } from "./records";
 
 export const MEDIA_TYPES: Record<string, { ext: string; video: boolean }> = {
   "image/jpeg": { ext: "jpg", video: false },
@@ -156,6 +156,7 @@ export async function updateMedia(
     jobId?: string | null;
     remove?: boolean;
   },
+  meta?: RequestMeta,
 ) {
   const [m] = await tx
     .select()
@@ -191,6 +192,15 @@ export async function updateMedia(
       updatedAt: new Date(),
     })
     .where(and(eq(jobMedia.businessId, tx.businessId), eq(jobMedia.id, m.id)));
+  if (meta && input.showCustomer !== undefined && input.showCustomer !== m.showCustomer) {
+    await audit(tx, meta, {
+      action: "media.customer_visibility_changed",
+      targetType: "job_media",
+      targetId: m.id,
+      before: { showCustomer: m.showCustomer },
+      after: { showCustomer: input.showCustomer, jobId: m.jobId },
+    });
+  }
   return { id: m.id };
 }
 
