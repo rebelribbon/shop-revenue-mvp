@@ -136,6 +136,10 @@ export function ServiceFlowDemo({
     return () => { active = false; };
   }, [roId]);
 
+  useEffect(() => {
+    if (loaded) onReadyChange(areServiceDocumentsCurrent(record,jobs));
+  }, [loaded,record,jobs,onReadyChange]);
+
   function save(next: ServiceRecord) {
     setRecord(next);
     onStageChange(next.stage);
