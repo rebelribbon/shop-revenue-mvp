@@ -11,14 +11,19 @@ const allPassed = (): InspectionResults =>
     inspectionPoints.map((point) => [
       point.id,
       {
-        result: "good" as const,
+        result: "satisfactory" as const,
         notes: "",
         recommendedWork: "",
       },
     ]),
   );
 
-describe("technician multi-point inspection", () => {
+describe("technician 40-point inspection", () => {
+  it("includes the full 40-point checklist", () => {
+    expect(inspectionPoints).toHaveLength(40);
+    expect(inspectionPoints[0].label).toBe("Windshield");
+    expect(inspectionPoints[39].label).toContain("Tire tread");
+  });
   it("cannot submit until all required inspection points are checked", () => {
     expect(inspectReady({})).toBe(false);
     const inspection = allPassed();
@@ -30,7 +35,7 @@ describe("technician multi-point inspection", () => {
   it("requires findings and proposed work for a failed inspection point", () => {
     const inspection = allPassed();
     inspection.brakes = {
-      result: "bad",
+      result: "service_now",
       notes: "",
       recommendedWork: "Replace pads",
     };
@@ -41,10 +46,10 @@ describe("technician multi-point inspection", () => {
     expect(inspectReady(inspection)).toBe(false);
   });
 
-  it("allows borderline with findings but without a recommended job", () => {
+  it("allows Service Soon with findings but without a recommended job", () => {
     const inspection = allPassed();
     inspection.tires = {
-      result: "borderline",
+      result: "service_soon",
       notes: "Tread at 4mm, monitor",
       recommendedWork: "",
     };
@@ -53,10 +58,10 @@ describe("technician multi-point inspection", () => {
     inspection.tires.notes = "";
     expect(inspectReady(inspection)).toBe(false);
   });
-  it("prepopulates only recommended borderline/bad work in the advisor estimate", () => {
+  it("prepopulates only recommended Service Soon/Service Now work in the advisor estimate", () => {
     const inspection = allPassed();
     inspection.brakes = {
-      result: "bad",
+      result: "service_now",
       notes: "Measured 2 mm",
       recommendedWork: "Replace front pads",
     };
