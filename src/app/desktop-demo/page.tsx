@@ -34,12 +34,15 @@ const history = [
 export default async function DesktopDemo({
   searchParams,
 }: {
-  searchParams: Promise<{ screen?: string; mode?: string }>;
+  searchParams: Promise<{ screen?: string; mode?: string; ro?: string }>;
 }) {
   const params = await searchParams;
   const customerScreen = params.screen !== "ro";
   const listScreen = params.screen === "customers";
   const internal = !customerScreen && params.mode === "internal";
+  const roId = (["RO-10482", "RO-10193", "RO-09914"].includes(params.ro ?? "")
+    ? params.ro
+    : "RO-10482") as "RO-10482" | "RO-10193" | "RO-09914";
   return (
     <main id="main-content" className={styles.demo}>
       <div className={styles.notice}>
@@ -69,7 +72,7 @@ export default async function DesktopDemo({
             </Link>
             <Link
               className={!customerScreen ? styles.selected : ""}
-              href="/desktop-demo?screen=ro"
+              href="/desktop-demo?screen=ro&ro=RO-10482"
             >
               ▤ <span>Jobs / ROs</span>
             </Link>
@@ -87,14 +90,14 @@ export default async function DesktopDemo({
                 <Link
                   aria-current={!internal ? "page" : undefined}
                   className={!internal ? styles.active : ""}
-                  href="/desktop-demo?screen=ro&mode=customer"
+                  href={`/desktop-demo?screen=ro&ro=${roId}&mode=customer`}
                 >
                   Customer
                 </Link>
                 <Link
                   aria-current={internal ? "page" : undefined}
                   className={internal ? styles.active : ""}
-                  href="/desktop-demo?screen=ro&mode=internal"
+                  href={`/desktop-demo?screen=ro&ro=${roId}&mode=internal`}
                 >
                   Internal
                 </Link>
@@ -111,7 +114,7 @@ export default async function DesktopDemo({
           </header>
           <div className={styles.page}>
             <div className={styles.breadcrumb}>
-              {listScreen ? "Customers" : <>Customers / John Smith {!customerScreen && "/ RO-10482"}</>}
+              {listScreen ? "Customers" : <>Customers / John Smith {!customerScreen && `/ ${roId}`}</>}
             </div>
             {!listScreen && <div className={styles.customerHead}>
               <div className={styles.initials}>JS</div>
@@ -208,7 +211,7 @@ export default async function DesktopDemo({
                           <td>{item.date}</td>
                           <td>{item.status}</td>
                           <td>
-                            <Link href="/desktop-demo?screen=ro">Open →</Link>
+                            <Link href={`/desktop-demo?screen=ro&ro=${item.id}`}>Open →</Link>
                           </td>
                         </tr>
                       ))}
@@ -220,8 +223,9 @@ export default async function DesktopDemo({
             ) : (
               <>
                 <RoWorkspace
-                  key={internal ? "internal" : "customer"}
+                  key={`${roId}-${internal ? "internal" : "customer"}`}
                   internal={internal}
+                  roId={roId}
                 />
                 <div className={styles.back}>
                   <Link href="/desktop-demo?screen=customer">
