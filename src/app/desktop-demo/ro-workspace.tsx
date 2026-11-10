@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import styles from "./desktop-demo.module.css";
 import { ShareMediaDemo } from "./customer-media";
 import { AdvisorCheckoutDemo } from "./ro-checkout-demo";
+import { ServiceFlowDemo } from "./ro-service-flow";
 
 export type Decision = "approved" | "pending" | "declined";
 export type DemoJob = {
@@ -702,6 +703,7 @@ export function RoWorkspace({
           </div>
         </div>
       )}
+      {internal && <ServiceFlowDemo roId={roId} jobs={jobs} />}
       {internal && <AdvisorCheckoutDemo roId={roId} jobs={jobs} />}
       <div className={styles.billingBanner}>
         <div>
