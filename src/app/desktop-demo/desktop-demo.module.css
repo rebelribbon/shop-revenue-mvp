@@ -121,3 +121,27 @@
 .workTypeSelector input{width:16px;height:16px;accent-color:#087857}
 .workNotesLabel{display:grid;gap:8px;margin-bottom:16px;font-size:13px;font-weight:700}
 .workNotesLabel textarea{padding:12px 16px;border:1px solid #aec1cd;border-radius:8px;font:inherit;color:#182838;background:white;max-width:100%;width:100%;resize:vertical}
+
+
+/* Sample advisor-approved media and standalone customer-link preview. */
+.shareMediaGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px 24px}
+.shareReviewTile{border:1px solid #d7e3e9;border-radius:10px;background:#fff;overflow:hidden}
+.shareTile{margin:0;display:grid;gap:0;min-width:0;background:white;border:1px solid #dbe4e9;border-radius:8px;overflow:hidden}
+.sharePlaceholder{min-height:146px;background:linear-gradient(135deg,#dceaf0,#c0d7df);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#3b6373}
+.sharePlaceholder span{font-size:40px}
+.sharePlaceholder small{font-size:10px;font-weight:800;letter-spacing:.08em}
+.shareTile figcaption{padding:16px;display:grid;gap:4px}
+.shareTile figcaption strong{font-size:14px}
+.shareTile figcaption span{font-size:12px;color:#597080}
+.shareReviewTile>.shareTile{border:0;border-radius:0}
+.shareMediaAction{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:16px;border-top:1px solid #e3e9ec}
+.shareCustomerPage{min-height:100dvh;background:#edf3f7;color:#1d303d;font-family:"Public Sans Variable",system-ui,sans-serif}
+.shareCustomerHeader{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 32px;background:#173449;color:white;font-size:12px}
+.shareCustomerHeader strong{font-size:18px}
+.shareCustomerBody{max-width:1040px;margin:0 auto;display:grid;gap:24px;padding:32px 24px}
+.shareCustomerBody>h1{font-size:30px;margin:0}
+.shareCustomerBody>p{margin:0}
+.shareCustomerBody .eyebrow{color:#526d7c}
+.shareCustomerBody .tableWrap table{min-width:540px}
+.shareCustomerBody .estimateDisclaimer{border-radius:8px}
+@media(max-width:700px){.shareMediaGrid{grid-template-columns:1fr;padding:16px}.shareCustomerHeader{padding:16px;flex-wrap:wrap}.shareCustomerBody{padding:24px 16px}}
