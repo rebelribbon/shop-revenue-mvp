@@ -1073,6 +1073,25 @@ details {
   color: var(--muted);
   margin: 0;
 }
+.ro-handoff-notifications {
+  flex-shrink: 0;
+}
+.ro-handoff-notifications .btn {
+  margin: 0;
+  gap: 8px;
+}
+.ro-handoff-notifications svg {
+  width: 24px;
+  height: 24px;
+}
+.ro-handoff-notifications .sr-only {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .quick-find-trigger kbd {
   margin-left: auto;
   white-space: nowrap;
@@ -1168,6 +1187,9 @@ body:has(.workspace-shell) [data-ux-primary] {
   .workspace-header .quick-find-trigger {
     width: auto;
     color: var(--text);
+  }
+  .handoff-label {
+    display: none;
   }
   .quick-find-desktop-label,
   .quick-find-trigger kbd {

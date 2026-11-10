@@ -94,7 +94,21 @@ describe("Technician role", () => {
           labor: [],
         }),
       ),
-    ).rejects.toThrow(/assigned jobs/);
+    ).rejects.toThrow(/service advisor/);
+    const assigned = (await asOwner((tx) => getJob(tx, mine.id)))!;
+    await expect(
+      asTech((tx) =>
+        createJob(tx, {
+          customerId: c.id,
+          vehicleId: v.id,
+          jobId: mine.id,
+          expectedVersion: assigned.version,
+          title: "Changed price",
+          parts: [],
+          labor: [],
+        }),
+      ),
+    ).rejects.toThrow(/service advisor/);
     await asTech((tx) => startClock(tx, meta(), mine.id));
     await asTech((tx) => stopClock(tx, meta()));
     expect((await asOwner((tx) => listJobs(tx))).length).toBe(2);

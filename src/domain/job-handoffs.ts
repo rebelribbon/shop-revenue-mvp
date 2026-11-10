@@ -1,6 +1,6 @@
 // Durable, recipient-addressed in-app handoffs on the existing tenant activity
 // ledger. No push/SMS delivery is implied; the logged-in recipient sees a task.
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { activity, jobAssignment } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError } from "@/lib/errors";
@@ -52,6 +52,7 @@ export async function notifyTechnicianAssigned(
       technicianUserId,
       advisorUserId,
     } satisfies HandoffData,
+    recordedAtNow: true,
   });
 }
 
@@ -110,6 +111,7 @@ export async function reassignAdvisorHandoff(
         advisorUserId: newAdvisorId,
         recipientUserId: newAdvisorId,
       },
+      recordedAtNow: true,
     });
   }
 }
@@ -166,6 +168,7 @@ export async function notifyAdvisorInspectionComplete(
       recipientUserId: advisorId,
       advisorUserId: advisorId,
     } satisfies HandoffData,
+    recordedAtNow: true,
   });
 }
 
@@ -174,8 +177,8 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
   if (!id) return [];
   const role = await currentMemberRole(tx);
   if (!role) return [];
-  const rows = await tx
-    .select({
+  const latest = tx
+    .selectDistinctOn([activity.subjectId], {
       jobId: activity.subjectId,
       title: activity.summary,
       data: activity.data,
@@ -189,32 +192,41 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
         eq(activity.subjectType, "job"),
       ),
     )
-    .orderBy(desc(activity.occurredAt), desc(activity.id))
-    .limit(1000);
-  // Only the latest handoff per RO remains actionable. Earlier/reassigned
-  // recipients cannot continue to see obsolete assignments.
-  const latest = new Map<string, (typeof rows)[number]>();
-  for (const row of rows)
-    if (!latest.has(row.jobId)) latest.set(row.jobId, row);
+    .orderBy(activity.subjectId, desc(activity.occurredAt), desc(activity.id))
+    .as("latest_handoffs");
+  // Choose the latest event per RO before filtering the recipient. A reassigned
+  // or completed task must not revive for an earlier recipient. Bound the result,
+  // not the shared event history, and check current assignment in the same query.
+  const rows = await tx
+    .select({
+      jobId: latest.jobId,
+      title: latest.title,
+      data: latest.data,
+      occurredAt: latest.occurredAt,
+    })
+    .from(latest)
+    .leftJoin(
+      jobAssignment,
+      and(
+        eq(jobAssignment.businessId, tx.businessId),
+        eq(jobAssignment.jobId, latest.jobId),
+      ),
+    )
+    .where(
+      and(
+        sql`${latest.data}->>'recipientUserId' = ${id}`,
+        sql`${latest.data}->>'stage' = ${role === "technician" ? "inspect_vehicle" : "build_estimate"}`,
+        role === "technician" ? eq(jobAssignment.userId, id) : undefined,
+      ),
+    )
+    .orderBy(desc(latest.occurredAt))
+    .limit(500);
   const output: JobHandoff[] = [];
-  for (const row of latest.values()) {
+  for (const row of rows) {
     const data = handoffData(row.data);
     if (!data || data.recipientUserId !== id) continue;
     if (role === "technician" && data.stage !== "inspect_vehicle") continue;
     if (role !== "technician" && data.stage !== "build_estimate") continue;
-    if (data.stage === "inspect_vehicle") {
-      const [assigned] = await tx
-        .select({ userId: jobAssignment.userId })
-        .from(jobAssignment)
-        .where(
-          and(
-            eq(jobAssignment.businessId, tx.businessId),
-            eq(jobAssignment.jobId, row.jobId),
-          ),
-        )
-        .limit(1);
-      if (assigned?.userId !== id) continue;
-    }
     output.push({
       ...data,
       jobId: row.jobId,
@@ -268,5 +280,6 @@ export async function completeAdvisorHandoff(tx: TenantTx, jobId: string) {
     subjectId: jobId,
     summary: "Advisor published the estimate; preparation task completed",
     data: { ...data, stage: "completed" },
+    recordedAtNow: true,
   });
 }

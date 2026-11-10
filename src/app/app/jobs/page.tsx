@@ -336,6 +336,36 @@ export default async function JobsPage({
       style: "currency",
       currency: "USD",
     }).format(c / 100);
+  const advisorAssignment =
+    selected && s.role !== "technician" && s.actor.type !== "support" ? (
+      <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
+        <ActionForm
+          action={assignAdvisorAction}
+          hidden={{ jobId: selected.id }}
+          submitLabel="Assign advisor"
+          variant="secondary"
+        >
+          <label htmlFor="job-advisor">Service advisor for this RO</label>
+          <select
+            id="job-advisor"
+            name="userId"
+            defaultValue={data.advisorId ?? s.actor.id ?? ""}
+            required
+          >
+            <option value="">Choose advisor</option>
+            {data.advisors.map((a) => (
+              <option value={a.userId} key={a.userId}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </ActionForm>
+        <p className="muted">
+          When the inspection is submitted, this advisor receives the Build
+          Estimate task.
+        </p>
+      </div>
+    ) : null;
   // Technicians get a dedicated assigned-work workspace. The general RO
   // editor, profit, invoices, estimates, customer administration and
   // advisor-only actions are never rendered for technician sessions.
@@ -496,40 +526,7 @@ export default async function JobsPage({
                     {assetName ? ` · ${assetName}` : ""}
                   </p>
                 </div>
-                {s.actor.type !== "support" && (
-                  <div
-                    className="tech-pick"
-                    key={data.advisorId ?? "advisor-unset"}
-                  >
-                    <ActionForm
-                      action={assignAdvisorAction}
-                      hidden={{ jobId: selected.id }}
-                      submitLabel="Assign advisor"
-                      variant="secondary"
-                    >
-                      <label htmlFor="job-advisor">
-                        Service advisor for this RO
-                      </label>
-                      <select
-                        id="job-advisor"
-                        name="userId"
-                        defaultValue={data.advisorId ?? s.actor.id ?? ""}
-                        required
-                      >
-                        <option value="">Choose advisor</option>
-                        {data.advisors.map((a) => (
-                          <option value={a.userId} key={a.userId}>
-                            {a.name}
-                          </option>
-                        ))}
-                      </select>
-                    </ActionForm>
-                    <p className="muted">
-                      When the inspection is submitted, this advisor receives
-                      the Build Estimate task.
-                    </p>
-                  </div>
-                )}
+                {advisorAssignment}
                 {flow && (
                   <span className={statusTone(statusOf(selected.id))}>
                     {statusLabels[statusOf(selected.id)]}
@@ -741,6 +738,7 @@ export default async function JobsPage({
                     </ActionForm>
                   </div>
                 )}
+                {advisorAssignment}
                 {flow && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
@@ -1063,13 +1061,13 @@ export default async function JobsPage({
                   <section aria-label="Inspection">
                     <p className="inspection-summary">
                       <span className="insp-count is-good">
-                        {data.inspection.counts.good} good
+                        {data.inspection.counts.good} satisfactory
                       </span>
                       <span className="insp-count is-watch">
-                        {data.inspection.counts.watch} watch
+                        {data.inspection.counts.watch} service soon
                       </span>
                       <span className="insp-count is-fix">
-                        {data.inspection.counts.fix} need work
+                        {data.inspection.counts.fix} service now
                       </span>
                       {data.inspection.counts.unchecked > 0 && (
                         <span className="muted">
@@ -1082,7 +1080,7 @@ export default async function JobsPage({
                         <ActionForm
                           action={addInspectionToJobAction}
                           hidden={{ jobId: selected.id }}
-                          submitLabel={`Add ${data.inspection.pending.length} “needs work” item${data.inspection.pending.length === 1 ? "" : "s"} to the estimate`}
+                          submitLabel={`Add ${data.inspection.pending.length} recommended item${data.inspection.pending.length === 1 ? "" : "s"} to the estimate`}
                           variant="secondary"
                         />
                       )}
@@ -1090,7 +1088,10 @@ export default async function JobsPage({
                       key={JSON.stringify(data.inspection.items)}
                       jobId={selected.id}
                       initial={data.inspection.items}
-                      readOnly={s.actor.type === "support"}
+                      readOnly={
+                        s.actor.type === "support" || data.inspection.complete
+                      }
+                      completed={data.inspection.complete}
                     />
                   </section>
                 )}

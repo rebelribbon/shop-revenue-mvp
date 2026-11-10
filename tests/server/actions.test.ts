@@ -8,6 +8,8 @@ import { auditEvent, membership, requestIdempotency } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { createCustomer, createVehicle } from "@/domain/customers";
 import { createJob } from "@/domain/jobs";
+import { createJobAction } from "@/server/actions/jobs";
+import { addInspectionToJobAction } from "@/server/actions/inspections";
 import { assignJob } from "@/domain/assignments";
 import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
 import { recordInvoicePaymentAction } from "@/server/actions/invoices";
@@ -296,6 +298,23 @@ it("enforces technician assignments on direct actions and idempotency replays", 
   );
   const request = { jobId: j.id, clientRequestId: randomUUID() };
   expect(await startClockAction(request)).toMatchObject({ ok: true });
+  expect(
+    await createJobAction({
+      jobId: j.id,
+      customerId: c.id,
+      vehicleId: v.id,
+      title: "Unauthorized advisor edit",
+      parts: [],
+      labor: [],
+      clientRequestId: randomUUID(),
+    }),
+  ).toMatchObject({ ok: false, error: { code: "FORBIDDEN" } });
+  expect(
+    await addInspectionToJobAction({
+      jobId: j.id,
+      clientRequestId: randomUUID(),
+    }),
+  ).toMatchObject({ ok: false, error: { code: "FORBIDDEN" } });
   expect(await startClockAction(request)).toMatchObject({ ok: true });
   expect(
     await recordInvoicePaymentAction({

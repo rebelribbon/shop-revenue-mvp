@@ -10,6 +10,7 @@ import { GET as reportGet } from "@/app/app/money/reports/csv/route";
 import { GET as documentGet } from "@/app/app/documents/[id]/pdf/route";
 import { GET as mediaGet } from "@/app/media/[fileId]/route";
 import { GET as exportGet } from "@/app/app/settings/export/[dataset]/route";
+import { GET as handoffGet } from "@/app/api/ro-handoffs/route";
 import {
   connectStripeAction,
   reconcileStripeAction,
@@ -113,6 +114,7 @@ it("limits the development bypass to local Auth and supports an enforced local s
 });
 
 const reads: [string, () => Promise<Response>][] = [
+  ["assigned work inbox", () => handoffGet()],
   [
     "report CSV",
     () =>

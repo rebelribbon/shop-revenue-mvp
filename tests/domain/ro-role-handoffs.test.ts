@@ -102,6 +102,21 @@ describe("RO recipient-specific handoff security", () => {
     await techRun((tx) =>
       saveInspection(tx, meta(), {
         jobId: job.id,
+        submit: false,
+        items: inspection.items.map((item) => ({
+          ...item,
+          status: "good" as const,
+        })),
+      }),
+    );
+    // Even a fully checked draft cannot notify the advisor prematurely.
+    expect((await techRun((tx) => listMyJobHandoffs(tx)))[0].stage).toBe(
+      "inspect_vehicle",
+    );
+    expect(await ownerRun((tx) => listMyJobHandoffs(tx))).toEqual([]);
+    await techRun((tx) =>
+      saveInspection(tx, meta(), {
+        jobId: job.id,
         submit: true,
         items: inspection.items.map((item) => ({
           ...item,

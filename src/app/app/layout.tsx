@@ -10,6 +10,7 @@ import { requireShopSession } from "@/server/views/shop";
 import { shopBillingAccess } from "@/domain/billing";
 import { daysUntil } from "@/lib/billing";
 import { listTasks } from "@/domain/tasks";
+import { RoHandoffNotifications } from "@/components/ro-handoff-notifications";
 
 export default async function ShopLayout({
   children,
@@ -76,6 +77,9 @@ export default async function ShopLayout({
           />
         </aside>
         <header className="workspace-header">
+          {s.actor.type === "user" && (
+            <RoHandoffNotifications key={`${s.businessId}:${s.actor.id}`} />
+          )}
           <Link
             href="/app"
             aria-label="Go home"
@@ -166,6 +170,7 @@ export default async function ShopLayout({
         <WorkspaceNavigation
           mobile
           canSeeMoney={s.role === "owner"}
+          technicianOnly={s.role === "technician"}
           counts={{ "/app/tasks": tasksDue }}
         />
       </div>

@@ -1,7 +1,13 @@
 // Who's on each job and visit. Kept apart from the board and "My day" so
 // both can read it without importing each other.
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { appointment, jobAssignment, membership, user } from "@/db/schema";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  appointment,
+  inspection,
+  jobAssignment,
+  membership,
+  user,
+} from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { currentMemberRole } from "./membership";
@@ -70,6 +76,9 @@ export async function assignAdvisor(
   input: { jobId: string; userId: string },
 ) {
   await assertCanAssign(tx);
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
+  );
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const advisor = (await listAdvisors(tx)).find(
     (x) => x.userId === input.userId,
@@ -80,12 +89,15 @@ export async function assignAdvisor(
       "Choose an active advisor or owner from this shop.",
     );
   const before = await assignedAdvisorForJob(tx, input.jobId);
+  if (before === input.userId)
+    return { jobId: input.jobId, advisor: advisor.name };
   await recordActivity(tx, {
     kind: "job.advisor_assigned",
     subjectType: "job",
     subjectId: input.jobId,
     summary: `Service advisor assigned: ${advisor.name}`,
     data: { advisorUserId: input.userId },
+    recordedAtNow: true,
   });
   await reassignAdvisorHandoff(tx, input.jobId, input.userId);
   await audit(tx, meta, {
@@ -128,9 +140,14 @@ export async function assignJob(
   input: { jobId: string; userId: string | null },
 ) {
   await assertCanAssign(tx);
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
+  );
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const tech = await requireTech(tx, input.userId);
   const before = (await jobAssignees(tx, [input.jobId])).get(input.jobId);
+  if ((before ?? null) === input.userId)
+    return { jobId: input.jobId, tech: tech?.name ?? null };
   await tx
     .insert(jobAssignment)
     .values({
@@ -145,7 +162,22 @@ export async function assignJob(
     });
   // The assignment and targeted handoff are committed atomically. Reassignment
   // creates a newer handoff, invalidating the former technician's inbox item.
-  if (input.userId && tx.actor.type === "user" && tx.actor.id) {
+  const [submittedInspection] = await tx
+    .select({ completedAt: inspection.completedAt })
+    .from(inspection)
+    .where(
+      and(
+        eq(inspection.businessId, tx.businessId),
+        eq(inspection.jobId, input.jobId),
+      ),
+    )
+    .limit(1);
+  if (
+    input.userId &&
+    tx.actor.type === "user" &&
+    tx.actor.id &&
+    !submittedInspection?.completedAt
+  ) {
     await notifyTechnicianAssigned(
       tx,
       input.jobId,

@@ -90,8 +90,8 @@ export function InspectionForm({
     <div className="inspection" data-ux-ready={ready}>
       <div className="inspection-section-header">
         <p>
-          <strong>40-point inspection</strong> · {checked} of {items.length}{" "}
-          checked
+          <strong>{items.length}-point inspection</strong> · {checked} of{" "}
+          {items.length} checked
         </p>
         <h4>{current}</h4>
         <div
@@ -115,7 +115,7 @@ export function InspectionForm({
       <ul className="inspection-list">
         {visible.map((i) => (
           <li key={i.key} className={`inspection-item is-${i.status}`}>
-            <fieldset disabled={readOnly}>
+            <fieldset disabled={readOnly || completed}>
               <legend>{i.label}</legend>
               {i.hint && <p className="muted">{i.hint}</p>}
               <div className="inspection-choices">
@@ -226,7 +226,7 @@ export function InspectionForm({
           Next category →
         </button>
       </nav>
-      {!readOnly && (
+      {!readOnly && !completed && (
         <div className="inspection-submit-actions">
           <button
             type="button"

@@ -1,5 +1,5 @@
-// Digital inspections: the tech marks each item Good / Watch / Needs work
-// with a note, and "Needs work" items become estimate lines in one tap.
+// Draft inspections stay editable until explicit submission. Submitted findings
+// are frozen in the tenant activity ledger before the assigned advisor is notified.
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { inspection } from "@/db/schema";
@@ -10,7 +10,7 @@ import {
   type InspectionItem,
 } from "@/lib/inspection-templates";
 import { createJob, getJob, jobInput } from "./jobs";
-import { audit, type RequestMeta } from "./records";
+import { audit, recordActivity, type RequestMeta } from "./records";
 import { notifyAdvisorInspectionComplete } from "./job-handoffs";
 
 const itemSchema = z.object({
@@ -22,12 +22,15 @@ const itemSchema = z.object({
   section: z.string().max(100).optional(),
   hint: z.string().max(300).optional(),
   measurements: z
-    .record(z.enum(["lf", "rf", "lr", "rr", "spare"]), z.string().max(20))
+    .partialRecord(
+      z.enum(["lf", "rf", "lr", "rr", "spare"]),
+      z.string().max(20),
+    )
     .optional(),
   hoursHundredths: z.number().int().min(0).max(100000).default(100),
   addedToJob: z.boolean().default(false),
 });
-export const inspectionItems = z.array(itemSchema).max(60);
+export const inspectionItems = z.array(itemSchema).min(1).max(60);
 
 async function businessType(tx: TenantTx) {
   const r = await tx.execute(
@@ -61,8 +64,12 @@ export async function getInspection(tx: TenantTx, jobId: string) {
       fix: count("fix"),
       unchecked: count("unchecked"),
     },
-    // "Needs work" items not yet on the estimate.
-    pending: items.filter((i) => i.status === "fix" && !i.addedToJob),
+    pending: items.filter(
+      (i) =>
+        (i.status === "fix" || i.status === "watch") &&
+        !!i.recommendedWork?.trim() &&
+        !i.addedToJob,
+    ),
   };
 }
 
@@ -72,16 +79,50 @@ export async function saveInspection(
   input: { jobId: string; items: InspectionItem[]; submit?: boolean },
 ) {
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
-  const items = inspectionItems.parse(input.items);
+  // Serialize drafts, submissions and recommendation imports for this RO.
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
+  );
+  const current = await getInspection(tx, input.jobId);
+  if (current.complete)
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "This inspection has been submitted. Its recorded findings cannot be overwritten.",
+    );
+  const submitted = inspectionItems.parse(input.items);
+  const byKey = new Map(submitted.map((item) => [item.key, item]));
+  if (
+    submitted.length !== current.items.length ||
+    byKey.size !== submitted.length ||
+    current.items.some((item) => !byKey.has(item.key))
+  )
+    throw new AppError(
+      "VALIDATION",
+      "Keep every checkpoint in this inspection. Refresh and complete the full checklist.",
+    );
+  // Checkpoint names and estimate-import flags belong to the server. A client
+  // cannot omit a bad result, rename a point or pretend work is already priced.
+  const items = current.items.map((original) => {
+    const item = byKey.get(original.key)!;
+    return {
+      ...item,
+      key: original.key,
+      label: original.label,
+      section: original.section,
+      hint: original.hint,
+      hoursHundredths: original.hoursHundredths,
+      addedToJob: original.addedToJob,
+    };
+  });
   const allChecked = items.every((i) => i.status !== "unchecked");
-  const done = input.submit !== false && allChecked;
+  const done = input.submit === true && allChecked;
   if (input.submit === true && !allChecked)
     throw new AppError(
       "VALIDATION",
       "Complete every inspection point before submitting.",
     );
   if (
-    input.submit !== false &&
+    input.submit === true &&
     items.some(
       (i) =>
         ((i.status === "watch" || i.status === "fix") && !i.note.trim()) ||
@@ -93,16 +134,6 @@ export async function saveInspection(
       "Service Soon requires findings; Service Now requires findings and recommended work.",
     );
   }
-  const [previous] = await tx
-    .select({ completedAt: inspection.completedAt })
-    .from(inspection)
-    .where(
-      and(
-        eq(inspection.businessId, tx.businessId),
-        eq(inspection.jobId, input.jobId),
-      ),
-    )
-    .limit(1);
   await tx
     .insert(inspection)
     .values({
@@ -116,8 +147,15 @@ export async function saveInspection(
       target: [inspection.businessId, inspection.jobId],
       set: { items, completedAt: done ? new Date() : null },
     });
-  // Handoff only on the first completion. Draft autosaves do not ping.
-  if (done && !previous?.completedAt) {
+  if (done) {
+    await recordActivity(tx, {
+      kind: "inspection.submitted",
+      subjectType: "job",
+      subjectId: input.jobId,
+      summary: "Inspection submitted to the assigned advisor",
+      data: { items },
+      recordedAtNow: true,
+    });
     await notifyAdvisorInspectionComplete(tx, input.jobId);
   }
   await audit(tx, meta, {
@@ -141,11 +179,19 @@ export async function addInspectionToJob(
 ) {
   const job = await getJob(tx, jobId);
   if (!job) throw notFound("That job");
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${jobId},0))`,
+  );
   const current = await getInspection(tx, jobId);
+  if (!current.complete)
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "Submit the completed inspection before adding recommendations to the estimate.",
+    );
   if (!current.pending.length)
     throw new AppError(
       "INVALID_TRANSITION",
-      "Mark items “Needs work” first, then add them to the estimate.",
+      "No inspection recommendations are waiting to be added to the estimate.",
     );
   const [biz] = (
     await tx.execute(
@@ -171,11 +217,25 @@ export async function addInspectionToJob(
     labor: [...input.labor, ...added],
   } as Parameters<typeof createJob>[1]);
   const keys = new Set(current.pending.map((i) => i.key));
-  await saveInspection(tx, meta, {
-    jobId,
-    items: current.items.map((i) =>
-      keys.has(i.key) ? { ...i, addedToJob: true } : i,
-    ),
+  // This is advisor bookkeeping only; the frozen submission remains intact.
+  await tx
+    .update(inspection)
+    .set({
+      items: current.items.map((i) =>
+        keys.has(i.key) ? { ...i, addedToJob: true } : i,
+      ),
+    })
+    .where(
+      and(
+        eq(inspection.businessId, tx.businessId),
+        eq(inspection.jobId, jobId),
+      ),
+    );
+  await audit(tx, meta, {
+    action: "inspection.recommendations_added",
+    targetType: "job",
+    targetId: jobId,
+    after: { keys: [...keys] },
   });
   return { added: added.length };
 }
