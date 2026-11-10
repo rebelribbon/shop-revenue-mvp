@@ -448,3 +448,18 @@
 .inspectionStatusButtons{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .inspectionStatusButtons button{min-height:48px;padding:8px 3px;overflow-wrap:anywhere}
 @media(max-width:400px){.inspectionStatusButtons button{font-size:10px}}
+
+
+/* Condition ratings based on the 40-point inspection reference: readable on phones. */
+.inspectionHint{font-size:12px;color:#557382;margin:0;line-height:1.5}
+.inspectionStatusButtons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.inspectionStatusButtons button{font-size:12px;min-height:48px;padding:10px 5px}
+.inspectionStatusButtons button:nth-child(1){border-left:5px solid #2f9b39}
+.inspectionStatusButtons button:nth-child(2){border-left:5px solid #d8a323}
+.inspectionStatusButtons button:nth-child(3){border-left:5px solid #cf4242}
+.inspectionStatusButtons button:nth-child(4){border-left:5px solid #8397a0}
+.inspectionStatusButtons button:nth-child(1).inspectionSelected{background:#e3f5e7;border-color:#2f9b39;color:#125b2e}
+.inspectionStatusButtons button:nth-child(2).inspectionSelected{background:#fff2c6;border-color:#a66f0a;color:#67470b}
+.inspectionStatusButtons button:nth-child(3).inspectionSelected{background:#ffebea;border-color:#b92e31;color:#86262b}
+.inspectionStatusButtons button:nth-child(4).inspectionSelected{background:#e9eff2;border-color:#647e89;color:#31505f}
+@media(min-width:540px){.inspectionStatusButtons{grid-template-columns:repeat(4,minmax(0,1fr))}}
