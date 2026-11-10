@@ -11,6 +11,7 @@ import {
 } from "@/lib/inspection-templates";
 import { createJob, getJob, jobInput } from "./jobs";
 import { audit, type RequestMeta } from "./records";
+import { notifyAdvisorInspectionComplete } from "./job-handoffs";
 
 const itemSchema = z.object({
   key: z.string().min(1).max(60),
@@ -66,6 +67,9 @@ export async function saveInspection(
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const items = inspectionItems.parse(input.items);
   const done = items.every((i) => i.status !== "unchecked");
+  const [previous]=await tx.select({completedAt:inspection.completedAt})
+    .from(inspection).where(and(eq(inspection.businessId,tx.businessId),
+      eq(inspection.jobId,input.jobId))).limit(1);
   await tx
     .insert(inspection)
     .values({
@@ -79,6 +83,10 @@ export async function saveInspection(
       target: [inspection.businessId, inspection.jobId],
       set: { items, completedAt: done ? new Date() : null },
     });
+  // Handoff only on the first completion. Draft autosaves do not ping.
+  if(done && !previous?.completedAt){
+    await notifyAdvisorInspectionComplete(tx,input.jobId);
+  }
   await audit(tx, meta, {
     action: "inspection.saved",
     targetType: "job",
