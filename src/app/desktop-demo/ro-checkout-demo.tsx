@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
-import { areServiceDocumentsCurrent, type DocumentGuardRecord } from "./ro-document-guard";
+import {
+  areServiceDocumentsCurrent,
+  type DocumentGuardRecord,
+} from "./ro-document-guard";
 import {
   eligibleInvoiceLines,
   invoiceMatchesAuthorizedCompletedWork,
@@ -24,7 +27,13 @@ type CheckoutState = {
   qcNotes: string;
   invoiceLines: FrozenLine[];
   paymentMethod?: "Online (demo)" | "Counter (demo)";
-  receipt?: { receiptNumber: string; recordedAt: string; subtotal: number; lines: FrozenLine[]; delivery: "not-sent-demo" };
+  receipt?: {
+    receiptNumber: string;
+    recordedAt: string;
+    subtotal: number;
+    lines: FrozenLine[];
+    delivery: "not-sent-demo";
+  };
   history: string[];
 };
 const initialState: CheckoutState = {
@@ -116,19 +125,32 @@ export function AdvisorCheckoutDemo({
     "Online (demo)" | "Counter (demo)"
   >("Counter (demo)");
   const [resetOpen, setResetOpen] = useState(false);
-  const [documentsReady,setDocumentsReady] = useState(false);
+  const [documentsReady, setDocumentsReady] = useState(false);
   useEffect(() => {
     function readDocuments() {
       try {
-        const raw = sessionStorage.getItem(`shop-revenue-desktop-demo-service-flow-v1:${roId}`);
-        const document: DocumentGuardRecord | undefined = raw ? JSON.parse(raw) as DocumentGuardRecord : undefined;
-        setDocumentsReady(areServiceDocumentsCurrent(document,jobs));
-      } catch { setDocumentsReady(false); }
+        const raw = sessionStorage.getItem(
+          `shop-revenue-desktop-demo-service-flow-v1:${roId}`,
+        );
+        const document: DocumentGuardRecord | undefined = raw
+          ? (JSON.parse(raw) as DocumentGuardRecord)
+          : undefined;
+        setDocumentsReady(areServiceDocumentsCurrent(document, jobs));
+      } catch {
+        setDocumentsReady(false);
+      }
     }
     readDocuments();
-    window.addEventListener("shop-revenue-demo-documents-changed",readDocuments);
-    return () => window.removeEventListener("shop-revenue-demo-documents-changed",readDocuments);
-  },[roId,jobs]);
+    window.addEventListener(
+      "shop-revenue-demo-documents-changed",
+      readDocuments,
+    );
+    return () =>
+      window.removeEventListener(
+        "shop-revenue-demo-documents-changed",
+        readDocuments,
+      );
+  }, [roId, jobs]);
   const approved = jobs.filter((j) => j.decision === "approved");
   const completed = approved.filter((j) => state.completed.includes(j.id));
   const total = state.invoiceLines.reduce((sum, l) => sum + l.price, 0);
@@ -137,7 +159,7 @@ export function AdvisorCheckoutDemo({
       receiptNumber: `DEMO-${roId}-01`,
       recordedAt: new Date().toISOString(),
       subtotal: total,
-      lines: state.invoiceLines.map(l=>({...l})),
+      lines: state.invoiceLines.map((l) => ({ ...l })),
       delivery: "not-sent-demo" as const,
     };
   }
@@ -180,7 +202,8 @@ export function AdvisorCheckoutDemo({
     );
   }
   function finalizeInvoice() {
-    if (state.phase !== "invoice_draft" || !invoiceCurrent || !documentsReady) return;
+    if (state.phase !== "invoice_draft" || !invoiceCurrent || !documentsReady)
+      return;
     log(
       "invoice_ready",
       "Advisor verified completed, authorized work and finalized the demo invoice.",
@@ -240,9 +263,15 @@ export function AdvisorCheckoutDemo({
           {state.phase === "working" && (
             <div className={styles.checkoutBody}>
               <h3>Technician: complete authorized work</h3>
-              {!documentsReady && <p className={styles.checkoutGuardError} role="alert">
-                Repair is blocked until the customer-reported concern and technician diagnosis are recorded, all estimate decisions are made, and the customer has acknowledged the approved estimate, any declinations, and the privacy notice. Review the document section above.
-              </p>}
+              {!documentsReady && (
+                <p className={styles.checkoutGuardError} role="alert">
+                  Repair is blocked until the customer-reported concern and
+                  technician diagnosis are recorded, all estimate decisions are
+                  made, and the customer has acknowledged the approved estimate,
+                  any declinations, and the privacy notice. Review the document
+                  section above.
+                </p>
+              )}
               <p>
                 Mark individual services finished. Pending or declined
                 recommendations never enter the work checklist.
@@ -425,7 +454,10 @@ export function AdvisorCheckoutDemo({
                     log(
                       "paid",
                       `Mock payment recorded by shop: ${paymentChoice}.`,
-                      { paymentMethod: paymentChoice, receipt: createDemoReceipt() },
+                      {
+                        paymentMethod: paymentChoice,
+                        receipt: createDemoReceipt(),
+                      },
                     )
                   }
                 >
@@ -475,9 +507,14 @@ export function AdvisorCheckoutDemo({
           {state.receipt && (
             <div className={styles.checkoutHistory}>
               <strong>Archived receipt · {state.receipt.receiptNumber}</strong>
-              <p>Recorded: {new Date(state.receipt.recordedAt).toLocaleString()}</p>
+              <p>
+                Recorded: {new Date(state.receipt.recordedAt).toLocaleString()}
+              </p>
               <p>Subtotal: {money(state.receipt.subtotal)}</p>
-              <p>Demo only: receipt saved to this browser. Automatic email delivery will require production integration.</p>
+              <p>
+                Demo only: receipt saved to this browser. Automatic email
+                delivery will require production integration.
+              </p>
             </div>
           )}
           <div className={styles.checkoutHistory}>
@@ -532,11 +569,11 @@ export function CustomerCheckoutDemo({
   const { state, loaded, update } = useDemoCheckout(roId);
   const [showConfirm, setShowConfirm] = useState(false);
   const total = state.invoiceLines.reduce((sum, l) => sum + l.price, 0);
-  const createReceipt=()=>({
+  const createReceipt = () => ({
     receiptNumber: `DEMO-${roId}-01`,
     recordedAt: new Date().toISOString(),
     subtotal: total,
-    lines: state.invoiceLines.map(l=>({...l})),
+    lines: state.invoiceLines.map((l) => ({ ...l })),
     delivery: "not-sent-demo" as const,
   });
   if (!loaded)
@@ -643,8 +680,12 @@ export function CustomerCheckoutDemo({
               ))}
             {state.receipt && (
               <div className={styles.checkoutReceipt}>
-                <strong>Payment receipt saved · {state.receipt.receiptNumber}</strong>
-                <span>Recorded {new Date(state.receipt.recordedAt).toLocaleString()}</span>
+                <strong>
+                  Payment receipt saved · {state.receipt.receiptNumber}
+                </strong>
+                <span>
+                  Recorded {new Date(state.receipt.recordedAt).toLocaleString()}
+                </span>
                 <span>Demonstration only — no email or SMS has been sent.</span>
               </div>
             )}
