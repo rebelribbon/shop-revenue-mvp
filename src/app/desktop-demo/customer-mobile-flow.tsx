@@ -92,9 +92,10 @@ export function CustomerMobileFlow({
   );
   const decisionsMade = recommendations.filter((j) => choices[j.id]).length;
   const allDecided = decisionsMade === recommendations.length;
-  const locked = accepted || checkoutState.phase !== "working";
-  const mayReviseDecline = accepted && checkoutState.phase === "working";
   const [isRevision, setIsRevision] = useState(false);
+  const revisionWindowOpen = ["working", "qc", "invoice_draft"].includes(checkoutState.phase);
+  const locked = accepted || (checkoutState.phase !== "working" && !isRevision);
+  const mayReviseDecline = accepted && revisionWindowOpen;
   const phase = checkoutState.phase;
   const ready = ["invoice_ready", "paid", "delivered"].includes(phase);
   const statusLabel =
