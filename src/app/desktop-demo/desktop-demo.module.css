@@ -53,3 +53,19 @@
 .customerReturn{margin:0 0 16px}
 .returnButton{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border-radius:8px;border:1px solid #a4b9c6;background:#fff;color:#145e4c!important;text-decoration:none;font-weight:700}
 .returnButton:hover{background:#e7f4ee;color:#145e4c!important}
+
+/* Vehicle hierarchy: list → vehicle history → individual repair order. */
+.vehicleCards{display:grid;gap:8px;padding:16px}
+.vehicleCard{display:flex;align-items:center;gap:16px;padding:20px;border:1px solid #d5e1e7;border-radius:10px;color:#182838!important;text-decoration:none;background:#fff;min-height:112px}
+.vehicleCard:hover,.vehicleCard:focus-visible{background:#eef8f4;border-color:#7ab39b}
+.vehicleAvatar{width:56px;height:56px;flex:none;display:grid;place-items:center;background:#e3eff3;color:#35606e;border-radius:10px;font-size:24px}
+.vehicleInfo{display:grid;gap:4px;min-width:0;flex:1}
+.vehicleInfo>strong{font-size:18px}
+.vehicleInfo>span:not(.approvedTag){font-size:13px;color:#627688}
+.vehicleInfo .approvedTag{justify-self:start;margin-top:4px}
+.vehicleChevron{font-weight:700;color:#087857;white-space:nowrap}
+.vehicleDetail{display:grid;gap:16px;margin-top:16px}
+.vehicleTop{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.vehicleEmpty{padding:24px;color:#627688;margin:0}
+.vehicleDetail .panelHeader h2{font-size:19px}
+@media(max-width:700px){.vehicleCard{align-items:flex-start;flex-wrap:wrap;padding:16px}.vehicleChevron{width:100%;padding-left:72px}.vehicleTop{flex-wrap:wrap}}
