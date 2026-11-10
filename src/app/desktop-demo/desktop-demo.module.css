@@ -74,7 +74,7 @@
 /* Estimate: proposal is a view of one RO, not a separate job. */
 .estimateWorkspace{display:grid;gap:16px}
 .estimateHead{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
-.estimateHead h2{margin:4px 0;font-size:25px}
+.estimateHead h2{margin:8px 0;font-size:25px}
 .estimateHead p{margin:0;color:#657888}
 .estimateActions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .estimateNav{display:flex;gap:8px;overflow-x:auto;border-bottom:1px solid #ccd9e3}
@@ -88,11 +88,11 @@
 .estimateDocument{background:#fff;max-width:920px;width:100%;margin:0 auto;padding:40px;border:1px solid #cbd8df;border-radius:10px;box-shadow:0 8px 24px #172a3e12}
 .estimatePaperHead{display:flex;justify-content:space-between;gap:16px;align-items:center;padding-bottom:24px;border-bottom:1px solid #dae4eb}
 .estimatePaperHead>strong{font-size:20px;color:#1a3a4a}
-.estimatePaperHead small{font-size:11px;background:#e6f4ed;color:#215b40;padding:4px 8px;border-radius:8px}
+.estimatePaperHead small{font-size:11px;background:#e6f4ed;color:#215b40;padding:8px 8px;border-radius:8px}
 .estimateDocument h2{font-size:28px;margin:24px 0}
 .estimateCustomer{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#f4f8fa;padding:24px;margin-bottom:24px}
 .estimateCustomer strong{color:#506679}
-.estimateCustomer p{margin:4px 0;color:#273b49}
+.estimateCustomer p{margin:8px 0;color:#273b49}
 .estimateInstruction{line-height:1.6;padding:16px 0}
 .estimateItem{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid #dce6ec;padding:24px 0}
 .estimateItem>div:first-child{display:grid;gap:8px;min-width:200px}
