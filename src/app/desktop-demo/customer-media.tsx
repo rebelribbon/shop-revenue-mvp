@@ -332,7 +332,7 @@ export function ShareMediaDemo({
       <div className={styles.note}>
         Sample media placeholders only, not uploaded customer files. The
         approval toggle persists in this browser session; a real customer share
-        must use the authenticated shop's server-side approval and a revocable
+        must use the authenticated shop’s server-side approval and a revocable
         private link.
       </div>
     </section>
