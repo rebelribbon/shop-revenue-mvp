@@ -138,6 +138,7 @@ export function AdvisorCheckoutDemo({
   }
   return (
     <section
+      id="ro-checkout-workspace"
       className={styles.panel}
       aria-label="Technician completion, quality control, invoice and delivery"
     >
