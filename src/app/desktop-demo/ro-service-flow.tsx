@@ -29,6 +29,7 @@ export type ServiceLine = {
 };
 export type Stage =
   "intake" | "assignment" | "inspection" | "pricing" | "send" | "authorization";
+const inspectionSections = [...new Set(inspectionPoints.map(item=>item.section))];
 const stages: { id: Stage; title: string; owner: string }[] = [
   { id: "intake", title: "Advisor Intake", owner: "Service advisor" },
   { id: "assignment", title: "Assign Technician", owner: "Service advisor" },
@@ -146,6 +147,7 @@ export function ServiceFlowDemo({
   const [privacyReviewed, setPrivacyReviewed] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
+  const [inspectionSectionIndex,setInspectionSectionIndex] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -652,12 +654,26 @@ export function ServiceFlowDemo({
                         / {inspectionPoints.length} checked
                       </strong>
                     </div>
+                    <div className={styles.inspectionGroupProgress}>
+                      <span>SECTION {inspectionSectionIndex+1} OF {inspectionSections.length}</span>
+                      <strong>{inspectionSections[inspectionSectionIndex]}</strong>
+                      <div>{inspectionSections.map((section,i)=>
+                        <button type="button" key={section}
+                          className={i===inspectionSectionIndex ? styles.inspectionGroupActive : ""}
+                          aria-label={`Go to ${section}`}
+                          aria-current={i===inspectionSectionIndex ? "step" : undefined}
+                          onClick={()=>setInspectionSectionIndex(i)}>{i+1}</button>
+                      )}</div>
+                    </div>
                     <p>
                       Choose Satisfactory, Service Soon, Service Now, or N/A for
                       each point. Record measurements and findings for concerns;
                       Service Now requires a recommendation.
                     </p>
-                    {inspectionPoints.map((point, i) => {
+                    {inspectionPoints
+                      .filter(point=>point.section===inspectionSections[inspectionSectionIndex])
+                      .map((point) => {
+                      const i=inspectionPoints.findIndex(entry=>entry.id===point.id);
                       const item: InspectionItem = record.inspectionResults[
                         point.id
                       ] ?? {
@@ -812,6 +828,14 @@ export function ServiceFlowDemo({
                         </div>
                       );
                     })}
+                    <div className={styles.inspectionGroupNav}>
+                      <button type="button" disabled={inspectionSectionIndex===0}
+                        onClick={()=>setInspectionSectionIndex(n=>Math.max(0,n-1))}>← Previous group</button>
+                      <button type="button" disabled={inspectionSectionIndex===inspectionSections.length-1}
+                        onClick={()=>setInspectionSectionIndex(n=>Math.min(inspectionSections.length-1,n+1))}>
+                        Next group →
+                      </button>
+                    </div>
                   </div>
                   <label>
                     Photo and video notes
