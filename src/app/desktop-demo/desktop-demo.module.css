@@ -38,3 +38,14 @@
 .formError{color:#a12724!important;font-weight:700}
 @media(max-width:1250px){.roSplit{grid-template-columns:1fr}.roSplit .tableWrap table{min-width:600px}}
 @media(max-width:700px){.billingBanner{grid-template-columns:1fr}.billingBanner>div{padding:16px}.roActions{justify-content:space-between}.formFields{grid-template-columns:1fr}.addForm{padding:16px}.roSplit .tableWrap table{min-width:560px}}
+
+.removeApprovalButton{display:inline-flex;align-items:center;justify-content:center;border:1px solid #bf7764;border-radius:8px;background:#fff5f2;color:#874131;font:inherit;font-size:12px;font-weight:700;min-height:40px;padding:8px 16px;cursor:pointer}
+.removeApprovalButton:hover{background:#fce6df;color:#733523}
+.removalNote{display:block;color:#855b34;font-size:11px;margin-top:8px}
+.removalPanel{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,320px);gap:16px;align-items:end;background:#fffaf4;border:1px solid #deb789;border-radius:12px;padding:24px;margin:16px 0}
+.removalPanel strong{font-size:16px}
+.removalPanel p{margin:8px 0 0;color:#72543d}
+.removalPanel label{display:block;margin:0;font-size:13px;font-weight:700}
+.removalPanel select{display:block;width:100%;min-height:40px;margin-top:8px;border:1px solid #b2bfc9;border-radius:8px;padding:8px 16px;background:white;color:#182838;font:inherit}
+.removalPanel .formButtons{grid-column:1/-1}
+@media(max-width:700px){.removalPanel{grid-template-columns:1fr;padding:16px}}
