@@ -112,3 +112,19 @@ export async function assertAssignedTechnician(tx:TenantTx,jobId:string) {
   if(assigned?.userId!==tx.actor.id)
     throw new AppError("FORBIDDEN","This repair order is not assigned to you.");
 }
+
+/** Publishing the estimate clears the assigned advisor's current handoff. */
+export async function completeAdvisorHandoff(tx:TenantTx,jobId:string){
+  const [latest]=await tx.select({data:activity.data}).from(activity)
+    .where(and(eq(activity.businessId,tx.businessId),
+      eq(activity.subjectType,"job"),eq(activity.subjectId,jobId),
+      eq(activity.kind,"job.handoff")))
+    .orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1);
+  const data=handoffData(latest?.data);
+  if(data?.stage!=="build_estimate")return;
+  await recordActivity(tx,{
+    kind:"job.handoff",subjectType:"job",subjectId:jobId,
+    summary:"Advisor published the estimate; preparation task completed",
+    data:{...data,stage:"completed"},
+  });
+}
