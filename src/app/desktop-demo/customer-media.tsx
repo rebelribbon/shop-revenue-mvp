@@ -101,6 +101,22 @@ const mediaSeeds: Record<string, SampleMedia[]> = {
       jobId: 1,
     },
     {
+      id: "flush-test",
+      label: "Brake fluid condition",
+      description: "Inspection showed moisture in the brake fluid.",
+      kind: "photo",
+      approved: true,
+      jobId: 2,
+    },
+    {
+      id: "air-filter",
+      label: "Cabin filter condition",
+      description: "Technician documented dust and debris in the filter.",
+      kind: "photo",
+      approved: true,
+      jobId: 4,
+    },
+    {
       id: "walkthrough",
       label: "Technician walkthrough",
       description: "Inspection explanation video",
