@@ -343,8 +343,7 @@ export function AdvisorCheckoutDemo({
                 <button
                   type="button"
                   className={styles.addButton}
-                  disabled={!allCompleted}
-                  disabled={!documentsReady}
+                  disabled={!allCompleted || !documentsReady}
                   onClick={makeDraft}
                 >
                   Pass QC → Prepare invoice
