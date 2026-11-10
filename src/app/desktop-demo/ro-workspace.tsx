@@ -10,6 +10,7 @@ type DemoJob = {
   price: number;
   cost: number | null;
   decision: Decision;
+  removalReason?: string;
 };
 const initialJobs: DemoJob[] = [
   {
@@ -55,6 +56,8 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
   const [error, setError] = useState("");
   const [nextId, setNextId] = useState(5);
   const [restored, setRestored] = useState(false);
+  const [removalId, setRemovalId] = useState<number | null>(null);
+  const [removalReason, setRemovalReason] = useState("Customer changed their mind");
 
   useEffect(() => {
     try {
@@ -111,6 +114,18 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
       old.map((job) => (job.id === id ? { ...job, decision } : job)),
     );
   }
+  function removeApprovedJob() {
+    if (removalId === null) return;
+    setJobs((old) =>
+      old.map((job) =>
+        job.id === removalId
+          ? { ...job, decision: "declined", removalReason }
+          : job,
+      ),
+    );
+    setRemovalId(null);
+    setRemovalReason("Customer changed their mind");
+  }
   function addJob(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const amount = Number(price);
@@ -163,7 +178,7 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
                   <th>Gross profit</th>
                 </>
               )}
-              {proposed && <th>Demo decision</th>}
+              <th>{proposed ? "Demo decision" : "Manage approval"}</th>
             </tr>
           </thead>
           <tbody>
@@ -189,6 +204,9 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
                         ? "Declined"
                         : "Awaiting approval"}
                   </span>
+                  {job.removalReason && (
+                    <small className={styles.removalNote}>Removed: {job.removalReason}</small>
+                  )}
                 </td>
                 {internal && (
                   <>
@@ -199,6 +217,20 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
                         : money(job.price - job.cost)}
                     </td>
                   </>
+                )}
+                {!proposed && (
+                  <td>
+                    <button
+                      type="button"
+                      className={styles.removeApprovalButton}
+                      onClick={() => {
+                        setRemovalId(job.id);
+                        setRemovalReason("Customer changed their mind");
+                      }}
+                    >
+                      Remove from approved
+                    </button>
+                  </td>
                 )}
                 {proposed && (
                   <td>
@@ -225,7 +257,7 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
             {!items.length && (
               <tr>
                 <td
-                  colSpan={internal ? (proposed ? 6 : 5) : proposed ? 4 : 3}
+                  colSpan={internal ? 6 : 4}
                   className={styles.emptyState}
                 >
                   {proposed
@@ -337,6 +369,41 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
           </div>
         </form>
       )}
+      {removalId !== null && (
+        <div className={styles.removalPanel} role="group" aria-label="Remove approval">
+          <div>
+            <strong>Remove this job from Approved Work?</strong>
+            <p>
+              {jobs.find((job) => job.id === removalId)?.name}
+              {" — "}it will move to Not Approved and leave the billing subtotal.
+            </p>
+          </div>
+          <label>
+            Reason
+            <select
+              value={removalReason}
+              onChange={(event) => setRemovalReason(event.target.value)}
+            >
+              <option>Customer changed their mind</option>
+              <option>Customer declined additional work</option>
+              <option>Work not going ahead</option>
+              <option>Added to approved work by mistake</option>
+            </select>
+          </label>
+          <div className={styles.formButtons}>
+            <button
+              type="button"
+              className={styles.removeApprovalButton}
+              onClick={removeApprovedJob}
+            >
+              Confirm removal (demo)
+            </button>
+            <button type="button" onClick={() => setRemovalId(null)}>
+              Keep approved
+            </button>
+          </div>
+        </div>
+      )}
       <div className={styles.billingBanner}>
         <div>
           <span className={styles.eyebrow}>APPROVED WORK · BILLING BASIS</span>
@@ -413,7 +480,7 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
         </section>
       </div>
       <div className={styles.note}>
-        Demo only. Approval buttons simulate a decision for layout review; they
+        Demo only. Approval and removal buttons simulate decisions for layout review; they
         do not capture a signature, send email, alter a live RO, or generate an
         invoice. A finalized invoice would include only approved work actually
         performed, plus applicable taxes and fees.
