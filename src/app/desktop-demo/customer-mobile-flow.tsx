@@ -93,6 +93,7 @@ export function CustomerMobileFlow({
   const decisionsMade = recommendations.filter((j) => choices[j.id]).length;
   const allDecided = decisionsMade === recommendations.length;
   const [isRevision, setIsRevision] = useState(false);
+  const [revisedIds, setRevisedIds] = useState<number[]>([]);
   const revisionWindowOpen = ["working", "qc", "invoice_draft"].includes(checkoutState.phase);
   const locked = accepted || (checkoutState.phase !== "working" && !isRevision);
   const mayReviseDecline = accepted && revisionWindowOpen;
@@ -170,6 +171,7 @@ export function CustomerMobileFlow({
     // The last confirmation remains recorded; this creates a NEW draft decision
     // that requires another explicit confirmation before entering the RO queue.
     setIsRevision(true);
+    setRevisedIds(current => [...new Set([...current,id])]);
     setAccepted(false);
     setReviewing(false);
     setConfirmed(false);
@@ -428,7 +430,7 @@ export function CustomerMobileFlow({
                     Changed your mind? Approve this work →
                   </button>
                 )}
-                {isRevision && !accepted && choices[j.id] === "approved" && (
+                {isRevision && !accepted && revisedIds.includes(j.id) && choices[j.id] === "approved" && (
                   <p className={styles.journeyRevisionNotice}>Changed from declined to approved. Confirm your updated choices below before the technician starts this work.</p>
                 )}
               </article>
