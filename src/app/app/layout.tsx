@@ -71,6 +71,7 @@ export default async function ShopLayout({
           </Link>
           <WorkspaceNavigation
             canSeeMoney={s.role === "owner"}
+            technicianOnly={s.role === "technician"}
             counts={{ "/app/tasks": tasksDue }}
           />
         </aside>
@@ -82,23 +83,23 @@ export default async function ShopLayout({
           >
             {b?.dba || b?.legalName}
           </Link>
-          <QuickFind
+          {s.role !== "technician" && <QuickFind
             automotive={isAutomotive(b?.businessType ?? "automotive")}
-          />
-          <Link className="btn new-button" href="/app/create" aria-label="New">
+          />}
+          {s.role !== "technician" && <Link className="btn new-button" href="/app/create" aria-label="New">
             <span aria-hidden="true">+</span>
             <span className="new-label" aria-hidden="true">
               New
             </span>
-          </Link>
-          <Link
+          </Link>}
+          {s.role !== "technician" && <Link
             className="btn secondary icon-button"
             href="/app/settings"
             aria-label="Settings"
             title="Settings"
           >
             <WorkspaceIcon name="settings" />
-          </Link>
+          </Link>}
         </header>
         <div className="workspace-body">
           {billing.kind === "unavailable" && (
