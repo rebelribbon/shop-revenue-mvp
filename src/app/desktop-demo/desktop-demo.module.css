@@ -69,3 +69,48 @@
 .vehicleEmpty{padding:24px;color:#627688;margin:0}
 .vehicleDetail .panelHeader h2{font-size:19px}
 @media(max-width:700px){.vehicleCard{align-items:flex-start;flex-wrap:wrap;padding:16px}.vehicleChevron{width:100%;padding-left:72px}.vehicleTop{flex-wrap:wrap}}
+
+
+/* Estimate: proposal is a view of one RO, not a separate job. */
+.estimateWorkspace{display:grid;gap:16px}
+.estimateHead{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.estimateHead h2{margin:4px 0;font-size:25px}
+.estimateHead p{margin:0;color:#657888}
+.estimateActions{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.estimateNav{display:flex;gap:8px;overflow-x:auto;border-bottom:1px solid #ccd9e3}
+.estimateNav button{padding:16px;border:0;background:transparent;color:#526a7b;font:inherit;font-weight:700;cursor:pointer;min-height:48px;white-space:nowrap}
+.estimateNav button.estimateNavSelected{border-bottom:3px solid #087857;color:#07674a}
+.estimateColumns{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:16px}
+.estimateGuide{padding:0 24px 24px}
+.estimateGuide p{padding:8px 0;border-bottom:1px solid #e9eff3}
+.estimateFooter{display:flex;justify-content:flex-end;gap:16px;align-items:center;flex-wrap:wrap;padding:24px}
+.estimateFooter button:disabled{cursor:not-allowed;opacity:.55}
+.estimateDocument{background:#fff;max-width:920px;width:100%;margin:0 auto;padding:40px;border:1px solid #cbd8df;border-radius:10px;box-shadow:0 8px 24px #172a3e12}
+.estimatePaperHead{display:flex;justify-content:space-between;gap:16px;align-items:center;padding-bottom:24px;border-bottom:1px solid #dae4eb}
+.estimatePaperHead>strong{font-size:20px;color:#1a3a4a}
+.estimatePaperHead small{font-size:11px;background:#e6f4ed;color:#215b40;padding:4px 8px;border-radius:8px}
+.estimateDocument h2{font-size:28px;margin:24px 0}
+.estimateCustomer{display:grid;grid-template-columns:1fr 1fr;gap:16px;background:#f4f8fa;padding:24px;margin-bottom:24px}
+.estimateCustomer strong{color:#506679}
+.estimateCustomer p{margin:4px 0;color:#273b49}
+.estimateInstruction{line-height:1.6;padding:16px 0}
+.estimateItem{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;border-top:1px solid #dce6ec;padding:24px 0}
+.estimateItem>div:first-child{display:grid;gap:8px;min-width:200px}
+.estimateItem strong{font-size:16px}
+.estimateItem span{font-weight:700;color:#334d5e}
+.estimateChoice{display:flex;gap:8px;flex-wrap:wrap}
+.estimateChoice button{border:1px solid #a4b8c3;background:#fff;border-radius:8px;min-width:112px;min-height:44px;padding:8px 16px;color:#294251;font:inherit;font-weight:700;cursor:pointer}
+.estimateChoice .estimateChooseYes{background:#ddf3e7;color:#175f3f;border-color:#207953}
+.estimateChoice .estimateChooseNo{background:#fdebe7;color:#823d33;border-color:#ad6256}
+.estimateChoice button:disabled{cursor:not-allowed}
+.estimateTotals{display:flex;justify-content:space-between;gap:16px;padding:24px 0;border-top:2px solid #203e4b;font-weight:700}
+.estimateTotals strong{font-size:22px}
+.estimateProgress{font-weight:700;color:#456477}
+.estimateSigner{display:grid;gap:8px;font-weight:700;margin:24px 0}
+.estimateSigner input{border:1px solid #a4b8c3;padding:12px 16px;min-height:48px;width:100%;border-radius:8px;font:inherit}
+.estimateDisclaimer{font-size:12px;color:#5b7181;background:#f3f7fa;padding:16px}
+.estimateSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:24px}
+.estimateSummary div{display:grid;gap:8px;background:#f4f8fa;padding:16px;border-radius:8px}
+.estimateSummary strong{font-size:22px}
+@media(max-width:1000px){.estimateColumns{grid-template-columns:1fr}}
+@media(max-width:700px){.estimateDocument{padding:16px}.estimateCustomer{grid-template-columns:1fr}.estimateSummary{grid-template-columns:1fr}.estimateFooter{justify-content:flex-start;padding:16px}.estimatePaperHead{flex-wrap:wrap}.estimateChoice{width:100%}.estimateChoice button{flex:1}}
