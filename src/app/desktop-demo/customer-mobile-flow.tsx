@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useDemoCheckout } from "./ro-checkout-demo";
+import { inspectionPoints, inspectionLabels, type InspectionResults, type InspectionResult } from "./inspection-checklist";
 import styles from "./desktop-demo.module.css";
 
 export type CustomerLine = {
@@ -31,23 +32,18 @@ const requestedIds: Record<string, number[]> = {
   "RO-10193": [1],
   "RO-09914": [1, 2],
 };
-const inspectionFindings: Record<
-  string,
-  { passed: string[]; checked: string[] }
-> = {
-  "RO-10482": {
-    passed: ["Exterior lighting", "Tire condition", "Windshield wipers"],
-    checked: ["Brake system", "Brake fluid", "Cabin air filter"],
-  },
-  "RO-10193": {
-    passed: ["Brake system", "Exterior lighting", "Battery test"],
-    checked: ["Engine air filter", "Tire wear and pressure"],
-  },
-  "RO-09914": {
-    passed: ["Tires", "Exterior lighting", "Fluid levels"],
-    checked: ["Battery and charging system", "Battery terminals"],
-  },
-};
+type PublishedInspectionPoint = {id:string;label:string;section:string;result:InspectionResult;notes:string;measurements:string};
+function publicInspection(results:InspectionResults): PublishedInspectionPoint[] {
+  return inspectionPoints.flatMap(point=>{
+    const item=results[point.id];
+    if(!item?.result) return [];
+    return [{
+      id:point.id,label:point.label,section:point.section,result:item.result,
+      notes:item.notes,
+      measurements:Object.entries(item.measurements??{}).filter(([,v])=>v.trim()).map(([k,v])=>`${k.toUpperCase()}: ${v}`).join(" · "),
+    }];
+  });
+}
 
 export function CustomerMobileFlow({
   roId,
@@ -69,9 +65,7 @@ export function CustomerMobileFlow({
   const [advisorExplanation, setAdvisorExplanation] = useState<string | null>(
     null,
   );
-  const [advisorInspection, setAdvisorInspection] = useState<string | null>(
-    null,
-  );
+  const [publishedInspection,setPublishedInspection] = useState<PublishedInspectionPoint[]>([]);
   const [choices, setChoices] = useState<Record<number, Choice>>({});
   const [accepted, setAccepted] = useState(false);
   const [loadedChoices, setLoadedChoices] = useState(false);
@@ -88,7 +82,10 @@ export function CustomerMobileFlow({
   const recommendations = jobs.filter(
     (j) => !requested.some((base) => base.id === j.id),
   );
-  const inspection = inspectionFindings[roId] ?? { passed: [], checked: [] };
+  const inspection = publishedInspection;
+  const serviceNow = inspection.filter(item=>item.result==="service_now");
+  const serviceSoon = inspection.filter(item=>item.result==="service_soon");
+  const satisfactory = inspection.filter(item=>item.result==="satisfactory");
   const baseTotal = requested.reduce((sum, j) => sum + j.price, 0);
   const selectedTotal = recommendations.reduce(
     (sum, j) => sum + (choices[j.id] === "approved" ? j.price : 0),
@@ -139,12 +136,15 @@ export function CustomerMobileFlow({
       const record = JSON.parse(raw) as {
         estimateSentAt?: string;
         customerExplanation?: string;
-        inspection?: string;
+        inspectionResults?: InspectionResults;
+        submittedInspectionAt?: string;
       };
       if (record.estimateSentAt && record.customerExplanation?.trim()) {
         queueMicrotask(() => {
           setAdvisorExplanation(record.customerExplanation!.trim());
-          setAdvisorInspection(record.inspection?.trim() || null);
+          if(record.submittedInspectionAt && record.inspectionResults) {
+            setPublishedInspection(publicInspection(record.inspectionResults));
+          }
         });
       }
     } catch {
@@ -287,44 +287,38 @@ export function CustomerMobileFlow({
             <div className={styles.focusedReadOnly}>
               <strong>Diagnosis from your service advisor</strong>
               <p>{advisorExplanation}</p>
-              {advisorInspection && (
-                <>
-                  <strong>Technician inspection summary</strong>
-                  <p>{advisorInspection}</p>
-                </>
-              )}
             </div>
           )}
-          <div className={styles.journeyInspectionColumns}>
-            <div className={styles.journeyInspectionGroup}>
-              <h3>
-                <span className={styles.journeyPassed}>✓</span> Checked — okay
-              </h3>
-              {inspection.passed.map((item) => (
-                <p key={item}>
-                  <span>✓</span>
-                  {item}
-                </p>
-              ))}
-              {!inspection.passed.length && (
-                <p>No inspection items recorded.</p>
-              )}
+          {inspection.length ? <>
+            <div className={styles.customerInspectionStats}>
+              <span><b>{satisfactory.length}</b> Satisfactory</span>
+              <span><b>{serviceSoon.length}</b> Service Soon</span>
+              <span><b>{serviceNow.length}</b> Service Now</span>
+              <span><b>{inspection.filter(item=>item.result==="na").length}</b> N/A</span>
             </div>
-            <div className={styles.journeyInspectionGroup}>
-              <h3>
-                <span className={styles.journeyNeeds}>!</span> Needs attention
-              </h3>
-              {inspection.checked.map((item) => (
-                <p key={item}>
-                  <span>!</span>
-                  {item}
-                </p>
-              ))}
-              {!inspection.checked.length && (
-                <p>No additional findings recorded.</p>
+            <div className={styles.customerInspectionIssues}>
+              {[...serviceNow,...serviceSoon].map(item=>
+                <div key={item.id} className={styles.customerInspectionIssue}>
+                  <strong>{item.label}</strong>
+                  <span className={item.result==="service_now" ? styles.customerServiceNow:styles.customerServiceSoon}>{inspectionLabels[item.result]}</span>
+                  <p>{item.notes}</p>
+                  {item.measurements&&<small>{item.measurements}</small>}
+                </div>
               )}
+              {!serviceNow.length && !serviceSoon.length && <p>All applicable inspected items were satisfactory.</p>}
             </div>
-          </div>
+            <details className={styles.customerInspectionAll}>
+              <summary>View all {inspection.length} inspection results</summary>
+              <div>{inspection.map(item=>
+                <div key={item.id} className={styles.customerInspectionResult}>
+                  <strong>{item.label}</strong>
+                  <span>{inspectionLabels[item.result]}</span>
+                  {item.measurements&&<small>{item.measurements}</small>}
+                  {item.notes&&<p>{item.notes}</p>}
+                </div>
+              )}</div>
+            </details>
+          </> : <p className={styles.journeyCallout}>No completed inspection has been shared for this RO yet. The advisor will make the inspection available with the estimate.</p>}
           <p className={styles.journeyCallout}>
             The items below are recommendations, not charges. You decide whether
             to approve them.
