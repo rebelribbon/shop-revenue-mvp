@@ -14,6 +14,7 @@ type EstimateRecord = {
   authorized: boolean;
   signer: string;
   signedAt?: string;
+  history?: Array<{version: number; choices: Record<string, Choice>; signer: string; signedAt: string}>;
 };
 const money = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
@@ -120,6 +121,12 @@ export function EstimateWorkspace({
     setRecord(prev => ({
       version: prev.version + 1, choices: {}, sent: false,
       authorized: false, signer: "",
+      history: [ ...(prev.history ?? []), {
+        version: prev.version,
+        choices: {...prev.choices},
+        signer: prev.signer,
+        signedAt: prev.signedAt ?? "Authorized in demo",
+      } ],
     }));
     setStep("edit");
     setError("");
@@ -200,6 +207,16 @@ export function EstimateWorkspace({
             <div><span>Not approved</span><strong>{money(declined)}</strong></div>
           </div>
           <div className={styles.tableWrap}><table><thead><tr><th>Service</th><th>Decision on this version</th><th>Price</th></tr></thead><tbody>{jobs.map(j=><tr key={j.id}><td>{j.name}</td><td>{record.choices[String(j.id)] ?? "Undecided"}</td><td>{money(j.price)}</td></tr>)}</tbody></table></div>
+          {Boolean(record.history?.length) && (
+            <div className={styles.estimateGuide}>
+              <h3>Previous authorizations (demo snapshots)</h3>
+              {record.history?.map(v => (
+                <p key={v.version}>
+                  <strong>Version {v.version}</strong> · {v.signer} · {v.signedAt} · {Object.values(v.choices).filter(x => x === "approve").length} approved lines
+                </p>
+              ))}
+            </div>
+          )}
           <div className={styles.estimateFooter}>
             <Link href={roHref} className={styles.returnButton}>← Return to RO</Link>
             {record.authorized && <button type="button" onClick={revise} className={styles.addButton}>Start new estimate version (demo)</button>}
