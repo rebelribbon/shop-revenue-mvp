@@ -103,7 +103,7 @@ const roRecords = {
     ] satisfies DemoJob[],
   },
 } as const;
-type RoId = keyof typeof roRecords;
+type RoId = string;
 const money = (value: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     value,
@@ -112,11 +112,22 @@ const money = (value: number) =>
 export function RoWorkspace({
   internal,
   roId,
+  vehicleId,
+  newTitle,
 }: {
   internal: boolean;
   roId: RoId;
+  vehicleId?: string;
+  newTitle?: string;
 }) {
-  const ro = roRecords[roId];
+  const existing = roRecords[roId as keyof typeof roRecords];
+  const ro = existing ?? {
+    title: newTitle || "New Repair Order",
+    vehicle: vehicleId === "accord"
+      ? "2018 Honda Accord · VIN ending 9134"
+      : "2021 Ford F-150 · VIN ending 4821",
+    jobs: [] as DemoJob[],
+  };
   const storageKey = `shop-revenue-desktop-demo-ro-v2:${roId}`;
   const [jobs, setJobs] = useState<DemoJob[]>(() => [...ro.jobs]);
   const [showAdd, setShowAdd] = useState(false);
