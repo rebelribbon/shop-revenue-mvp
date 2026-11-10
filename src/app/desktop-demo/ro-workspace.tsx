@@ -233,15 +233,25 @@ export function RoWorkspace({
   const approvedCosts = approved.reduce((sum, job) => sum + (job.cost ?? 0), 0);
   function preventChangesAfterInvoice() {
     try {
-      const saved = sessionStorage.getItem(`shop-revenue-desktop-demo-checkout-v1:${roId}`);
+      const saved = sessionStorage.getItem(
+        `shop-revenue-desktop-demo-checkout-v1:${roId}`,
+      );
       if (saved) {
-        const phase = (JSON.parse(saved) as {phase?:string}).phase;
-        if (phase === "invoice_ready" || phase === "paid" || phase === "delivered") {
-          setError("This RO has a finalized invoice. To change authorized work, start a documented correction or supplementary estimate, not an untracked edit.");
+        const phase = (JSON.parse(saved) as { phase?: string }).phase;
+        if (
+          phase === "invoice_ready" ||
+          phase === "paid" ||
+          phase === "delivered"
+        ) {
+          setError(
+            "This RO has a finalized invoice. To change authorized work, start a documented correction or supplementary estimate, not an untracked edit.",
+          );
           return true;
         }
       }
-    } catch { /* Session-only demo data. */ }
+    } catch {
+      /* Session-only demo data. */
+    }
     return false;
   }
   function setDecision(id: number, decision: Decision) {

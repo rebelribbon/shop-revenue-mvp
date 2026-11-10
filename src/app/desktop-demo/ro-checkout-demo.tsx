@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
-import { eligibleInvoiceLines, invoiceMatchesAuthorizedCompletedWork } from "./ro-invoice-guard";
+import {
+  eligibleInvoiceLines,
+  invoiceMatchesAuthorizedCompletedWork,
+} from "./ro-invoice-guard";
 
 export type CheckoutLine = {
   id: number;
@@ -117,7 +120,9 @@ export function AdvisorCheckoutDemo({
   const allCompleted =
     approved.length > 0 && completed.length === approved.length;
   const invoiceCurrent = invoiceMatchesAuthorizedCompletedWork(
-    state.invoiceLines, jobs, state.completed
+    state.invoiceLines,
+    jobs,
+    state.completed,
   );
   const index = phases.indexOf(state.phase);
   const log = (
@@ -140,14 +145,21 @@ export function AdvisorCheckoutDemo({
     if (!allCompleted || state.phase !== "qc") return;
     const invoiceLines = eligibleInvoiceLines(jobs, state.completed);
     if (!invoiceLines.length || invoiceLines.length !== approved.length) return;
-    log("invoice_draft", "Advisor passed QC; eligible completed work copied to the invoice draft.", {
-      qcNotes: notes,
-      invoiceLines,
-    });
+    log(
+      "invoice_draft",
+      "Advisor passed QC; eligible completed work copied to the invoice draft.",
+      {
+        qcNotes: notes,
+        invoiceLines,
+      },
+    );
   }
   function finalizeInvoice() {
     if (state.phase !== "invoice_draft" || !invoiceCurrent) return;
-    log("invoice_ready", "Advisor verified completed, authorized work and finalized the demo invoice.");
+    log(
+      "invoice_ready",
+      "Advisor verified completed, authorized work and finalized the demo invoice.",
+    );
   }
   function reset() {
     update(initialState);
@@ -312,7 +324,9 @@ export function AdvisorCheckoutDemo({
               </div>
               {!invoiceCurrent && (
                 <p className={styles.checkoutGuardError} role="alert">
-                  Approved services or prices changed after QC. Return to QC and prepare a fresh invoice. Declined, pending, or unfinished items cannot be billed.
+                  Approved services or prices changed after QC. Return to QC and
+                  prepare a fresh invoice. Declined, pending, or unfinished
+                  items cannot be billed.
                 </p>
               )}
               <div className={styles.checkoutActions}>
