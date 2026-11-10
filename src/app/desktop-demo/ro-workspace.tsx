@@ -237,16 +237,25 @@ export function RoWorkspace({
   function addInspectedRecommendation(description: string, findings: string) {
     if (preventChangesAfterInvoice()) return;
     const id = nextId;
-    setJobs(old => [...old, {
-      id, name:description,notes:findings,price:0,cost:null,
-      decision:"pending",origin:"inspection",addedInDemo:true,
-    }]);
-    setNextId(current => current + 1);
+    setJobs((old) => [
+      ...old,
+      {
+        id,
+        name: description,
+        notes: findings,
+        price: 0,
+        cost: null,
+        decision: "pending",
+        origin: "inspection",
+        addedInDemo: true,
+      },
+    ]);
+    setNextId((current) => current + 1);
     setWorkflowReady(false);
   }
-  function priceExistingJob(id:number,cost:number,price:number) {
+  function priceExistingJob(id: number, cost: number, price: number) {
     if (preventChangesAfterInvoice()) return;
-    setJobs(old => old.map(j=>j.id===id?{...j,cost,price}:j));
+    setJobs((old) => old.map((j) => (j.id === id ? { ...j, cost, price } : j)));
     setWorkflowReady(false);
   }
   function preventChangesAfterInvoice() {
@@ -526,31 +535,35 @@ export function RoWorkspace({
         </div>
         <div className={styles.roActions}>
           <span className={styles.pill}>In progress</span>
-          {(!internal || workflowStage === "authorization") && <button
-            type="button"
-            className={styles.addButton}
-            onClick={() => {
-              if (showAdd) closeEditor();
-              else setShowAdd(true);
-            }}
-            aria-expanded={showAdd}
-            aria-controls="new-demo-job"
-          >
-            + Add Work / Recommendation
-          </button>}
+          {(!internal || workflowStage === "authorization") && (
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={() => {
+                if (showAdd) closeEditor();
+                else setShowAdd(true);
+              }}
+              aria-expanded={showAdd}
+              aria-controls="new-demo-job"
+            >
+              + Add Work / Recommendation
+            </button>
+          )}
         </div>
       </div>
-      {(!internal || workflowReady) && <div className={styles.tabs}>
-        <strong>Overview</strong>
-        <a
-          href={`/desktop-demo?screen=estimate&ro=${roId}&vehicle=${vehicleId ?? "f150"}&title=${encodeURIComponent(newTitle ?? "")}`}
-        >
-          Estimate
-        </a>
-        <a href="#ro-checkout-workspace">Work</a>
-        <span>Documents</span>
-        <a href="#ro-checkout-workspace">Cashiering</a>
-      </div>}
+      {(!internal || workflowReady) && (
+        <div className={styles.tabs}>
+          <strong>Overview</strong>
+          <a
+            href={`/desktop-demo?screen=estimate&ro=${roId}&vehicle=${vehicleId ?? "f150"}&title=${encodeURIComponent(newTitle ?? "")}`}
+          >
+            Estimate
+          </a>
+          <a href="#ro-checkout-workspace">Work</a>
+          <span>Documents</span>
+          <a href="#ro-checkout-workspace">Cashiering</a>
+        </div>
+      )}
       {showAdd && (!internal || workflowStage === "authorization") && (
         <form id="new-demo-job" className={styles.addForm} onSubmit={addJob}>
           <div>
@@ -730,85 +743,98 @@ export function RoWorkspace({
           onReadyChange={setWorkflowReady}
         />
       )}
-      {internal && workflowReady && <AdvisorCheckoutDemo roId={roId} jobs={jobs} />}
-      {(!internal || workflowReady) && <div className={styles.billingBanner}>
-        <div>
-          <span className={styles.eyebrow}>APPROVED WORK · BILLING BASIS</span>
-          <strong>{money(approvedTotal)}</strong>
-          <span>
-            {approved.length} approved job{approved.length === 1 ? "" : "s"}
-          </span>
-        </div>
-        <div>
-          <span className={styles.eyebrow}>
-            NOT APPROVED · EXCLUDED FROM BILLING
-          </span>
-          <strong>{money(suggestedTotal)}</strong>
-          <span>{recommendations.length} pending or declined</span>
-        </div>
-      </div>}
-      {(!internal || workflowReady) && <div className={styles.roSplit}>
-        <section className={styles.panel} aria-label="Approved work">
-          <div className={styles.panelHeader}>
-            <div>
-              <h2>Approved Work</h2>
-              <p>
-                Only authorized jobs belong in the work queue and eventual
-                invoice.
-              </p>
-            </div>
-            <span className={styles.approvedTag}>
-              Approved · {approved.length}
-            </span>
-          </div>
-          {jobTable(approved, false)}
-          <div className={styles.sectionTotal}>
-            <span>Authorized subtotal</span>
-            <strong>{money(approvedTotal)}</strong>
-          </div>
-          {internal && (
-            <div className={styles.internalDetails}>
-              <div>
-                Internal costs:{" "}
-                <strong>
-                  {costKnown ? money(approvedCosts) : "Incomplete"}
-                </strong>
-              </div>
-              <div>
-                Gross profit:{" "}
-                <strong>
-                  {costKnown ? money(approvedTotal - approvedCosts) : "Unknown"}
-                </strong>
-              </div>
-            </div>
-          )}
-        </section>
-        <section
-          className={styles.panel}
-          aria-label="Recommendations not approved"
-        >
-          <div className={styles.panelHeader}>
-            <div>
-              <h2>Recommendations / Not Approved</h2>
-              <p>
-                Pending and declined recommendations stay visible, but are
-                excluded from the bill.
-              </p>
-            </div>
-            <span className={styles.pendingTag}>
-              {recommendations.length} excluded
-            </span>
-          </div>
-          {jobTable(recommendations, true)}
-          <div className={styles.sectionTotal}>
-            <span>Not authorized — not billable</span>
-            <strong>{money(suggestedTotal)}</strong>
-          </div>
-        </section>
-      </div>}
-      {internal && (workflowStage === "inspection" || workflowStage === "send" || workflowStage === "authorization") && (
-        <ShareMediaDemo key={roId} roId={roId} />
+      {internal && workflowReady && (
+        <AdvisorCheckoutDemo roId={roId} jobs={jobs} />
       )}
+      {(!internal || workflowReady) && (
+        <div className={styles.billingBanner}>
+          <div>
+            <span className={styles.eyebrow}>
+              APPROVED WORK · BILLING BASIS
+            </span>
+            <strong>{money(approvedTotal)}</strong>
+            <span>
+              {approved.length} approved job{approved.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <div>
+            <span className={styles.eyebrow}>
+              NOT APPROVED · EXCLUDED FROM BILLING
+            </span>
+            <strong>{money(suggestedTotal)}</strong>
+            <span>{recommendations.length} pending or declined</span>
+          </div>
+        </div>
+      )}
+      {(!internal || workflowReady) && (
+        <div className={styles.roSplit}>
+          <section className={styles.panel} aria-label="Approved work">
+            <div className={styles.panelHeader}>
+              <div>
+                <h2>Approved Work</h2>
+                <p>
+                  Only authorized jobs belong in the work queue and eventual
+                  invoice.
+                </p>
+              </div>
+              <span className={styles.approvedTag}>
+                Approved · {approved.length}
+              </span>
+            </div>
+            {jobTable(approved, false)}
+            <div className={styles.sectionTotal}>
+              <span>Authorized subtotal</span>
+              <strong>{money(approvedTotal)}</strong>
+            </div>
+            {internal && (
+              <div className={styles.internalDetails}>
+                <div>
+                  Internal costs:{" "}
+                  <strong>
+                    {costKnown ? money(approvedCosts) : "Incomplete"}
+                  </strong>
+                </div>
+                <div>
+                  Gross profit:{" "}
+                  <strong>
+                    {costKnown
+                      ? money(approvedTotal - approvedCosts)
+                      : "Unknown"}
+                  </strong>
+                </div>
+              </div>
+            )}
+          </section>
+          <section
+            className={styles.panel}
+            aria-label="Recommendations not approved"
+          >
+            <div className={styles.panelHeader}>
+              <div>
+                <h2>Recommendations / Not Approved</h2>
+                <p>
+                  Pending and declined recommendations stay visible, but are
+                  excluded from the bill.
+                </p>
+              </div>
+              <span className={styles.pendingTag}>
+                {recommendations.length} excluded
+              </span>
+            </div>
+            {jobTable(recommendations, true)}
+            <div className={styles.sectionTotal}>
+              <span>Not authorized — not billable</span>
+              <strong>{money(suggestedTotal)}</strong>
+            </div>
+          </section>
+        </div>
+      )}
+      {internal &&
+        (workflowStage === "inspection" ||
+          workflowStage === "send" ||
+          workflowStage === "authorization") && (
+          <ShareMediaDemo key={roId} roId={roId} />
+        )}
       <div className={styles.note}>
         Demo only. Approval and removal buttons simulate decisions for layout
         review; they do not capture a signature, send email, alter a live RO, or
