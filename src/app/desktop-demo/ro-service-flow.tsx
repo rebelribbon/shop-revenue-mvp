@@ -130,8 +130,6 @@ export function ServiceFlowDemo({
 }) {
   const [record, setRecord] = useState<ServiceRecord>(defaults);
   const [loaded, setLoaded] = useState(false);
-  const [newFinding, setNewFinding] = useState("");
-  const [findingNotes, setFindingNotes] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<SignatureType>("estimate");
   const [signer, setSigner] = useState("");
   const [confirmSign, setConfirmSign] = useState(false);
@@ -284,18 +282,6 @@ export function ServiceFlowDemo({
 
   const customerLink = `/desktop-demo?screen=customer-link&ro=${encodeURIComponent(roId)}`;
   const quoted = jobs.reduce((n, j) => n + j.price, 0);
-  function addFinding() {
-    const description = newFinding.trim();
-    if (!description || record.stage !== "inspection") return;
-    onAddFinding(description, findingNotes.trim());
-    save({
-      ...record,
-      findings: [...record.findings, description],
-      history: [...record.history, `Technician recorded: ${description}`],
-    });
-    setNewFinding("");
-    setFindingNotes("");
-  }
   function updateBreakdown(id: number, field: keyof Breakdown, value: string) {
     const prev = record.breakdowns[String(id)] ?? blankBreakdown();
     save({
