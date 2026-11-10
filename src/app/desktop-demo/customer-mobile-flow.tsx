@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useDemoCheckout } from "./ro-checkout-demo";
 import { CustomerDocumentSigning } from "./customer-document-signing";
-import { inspectionPoints, inspectionLabels, type InspectionResults, type InspectionResult } from "./inspection-checklist";
+import {
+  inspectionPoints,
+  inspectionLabels,
+  type InspectionResults,
+  type InspectionResult,
+} from "./inspection-checklist";
 import styles from "./desktop-demo.module.css";
 
 export type CustomerLine = {
@@ -33,16 +38,33 @@ const requestedIds: Record<string, number[]> = {
   "RO-10193": [1],
   "RO-09914": [1, 2],
 };
-type PublishedInspectionPoint = {id:string;label:string;section:string;result:InspectionResult;notes:string;measurements:string};
-function publicInspection(results:InspectionResults): PublishedInspectionPoint[] {
-  return inspectionPoints.flatMap(point=>{
-    const item=results[point.id];
-    if(!item?.result) return [];
-    return [{
-      id:point.id,label:point.label,section:point.section,result:item.result,
-      notes:item.notes,
-      measurements:Object.entries(item.measurements??{}).filter(([,v])=>v.trim()).map(([k,v])=>`${k.toUpperCase()}: ${v}`).join(" · "),
-    }];
+type PublishedInspectionPoint = {
+  id: string;
+  label: string;
+  section: string;
+  result: InspectionResult;
+  notes: string;
+  measurements: string;
+};
+function publicInspection(
+  results: InspectionResults,
+): PublishedInspectionPoint[] {
+  return inspectionPoints.flatMap((point) => {
+    const item = results[point.id];
+    if (!item?.result) return [];
+    return [
+      {
+        id: point.id,
+        label: point.label,
+        section: point.section,
+        result: item.result,
+        notes: item.notes,
+        measurements: Object.entries(item.measurements ?? {})
+          .filter(([, v]) => v.trim())
+          .map(([k, v]) => `${k.toUpperCase()}: ${v}`)
+          .join(" · "),
+      },
+    ];
   });
 }
 
@@ -66,9 +88,11 @@ export function CustomerMobileFlow({
   const [advisorExplanation, setAdvisorExplanation] = useState<string | null>(
     null,
   );
-  const [proposalReady,setProposalReady] = useState(false);
-  const [proposalChecked,setProposalChecked] = useState(false);
-  const [publishedInspection,setPublishedInspection] = useState<PublishedInspectionPoint[]>([]);
+  const [proposalReady, setProposalReady] = useState(false);
+  const [proposalChecked, setProposalChecked] = useState(false);
+  const [publishedInspection, setPublishedInspection] = useState<
+    PublishedInspectionPoint[]
+  >([]);
   const [choices, setChoices] = useState<Record<number, Choice>>({});
   const [accepted, setAccepted] = useState(false);
   const [loadedChoices, setLoadedChoices] = useState(false);
@@ -86,9 +110,13 @@ export function CustomerMobileFlow({
     (j) => !requested.some((base) => base.id === j.id),
   );
   const inspection = publishedInspection;
-  const serviceNow = inspection.filter(item=>item.result==="service_now");
-  const serviceSoon = inspection.filter(item=>item.result==="service_soon");
-  const satisfactory = inspection.filter(item=>item.result==="satisfactory");
+  const serviceNow = inspection.filter((item) => item.result === "service_now");
+  const serviceSoon = inspection.filter(
+    (item) => item.result === "service_soon",
+  );
+  const satisfactory = inspection.filter(
+    (item) => item.result === "satisfactory",
+  );
   const baseTotal = requested.reduce((sum, j) => sum + j.price, 0);
   const selectedTotal = recommendations.reduce(
     (sum, j) => sum + (choices[j.id] === "approved" ? j.price : 0),
@@ -146,14 +174,16 @@ export function CustomerMobileFlow({
         queueMicrotask(() => {
           setProposalReady(true);
           setAdvisorExplanation(record.customerExplanation!.trim());
-          if(record.submittedInspectionAt && record.inspectionResults) {
+          if (record.submittedInspectionAt && record.inspectionResults) {
             setPublishedInspection(publicInspection(record.inspectionResults));
           }
         });
       }
     } catch {
       /* Sample preview may not have advisor data in this session. */
-    } finally { queueMicrotask(()=>setProposalChecked(true)); }
+    } finally {
+      queueMicrotask(() => setProposalChecked(true));
+    }
   }, [roId]);
   useEffect(() => {
     let alive = true;
@@ -217,17 +247,34 @@ export function CustomerMobileFlow({
     setReviewing(false);
   }
 
-  if (!proposalChecked) return <main className={styles.customerJourney}><div className={styles.journeyBody}>Loading your service visit…</div></main>;
-  if (!proposalReady) return <main className={styles.customerJourney}>
-    <header className={styles.journeyHeader}><strong>◆ SHOP REVENUE</strong><span>Service update · Demo</span></header>
-    <div className={styles.journeyBody}>
-      <div className={styles.journeyCard}>
-        <h1>Estimate not yet shared</h1>
-        <p>The advisor is preparing your diagnosis, 40-point inspection report, recommendation pricing and approved media. The customer review becomes available once the estimate is marked as shared.</p>
-        <p className={styles.journeyDemoDisclaimer}>Preview only. No real customer notifications have been sent.</p>
-      </div>
-    </div>
-  </main>;
+  if (!proposalChecked)
+    return (
+      <main className={styles.customerJourney}>
+        <div className={styles.journeyBody}>Loading your service visit…</div>
+      </main>
+    );
+  if (!proposalReady)
+    return (
+      <main className={styles.customerJourney}>
+        <header className={styles.journeyHeader}>
+          <strong>◆ SHOP REVENUE</strong>
+          <span>Service update · Demo</span>
+        </header>
+        <div className={styles.journeyBody}>
+          <div className={styles.journeyCard}>
+            <h1>Estimate not yet shared</h1>
+            <p>
+              The advisor is preparing your diagnosis, 40-point inspection
+              report, recommendation pricing and approved media. The customer
+              review becomes available once the estimate is marked as shared.
+            </p>
+            <p className={styles.journeyDemoDisclaimer}>
+              Preview only. No real customer notifications have been sent.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
   return (
     <main id="main-content" className={styles.customerJourney}>
       <header className={styles.journeyHeader}>
@@ -304,36 +351,71 @@ export function CustomerMobileFlow({
               <p>{advisorExplanation}</p>
             </div>
           )}
-          {inspection.length ? <>
-            <div className={styles.customerInspectionStats}>
-              <span><b>{satisfactory.length}</b> Satisfactory</span>
-              <span><b>{serviceSoon.length}</b> Service Soon</span>
-              <span><b>{serviceNow.length}</b> Service Now</span>
-              <span><b>{inspection.filter(item=>item.result==="na").length}</b> N/A</span>
-            </div>
-            <div className={styles.customerInspectionIssues}>
-              {[...serviceNow,...serviceSoon].map(item=>
-                <div key={item.id} className={styles.customerInspectionIssue}>
-                  <strong>{item.label}</strong>
-                  <span className={item.result==="service_now" ? styles.customerServiceNow:styles.customerServiceSoon}>{inspectionLabels[item.result]}</span>
-                  <p>{item.notes}</p>
-                  {item.measurements&&<small>{item.measurements}</small>}
+          {inspection.length ? (
+            <>
+              <div className={styles.customerInspectionStats}>
+                <span>
+                  <b>{satisfactory.length}</b> Satisfactory
+                </span>
+                <span>
+                  <b>{serviceSoon.length}</b> Service Soon
+                </span>
+                <span>
+                  <b>{serviceNow.length}</b> Service Now
+                </span>
+                <span>
+                  <b>
+                    {inspection.filter((item) => item.result === "na").length}
+                  </b>{" "}
+                  N/A
+                </span>
+              </div>
+              <div className={styles.customerInspectionIssues}>
+                {[...serviceNow, ...serviceSoon].map((item) => (
+                  <div key={item.id} className={styles.customerInspectionIssue}>
+                    <strong>{item.label}</strong>
+                    <span
+                      className={
+                        item.result === "service_now"
+                          ? styles.customerServiceNow
+                          : styles.customerServiceSoon
+                      }
+                    >
+                      {inspectionLabels[item.result]}
+                    </span>
+                    <p>{item.notes}</p>
+                    {item.measurements && <small>{item.measurements}</small>}
+                  </div>
+                ))}
+                {!serviceNow.length && !serviceSoon.length && (
+                  <p>All applicable inspected items were satisfactory.</p>
+                )}
+              </div>
+              <details className={styles.customerInspectionAll}>
+                <summary>
+                  View all {inspection.length} inspection results
+                </summary>
+                <div>
+                  {inspection.map((item) => (
+                    <div
+                      key={item.id}
+                      className={styles.customerInspectionResult}
+                    >
+                      <strong>{item.label}</strong>
+                      <span>{inspectionLabels[item.result]}</span>
+                      {item.measurements && <small>{item.measurements}</small>}
+                      {item.notes && <p>{item.notes}</p>}
+                    </div>
+                  ))}
                 </div>
-              )}
-              {!serviceNow.length && !serviceSoon.length && <p>All applicable inspected items were satisfactory.</p>}
-            </div>
-            <details className={styles.customerInspectionAll}>
-              <summary>View all {inspection.length} inspection results</summary>
-              <div>{inspection.map(item=>
-                <div key={item.id} className={styles.customerInspectionResult}>
-                  <strong>{item.label}</strong>
-                  <span>{inspectionLabels[item.result]}</span>
-                  {item.measurements&&<small>{item.measurements}</small>}
-                  {item.notes&&<p>{item.notes}</p>}
-                </div>
-              )}</div>
-            </details>
-          </> : <p className={styles.journeyCallout}>No completed inspection has been shared for this RO yet. The advisor will make the inspection available with the estimate.</p>}
+              </details>
+            </>
+          ) : (
+            <p className={styles.journeyCallout}>
+              No completed inspection has been shared for this RO yet. The
+              advisor will make the inspection available with the estimate.
+            </p>
+          )}
           <p className={styles.journeyCallout}>
             The items below are recommendations, not charges. You decide whether
             to approve them.
@@ -616,13 +698,15 @@ export function CustomerMobileFlow({
               )}
             </div>
           )}
-          {accepted && <CustomerDocumentSigning
-            roId={roId}
-            jobs={jobs.map(job=>({
-              ...job,
-              decision: choices[job.id] ?? job.decision,
-            }))}
-          />}
+          {accepted && (
+            <CustomerDocumentSigning
+              roId={roId}
+              jobs={jobs.map((job) => ({
+                ...job,
+                decision: choices[job.id] ?? job.decision,
+              }))}
+            />
+          )}
           <div className={styles.journeyAfter}>
             <h3>What happens next?</h3>
             <p>

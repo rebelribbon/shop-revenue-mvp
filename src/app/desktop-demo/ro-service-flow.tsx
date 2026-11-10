@@ -29,7 +29,9 @@ export type ServiceLine = {
 };
 export type Stage =
   "intake" | "assignment" | "inspection" | "pricing" | "send" | "authorization";
-const inspectionSections = [...new Set(inspectionPoints.map(item=>item.section))];
+const inspectionSections = [
+  ...new Set(inspectionPoints.map((item) => item.section)),
+];
 const stages: { id: Stage; title: string; owner: string }[] = [
   { id: "intake", title: "Advisor Intake", owner: "Service advisor" },
   { id: "assignment", title: "Assign Technician", owner: "Service advisor" },
@@ -147,7 +149,7 @@ export function ServiceFlowDemo({
   const [privacyReviewed, setPrivacyReviewed] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
-  const [inspectionSectionIndex,setInspectionSectionIndex] = useState(0);
+  const [inspectionSectionIndex, setInspectionSectionIndex] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -655,15 +657,33 @@ export function ServiceFlowDemo({
                       </strong>
                     </div>
                     <div className={styles.inspectionGroupProgress}>
-                      <span>SECTION {inspectionSectionIndex+1} OF {inspectionSections.length}</span>
-                      <strong>{inspectionSections[inspectionSectionIndex]}</strong>
-                      <div>{inspectionSections.map((section,i)=>
-                        <button type="button" key={section}
-                          className={i===inspectionSectionIndex ? styles.inspectionGroupActive : ""}
-                          aria-label={`Go to ${section}`}
-                          aria-current={i===inspectionSectionIndex ? "step" : undefined}
-                          onClick={()=>setInspectionSectionIndex(i)}>{i+1}</button>
-                      )}</div>
+                      <span>
+                        SECTION {inspectionSectionIndex + 1} OF{" "}
+                        {inspectionSections.length}
+                      </span>
+                      <strong>
+                        {inspectionSections[inspectionSectionIndex]}
+                      </strong>
+                      <div>
+                        {inspectionSections.map((section, i) => (
+                          <button
+                            type="button"
+                            key={section}
+                            className={
+                              i === inspectionSectionIndex
+                                ? styles.inspectionGroupActive
+                                : ""
+                            }
+                            aria-label={`Go to ${section}`}
+                            aria-current={
+                              i === inspectionSectionIndex ? "step" : undefined
+                            }
+                            onClick={() => setInspectionSectionIndex(i)}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <p>
                       Choose Satisfactory, Service Soon, Service Now, or N/A for
@@ -671,116 +691,154 @@ export function ServiceFlowDemo({
                       Service Now requires a recommendation.
                     </p>
                     {inspectionPoints
-                      .filter(point=>point.section===inspectionSections[inspectionSectionIndex])
+                      .filter(
+                        (point) =>
+                          point.section ===
+                          inspectionSections[inspectionSectionIndex],
+                      )
                       .map((point) => {
-                      const i=inspectionPoints.findIndex(entry=>entry.id===point.id);
-                      const item: InspectionItem = record.inspectionResults[
-                        point.id
-                      ] ?? {
-                        notes: "",
-                        recommendedWork: "",
-                      };
-                      const lastSection =
-                        i === 0 ? null : inspectionPoints[i - 1].section;
-                      return (
-                        <div className={styles.inspectionItem} key={point.id}>
-                          {point.section !== lastSection && (
-                            <div className={styles.inspectionCategory}>
-                              {point.section}
-                            </div>
-                          )}
-                          <strong>
-                            {i + 1}. {point.label}
-                          </strong>
-                          {point.hint && (
-                            <p className={styles.inspectionHint}>
-                              {point.hint}
-                            </p>
-                          )}
-                          <div
-                            className={styles.inspectionStatusButtons}
-                            role="group"
-                            aria-label={`Inspection status: ${point.label}`}
-                          >
-                            {(
-                              [
-                                ["satisfactory", "● Satisfactory"],
-                                ["service_soon", "▲ Service Soon"],
-                                ["service_now", "⬟ Service Now"],
-                                ["na", "N/A"],
-                              ] as const
-                            ).map(([value, label]) => (
-                              <button
-                                type="button"
-                                key={value}
-                                aria-pressed={item.result === value}
-                                className={
-                                  item.result === value
-                                    ? styles.inspectionSelected
-                                    : ""
-                                }
-                                onClick={() =>
-                                  updateInspectionPoint(
-                                    point.id,
-                                    "result",
-                                    value as InspectionResult,
-                                  )
-                                }
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                          {(point.id === "tire_pressure" ||
-                            point.id === "tire_tread") &&
-                            item.result &&
-                            item.result !== "na" && (
-                              <div className={styles.inspectionTireReadings}>
-                                <strong>
-                                  {point.id === "tire_pressure"
-                                    ? "Tire pressure (PSI)"
-                                    : "Tread depth (32nds)"}
-                                </strong>
-                                <div>
-                                  {(
-                                    ["lf", "rf", "lr", "rr", "spare"] as const
-                                  ).map((location) => (
-                                    <label key={location}>
-                                      {location.toUpperCase()}
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        step={
-                                          point.id === "tire_pressure"
-                                            ? "1"
-                                            : "0.5"
-                                        }
-                                        inputMode="decimal"
-                                        value={
-                                          item.measurements?.[location] ?? ""
-                                        }
-                                        onChange={(e) =>
-                                          updateTireReading(
-                                            point.id as
-                                              "tire_pressure" | "tire_tread",
-                                            location,
-                                            e.target.value,
-                                          )
-                                        }
-                                        placeholder="—"
-                                      />
-                                    </label>
-                                  ))}
-                                </div>
+                        const i = inspectionPoints.findIndex(
+                          (entry) => entry.id === point.id,
+                        );
+                        const item: InspectionItem = record.inspectionResults[
+                          point.id
+                        ] ?? {
+                          notes: "",
+                          recommendedWork: "",
+                        };
+                        const lastSection =
+                          i === 0 ? null : inspectionPoints[i - 1].section;
+                        return (
+                          <div className={styles.inspectionItem} key={point.id}>
+                            {point.section !== lastSection && (
+                              <div className={styles.inspectionCategory}>
+                                {point.section}
                               </div>
                             )}
-                          {(item.result === "service_soon" ||
-                            item.result === "service_now") && (
-                            <>
+                            <strong>
+                              {i + 1}. {point.label}
+                            </strong>
+                            {point.hint && (
+                              <p className={styles.inspectionHint}>
+                                {point.hint}
+                              </p>
+                            )}
+                            <div
+                              className={styles.inspectionStatusButtons}
+                              role="group"
+                              aria-label={`Inspection status: ${point.label}`}
+                            >
+                              {(
+                                [
+                                  ["satisfactory", "● Satisfactory"],
+                                  ["service_soon", "▲ Service Soon"],
+                                  ["service_now", "⬟ Service Now"],
+                                  ["na", "N/A"],
+                                ] as const
+                              ).map(([value, label]) => (
+                                <button
+                                  type="button"
+                                  key={value}
+                                  aria-pressed={item.result === value}
+                                  className={
+                                    item.result === value
+                                      ? styles.inspectionSelected
+                                      : ""
+                                  }
+                                  onClick={() =>
+                                    updateInspectionPoint(
+                                      point.id,
+                                      "result",
+                                      value as InspectionResult,
+                                    )
+                                  }
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            {(point.id === "tire_pressure" ||
+                              point.id === "tire_tread") &&
+                              item.result &&
+                              item.result !== "na" && (
+                                <div className={styles.inspectionTireReadings}>
+                                  <strong>
+                                    {point.id === "tire_pressure"
+                                      ? "Tire pressure (PSI)"
+                                      : "Tread depth (32nds)"}
+                                  </strong>
+                                  <div>
+                                    {(
+                                      ["lf", "rf", "lr", "rr", "spare"] as const
+                                    ).map((location) => (
+                                      <label key={location}>
+                                        {location.toUpperCase()}
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          step={
+                                            point.id === "tire_pressure"
+                                              ? "1"
+                                              : "0.5"
+                                          }
+                                          inputMode="decimal"
+                                          value={
+                                            item.measurements?.[location] ?? ""
+                                          }
+                                          onChange={(e) =>
+                                            updateTireReading(
+                                              point.id as
+                                                "tire_pressure" | "tire_tread",
+                                              location,
+                                              e.target.value,
+                                            )
+                                          }
+                                          placeholder="—"
+                                        />
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            {(item.result === "service_soon" ||
+                              item.result === "service_now") && (
+                              <>
+                                <label>
+                                  What did you find?
+                                  <textarea
+                                    rows={2}
+                                    value={item.notes}
+                                    onChange={(e) =>
+                                      updateInspectionPoint(
+                                        point.id,
+                                        "notes",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Measurements, condition, urgency…"
+                                  />
+                                </label>
+                                <label>
+                                  Recommended work (optional for Service Soon,
+                                  required for Service Now)
+                                  <input
+                                    value={item.recommendedWork}
+                                    onChange={(e) =>
+                                      updateInspectionPoint(
+                                        point.id,
+                                        "recommendedWork",
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="e.g. Replace front brake pads and rotors"
+                                  />
+                                </label>
+                              </>
+                            )}
+                            {item.result === "satisfactory" && (
                               <label>
-                                What did you find?
-                                <textarea
-                                  rows={2}
+                                Notes (optional)
+                                <input
                                   value={item.notes}
                                   onChange={(e) =>
                                     updateInspectionPoint(
@@ -789,50 +847,35 @@ export function ServiceFlowDemo({
                                       e.target.value,
                                     )
                                   }
-                                  placeholder="Measurements, condition, urgency…"
+                                  placeholder="Measurements or comments"
                                 />
                               </label>
-                              <label>
-                                Recommended work (optional for Service Soon,
-                                required for Service Now)
-                                <input
-                                  value={item.recommendedWork}
-                                  onChange={(e) =>
-                                    updateInspectionPoint(
-                                      point.id,
-                                      "recommendedWork",
-                                      e.target.value,
-                                    )
-                                  }
-                                  placeholder="e.g. Replace front brake pads and rotors"
-                                />
-                              </label>
-                            </>
-                          )}
-                          {item.result === "satisfactory" && (
-                            <label>
-                              Notes (optional)
-                              <input
-                                value={item.notes}
-                                onChange={(e) =>
-                                  updateInspectionPoint(
-                                    point.id,
-                                    "notes",
-                                    e.target.value,
-                                  )
-                                }
-                                placeholder="Measurements or comments"
-                              />
-                            </label>
-                          )}
-                        </div>
-                      );
-                    })}
+                            )}
+                          </div>
+                        );
+                      })}
                     <div className={styles.inspectionGroupNav}>
-                      <button type="button" disabled={inspectionSectionIndex===0}
-                        onClick={()=>setInspectionSectionIndex(n=>Math.max(0,n-1))}>← Previous group</button>
-                      <button type="button" disabled={inspectionSectionIndex===inspectionSections.length-1}
-                        onClick={()=>setInspectionSectionIndex(n=>Math.min(inspectionSections.length-1,n+1))}>
+                      <button
+                        type="button"
+                        disabled={inspectionSectionIndex === 0}
+                        onClick={() =>
+                          setInspectionSectionIndex((n) => Math.max(0, n - 1))
+                        }
+                      >
+                        ← Previous group
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          inspectionSectionIndex ===
+                          inspectionSections.length - 1
+                        }
+                        onClick={() =>
+                          setInspectionSectionIndex((n) =>
+                            Math.min(inspectionSections.length - 1, n + 1),
+                          )
+                        }
+                      >
                         Next group →
                       </button>
                     </div>

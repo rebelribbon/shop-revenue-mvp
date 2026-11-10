@@ -745,8 +745,8 @@ export function RoWorkspace({
           stage={workflowStage}
           authorized={workflowReady}
           approved={approved.length}
-          pending={jobs.filter(job => job.decision==="pending").length}
-          declined={jobs.filter(job => job.decision==="declined").length}
+          pending={jobs.filter((job) => job.decision === "pending").length}
+          declined={jobs.filter((job) => job.decision === "declined").length}
         />
       )}
       {internal && (
@@ -765,90 +765,90 @@ export function RoWorkspace({
       {(!internal || workflowReady) && (
         <details className={styles.roExtraDetails}>
           <summary>RO work details, approvals and pricing</summary>
-                {true && (
-        <div className={styles.billingBanner}>
-          <div>
-            <span className={styles.eyebrow}>
-              APPROVED WORK · BILLING BASIS
-            </span>
-            <strong>{money(approvedTotal)}</strong>
-            <span>
-              {approved.length} approved job{approved.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div>
-            <span className={styles.eyebrow}>
-              NOT APPROVED · EXCLUDED FROM BILLING
-            </span>
-            <strong>{money(suggestedTotal)}</strong>
-            <span>{recommendations.length} pending or declined</span>
-          </div>
-        </div>
-      )}
-      {true && (
-        <div className={styles.roSplit}>
-          <section className={styles.panel} aria-label="Approved work">
-            <div className={styles.panelHeader}>
+          {true && (
+            <div className={styles.billingBanner}>
               <div>
-                <h2>Approved Work</h2>
-                <p>
-                  Only authorized jobs belong in the work queue and eventual
-                  invoice.
-                </p>
+                <span className={styles.eyebrow}>
+                  APPROVED WORK · BILLING BASIS
+                </span>
+                <strong>{money(approvedTotal)}</strong>
+                <span>
+                  {approved.length} approved job
+                  {approved.length === 1 ? "" : "s"}
+                </span>
               </div>
-              <span className={styles.approvedTag}>
-                Approved · {approved.length}
-              </span>
-            </div>
-            {jobTable(approved, false)}
-            <div className={styles.sectionTotal}>
-              <span>Authorized subtotal</span>
-              <strong>{money(approvedTotal)}</strong>
-            </div>
-            {internal && (
-              <div className={styles.internalDetails}>
-                <div>
-                  Internal costs:{" "}
-                  <strong>
-                    {costKnown ? money(approvedCosts) : "Incomplete"}
-                  </strong>
-                </div>
-                <div>
-                  Gross profit:{" "}
-                  <strong>
-                    {costKnown
-                      ? money(approvedTotal - approvedCosts)
-                      : "Unknown"}
-                  </strong>
-                </div>
-              </div>
-            )}
-          </section>
-          <section
-            className={styles.panel}
-            aria-label="Recommendations not approved"
-          >
-            <div className={styles.panelHeader}>
               <div>
-                <h2>Recommendations / Not Approved</h2>
-                <p>
-                  Pending and declined recommendations stay visible, but are
-                  excluded from the bill.
-                </p>
+                <span className={styles.eyebrow}>
+                  NOT APPROVED · EXCLUDED FROM BILLING
+                </span>
+                <strong>{money(suggestedTotal)}</strong>
+                <span>{recommendations.length} pending or declined</span>
               </div>
-              <span className={styles.pendingTag}>
-                {recommendations.length} excluded
-              </span>
             </div>
-            {jobTable(recommendations, true)}
-            <div className={styles.sectionTotal}>
-              <span>Not authorized — not billable</span>
-              <strong>{money(suggestedTotal)}</strong>
+          )}
+          {true && (
+            <div className={styles.roSplit}>
+              <section className={styles.panel} aria-label="Approved work">
+                <div className={styles.panelHeader}>
+                  <div>
+                    <h2>Approved Work</h2>
+                    <p>
+                      Only authorized jobs belong in the work queue and eventual
+                      invoice.
+                    </p>
+                  </div>
+                  <span className={styles.approvedTag}>
+                    Approved · {approved.length}
+                  </span>
+                </div>
+                {jobTable(approved, false)}
+                <div className={styles.sectionTotal}>
+                  <span>Authorized subtotal</span>
+                  <strong>{money(approvedTotal)}</strong>
+                </div>
+                {internal && (
+                  <div className={styles.internalDetails}>
+                    <div>
+                      Internal costs:{" "}
+                      <strong>
+                        {costKnown ? money(approvedCosts) : "Incomplete"}
+                      </strong>
+                    </div>
+                    <div>
+                      Gross profit:{" "}
+                      <strong>
+                        {costKnown
+                          ? money(approvedTotal - approvedCosts)
+                          : "Unknown"}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+              </section>
+              <section
+                className={styles.panel}
+                aria-label="Recommendations not approved"
+              >
+                <div className={styles.panelHeader}>
+                  <div>
+                    <h2>Recommendations / Not Approved</h2>
+                    <p>
+                      Pending and declined recommendations stay visible, but are
+                      excluded from the bill.
+                    </p>
+                  </div>
+                  <span className={styles.pendingTag}>
+                    {recommendations.length} excluded
+                  </span>
+                </div>
+                {jobTable(recommendations, true)}
+                <div className={styles.sectionTotal}>
+                  <span>Not authorized — not billable</span>
+                  <strong>{money(suggestedTotal)}</strong>
+                </div>
+              </section>
             </div>
-          </section>
-        </div>
-      )}
-
+          )}
         </details>
       )}
       {internal &&
