@@ -284,11 +284,20 @@ export function ServiceFlowDemo({
     location: "lf" | "rf" | "lr" | "rr" | "spare",
     value: string,
   ) {
-    const prior=record.inspectionResults[id] ?? {notes:"",recommendedWork:""};
-    save({...record,inspectionResults:{
-      ...record.inspectionResults,
-      [id]:{...prior,measurements:{...prior.measurements,[location]:value}}
-    }});
+    const prior = record.inspectionResults[id] ?? {
+      notes: "",
+      recommendedWork: "",
+    };
+    save({
+      ...record,
+      inspectionResults: {
+        ...record.inspectionResults,
+        [id]: {
+          ...prior,
+          measurements: { ...prior.measurements, [location]: value },
+        },
+      },
+    });
   }
   function submitInspection() {
     if (
@@ -322,7 +331,17 @@ export function ServiceFlowDemo({
       inspection: inspectionPoints
         .map((point) => {
           const item = record.inspectionResults[point.id];
-          return `${point.label}: ${item?.result ? inspectionLabels[item.result] : "Not checked"}${item?.measurements ? " — " + Object.entries(item.measurements).filter(([,value])=>value).map(([position,value])=>`${position.toUpperCase()} ${value}`).join(", ") : ""}${item?.notes ? " — " + item.notes : ""}`;
+          return `${point.label}: ${item?.result ? inspectionLabels[item.result] : "Not checked"}${
+            item?.measurements
+              ? " — " +
+                Object.entries(item.measurements)
+                  .filter(([, value]) => value)
+                  .map(
+                    ([position, value]) => `${position.toUpperCase()} ${value}`,
+                  )
+                  .join(", ")
+              : ""
+          }${item?.notes ? " — " + item.notes : ""}`;
         })
         .join("\n"),
       handoffs: [...record.handoffs, handoff],
@@ -639,7 +658,9 @@ export function ServiceFlowDemo({
                       Service Now requires a recommendation.
                     </p>
                     {inspectionPoints.map((point, i) => {
-                      const item: InspectionItem = record.inspectionResults[point.id] ?? {
+                      const item: InspectionItem = record.inspectionResults[
+                        point.id
+                      ] ?? {
                         notes: "",
                         recommendedWork: "",
                       };
@@ -694,23 +715,49 @@ export function ServiceFlowDemo({
                               </button>
                             ))}
                           </div>
-                          {(point.id === "tire_pressure" || point.id === "tire_tread") && item.result && item.result !== "na" && (
-                            <div className={styles.inspectionTireReadings}>
-                              <strong>{point.id === "tire_pressure" ? "Tire pressure (PSI)" : "Tread depth (32nds)"}</strong>
-                              <div>
-                                {(["lf","rf","lr","rr","spare"] as const).map(location=>(
-                                  <label key={location}>
-                                    {location.toUpperCase()}
-                                    <input type="number" min="0" step={point.id === "tire_pressure" ? "1" : "0.5"}
-                                      inputMode="decimal"
-                                      value={item.measurements?.[location] ?? ""}
-                                      onChange={e=>updateTireReading(point.id as "tire_pressure" | "tire_tread",location,e.target.value)}
-                                      placeholder="—" />
-                                  </label>
-                                ))}
+                          {(point.id === "tire_pressure" ||
+                            point.id === "tire_tread") &&
+                            item.result &&
+                            item.result !== "na" && (
+                              <div className={styles.inspectionTireReadings}>
+                                <strong>
+                                  {point.id === "tire_pressure"
+                                    ? "Tire pressure (PSI)"
+                                    : "Tread depth (32nds)"}
+                                </strong>
+                                <div>
+                                  {(
+                                    ["lf", "rf", "lr", "rr", "spare"] as const
+                                  ).map((location) => (
+                                    <label key={location}>
+                                      {location.toUpperCase()}
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step={
+                                          point.id === "tire_pressure"
+                                            ? "1"
+                                            : "0.5"
+                                        }
+                                        inputMode="decimal"
+                                        value={
+                                          item.measurements?.[location] ?? ""
+                                        }
+                                        onChange={(e) =>
+                                          updateTireReading(
+                                            point.id as
+                                              "tire_pressure" | "tire_tread",
+                                            location,
+                                            e.target.value,
+                                          )
+                                        }
+                                        placeholder="—"
+                                      />
+                                    </label>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                           {(item.result === "service_soon" ||
                             item.result === "service_now") && (
                             <>
