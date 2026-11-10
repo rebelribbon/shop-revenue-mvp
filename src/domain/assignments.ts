@@ -7,6 +7,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { currentMemberRole } from "./membership";
 import { getJob } from "./jobs";
 import { audit, type RequestMeta } from "./records";
+import { notifyTechnicianAssigned } from "./job-handoffs";
 
 export type Tech = { userId: string; name: string };
 
@@ -25,6 +26,7 @@ export async function listTechs(tx: TenantTx): Promise<Tech[]> {
       and(
         eq(membership.businessId, tx.businessId),
         eq(membership.status, "active"),
+        eq(membership.role, "technician"),
         isNotNull(membership.userId),
       ),
     )
@@ -80,6 +82,11 @@ export async function assignJob(
       target: [jobAssignment.businessId, jobAssignment.jobId],
       set: { userId: input.userId },
     });
+  // The assignment and targeted handoff are committed atomically. Reassignment
+  // creates a newer handoff, invalidating the former technician's inbox item.
+  if (input.userId && tx.actor.type === "user" && tx.actor.id) {
+    await notifyTechnicianAssigned(tx, input.jobId, input.userId, tx.actor.id);
+  }
   await audit(tx, meta, {
     action: "job.assigned",
     targetType: "job",
