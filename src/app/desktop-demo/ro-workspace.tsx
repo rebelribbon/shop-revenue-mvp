@@ -5,6 +5,7 @@ import styles from "./desktop-demo.module.css";
 import { ShareMediaDemo } from "./customer-media";
 import { AdvisorCheckoutDemo } from "./ro-checkout-demo";
 import { ServiceFlowDemo, type Stage } from "./ro-service-flow";
+import { RoStageOverview } from "./ro-stage-overview";
 
 export type Decision = "approved" | "pending" | "declined";
 export type DemoJob = {
@@ -555,7 +556,7 @@ export function RoWorkspace({
           )}
         </div>
       </div>
-      {(!internal || workflowReady) && (
+      {!internal && (
         <div className={styles.tabs}>
           <strong>Overview</strong>
           <a
@@ -738,6 +739,16 @@ export function RoWorkspace({
         </div>
       )}
       {internal && (
+        <RoStageOverview
+          roId={roId}
+          stage={workflowStage}
+          authorized={workflowReady}
+          approved={approved.length}
+          pending={jobs.filter(job => job.decision==="pending").length}
+          declined={jobs.filter(job => job.decision==="declined").length}
+        />
+      )}
+      {internal && (
         <ServiceFlowDemo
           roId={roId}
           jobs={jobs}
@@ -751,6 +762,9 @@ export function RoWorkspace({
         <AdvisorCheckoutDemo roId={roId} jobs={jobs} />
       )}
       {(!internal || workflowReady) && (
+        <details className={styles.roExtraDetails}>
+          <summary>RO work details, approvals and pricing</summary>
+                {true && (
         <div className={styles.billingBanner}>
           <div>
             <span className={styles.eyebrow}>
@@ -770,7 +784,7 @@ export function RoWorkspace({
           </div>
         </div>
       )}
-      {(!internal || workflowReady) && (
+      {true && (
         <div className={styles.roSplit}>
           <section className={styles.panel} aria-label="Approved work">
             <div className={styles.panelHeader}>
@@ -832,6 +846,9 @@ export function RoWorkspace({
             </div>
           </section>
         </div>
+      )}
+
+        </details>
       )}
       {internal &&
         (workflowStage === "inspection" ||
