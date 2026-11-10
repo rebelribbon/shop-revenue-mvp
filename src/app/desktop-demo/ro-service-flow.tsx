@@ -266,7 +266,11 @@ export function ServiceFlowDemo({
       recommendedWork: "",
     };
     const next = { ...before, [field]: value };
-    if (field === "result" && value !== "service_soon" && value !== "service_now") {
+    if (
+      field === "result" &&
+      value !== "service_soon" &&
+      value !== "service_now"
+    ) {
       next.recommendedWork = "";
     }
     save({
@@ -618,7 +622,9 @@ export function ServiceFlowDemo({
                       </strong>
                     </div>
                     <p>
-                      Choose Satisfactory, Service Soon, Service Now, or N/A for each point. Record measurements and findings for concerns; Service Now requires a recommendation.
+                      Choose Satisfactory, Service Soon, Service Now, or N/A for
+                      each point. Record measurements and findings for concerns;
+                      Service Now requires a recommendation.
                     </p>
                     {inspectionPoints.map((point, i) => {
                       const item = record.inspectionResults[point.id] ?? {
@@ -634,8 +640,14 @@ export function ServiceFlowDemo({
                               {point.section}
                             </div>
                           )}
-                          <strong>{i + 1}. {point.label}</strong>
-                          {point.hint && <p className={styles.inspectionHint}>{point.hint}</p>}
+                          <strong>
+                            {i + 1}. {point.label}
+                          </strong>
+                          {point.hint && (
+                            <p className={styles.inspectionHint}>
+                              {point.hint}
+                            </p>
+                          )}
                           <div
                             className={styles.inspectionStatusButtons}
                             role="group"
@@ -689,7 +701,8 @@ export function ServiceFlowDemo({
                                 />
                               </label>
                               <label>
-                                Recommended work (optional for Service Soon, required for Service Now)
+                                Recommended work (optional for Service Soon,
+                                required for Service Now)
                                 <input
                                   value={item.recommendedWork}
                                   onChange={(e) =>
