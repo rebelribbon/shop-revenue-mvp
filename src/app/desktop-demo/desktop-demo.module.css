@@ -443,3 +443,8 @@
 .inspectionItem>label{display:grid;gap:7px;font-size:12px;font-weight:800}
 .inspectionItem>label input,.inspectionItem>label textarea{background:white;border:1px solid #abc4cd;border-radius:8px;width:100%;padding:12px;font:inherit;min-height:44px}
 @media(max-width:400px){.inspectionChecklistHeader{padding:12px}.inspectionItem{padding:12px}.inspectionStatusButtons{gap:5px}.inspectionStatusButtons button{font-size:11px}}
+
+/* Four equal, touch-friendly MPI condition choices. */
+.inspectionStatusButtons{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.inspectionStatusButtons button{min-height:48px;padding:8px 3px;overflow-wrap:anywhere}
+@media(max-width:400px){.inspectionStatusButtons button{font-size:10px}}
