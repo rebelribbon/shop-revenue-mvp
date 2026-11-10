@@ -32,7 +32,8 @@ export const saveInspectionAction = defineShopAction({
 
 export const addInspectionToJobAction = defineShopAction({
   name: "addInspectionToJob",
-  technicianAccess: requireAssignedJob,
+  // Pricing/estimate editing belongs to the advisor, never the technician.
+  // No technicianAccess grants a server-side FORBIDDEN response to that role.
   input: z.object({ jobId: z.uuid() }),
   run: ({ tx, meta }, i) => addInspectionToJob(tx, meta, i.jobId),
   persist: (r) => ({
