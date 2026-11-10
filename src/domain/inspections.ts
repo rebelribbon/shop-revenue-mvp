@@ -16,8 +16,12 @@ import { notifyAdvisorInspectionComplete } from "./job-handoffs";
 const itemSchema = z.object({
   key: z.string().min(1).max(60),
   label: z.string().trim().min(1).max(120),
-  status: z.enum(["good", "watch", "fix", "unchecked"]),
+  status: z.enum(["good", "watch", "fix", "na", "unchecked"]),
   note: z.string().max(1000).default(""),
+  recommendedWork: z.string().max(200).default(""),
+  section: z.string().max(100).optional(),
+  hint: z.string().max(300).optional(),
+  measurements: z.record(z.enum(["lf","rf","lr","rr","spare"]),z.string().max(20)).optional(),
   hoursHundredths: z.number().int().min(0).max(100000).default(100),
   addedToJob: z.boolean().default(false),
 });
@@ -67,6 +71,10 @@ export async function saveInspection(
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const items = inspectionItems.parse(input.items);
   const done = items.every((i) => i.status !== "unchecked");
+  if(items.some(i=>(i.status==="watch" || i.status==="fix")&&!i.note.trim() ||
+    i.status==="fix" && !i.recommendedWork?.trim())){
+    throw new AppError("VALIDATION","Service Soon requires findings; Service Now requires findings and recommended work.");
+  }
   const [previous]=await tx.select({completedAt:inspection.completedAt})
     .from(inspection).where(and(eq(inspection.businessId,tx.businessId),
       eq(inspection.jobId,input.jobId))).limit(1);
@@ -123,7 +131,7 @@ export async function addInspectionToJob(
   const sell = Number(biz?.labor_sell_rate_cents ?? 0);
   const cost = Number(biz?.labor_cost_rate_cents ?? 0) || null;
   const added = current.pending.map((i) => ({
-    description: (i.note ? `${i.label}: ${i.note}` : i.label).slice(0, 200),
+    description: (i.recommendedWork || (i.note ? `${i.label}: ${i.note}` : i.label)).slice(0, 200),
     estimatedHoursHundredths: i.hoursHundredths || 100,
     actualHoursHundredths: null,
     sellRateCents: sell,
