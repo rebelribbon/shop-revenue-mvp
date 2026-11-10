@@ -42,11 +42,15 @@ describe("technician multi-point inspection", () => {
   });
 
   it("allows borderline with findings but without a recommended job", () => {
-    const inspection=allPassed();
-    inspection.tires={result:"borderline",notes:"Tread at 4mm, monitor",recommendedWork:""};
+    const inspection = allPassed();
+    inspection.tires = {
+      result: "borderline",
+      notes: "Tread at 4mm, monitor",
+      recommendedWork: "",
+    };
     expect(inspectReady(inspection)).toBe(true);
     expect(inspectionRecommendations(inspection)).toEqual([]);
-    inspection.tires.notes="";
+    inspection.tires.notes = "";
     expect(inspectReady(inspection)).toBe(false);
   });
   it("prepopulates only recommended borderline/bad work in the advisor estimate", () => {

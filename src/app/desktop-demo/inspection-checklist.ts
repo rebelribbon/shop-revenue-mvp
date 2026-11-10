@@ -60,7 +60,8 @@ export function inspectReady(results: InspectionResults) {
     if (!item?.result) return false;
     if (
       (item.result === "borderline" && !item.notes.trim()) ||
-      (item.result === "bad" && (!item.notes.trim() || !item.recommendedWork.trim()))
+      (item.result === "bad" &&
+        (!item.notes.trim() || !item.recommendedWork.trim()))
     )
       return false;
     return true;
@@ -69,7 +70,8 @@ export function inspectReady(results: InspectionResults) {
 export function inspectionRecommendations(results: InspectionResults) {
   return inspectionPoints.flatMap(({ id, label }) => {
     const item = results[id];
-    return (item?.result === "borderline" || item?.result === "bad") && item.recommendedWork.trim()
+    return (item?.result === "borderline" || item?.result === "bad") &&
+      item.recommendedWork.trim()
       ? [
           {
             id,

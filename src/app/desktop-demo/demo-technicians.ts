@@ -6,5 +6,5 @@ export const demoTechnicians = [
 ] as const;
 export type DemoTechnicianId = (typeof demoTechnicians)[number]["id"];
 export function demoTechnicianById(id: string) {
-  return demoTechnicians.find(t => t.id === id);
+  return demoTechnicians.find((t) => t.id === id);
 }

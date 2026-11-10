@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
-import {demoTechnicians,demoTechnicianById} from "./demo-technicians";
+import { demoTechnicians, demoTechnicianById } from "./demo-technicians";
 import {
   inspectionPoints,
   inspectionRecommendations,
@@ -60,7 +60,12 @@ type ServiceRecord = {
   techAccepted: boolean;
   bay: string;
   inspectionResults: InspectionResults;
-  handoffs: { to: "technician" | "advisor"; message: string; at: string; recipientId?: string }[];
+  handoffs: {
+    to: "technician" | "advisor";
+    message: string;
+    at: string;
+    recipientId?: string;
+  }[];
   submittedInspectionAt?: string;
   customerExplanation: string;
   findings: string[];
@@ -221,7 +226,7 @@ export function ServiceFlowDemo({
   function advance(to: Stage, description: string) {
     setMessage("");
     const now = new Date().toISOString();
-    if(to === "inspection" && !selectedTech) return;
+    if (to === "inspection" && !selectedTech) return;
     const handoff =
       to === "inspection"
         ? {
@@ -491,19 +496,33 @@ export function ServiceFlowDemo({
                 <select
                   value={record.assignedTechId}
                   onChange={(e) => {
-                    const chosen=demoTechnicianById(e.target.value);
-                    save({...record,assignedTechId:chosen?.id ?? "",
-                      assignedTech:chosen?.name ?? "",techAccepted:false,bay:"",
-                      estimateSentAt:undefined,estimate:undefined,declination:undefined,privacy:undefined});
+                    const chosen = demoTechnicianById(e.target.value);
+                    save({
+                      ...record,
+                      assignedTechId: chosen?.id ?? "",
+                      assignedTech: chosen?.name ?? "",
+                      techAccepted: false,
+                      bay: "",
+                      estimateSentAt: undefined,
+                      estimate: undefined,
+                      declination: undefined,
+                      privacy: undefined,
+                    });
                   }}
                 >
                   <option value="">Choose an active technician…</option>
-                  {demoTechnicians.map(tech=>
-                    <option key={tech.id} value={tech.id}>{tech.name} · {tech.role}</option>
-                  )}
+                  {demoTechnicians.map((tech) => (
+                    <option key={tech.id} value={tech.id}>
+                      {tech.name} · {tech.role}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <p className={styles.note}>Fictional preview roster. The live dropdown must load active technicians from this shop and route the task to their user account ID.</p>
+              <p className={styles.note}>
+                Fictional preview roster. The live dropdown must load active
+                technicians from this shop and route the task to their user
+                account ID.
+              </p>
               <button
                 type="button"
                 className={styles.mobilePrimaryButton}
@@ -523,7 +542,9 @@ export function ServiceFlowDemo({
             <div className={styles.focusedStageBody}>
               <div className={styles.workflowAlert} role="status">
                 <strong>New technician task · {record.assignedTech}</strong>
-                <p>Recipient account: {record.assignedTechId || "Not assigned"}</p>
+                <p>
+                  Recipient account: {record.assignedTechId || "Not assigned"}
+                </p>
                 <p>
                   {record.handoffs.filter((h) => h.to === "technician").at(-1)
                     ?.message ??
@@ -648,7 +669,8 @@ export function ServiceFlowDemo({
                               </button>
                             ))}
                           </div>
-                          {(item.result === "borderline" || item.result === "bad") && (
+                          {(item.result === "borderline" ||
+                            item.result === "bad") && (
                             <>
                               <label>
                                 What did you find?
