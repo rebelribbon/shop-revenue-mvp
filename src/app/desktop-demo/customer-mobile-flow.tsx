@@ -62,9 +62,7 @@ export function CustomerMobileFlow({
   vehicle: string;
   jobs: CustomerLine[];
   media: CustomerMedia[];
-  onSubmit: (
-    choices: Record<number, Choice>,
-  ) => void;
+  onSubmit: (choices: Record<number, Choice>) => void;
 }) {
   const { state: checkoutState, loaded: checkoutLoaded } =
     useDemoCheckout(roId);
@@ -94,7 +92,9 @@ export function CustomerMobileFlow({
   const allDecided = decisionsMade === recommendations.length;
   const [isRevision, setIsRevision] = useState(false);
   const [revisedIds, setRevisedIds] = useState<number[]>([]);
-  const revisionWindowOpen = ["working", "qc", "invoice_draft"].includes(checkoutState.phase);
+  const revisionWindowOpen = ["working", "qc", "invoice_draft"].includes(
+    checkoutState.phase,
+  );
   const locked = accepted || (checkoutState.phase !== "working" && !isRevision);
   const mayReviseDecline = accepted && revisionWindowOpen;
   const phase = checkoutState.phase;
@@ -171,12 +171,12 @@ export function CustomerMobileFlow({
     // The last confirmation remains recorded; this creates a NEW draft decision
     // that requires another explicit confirmation before entering the RO queue.
     setIsRevision(true);
-    setRevisedIds(current => [...new Set([...current,id])]);
+    setRevisedIds((current) => [...new Set([...current, id])]);
     setAccepted(false);
     setReviewing(false);
     setConfirmed(false);
     setSigner("");
-    setChoices(current => ({ ...current, [id]: "approved" }));
+    setChoices((current) => ({ ...current, [id]: "approved" }));
   }
   function submitChoices() {
     if (locked || !allDecided || !signer.trim() || !confirmed || !loadedChoices)
@@ -412,11 +412,13 @@ export function CustomerMobileFlow({
                   <button
                     type="button"
                     className={styles.journeyUndoDecline}
-                    onClick={() => setChoices(current => {
-                      const next = { ...current };
-                      delete next[j.id];
-                      return next;
-                    })}
+                    onClick={() =>
+                      setChoices((current) => {
+                        const next = { ...current };
+                        delete next[j.id];
+                        return next;
+                      })
+                    }
                   >
                     Undo decline
                   </button>
@@ -430,9 +432,15 @@ export function CustomerMobileFlow({
                     Changed your mind? Approve this work →
                   </button>
                 )}
-                {isRevision && !accepted && revisedIds.includes(j.id) && choices[j.id] === "approved" && (
-                  <p className={styles.journeyRevisionNotice}>Changed from declined to approved. Confirm your updated choices below before the technician starts this work.</p>
-                )}
+                {isRevision &&
+                  !accepted &&
+                  revisedIds.includes(j.id) &&
+                  choices[j.id] === "approved" && (
+                    <p className={styles.journeyRevisionNotice}>
+                      Changed from declined to approved. Confirm your updated
+                      choices below before the technician starts this work.
+                    </p>
+                  )}
               </article>
             );
           })}
@@ -498,7 +506,11 @@ export function CustomerMobileFlow({
               )}
               {reviewing && (
                 <>
-                  <h3>{isRevision ? "Confirm updated authorization" : "Confirm your selections"}</h3>
+                  <h3>
+                    {isRevision
+                      ? "Confirm updated authorization"
+                      : "Confirm your selections"}
+                  </h3>
                   <p>
                     Approve:{" "}
                     {recommendations
@@ -536,7 +548,9 @@ export function CustomerMobileFlow({
                     disabled={!signer.trim() || !confirmed || !allDecided}
                     onClick={submitChoices}
                   >
-                    {isRevision ? "Confirm revised decisions (demo)" : "Confirm decisions (demo)"}
+                    {isRevision
+                      ? "Confirm revised decisions (demo)"
+                      : "Confirm decisions (demo)"}
                   </button>
                   <button
                     type="button"
@@ -573,7 +587,8 @@ export function CustomerMobileFlow({
         </section>
         <p className={styles.journeyDemoDisclaimer}>
           Sample-data preview. Photos/videos are placeholders. Revised decisions
-          require fresh confirmation, but no legally binding signature or real payment occurs.
+          require fresh confirmation, but no legally binding signature or real
+          payment occurs.
         </p>
       </div>
     </main>
