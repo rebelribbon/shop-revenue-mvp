@@ -26,16 +26,17 @@ export default async function TasksPage(props: {
   const p = await props.searchParams;
   const s = await requireShopSession("/app/tasks");
   const readOnly = s.actor.type === "support";
+  const technician = s.role === "technician";
   const view = p.view === "later" ? "later" : "due";
   const [data, customers] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([listTasks(tx), p.add ? listCustomers(tx) : []]),
+    Promise.all([listTasks(tx), p.add && !technician ? listCustomers(tx) : []]),
   );
   const rows = view === "due" ? data.due : data.later;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Tasks</h1>
       <TasksNavigation current={view} />
-      {p.add && !readOnly && (
+      {p.add && !readOnly && !technician && (
         <section className="card add-panel" aria-label="Add a task">
           <h2>Add a task</h2>
           <ActionForm
@@ -97,12 +98,13 @@ export default async function TasksPage(props: {
               today={data.today}
               later={view === "later"}
               readOnly={readOnly}
+              technician={technician}
             />
           ))}
         </ul>
       )}
       <div className="task-footer">
-        {!readOnly && !p.add && (
+        {!readOnly && !technician && !p.add && (
           <Link
             className={`btn ${rows.length && view === "due" ? "secondary" : "primary"}`}
             {...(rows.length && view === "due"
@@ -127,12 +129,14 @@ function TaskItem({
   today,
   later,
   readOnly,
+  technician,
 }: {
   first: boolean;
   t: TaskRow;
   today: string;
   later: boolean;
   readOnly: boolean;
+  technician: boolean;
 }) {
   const when = later
     ? nice(t.dueOn)
@@ -172,7 +176,7 @@ function TaskItem({
           </Link>
         </div>
       )}
-      {!later && !readOnly && !t.action && (
+      {!later && !readOnly && !technician && !t.action && (
         <div className="task-actions">
           {t.phone && (
             <>
