@@ -62,6 +62,8 @@ export function CustomerMobileFlow({
   const [questions, setQuestions] = useState<Record<number, string>>({});
   const [draftQuestion, setDraftQuestion] = useState("");
   const [accepted, setAccepted] = useState(false);
+  const [signer, setSigner] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
 
   // Work ordered by the customer is not an inspection recommendation.
   const requested = jobs.filter(j => j.origin === "requested" || (!j.origin && (requestedIds[roId] ?? []).includes(j.id)));
@@ -97,9 +99,12 @@ export function CustomerMobileFlow({
   }
   function submit() {
     if (!complete || !recommendations.length) return;
+    go("summary");
+  }
+  function confirmSelections() {
+    if (!signer.trim() || !confirmed || !complete || accepted) return;
     onSubmit(choices, questions);
     setAccepted(true);
-    go("summary");
   }
   return (
     <main id="main-content" className={styles.mobileCustomer}>
@@ -182,8 +187,8 @@ export function CustomerMobileFlow({
                   </div>}
                   {questions[j.id] && <p className={styles.mobileQuestionSaved}>Question noted in this demo: {questions[j.id]}</p>}
                   <div className={styles.mobileDecisions} role="group" aria-label={`Decision for ${j.name}`}>
-                    <button type="button" aria-pressed={choices[j.id] === "approved"} onClick={() => setChoices(x => ({...x,[j.id]:"approved"}))} className={choices[j.id]==="approved"?styles.mobileApproveSelected:""}>✓ Approve</button>
-                    <button type="button" aria-pressed={choices[j.id] === "declined"} onClick={() => setChoices(x => ({...x,[j.id]:"declined"}))} className={choices[j.id]==="declined"?styles.mobileDeclineSelected:""}>✕ Decline</button>
+                    <button type="button" disabled={accepted} aria-pressed={choices[j.id] === "approved"} onClick={() => setChoices(x => ({...x,[j.id]:"approved"}))} className={choices[j.id]==="approved"?styles.mobileApproveSelected:""}>✓ Approve</button>
+                    <button type="button" disabled={accepted} aria-pressed={choices[j.id] === "declined"} onClick={() => setChoices(x => ({...x,[j.id]:"declined"}))} className={choices[j.id]==="declined"?styles.mobileDeclineSelected:""}>✕ Decline</button>
                   </div>
                 </article>
               );
@@ -212,8 +217,19 @@ export function CustomerMobileFlow({
             </div>
             <div className={styles.mobileGrandTotal}><span>Authorized services (before tax/fees)</span><strong>{money(baseTotal+additional)}</strong></div>
             <div className={styles.mobileInvoiceNotice}><strong>What happens next?</strong><p>Approved recommendations become work for the technician on this same RO. They are added to the final invoice only after they are completed. Declined recommendations stay in the service history and are not billed.</p></div>
+            {!accepted ? (
+              <div className={styles.mobileConfirmation}>
+                <h3>Confirm your decisions</h3>
+                <p>Your selections are ready for authorization. In the working CRM, this step will use the secure, versioned electronic signature flow.</p>
+                <label htmlFor="demo-customer-name">Customer name</label>
+                <input id="demo-customer-name" value={signer} onChange={e=>setSigner(e.target.value)} maxLength={100} placeholder="Enter your name" autoComplete="name"/>
+                <label className={styles.mobileConfirmCheck}><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> I understand the approved recommendations will be added to the shop’s work queue.</label>
+                <button type="button" className={styles.mobilePrimaryButton} disabled={!confirmed || !signer.trim()} onClick={confirmSelections}>Confirm selections (demo)</button>
+              </div>
+            ) : <div className={styles.mobileSuccessMessage} role="status">✓ Demo selections recorded. Approved recommendations have moved to this RO’s work list.</div>}
+
             <p className={styles.estimateDisclaimer}>Simulation only. This is not an electronic signature or legally binding authorization. A real customer must sign a frozen estimate before work can proceed.</p>
-            <button type="button" className={styles.mobileTextButton} onClick={() => {setAccepted(false);go("decide");}}>← Revisit recommendations</button>
+            {!accepted && <button type="button" className={styles.mobileTextButton} onClick={() => go("decide")}>← Change my choices</button>}
           </section>
         )}
       </div>
