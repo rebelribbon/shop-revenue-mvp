@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useDemoCheckout } from "./ro-checkout-demo";
+import { CustomerDocumentSigning } from "./customer-document-signing";
 import { inspectionPoints, inspectionLabels, type InspectionResults, type InspectionResult } from "./inspection-checklist";
 import styles from "./desktop-demo.module.css";
 
@@ -601,6 +602,13 @@ export function CustomerMobileFlow({
               )}
             </div>
           )}
+          {accepted && <CustomerDocumentSigning
+            roId={roId}
+            jobs={jobs.map(job=>({
+              ...job,
+              decision: choices[job.id] ?? job.decision,
+            }))}
+          />}
           <div className={styles.journeyAfter}>
             <h3>What happens next?</h3>
             <p>
