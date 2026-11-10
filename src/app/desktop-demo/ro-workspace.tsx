@@ -159,6 +159,7 @@ export function RoWorkspace({
   useEffect(() => {
     let cancelled = false;
     let previous: DemoJob[] | null = null;
+    let customerChoices: Record<string, Decision> = {};
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (raw) {
@@ -179,16 +180,29 @@ export function RoWorkspace({
           previous = parsed as DemoJob[];
         }
       }
+      const customerRaw = sessionStorage.getItem(`shop-revenue-desktop-demo-customer-choices-v1:${roId}`);
+      if (customerRaw) {
+        const choices: unknown = JSON.parse(customerRaw);
+        if (choices && typeof choices === "object" && !Array.isArray(choices)) {
+          customerChoices = Object.fromEntries(
+            Object.entries(choices).filter(([id, v]) =>
+              /^\\d+$/.test(id) && (v === "approved" || v === "declined")
+            ),
+          ) as Record<string, Decision>;
+        }
+      }
     } catch {
       // The preview still works with built-in sample data when storage is unavailable.
     }
     // Defer React state updates until after the effect setup.
     queueMicrotask(() => {
       if (cancelled) return;
-      if (previous) {
-        setJobs(previous);
-        setNextId(Math.max(0, ...previous.map((item) => item.id)) + 1);
-      }
+      const merged = (previous ?? [...ro.jobs]).map((job) => {
+        const customerDecision = customerChoices[String(job.id)];
+        return customerDecision ? { ...job, decision: customerDecision } : job;
+      });
+      setJobs(merged);
+      setNextId(Math.max(0, ...merged.map((item) => item.id)) + 1);
       setRestored(true);
     });
     return () => {
