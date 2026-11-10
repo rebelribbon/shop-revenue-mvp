@@ -35,8 +35,11 @@ export const assignVisitAction = defineShopAction({
 });
 
 export const assignAdvisorAction = defineShopAction({
-  name:"assignAdvisor",
-  input:z.object({jobId:z.uuid(),userId:z.uuid()}),
-  run:({tx,meta},input)=>assignAdvisor(tx,meta,input),
-  persist:r=>({...r,message:`${r.advisor} is the assigned service advisor.`}),
+  name: "assignAdvisor",
+  input: z.object({ jobId: z.uuid(), userId: z.uuid() }),
+  run: ({ tx, meta }, input) => assignAdvisor(tx, meta, input),
+  persist: (r) => ({
+    ...r,
+    message: `${r.advisor} is the assigned service advisor.`,
+  }),
 });

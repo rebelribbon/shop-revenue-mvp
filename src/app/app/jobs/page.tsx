@@ -48,7 +48,10 @@ import { assignedAdvisorForJob } from "@/domain/job-handoffs";
 import { partCatalog } from "@/domain/parts";
 import { jobDeposit } from "@/domain/deposits";
 import { startDepositAction } from "@/server/actions/deposits";
-import { assignJobAction, assignAdvisorAction } from "@/server/actions/assignments";
+import {
+  assignJobAction,
+  assignAdvisorAction,
+} from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
 import { addInspectionToJobAction } from "@/server/actions/inspections";
@@ -223,9 +226,11 @@ export default async function JobsPage({
       clock: await myClock(tx),
       deposit: page.selected ? await jobDeposit(tx, page.selected.id) : null,
       techs: await listTechs(tx),
-      advisors: s.role==="technician" ? [] : await listAdvisors(tx),
-      advisorId: page.selected && s.role!=="technician"
-        ? await assignedAdvisorForJob(tx,page.selected.id) : null,
+      advisors: s.role === "technician" ? [] : await listAdvisors(tx),
+      advisorId:
+        page.selected && s.role !== "technician"
+          ? await assignedAdvisorForJob(tx, page.selected.id)
+          : null,
       catalog: edit || creating ? await partCatalog(tx) : [],
       assignee: page.selected
         ? ((await jobAssignees(tx, [page.selected.id])).get(page.selected.id) ??
@@ -491,17 +496,40 @@ export default async function JobsPage({
                     {assetName ? ` · ${assetName}` : ""}
                   </p>
                 </div>
-                {s.actor.type!=="support" && <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
-                  <ActionForm action={assignAdvisorAction} hidden={{jobId:selected.id}}
-                    submitLabel="Assign advisor" variant="secondary">
-                    <label htmlFor="job-advisor">Service advisor for this RO</label>
-                    <select id="job-advisor" name="userId" defaultValue={data.advisorId ?? s.actor.id ?? ""} required>
-                      <option value="">Choose advisor</option>
-                      {data.advisors.map(a=><option value={a.userId} key={a.userId}>{a.name}</option>)}
-                    </select>
-                  </ActionForm>
-                  <p className="muted">When the inspection is submitted, this advisor receives the Build Estimate task.</p>
-                </div>}
+                {s.actor.type !== "support" && (
+                  <div
+                    className="tech-pick"
+                    key={data.advisorId ?? "advisor-unset"}
+                  >
+                    <ActionForm
+                      action={assignAdvisorAction}
+                      hidden={{ jobId: selected.id }}
+                      submitLabel="Assign advisor"
+                      variant="secondary"
+                    >
+                      <label htmlFor="job-advisor">
+                        Service advisor for this RO
+                      </label>
+                      <select
+                        id="job-advisor"
+                        name="userId"
+                        defaultValue={data.advisorId ?? s.actor.id ?? ""}
+                        required
+                      >
+                        <option value="">Choose advisor</option>
+                        {data.advisors.map((a) => (
+                          <option value={a.userId} key={a.userId}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
+                    </ActionForm>
+                    <p className="muted">
+                      When the inspection is submitted, this advisor receives
+                      the Build Estimate task.
+                    </p>
+                  </div>
+                )}
                 {flow && (
                   <span className={statusTone(statusOf(selected.id))}>
                     {statusLabels[statusOf(selected.id)]}
@@ -826,10 +854,7 @@ export default async function JobsPage({
                       ] as const
                     )
                       .filter(
-                        ([key]) =>
-                          true ||
-                          key === "note" ||
-                          key === "photo",
+                        ([key]) => true || key === "note" || key === "photo",
                       )
                       .map(([key, label]) => (
                         <Link
@@ -884,67 +909,63 @@ export default async function JobsPage({
                     </Link>
                   </section>
                 )}
-                {s.actor.type !== "support" &&
-                  true &&
-                  add === "file" && (
-                    <section className="card add-panel" aria-label="Add a file">
-                      <h3>Add a file to this job</h3>
-                      <FileUploader
-                        customerId={input.customerId}
-                        jobId={selected.id}
-                        categories={JOB_FILE_CATEGORIES}
-                        buttonLabel="Choose file"
-                      />
-                      <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
-                        Done
-                      </Link>
-                    </section>
-                  )}
-                {s.actor.type !== "support" &&
-                  true &&
-                  add === "sign" && (
-                    <section
-                      className="card add-panel"
-                      aria-label="Send a document to sign"
-                    >
-                      <h3>Send a document to sign</h3>
-                      {data.templates.length ? (
-                        <ActionForm
-                          action={sendDocumentAction}
-                          hidden={{ jobId: selected.id }}
-                          submitLabel="Send for signature"
-                          variant="primary"
-                        >
-                          <label htmlFor="send-template">Document</label>
-                          <select id="send-template" name="templateId" required>
-                            {data.templates.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-                        </ActionForm>
-                      ) : (
-                        <p className="muted">
-                          No documents yet.{" "}
-                          {s.role === "owner" ? (
-                            <Link href="/app/settings/documents">
-                              Set up your documents
-                            </Link>
-                          ) : (
-                            "Ask the owner to add them in Settings."
-                          )}
-                        </p>
-                      )}
+                {s.actor.type !== "support" && true && add === "file" && (
+                  <section className="card add-panel" aria-label="Add a file">
+                    <h3>Add a file to this job</h3>
+                    <FileUploader
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      categories={JOB_FILE_CATEGORIES}
+                      buttonLabel="Choose file"
+                    />
+                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
+                {s.actor.type !== "support" && true && add === "sign" && (
+                  <section
+                    className="card add-panel"
+                    aria-label="Send a document to sign"
+                  >
+                    <h3>Send a document to sign</h3>
+                    {data.templates.length ? (
+                      <ActionForm
+                        action={sendDocumentAction}
+                        hidden={{ jobId: selected.id }}
+                        submitLabel="Send for signature"
+                        variant="primary"
+                      >
+                        <label htmlFor="send-template">Document</label>
+                        <select id="send-template" name="templateId" required>
+                          {data.templates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      </ActionForm>
+                    ) : (
                       <p className="muted">
-                        The signing link appears in the file cabinet below,
-                        ready to text or email.
+                        No documents yet.{" "}
+                        {s.role === "owner" ? (
+                          <Link href="/app/settings/documents">
+                            Set up your documents
+                          </Link>
+                        ) : (
+                          "Ask the owner to add them in Settings."
+                        )}
                       </p>
-                      <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
-                        Done
-                      </Link>
-                    </section>
-                  )}
+                    )}
+                    <p className="muted">
+                      The signing link appears in the file cabinet below, ready
+                      to text or email.
+                    </p>
+                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
                 <nav className="section-tabs" aria-label="Job sections">
                   {(
                     [
@@ -1033,9 +1054,7 @@ export default async function JobsPage({
                           ? data.contact.email
                           : null
                       }
-                      readOnly={
-                        s.actor.type === "support" || false
-                      }
+                      readOnly={s.actor.type === "support" || false}
                       timeZone={data.profile?.timezone || "America/Chicago"}
                     />
                   </>

@@ -57,29 +57,59 @@ export async function notifyTechnicianAssigned(
 
 // Explicitly assigned advisor takes precedence over whoever happened to
 // assign the technician. Advisor identity is read from the tenant audit trail.
-export async function assignedAdvisorForJob(tx:TenantTx,jobId:string):Promise<string|null>{
-  const [row]=await tx.select({data:activity.data}).from(activity)
-    .where(and(eq(activity.businessId,tx.businessId),
-      eq(activity.subjectType,"job"),eq(activity.subjectId,jobId),
-      eq(activity.kind,"job.advisor_assigned")))
-    .orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1);
-  const data=row?.data as {advisorUserId?:unknown}|undefined;
-  return typeof data?.advisorUserId==="string"?data.advisorUserId:null;
+export async function assignedAdvisorForJob(
+  tx: TenantTx,
+  jobId: string,
+): Promise<string | null> {
+  const [row] = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectType, "job"),
+        eq(activity.subjectId, jobId),
+        eq(activity.kind, "job.advisor_assigned"),
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id))
+    .limit(1);
+  const data = row?.data as { advisorUserId?: unknown } | undefined;
+  return typeof data?.advisorUserId === "string" ? data.advisorUserId : null;
 }
 
 // Reassignment updates the open estimate task atomically with the advisor
 // assignment. The previous recipient stops seeing the now-obsolete handoff.
-export async function reassignAdvisorHandoff(tx:TenantTx,jobId:string,newAdvisorId:string){
-  const [latest]=await tx.select({data:activity.data}).from(activity)
-    .where(and(eq(activity.businessId,tx.businessId),
-      eq(activity.subjectType,"job"),eq(activity.subjectId,jobId),
-      eq(activity.kind,"job.handoff")))
-    .orderBy(desc(activity.occurredAt),desc(activity.id)).limit(1);
-  const current=handoffData(latest?.data);
-  if(current?.stage==="build_estimate"){
-    await recordActivity(tx,{kind:"job.handoff",subjectType:"job",subjectId:jobId,
-      summary:"Inspection complete: newly assigned advisor to build estimate",
-      data:{...current,advisorUserId:newAdvisorId,recipientUserId:newAdvisorId},
+export async function reassignAdvisorHandoff(
+  tx: TenantTx,
+  jobId: string,
+  newAdvisorId: string,
+) {
+  const [latest] = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectType, "job"),
+        eq(activity.subjectId, jobId),
+        eq(activity.kind, "job.handoff"),
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id))
+    .limit(1);
+  const current = handoffData(latest?.data);
+  if (current?.stage === "build_estimate") {
+    await recordActivity(tx, {
+      kind: "job.handoff",
+      subjectType: "job",
+      subjectId: jobId,
+      summary: "Inspection complete: newly assigned advisor to build estimate",
+      data: {
+        ...current,
+        advisorUserId: newAdvisorId,
+        recipientUserId: newAdvisorId,
+      },
     });
   }
 }
@@ -123,7 +153,8 @@ export async function notifyAdvisorInspectionComplete(
         e.technicianUserId === assignment.userId,
     );
   if (!assignmentEvent) return;
-  const advisorId=(await assignedAdvisorForJob(tx,jobId)) ?? assignmentEvent.advisorUserId;
+  const advisorId =
+    (await assignedAdvisorForJob(tx, jobId)) ?? assignmentEvent.advisorUserId;
   await recordActivity(tx, {
     kind: "job.handoff",
     subjectType: "job",
