@@ -34,46 +34,46 @@ describe("technician 40-point inspection", () => {
 
   it("requires findings and proposed work for a failed inspection point", () => {
     const inspection = allPassed();
-    inspection.brakes = {
+    inspection.brake_fluid = {
       result: "service_now",
       notes: "",
       recommendedWork: "Replace pads",
     };
     expect(inspectReady(inspection)).toBe(false);
-    inspection.brakes.notes = "Pads measured at 2 mm";
+    inspection.brake_fluid.notes = "Pads measured at 2 mm";
     expect(inspectReady(inspection)).toBe(true);
-    inspection.brakes.recommendedWork = "";
+    inspection.brake_fluid.recommendedWork = "";
     expect(inspectReady(inspection)).toBe(false);
   });
 
   it("allows Service Soon with findings but without a recommended job", () => {
     const inspection = allPassed();
-    inspection.tires = {
+    inspection.tire_tread = {
       result: "service_soon",
       notes: "Tread at 4mm, monitor",
       recommendedWork: "",
     };
     expect(inspectReady(inspection)).toBe(true);
     expect(inspectionRecommendations(inspection)).toEqual([]);
-    inspection.tires.notes = "";
+    inspection.tire_tread.notes = "";
     expect(inspectReady(inspection)).toBe(false);
   });
   it("prepopulates only recommended Service Soon/Service Now work in the advisor estimate", () => {
     const inspection = allPassed();
-    inspection.brakes = {
+    inspection.brake_fluid = {
       result: "service_now",
       notes: "Measured 2 mm",
       recommendedWork: "Replace front pads",
     };
-    inspection.filters = {
+    inspection.air_filter = {
       result: "na",
       notes: "",
       recommendedWork: "",
     };
     expect(inspectionRecommendations(inspection)).toEqual([
       {
-        id: "brakes",
-        inspectionArea: "Brake pads, rotors and hydraulic system",
+        id: "brake_fluid",
+        inspectionArea: "Brake fluid",
         name: "Replace front pads",
         notes: "Measured 2 mm",
       },
