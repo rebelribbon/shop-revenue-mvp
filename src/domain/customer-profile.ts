@@ -61,6 +61,8 @@ export async function listCustomerJobs(tx: TenantTx, customerId: string) {
       const created = firsts.find((f) => f.id === r.id)?.createdAt;
       return {
         id: r.id,
+        vehicleId:
+          (r.data as { vehicleId?: string | null } | null)?.vehicleId ?? null,
         title: r.title,
         createdAt: created ? new Date(created) : r.updatedAt,
         updatedAt: r.updatedAt,
