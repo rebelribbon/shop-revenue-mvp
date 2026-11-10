@@ -4,6 +4,12 @@ import { isAutomotive } from "./business-types";
 import { inspectionPoints } from "./vehicle-inspection";
 
 export type InspectionStatus = "good" | "watch" | "fix" | "na" | "unchecked";
+export type InspectionAssessment = {
+  diagnosis: string;
+  bay: string;
+  vehiclePickedUp: boolean;
+  pickedUpAt: string | null;
+};
 export type InspectionItem = {
   key: string;
   label: string;

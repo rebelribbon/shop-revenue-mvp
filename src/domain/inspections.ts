@@ -1,13 +1,14 @@
 // Draft inspections stay editable until explicit submission. Submitted findings
 // are frozen in the tenant activity ledger before the assigned advisor is notified.
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { inspection } from "@/db/schema";
+import { activity, inspection } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import {
   inspectionTemplate,
   type InspectionItem,
+  type InspectionAssessment,
 } from "@/lib/inspection-templates";
 import { createJob, getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
@@ -31,6 +32,11 @@ const itemSchema = z.object({
   addedToJob: z.boolean().default(false),
 });
 export const inspectionItems = z.array(itemSchema).min(1).max(60);
+export const inspectionAssessmentInput = z.object({
+  diagnosis: z.string().trim().max(4000),
+  bay: z.string().trim().max(120),
+  vehiclePickedUp: z.boolean(),
+});
 
 async function businessType(tx: TenantTx) {
   const r = await tx.execute(
@@ -54,10 +60,37 @@ export async function getInspection(tx: TenantTx, jobId: string) {
     : inspectionTemplate(await businessType(tx));
   const count = (s: InspectionItem["status"]) =>
     items.filter((i) => i.status === s).length;
+  const [assessmentRow] = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectId, jobId),
+        eq(activity.subjectType, "job"),
+        eq(activity.kind, "inspection.assessment"),
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id))
+    .limit(1);
+  const parsedAssessment = inspectionAssessmentInput.safeParse(
+    assessmentRow?.data,
+  );
+  const assessment: InspectionAssessment = {
+    ...(parsedAssessment.success
+      ? parsedAssessment.data
+      : { diagnosis: "", bay: "", vehiclePickedUp: false }),
+    pickedUpAt:
+      typeof (assessmentRow?.data as { pickedUpAt?: unknown })?.pickedUpAt ===
+      "string"
+        ? (assessmentRow.data as { pickedUpAt: string }).pickedUpAt
+        : null,
+  };
   return {
     saved: !!row,
     complete: !!row?.completedAt,
     items,
+    assessment,
     counts: {
       good: count("good"),
       watch: count("watch"),
@@ -76,18 +109,37 @@ export async function getInspection(tx: TenantTx, jobId: string) {
 export async function saveInspection(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { jobId: string; items: InspectionItem[]; submit?: boolean },
+  input: {
+    jobId: string;
+    items: InspectionItem[];
+    submit?: boolean;
+    assessment?: z.infer<typeof inspectionAssessmentInput>;
+  },
 ) {
-  if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   // Serialize drafts, submissions and recommendation imports for this RO.
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
   );
+  if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const current = await getInspection(tx, input.jobId);
   if (current.complete)
     throw new AppError(
       "INVALID_TRANSITION",
       "This inspection has been submitted. Its recorded findings cannot be overwritten.",
+    );
+  const assessment = inspectionAssessmentInput.parse(
+    input.assessment ?? current.assessment,
+  );
+  const pickedUpAt = assessment.vehiclePickedUp
+    ? (current.assessment.pickedUpAt ?? new Date().toISOString())
+    : null;
+  if (
+    input.submit === true &&
+    (!assessment.vehiclePickedUp || !assessment.bay || !assessment.diagnosis)
+  )
+    throw new AppError(
+      "VALIDATION",
+      "Confirm pickup, record the bay or work area, and enter your diagnosis before submitting.",
     );
   const submitted = inspectionItems.parse(input.items);
   const byKey = new Map(submitted.map((item) => [item.key, item]));
@@ -147,13 +199,23 @@ export async function saveInspection(
       target: [inspection.businessId, inspection.jobId],
       set: { items, completedAt: done ? new Date() : null },
     });
+  await recordActivity(tx, {
+    kind: "inspection.assessment",
+    subjectType: "job",
+    subjectId: input.jobId,
+    summary: done
+      ? "Technician diagnosis submitted"
+      : "Technician assessment progress saved",
+    data: { ...assessment, pickedUpAt },
+    recordedAtNow: true,
+  });
   if (done) {
     await recordActivity(tx, {
       kind: "inspection.submitted",
       subjectType: "job",
       subjectId: input.jobId,
       summary: "Inspection submitted to the assigned advisor",
-      data: { items },
+      data: { items, assessment: { ...assessment, pickedUpAt } },
       recordedAtNow: true,
     });
     await notifyAdvisorInspectionComplete(tx, input.jobId);

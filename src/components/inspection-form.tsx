@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type {
   InspectionItem,
   InspectionStatus,
+  InspectionAssessment,
 } from "@/lib/inspection-templates";
 import { saveInspectionAction } from "@/server/actions/inspections";
 import { useActionHydration } from "./action-hydration";
@@ -20,15 +21,20 @@ export function InspectionForm({
   initial,
   readOnly,
   completed = false,
+  initialAssessment,
+  automotive = true,
 }: {
   jobId: string;
   initial: InspectionItem[];
   readOnly: boolean;
   completed?: boolean;
+  initialAssessment: InspectionAssessment;
+  automotive?: boolean;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
   const [items, setItems] = useState(initial);
+  const [assessment, setAssessment] = useState(initialAssessment);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -48,7 +54,13 @@ export function InspectionForm({
   const requiredWork = items.every(
     (i) => i.status !== "fix" || !!i.recommendedWork?.trim(),
   );
-  const canSubmit = allChecked && requiredNotes && requiredWork;
+  const canSubmit =
+    allChecked &&
+    requiredNotes &&
+    requiredWork &&
+    assessment.vehiclePickedUp &&
+    !!assessment.bay.trim() &&
+    !!assessment.diagnosis.trim();
   const set = (key: string, patch: Partial<InspectionItem>) => {
     setItems((all) =>
       all.map((item) => (item.key === key ? { ...item, ...patch } : item)),
@@ -69,6 +81,11 @@ export function InspectionForm({
         jobId,
         items: JSON.stringify(items),
         submit,
+        assessment: {
+          diagnosis: assessment.diagnosis,
+          bay: assessment.bay,
+          vehiclePickedUp: assessment.vehiclePickedUp,
+        },
         clientRequestId: requestId,
       });
       if (result.ok) {
@@ -88,6 +105,55 @@ export function InspectionForm({
   }
   return (
     <div className="inspection" data-ux-ready={ready}>
+      <fieldset disabled={readOnly || completed || !ready || pending}>
+        <legend>
+          {automotive ? "Pickup and diagnosis" : "Arrival and assessment"}
+        </legend>
+        <label>
+          <input
+            type="checkbox"
+            checked={assessment.vehiclePickedUp}
+            onChange={(event) =>
+              setAssessment((current) => ({
+                ...current,
+                vehiclePickedUp: event.target.checked,
+              }))
+            }
+          />
+          {automotive
+            ? "I have picked up the vehicle for assessment"
+            : "I have arrived at the service location"}
+        </label>
+        <label htmlFor={`inspection-bay-${jobId}`}>
+          {automotive ? "Bay / rack" : "Work area"}
+        </label>
+        <input
+          id={`inspection-bay-${jobId}`}
+          maxLength={120}
+          value={assessment.bay}
+          onChange={(event) =>
+            setAssessment((current) => ({
+              ...current,
+              bay: event.target.value,
+            }))
+          }
+        />
+        <label htmlFor={`inspection-diagnosis-${jobId}`}>
+          Technician diagnosis
+        </label>
+        <textarea
+          id={`inspection-diagnosis-${jobId}`}
+          rows={3}
+          maxLength={4000}
+          value={assessment.diagnosis}
+          onChange={(event) =>
+            setAssessment((current) => ({
+              ...current,
+              diagnosis: event.target.value,
+            }))
+          }
+        />
+      </fieldset>
       <div className="inspection-section-header">
         <p>
           <strong>{items.length}-point inspection</strong> · {checked} of{" "}
@@ -251,8 +317,9 @@ export function InspectionForm({
       )}
       {!canSubmit && !completed && (
         <p className="muted">
-          Complete every point before submitting. You can save a partial
-          inspection.
+          Confirm {automotive ? "pickup and bay" : "arrival and work area"},
+          enter your diagnosis and complete every point before submitting. You
+          can save your progress.
         </p>
       )}
       <p role="status">{pending ? "Saving…" : message}</p>

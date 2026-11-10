@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   addInspectionToJob,
   inspectionItems,
+  inspectionAssessmentInput,
   saveInspection,
 } from "@/domain/inspections";
 import { requireAssignedJob } from "@/domain/job-access";
@@ -15,12 +16,14 @@ export const saveInspectionAction = defineShopAction({
     jobId: z.uuid(),
     items: z.string().max(100000),
     submit: z.boolean().optional(),
+    assessment: inspectionAssessmentInput.optional(),
   }),
   run: ({ tx, meta }, i) =>
     saveInspection(tx, meta, {
       jobId: i.jobId,
       items: inspectionItems.parse(JSON.parse(i.items)),
       submit: i.submit,
+      assessment: i.assessment,
     }),
   persist: (r) => ({
     ...r,

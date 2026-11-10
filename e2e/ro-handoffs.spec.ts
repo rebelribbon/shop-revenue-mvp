@@ -2,6 +2,25 @@ import { test, expect } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 import { auditUX } from "./ux-audit";
 
+test("keeps the desktop RO view switch clear of the current action", async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== "desktop", "Desktop layout acceptance");
+  await page.goto("/desktop-demo?screen=ro&mode=internal");
+  const switcher = page.locator('[aria-label="Repair order view selector"]');
+  await expect(
+    switcher.getByRole("link", { name: "Customer", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("[data-ux-primary]")).toHaveCSS(
+    "position",
+    "static",
+  );
+  const bounds = await switcher.boundingBox();
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height,
+  );
+});
+
 test("routes an assigned inspection from the technician to its advisor without exposing office controls", async ({
   page,
   browser,
@@ -124,6 +143,15 @@ test("routes an assigned inspection from the technician to its advisor without e
         name: /Send estimate|Create invoice|Record payment/,
       }),
     ).toHaveCount(0);
+    await tech
+      .getByLabel("I have picked up the vehicle for assessment", {
+        exact: true,
+      })
+      .check();
+    await tech.getByLabel("Bay / rack", { exact: true }).fill("Bay 2");
+    await tech
+      .getByLabel("Technician diagnosis", { exact: true })
+      .fill("Road tested the customer concern. No additional faults found.");
     await Promise.all([
       tech.waitForResponse(
         (response) =>
@@ -136,6 +164,14 @@ test("routes an assigned inspection from the technician to its advisor without e
     await expect(
       tech.getByRole("button", { name: "Submit inspection → Notify advisor" }),
     ).toBeDisabled();
+    await expect(tech.getByLabel("Bay / rack", { exact: true })).toHaveValue(
+      "Bay 2",
+    );
+    await expect(
+      tech.getByLabel("Technician diagnosis", { exact: true }),
+    ).toHaveValue(
+      "Road tested the customer concern. No additional faults found.",
+    );
     // Each category is a separate page; all 40 results must be explicit.
     for (let category = 0; category < 9; category++) {
       for (const satisfactory of await tech

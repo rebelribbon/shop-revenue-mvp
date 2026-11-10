@@ -103,6 +103,11 @@ describe("RO recipient-specific handoff security", () => {
       saveInspection(tx, meta(), {
         jobId: job.id,
         submit: false,
+        assessment: {
+          diagnosis: "Road tested; no additional faults found",
+          bay: "Bay 1",
+          vehiclePickedUp: true,
+        },
         items: inspection.items.map((item) => ({
           ...item,
           status: "good" as const,

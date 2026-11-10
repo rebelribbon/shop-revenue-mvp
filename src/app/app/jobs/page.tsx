@@ -391,6 +391,8 @@ export default async function JobsPage({
                   key={JSON.stringify(data.inspection.items)}
                   jobId={selected.id}
                   initial={data.inspection.items}
+                  initialAssessment={data.inspection.assessment}
+                  automotive={auto}
                   readOnly={
                     s.actor.type === "support" || data.inspection.complete
                   }
@@ -1088,6 +1090,8 @@ export default async function JobsPage({
                       key={JSON.stringify(data.inspection.items)}
                       jobId={selected.id}
                       initial={data.inspection.items}
+                      initialAssessment={data.inspection.assessment}
+                      automotive={auto}
                       readOnly={
                         s.actor.type === "support" || data.inspection.complete
                       }

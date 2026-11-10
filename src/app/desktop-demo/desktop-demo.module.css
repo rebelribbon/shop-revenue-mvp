@@ -123,6 +123,18 @@
 .workNotesLabel textarea{padding:12px 16px;border:1px solid #aec1cd;border-radius:8px;font:inherit;color:#182838;background:white;max-width:100%;width:100%;resize:vertical}
 
 
+/* Keep the current-stage action inside the desktop form so it never covers
+   the persistent Customer / Internal view switch in the left sidebar. */
+@media (min-width: 701px) {
+  .demo :global([data-ux-primary]) {
+    position: static;
+    width: auto;
+    inset: auto;
+    margin: 16px 0 0;
+    box-shadow: none;
+  }
+}
+
 /* Sample advisor-approved media and standalone customer-link preview. */
 .shareMediaGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;padding:16px 24px}
 .shareReviewTile{border:1px solid #d7e3e9;border-radius:10px;background:#fff;overflow:hidden}

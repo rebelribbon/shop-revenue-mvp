@@ -11,6 +11,12 @@ import { meta, seedTenant } from "../helpers/fixtures";
 import { and, eq } from "drizzle-orm";
 import { activity } from "@/db/schema";
 
+const assessment = {
+  diagnosis: "Confirmed customer concern during assessment",
+  bay: "Bay 2",
+  vehiclePickedUp: true,
+};
+
 describe("Digital inspections", () => {
   it("starts from the trade's checklist, saves marks, and turns needs-work into estimate lines once", async () => {
     const t = await seedTenant("Inspect");
@@ -50,11 +56,18 @@ describe("Digital inspections", () => {
           : { ...i, status: "good" as const },
     );
     const saved = await run((tx) =>
-      saveInspection(tx, meta(), { jobId: job.id, items, submit: true }),
+      saveInspection(tx, meta(), {
+        jobId: job.id,
+        items,
+        assessment,
+        submit: true,
+      }),
     );
     expect(saved.complete).toBe(true);
     const after = await run((tx) => getInspection(tx, job.id));
     expect(after.counts).toMatchObject({ fix: 1, watch: 1, unchecked: 0 });
+    expect(after.assessment).toMatchObject(assessment);
+    expect(after.assessment.pickedUpAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(after.pending.map((i) => i.key)).toEqual(["brake_fluid"]);
     await expect(
       run((tx) =>
@@ -121,6 +134,15 @@ describe("Digital inspections", () => {
       ...item,
       status: "good" as const,
     }));
+    await expect(
+      run((tx) =>
+        saveInspection(tx, meta(), {
+          jobId: job.id,
+          items: checked,
+          submit: true,
+        }),
+      ),
+    ).rejects.toThrow(/Confirm pickup/);
     for (const invalid of [
       checked.slice(1),
       [...checked.slice(1), checked[1]],
@@ -133,6 +155,7 @@ describe("Digital inspections", () => {
           saveInspection(tx, meta(), {
             jobId: job.id,
             items: invalid,
+            assessment,
             submit: true,
           }),
         ),
@@ -140,7 +163,12 @@ describe("Digital inspections", () => {
     }
     await expect(
       run((tx) =>
-        saveInspection(tx, meta(), { jobId: job.id, items: [], submit: true }),
+        saveInspection(tx, meta(), {
+          jobId: job.id,
+          items: [],
+          assessment,
+          submit: true,
+        }),
       ),
     ).rejects.toThrow();
     const drafted = await run((tx) =>
@@ -175,6 +203,7 @@ describe("Digital inspections", () => {
           items: checked.map((item, index) =>
             index === 0 ? { ...item, status: "fix" as const } : item,
           ),
+          assessment,
           submit: true,
         }),
       ),
