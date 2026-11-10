@@ -277,15 +277,12 @@ export function ShareMediaDemo({
     });
     setJobs(updated);
     try {
-      const raw = sessionStorage.getItem(jobsKey);
-      const existingRows: unknown = raw ? JSON.parse(raw) : null;
-      const oldRows = Array.isArray(existingRows) ? existingRows : jobs;
-      // Preserve shop-side internal costs and notes; change only decisions.
-      const next = oldRows.map((j: PublicJob) => {
-        const choice = updated.find((item) => item.id === j.id);
-        return choice ? { ...j, decision: choice.decision } : j;
-      });
-      sessionStorage.setItem(jobsKey, JSON.stringify(next));
+      // Only publish the customer's decisions; never replace shop-side cost/notes data
+      // with the smaller customer-safe data model.
+      sessionStorage.setItem(
+        `shop-revenue-desktop-demo-customer-choices-v1:${roId}`,
+        JSON.stringify(choices),
+      );
       sessionStorage.setItem(
         `shop-revenue-desktop-demo-questions:${roId}`,
         JSON.stringify(questions),
