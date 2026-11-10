@@ -7,6 +7,7 @@ export type InspectionItem = {
   result?: InspectionResult;
   notes: string;
   recommendedWork: string;
+  measurements?: Partial<Record<"lf" | "rf" | "lr" | "rr" | "spare", string>>;
 };
 export const inspectionPoints = [
   {
