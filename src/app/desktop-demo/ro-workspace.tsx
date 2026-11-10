@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import styles from "./desktop-demo.module.css";
 
-type Decision = "approved" | "pending" | "declined";
-type DemoJob = {
+export type Decision = "approved" | "pending" | "declined";
+export type DemoJob = {
   id: number;
   name: string;
   price: number;
@@ -42,7 +42,7 @@ const initialJobs: DemoJob[] = [
     decision: "declined",
   },
 ];
-const roRecords = {
+export const roRecords = {
   "RO-10482": {
     title: "Brake Service",
     vehicle: "2021 Ford F-150 · VIN ending 4821",
@@ -386,7 +386,7 @@ export function RoWorkspace({
       </div>
       <div className={styles.tabs}>
         <strong>Overview</strong>
-        <span>Estimate</span>
+        <a href={`/desktop-demo?screen=estimate&ro=${roId}&vehicle=${vehicleId ?? "f150"}&title=${encodeURIComponent(newTitle ?? "")}`}>Estimate</a>
         <span>Work</span>
         <span>Documents</span>
         <span>Cashiering</span>
