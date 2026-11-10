@@ -29,6 +29,8 @@ import {
 import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { todayAgenda } from "./today";
+import { currentMemberRole } from "./membership";
+import { listMyJobHandoffs, type JobHandoff } from "./job-handoffs";
 
 export type TaskRow = {
   key: string;
@@ -53,6 +55,34 @@ export type TaskRow = {
   overdueDays: number;
 };
 
+function handoffTask(h: JobHandoff, today: string): TaskRow {
+  return {
+    key: `handoff:${h.jobId}:${h.stage}`,
+    source: "work",
+    category: "work",
+    kindLabel: "Assigned RO",
+    subjectId: h.jobId,
+    customerId: null,
+    customerName: null,
+    title:
+      h.stage === "inspect_vehicle"
+        ? "Pick up vehicle, diagnose and inspect"
+        : "Inspection complete — build the estimate",
+    detail: h.title,
+    amountCents: null,
+    phone: null,
+    email: null,
+    href: `/app/jobs?job=${h.jobId}`,
+    action: {
+      kind: "work",
+      label:
+        h.stage === "inspect_vehicle" ? "Open assigned RO" : "Build estimate",
+      href: `/app/jobs?job=${h.jobId}`,
+    },
+    dueOn: today,
+    overdueDays: 0,
+  };
+}
 const dayDiff = (a: string, b: string) =>
   Math.round(
     (Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86400000,
@@ -96,6 +126,25 @@ function hrefFor(
 }
 
 export async function listTasks(tx: TenantTx, now = new Date()) {
+  const role = await currentMemberRole(tx);
+  const handoffs = await listMyJobHandoffs(tx);
+  // A technician's Tasks screen is private: no customer follow-ups, sales
+  // opportunities, office reminders or other employees' records are loaded.
+  if (role === "technician") {
+    const [shop] = await tx
+      .select({ timezone: business.timezone })
+      .from(business)
+      .where(eq(business.id, tx.businessId))
+      .limit(1);
+    const timezone = shop?.timezone ?? "America/Chicago";
+    const today = localDateKey(now, timezone);
+    return {
+      today,
+      timezone,
+      due: handoffs.map((h) => handoffTask(h, today)),
+      later: [] as TaskRow[],
+    };
+  }
   const [f, agenda] = await Promise.all([
     listFollowUpItems(tx, now),
     todayAgenda(tx, now),
@@ -239,6 +288,9 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
     };
     (row.dueOn <= f.today ? due : later).push(row);
   }
+  // Show only the logged-in advisor's own estimate handoffs, not other
+  // staff members' assigned notifications.
+  due.unshift(...handoffs.map((h) => handoffTask(h, f.today)));
   // Oldest first, money first within a day.
   due.sort(
     (a, b) =>

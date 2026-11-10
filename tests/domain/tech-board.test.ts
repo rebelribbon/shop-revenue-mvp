@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { inviteStaff, acceptInvite } from "@/domain/membership";
 import { withTenant } from "@/db/tenant";
 import { createAppointment } from "@/domain/appointments";
 import { assignJob, assignVisit, listTechs } from "@/domain/assignments";
@@ -12,17 +14,36 @@ import { meta, seedTenant } from "../helpers/fixtures";
 describe("Tech board and My day", () => {
   it("puts each job and visit on one tech's day", async () => {
     const t = await seedTenant("Techs", { withStaff: true });
-    const staff = t.staff!;
     const asOwner = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
       withTenant(t.businessId, t.owner.actor, fn);
+    const techEmail = `tech-${randomUUID()}@shop.example.test`;
+    const invite = await asOwner((tx) =>
+      inviteStaff(tx, meta(), {
+        name: "Techs Technician",
+        email: techEmail,
+        role: "technician",
+      }),
+    );
+    const subject = randomUUID();
+    const accepted = await acceptInvite(meta(), invite.token, {
+      authSubject: subject,
+      email: techEmail,
+      phoneE164: null,
+      displayName: "Techs Technician",
+    });
+    const staff = {
+      userId: accepted.userId,
+      actor: {
+        type: "user" as const,
+        id: accepted.userId,
+        authSubject: subject,
+      },
+    };
     const asStaff = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
       withTenant(t.businessId, staff.actor, fn);
 
     const techs = await asOwner((tx) => listTechs(tx));
-    expect(techs.map((x) => x.name).sort()).toEqual([
-      "Techs Owner",
-      "Techs Staff",
-    ]);
+    expect(techs.map((x) => x.name).sort()).toEqual(["Techs Technician"]);
 
     const c = await asOwner((tx) =>
       createCustomer(tx, meta(), { firstName: "Bay", lastName: "TEST" }),
@@ -42,7 +63,7 @@ describe("Tech board and My day", () => {
     const assigned = await asOwner((tx) =>
       assignJob(tx, meta(), { jobId: job.id, userId: staff.userId }),
     );
-    expect(assigned.tech).toBe("Techs Staff");
+    expect(assigned.tech).toBe("Techs Technician");
 
     // The board knows who's on it.
     const board = await asOwner((tx) => loadPipeline(tx));

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   addInspectionToJob,
   inspectionItems,
+  inspectionAssessmentInput,
   saveInspection,
 } from "@/domain/inspections";
 import { requireAssignedJob } from "@/domain/job-access";
@@ -11,23 +12,33 @@ import { defineShopAction } from "./define";
 export const saveInspectionAction = defineShopAction({
   name: "saveInspection",
   technicianAccess: requireAssignedJob,
-  input: z.object({ jobId: z.uuid(), items: z.string().max(100000) }),
+  input: z.object({
+    jobId: z.uuid(),
+    items: z.string().max(100000),
+    submit: z.boolean().optional(),
+    assessment: inspectionAssessmentInput.optional(),
+  }),
   run: ({ tx, meta }, i) =>
     saveInspection(tx, meta, {
       jobId: i.jobId,
       items: inspectionItems.parse(JSON.parse(i.items)),
+      submit: i.submit,
+      assessment: i.assessment,
     }),
   persist: (r) => ({
     ...r,
     message: r.complete
-      ? "Inspection saved. Every item is checked."
+      ? r.advisorNotified
+        ? "Inspection submitted. Your advisor has been notified in Tasks."
+        : "Inspection submitted. No assigned-advisor handoff was available; ask the front office to review."
       : "Inspection saved.",
   }),
 });
 
 export const addInspectionToJobAction = defineShopAction({
   name: "addInspectionToJob",
-  technicianAccess: requireAssignedJob,
+  // Pricing/estimate editing belongs to the advisor, never the technician.
+  // No technicianAccess grants a server-side FORBIDDEN response to that role.
   input: z.object({ jobId: z.uuid() }),
   run: ({ tx, meta }, i) => addInspectionToJob(tx, meta, i.jobId),
   persist: (r) => ({

@@ -26,7 +26,7 @@ test("Technicians see only their jobs and no owner pages", async ({
   const jobUrls: string[] = [];
   for (const title of [mine, other]) {
     await page.goto(vehicleUrl);
-    await page.getByRole("link", { name: "New job", exact: true }).click();
+    await page.getByRole("link", { name: "+ New RO", exact: true }).click();
     await page.getByLabel("Job name").fill(title);
     await page.getByRole("button", { name: "Add labor", exact: true }).click();
     await page.getByLabel("Description", { exact: true }).fill("Diagnose");
@@ -84,10 +84,12 @@ test("Technicians see only their jobs and no owner pages", async ({
   await expect(tech.getByRole("group", { name: "Whose jobs" })).toHaveCount(0);
   // Owner pages and money exports are off limits.
   await tech.goto("/app/settings/booking");
-  await expect(tech).toHaveURL(/\/app\?denied=1/);
+  await expect(tech).toHaveURL(/\/app\/tasks$/);
   const csv = await tech.request.get("/app/money/reports/csv?report=sales");
   expect(csv.status()).toBe(404);
   await tech.goto("/app/settings");
   await expect(tech.getByText("Support access")).toHaveCount(0);
+  await tech.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(tech).toHaveURL(/\/sign-in$/);
   await ctx.close();
 });

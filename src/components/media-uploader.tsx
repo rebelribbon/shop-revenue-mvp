@@ -57,7 +57,6 @@ export function MediaUploader({
   serviceAssetId,
   appointmentId,
   defaultTag = "before",
-  defaultShow = false,
 }: {
   customerId: string;
   jobId?: string;
@@ -65,14 +64,12 @@ export function MediaUploader({
   serviceAssetId?: string | null;
   appointmentId?: string;
   defaultTag?: Tag;
-  defaultShow?: boolean;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [tag, setTag] = useState<Tag>(defaultTag);
   const [caption, setCaption] = useState("");
-  const [show, setShow] = useState(defaultShow);
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const upload = async (files: FileList) => {
@@ -127,7 +124,6 @@ export function MediaUploader({
           ...(appointmentId ? { appointmentId } : {}),
           tag,
           caption,
-          showCustomer: show,
           clientRequestId: crypto.randomUUID(),
         });
         if (!fin.ok) {
@@ -175,15 +171,9 @@ export function MediaUploader({
           }
         />
       </label>
-      <label className="switch">
-        <input
-          type="checkbox"
-          role="switch"
-          checked={show}
-          onChange={(e) => setShow(e.target.checked)}
-        />
-        Show the customer on their estimate / invoice
-      </label>
+      <p className="muted">
+        Uploads are private until a service advisor approves sharing.
+      </p>
       <input
         ref={input}
         type="file"

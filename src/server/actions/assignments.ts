@@ -1,6 +1,6 @@
 "use server";
 import { z } from "zod";
-import { assignJob, assignVisit } from "@/domain/assignments";
+import { assignAdvisor, assignJob, assignVisit } from "@/domain/assignments";
 import { defineShopAction } from "./define";
 
 // "" from the picker means nobody.
@@ -32,4 +32,14 @@ export const assignVisitAction = defineShopAction({
         : "Nobody is on this visit.",
     };
   },
+});
+
+export const assignAdvisorAction = defineShopAction({
+  name: "assignAdvisor",
+  input: z.object({ jobId: z.uuid(), userId: z.uuid() }),
+  run: ({ tx, meta }, input) => assignAdvisor(tx, meta, input),
+  persist: (r) => ({
+    ...r,
+    message: `${r.advisor} is the assigned service advisor.`,
+  }),
 });

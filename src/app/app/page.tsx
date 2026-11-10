@@ -44,6 +44,7 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
+  if (s.role === "technician") redirect("/app/tasks");
   const [
     profile,
     agenda,

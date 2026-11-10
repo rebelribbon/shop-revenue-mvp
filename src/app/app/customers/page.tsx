@@ -9,14 +9,14 @@ import { vehicle } from "@/db/schema";
 import Link from "next/link";
 import { withTenant } from "@/db/tenant";
 import { listCustomers } from "@/domain/customers";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 
 export default async function CustomersPage(props: {
   searchParams?: Promise<{ q?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const q = searchParams?.q?.trim() ?? "";
-  const s = await requireShopSession("/app/customers");
+  const s = await requireFrontOfficeView("/app/customers");
   const profile = await withTenant(s.businessId, s.actor, (tx) =>
     getBusinessProfile(tx),
   );

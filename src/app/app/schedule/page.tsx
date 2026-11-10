@@ -5,7 +5,7 @@ import { withTenant } from "@/db/tenant";
 import { listTechs } from "@/domain/assignments";
 import { assignVisitAction } from "@/server/actions/assignments";
 import { headsUpNotes } from "@/domain/memory";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 import {
   listVisitsRange,
   listAppointmentChoices,
@@ -36,7 +36,7 @@ export default async function VisitsPage({
   }>;
 }) {
   const p = await searchParams,
-    s = await requireShopSession("/app/schedule");
+    s = await requireFrontOfficeView("/app/schedule");
   const creating = p.new === "1" || !!p.customerId || !!p.sourceRecoveryItemId;
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
     const profile = await getBusinessProfile(tx),
@@ -233,7 +233,7 @@ export default async function VisitsPage({
                                 variant="secondary"
                               />
                             )}
-                            {data.techs.length > 1 && (
+                            {data.techs.length > 0 && (
                               <div
                                 className="visit-tech"
                                 key={a.assignedUserId ?? "none"}

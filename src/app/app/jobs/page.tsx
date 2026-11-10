@@ -51,11 +51,15 @@ import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { jobProfit, myClock } from "@/domain/job-profit";
-import { jobAssignees, listTechs } from "@/domain/assignments";
+import { jobAssignees, listTechs, listAdvisors } from "@/domain/assignments";
+import { assignedAdvisorForJob } from "@/domain/job-handoffs";
 import { partCatalog } from "@/domain/parts";
 import { jobDeposit } from "@/domain/deposits";
 import { startDepositAction } from "@/server/actions/deposits";
-import { assignJobAction } from "@/server/actions/assignments";
+import {
+  assignJobAction,
+  assignAdvisorAction,
+} from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
 import { addInspectionToJobAction } from "@/server/actions/inspections";
@@ -92,6 +96,7 @@ export default async function JobsPage({
     share?: string;
     view?: string;
     tech?: string;
+    mode?: string;
   }>;
 }) {
   const {
@@ -115,6 +120,7 @@ export default async function JobsPage({
     share,
     view,
     tech,
+    mode,
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
@@ -269,6 +275,11 @@ export default async function JobsPage({
       clock: await myClock(tx),
       deposit: page.selected ? await jobDeposit(tx, page.selected.id) : null,
       techs: await listTechs(tx),
+      advisors: s.role === "technician" ? [] : await listAdvisors(tx),
+      advisorId:
+        page.selected && s.role !== "technician"
+          ? await assignedAdvisorForJob(tx, page.selected.id)
+          : null,
       catalog: edit || creating ? await partCatalog(tx) : [],
       assignee: page.selected
         ? ((await jobAssignees(tx, [page.selected.id])).get(page.selected.id) ??
@@ -380,6 +391,138 @@ export default async function JobsPage({
       style: "currency",
       currency: "USD",
     }).format(c / 100);
+  const advisorAssignment =
+    selected && s.role !== "technician" && s.actor.type !== "support" ? (
+      <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
+        <ActionForm
+          action={assignAdvisorAction}
+          hidden={{ jobId: selected.id }}
+          submitLabel="Assign advisor"
+          variant="secondary"
+        >
+          <label htmlFor="job-advisor">Service advisor for this RO</label>
+          <select
+            id="job-advisor"
+            name="userId"
+            defaultValue={data.advisorId ?? s.actor.id ?? ""}
+            required
+          >
+            <option value="">Choose advisor</option>
+            {data.advisors.map((a) => (
+              <option value={a.userId} key={a.userId}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </ActionForm>
+        <p className="muted">
+          When the inspection is submitted, this advisor receives the Build
+          Estimate task.
+        </p>
+      </div>
+    ) : null;
+  // Technicians get a dedicated assigned-work workspace. The general RO
+  // editor, profit, invoices, estimates, customer administration and
+  // advisor-only actions are never rendered for technician sessions.
+  if (s.role === "technician") {
+    const assignedInput = selected ? jobInput.parse(selected.data) : null;
+    return (
+      <HydratedMain id="main-content" tabIndex={-1}>
+        <h1>My assigned repair orders</h1>
+        <p className="muted">
+          Only work assigned to your account appears here.
+        </p>
+        {selected ? (
+          <>
+            <Link href="/app/jobs">← My assigned ROs</Link>
+            <section className="card">
+              <h2>{assignedInput?.title || "Repair order"}</h2>
+              {data.clock?.jobId === selected.id ? (
+                <ActionForm
+                  action={stopClockAction}
+                  submitLabel={`■ Stop clock · ${clockText(data.clock.startedAt)}`}
+                  variant="secondary"
+                />
+              ) : (
+                <ActionForm
+                  action={startClockAction}
+                  hidden={{ jobId: selected.id }}
+                  submitLabel={
+                    data.clock ? "▶ Switch clock to this job" : "▶ Start clock"
+                  }
+                  variant="secondary"
+                />
+              )}
+              <a className="btn secondary" href="#technician-media">
+                + Photo / video
+              </a>
+              <p>
+                Record your diagnosis, complete the 40-point inspection and
+                submit it to your advisor.
+              </p>
+              {data.inspection && (
+                <InspectionForm
+                  key={JSON.stringify(data.inspection.items)}
+                  jobId={selected.id}
+                  initial={data.inspection.items}
+                  initialAssessment={data.inspection.assessment}
+                  automotive={auto}
+                  readOnly={
+                    s.actor.type === "support" || data.inspection.complete
+                  }
+                  completed={data.inspection.complete}
+                />
+              )}
+            </section>
+            {assignedInput?.customerId && (
+              <section className="card" id="technician-media">
+                <h2>Technician media</h2>
+                <p>
+                  Upload photos and videos of findings. Media stays private
+                  until the service advisor approves sharing.
+                </p>
+                <MediaUploader
+                  customerId={assignedInput.customerId}
+                  jobId={selected.id}
+                  vehicleId={assignedInput.vehicleId ?? null}
+                  serviceAssetId={assignedInput.serviceAssetId ?? null}
+                  defaultTag="issue"
+                />
+                <MediaGallery
+                  items={data.jobMedia}
+                  readOnly
+                  canPublish={false}
+                  timeZone={data.profile?.timezone ?? "America/Chicago"}
+                />
+              </section>
+            )}
+          </>
+        ) : (
+          <>
+            {data.jobs.length === 0 ? (
+              <p>
+                No repair orders assigned. You will receive a task when your
+                advisor assigns a vehicle.
+              </p>
+            ) : (
+              <ul className="row-list card">
+                {data.jobs.map((j) => (
+                  <li key={j.id}>
+                    <Link href={`/app/jobs?job=${j.id}`}>
+                      <strong>
+                        {(j.data as { title?: string }).title || "Repair order"}
+                      </strong>
+                      <span className="muted"> · Open inspection</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </HydratedMain>
+    );
+  }
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>
@@ -438,6 +581,115 @@ export default async function JobsPage({
             }
           />
         </>
+      ) : selected && s.role === "owner" && mode === "customer" ? (
+        (() => {
+          const input = jobInput.parse(selected.data);
+          const totals = calculateJob(input.parts, input.labor);
+          const customerName =
+            data.options.customers.find((item) => item.id === input.customerId)
+              ?.name ?? "Customer";
+          const assetName =
+            flow?.latest?.estimate.snapshot.serviceLabel ||
+            flow?.latest?.estimate.snapshot.vehicleLabel ||
+            "";
+          return (
+            <section
+              className="card"
+              aria-label="Customer-facing repair order"
+              data-ro-mode="customer"
+            >
+              <div className="profile-head">
+                <div>
+                  <p className="muted">
+                    Customer-facing view · RO #
+                    {selected.id.slice(0, 8).toUpperCase()}
+                  </p>
+                  <h2>{selected.title}</h2>
+                  <p>
+                    {customerName}
+                    {assetName ? ` · ${assetName}` : ""}
+                  </p>
+                </div>
+                {advisorAssignment}
+                {flow && (
+                  <span className={statusTone(statusOf(selected.id))}>
+                    {statusLabels[statusOf(selected.id)]}
+                  </span>
+                )}
+              </div>
+              <p className="muted">
+                Customer prices only. This is a staff presentation view; use the
+                estimate workflow to send an official authorization document.
+              </p>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Work</th>
+                      <th>Quantity / hours</th>
+                      <th>Customer price</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {input.parts.map((line, i) => (
+                      <tr key={`part-${i}`}>
+                        <td>{line.description}</td>
+                        <td>{line.quantity}</td>
+                        <td>
+                          {money(
+                            Math.round(line.quantity * line.unitPriceCents),
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {input.labor.map((line, i) => (
+                      <tr key={`labor-${i}`}>
+                        <td>{line.description}</td>
+                        <td>
+                          {(line.estimatedHoursHundredths / 100).toFixed(2)}{" "}
+                          hours
+                        </td>
+                        <td>
+                          {money(
+                            Math.round(
+                              (line.estimatedHoursHundredths *
+                                line.sellRateCents) /
+                                100,
+                            ),
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th colSpan={2}>
+                        Subtotal before applicable taxes and fees
+                      </th>
+                      <th>{money(totals.subtotalCents)}</th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p>
+                <Link
+                  className="btn secondary"
+                  href={`/app/customers/${input.customerId}`}
+                >
+                  Customer history
+                </Link>
+              </p>
+              <div
+                className="ro-view-switch"
+                aria-label="Repair order display mode"
+              >
+                <strong>View:</strong>
+                <span aria-current="true">Customer</span>
+                <Link href={`/app/jobs?job=${selected.id}`}>Internal</Link>
+              </div>
+            </section>
+          );
+        })()
       ) : selected ? (
         (() => {
           const input = jobInput.parse(selected.data),
@@ -471,6 +723,18 @@ export default async function JobsPage({
                 <p role="status" className="notice ok">
                   Job saved.
                 </p>
+              )}
+              {s.role === "owner" && (
+                <div
+                  className="ro-view-switch"
+                  aria-label="Repair order display mode"
+                >
+                  <strong>View:</strong>
+                  <Link href={`/app/jobs?job=${selected.id}&mode=customer`}>
+                    Customer
+                  </Link>
+                  <span aria-current="true">Internal</span>
+                </div>
               )}
               <article className="card job-profile record-job-profile">
                 <CustomerContactActions
@@ -613,7 +877,7 @@ export default async function JobsPage({
                       {money(data.deposit.approvedCents)} approved). Take it
                       before you start.
                     </p>
-                    {s.actor.type !== "support" && s.role !== "technician" && (
+                    {s.actor.type !== "support" && true && (
                       <ActionForm
                         action={startDepositAction}
                         hidden={{ jobId: selected.id }}
@@ -623,7 +887,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {s.actor.type === "support" || s.role === "technician" ? (
+                {s.actor.type === "support" || false ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
@@ -655,6 +919,7 @@ export default async function JobsPage({
                     </ActionForm>
                   </div>
                 )}
+                {advisorAssignment}
                 {flow && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
@@ -724,7 +989,7 @@ export default async function JobsPage({
                         variant="secondary"
                       />
                     )}
-                    {s.role !== "technician" &&
+                    {true &&
                       flow &&
                       flow.supplementDueCents > 0 &&
                       flow.latest?.authorization && (
@@ -735,7 +1000,7 @@ export default async function JobsPage({
                           Bill extra work · {money(flow.supplementDueCents)}
                         </Link>
                       )}
-                    {s.role !== "technician" &&
+                    {true &&
                       flow?.currentInvoice &&
                       flow.balanceCents > 0 &&
                       (() => {
@@ -768,10 +1033,7 @@ export default async function JobsPage({
                       ] as const
                     )
                       .filter(
-                        ([key]) =>
-                          s.role !== "technician" ||
-                          key === "note" ||
-                          key === "photo",
+                        ([key]) => true || key === "note" || key === "photo",
                       )
                       .map(([key, label]) => (
                         <Link
@@ -826,73 +1088,69 @@ export default async function JobsPage({
                     </Link>
                   </section>
                 )}
-                {s.actor.type !== "support" &&
-                  s.role !== "technician" &&
-                  add === "file" && (
-                    <section className="card add-panel" aria-label="Add a file">
-                      <h3>Add a file to this job</h3>
-                      <FileUploader
-                        customerId={input.customerId}
-                        jobId={selected.id}
-                        categories={JOB_FILE_CATEGORIES}
-                        buttonLabel="Choose file"
-                      />
-                      <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
-                        Done
-                      </Link>
-                    </section>
-                  )}
-                {s.actor.type !== "support" &&
-                  s.role !== "technician" &&
-                  add === "sign" && (
-                    <section
-                      className="card add-panel"
-                      aria-label="Send a document to sign"
-                    >
-                      <h3>Prepare a document for signature</h3>
-                      <p>
-                        Choose a shop-prepared agreement. The customer may
-                        review it and sign, but cannot change the work or price.
-                        The file is saved to this job first.
-                      </p>
-                      {data.templates.length ? (
-                        <ActionForm
-                          action={sendDocumentAction}
-                          hidden={{ jobId: selected.id }}
-                          submitLabel="Prepare & open document packet"
-                          variant="primary"
-                        >
-                          <label htmlFor="send-template">Document</label>
-                          <select id="send-template" name="templateId" required>
-                            {data.templates.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-                        </ActionForm>
-                      ) : (
-                        <p className="muted">
-                          No documents yet.{" "}
-                          {s.role === "owner" ? (
-                            <Link href="/app/settings/documents">
-                              Set up your documents
-                            </Link>
-                          ) : (
-                            "Ask the owner to add them in Settings."
-                          )}
-                        </p>
-                      )}
+                {s.actor.type !== "support" && add === "file" && (
+                  <section className="card add-panel" aria-label="Add a file">
+                    <h3>Add a file to this job</h3>
+                    <FileUploader
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      categories={JOB_FILE_CATEGORIES}
+                      buttonLabel="Choose file"
+                    />
+                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
+                {s.actor.type !== "support" && add === "sign" && (
+                  <section
+                    className="card add-panel"
+                    aria-label="Send a document to sign"
+                  >
+                    <h3>Prepare a document for signature</h3>
+                    <p>
+                      Choose a shop-prepared agreement. The customer may review
+                      it and sign, but cannot change the work or price. The file
+                      is saved to this job first.
+                    </p>
+                    {data.templates.length ? (
+                      <ActionForm
+                        action={sendDocumentAction}
+                        hidden={{ jobId: selected.id }}
+                        submitLabel="Prepare & open document packet"
+                        variant="primary"
+                      >
+                        <label htmlFor="send-template">Document</label>
+                        <select id="send-template" name="templateId" required>
+                          {data.templates.map((t) => (
+                            <option key={t.id} value={t.id}>
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                      </ActionForm>
+                    ) : (
                       <p className="muted">
-                        After preparation, you’ll return to the job’s file
-                        cabinet to copy or share the signing link. This step
-                        does not send a message automatically.
+                        No documents yet.{" "}
+                        {s.role === "owner" ? (
+                          <Link href="/app/settings/documents">
+                            Set up your documents
+                          </Link>
+                        ) : (
+                          "Ask the owner to add them in Settings."
+                        )}
                       </p>
-                      <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
-                        Done
-                      </Link>
-                    </section>
-                  )}
+                    )}
+                    <p className="muted">
+                      After preparation, you’ll return to the job’s file cabinet
+                      to copy or share the signing link. This step does not send
+                      a message automatically.
+                    </p>
+                    <Link href={`/app/jobs?job=${selected.id}&tab=files`}>
+                      Done
+                    </Link>
+                  </section>
+                )}
                 <nav className="section-tabs" aria-label="Job sections">
                   {(
                     [
@@ -933,7 +1191,7 @@ export default async function JobsPage({
                           jobId={selected.id}
                           timezone={data.profile?.timezone || "America/Chicago"}
                           readOnly={s.actor.type === "support"}
-                          technicianOnly={s.role === "technician"}
+                          technicianOnly={false}
                           canEditEstimate={!selected.documentOnly}
                         />
                       </RecordSection>
@@ -945,12 +1203,12 @@ export default async function JobsPage({
                     <section aria-label="Photos and videos" id="job-photos">
                       <h3>Photos &amp; videos</h3>
                       <p className="muted">
-                        Photos switched to “Show the customer” appear on the
-                        next estimate you send, and on the invoice.
+                        Technician uploads stay private until the service
+                        advisor approves them for the next estimate or invoice.
                       </p>
                       <MediaGallery
                         quoteHref={
-                          s.role === "technician"
+                          false
                             ? undefined
                             : (m) =>
                                 `/app/jobs?${new URLSearchParams({
@@ -965,6 +1223,7 @@ export default async function JobsPage({
                                 })}`
                         }
                         items={data.jobMedia}
+                        canPublish={true}
                         readOnly={s.actor.type === "support"}
                         timeZone={data.profile?.timezone || "America/Chicago"}
                       />
@@ -986,39 +1245,38 @@ export default async function JobsPage({
                           </p>
                         )}
                       </div>
-                      {s.actor.type !== "support" &&
-                        s.role !== "technician" && (
-                          <details className="docs-add-menu">
-                            <summary className="btn secondary">
-                              + Add agreement
-                            </summary>
-                            {data.templates.length ? (
-                              <ActionForm
-                                action={sendDocumentAction}
-                                hidden={{ jobId: selected.id }}
-                                submitLabel="Add to documents"
-                                variant="secondary"
+                      {s.actor.type !== "support" && (
+                        <details className="docs-add-menu">
+                          <summary className="btn secondary">
+                            + Add agreement
+                          </summary>
+                          {data.templates.length ? (
+                            <ActionForm
+                              action={sendDocumentAction}
+                              hidden={{ jobId: selected.id }}
+                              submitLabel="Add to documents"
+                              variant="secondary"
+                            >
+                              <label htmlFor="docs-template">Agreement</label>
+                              <select
+                                id="docs-template"
+                                name="templateId"
+                                required
                               >
-                                <label htmlFor="docs-template">Agreement</label>
-                                <select
-                                  id="docs-template"
-                                  name="templateId"
-                                  required
-                                >
-                                  {data.templates.map((t) => (
-                                    <option key={t.id} value={t.id}>
-                                      {t.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </ActionForm>
-                            ) : (
-                              <Link href="/app/settings/documents">
-                                Set up document templates
-                              </Link>
-                            )}
-                          </details>
-                        )}
+                                {data.templates.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {t.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </ActionForm>
+                          ) : (
+                            <Link href="/app/settings/documents">
+                              Set up document templates
+                            </Link>
+                          )}
+                        </details>
+                      )}
                     </section>
                     <FileCabinet
                       items={data.cabinet}
@@ -1033,9 +1291,7 @@ export default async function JobsPage({
                           ? data.contact.email
                           : null
                       }
-                      readOnly={
-                        s.actor.type === "support" || s.role === "technician"
-                      }
+                      readOnly={s.actor.type === "support" || false}
                       timeZone={data.profile?.timezone || "America/Chicago"}
                     />
                   </>
@@ -1044,13 +1300,13 @@ export default async function JobsPage({
                   <section aria-label="Inspection">
                     <p className="inspection-summary">
                       <span className="insp-count is-good">
-                        {data.inspection.counts.good} good
+                        {data.inspection.counts.good} satisfactory
                       </span>
                       <span className="insp-count is-watch">
-                        {data.inspection.counts.watch} watch
+                        {data.inspection.counts.watch} service soon
                       </span>
                       <span className="insp-count is-fix">
-                        {data.inspection.counts.fix} need work
+                        {data.inspection.counts.fix} service now
                       </span>
                       {data.inspection.counts.unchecked > 0 && (
                         <span className="muted">
@@ -1063,7 +1319,7 @@ export default async function JobsPage({
                         <ActionForm
                           action={addInspectionToJobAction}
                           hidden={{ jobId: selected.id }}
-                          submitLabel={`Add ${data.inspection.pending.length} “needs work” item${data.inspection.pending.length === 1 ? "" : "s"} to the estimate`}
+                          submitLabel={`Add ${data.inspection.pending.length} recommended item${data.inspection.pending.length === 1 ? "" : "s"} to the estimate`}
                           variant="secondary"
                         />
                       )}
@@ -1071,7 +1327,12 @@ export default async function JobsPage({
                       key={JSON.stringify(data.inspection.items)}
                       jobId={selected.id}
                       initial={data.inspection.items}
-                      readOnly={s.actor.type === "support"}
+                      initialAssessment={data.inspection.assessment}
+                      automotive={auto}
+                      readOnly={
+                        s.actor.type === "support" || data.inspection.complete
+                      }
+                      completed={data.inspection.complete}
                     />
                   </section>
                 )}
@@ -1212,7 +1473,7 @@ export default async function JobsPage({
                         </p>
                       )}
                       {s.actor.type !== "support" &&
-                        s.role !== "technician" &&
+                        true &&
                         !selected.documentOnly && (
                           <EstimatePublisher
                             taxRateBps={
@@ -1281,7 +1542,7 @@ export default async function JobsPage({
               List
             </Link>
           </div>
-          {data.pipeline && data.techs.length > 1 && !techOnly && (
+          {data.pipeline && data.techs.length > 0 && !techOnly && (
             <div
               className="view-toggle tech-filter"
               role="group"

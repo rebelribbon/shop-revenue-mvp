@@ -28,7 +28,11 @@ test.describe("mandatory authenticator @mfa", () => {
         await expect(page).toHaveURL(/\/verify\?next=/);
       };
       await signIn();
-      const home = account.internal ? "/admin" : "/app";
+      const home = account.internal
+        ? "/admin"
+        : account.role === "technician"
+          ? "/app/tasks"
+          : "/app";
       await page.goto(home);
       await expect(page).toHaveURL(/\/verify\?next=/);
       if (!account.internal) {

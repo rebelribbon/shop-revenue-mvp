@@ -23,7 +23,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   const vehicleId = new URL(page.url()).pathname.split("/").at(-1)!;
-  await page.getByRole("link", { name: "New job", exact: true }).click();
+  await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await page.getByLabel(/Warranty in months/).fill("12");
   await expect(
@@ -341,15 +341,24 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(page.locator("ol.workflow-timeline")).toContainText(
     "Work completed",
   );
-  // Inspection: mark an item, save, and send it to the estimate.
+  // Inspection: save partial findings using the current 40-point template.
   await page.getByRole("link", { name: /^Inspection/ }).click();
-  const brakes = page.getByRole("group", { name: "Front brakes" });
-  await brakes.getByLabel("Needs work").check();
-  await brakes.getByLabel("What did you find?").fill("pads at 2 mm");
+  const windshield = page.getByRole("group", {
+    name: "Windshield",
+    exact: true,
+  });
+  await windshield.getByLabel("Service Now", { exact: true }).check();
+  await windshield
+    .getByLabel("Technician findings")
+    .fill("crack in driver's field of view");
+  await windshield.getByLabel(/Proposed work/).fill("Replace windshield");
   await page
-    .getByRole("button", { name: "Save inspection", exact: true })
+    .getByRole("button", { name: "Save progress", exact: true })
     .click();
-  await expect(page.getByText("1 need work")).toBeVisible();
+  await expect(page.getByText("1 service now", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Submit inspection → Notify advisor" }),
+  ).toBeDisabled();
   await auditUX(page);
   await page.screenshot({
     path: `test-results/ux-inspection-${info.project.name}.png`,

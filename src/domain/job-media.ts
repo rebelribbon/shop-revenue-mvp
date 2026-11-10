@@ -2,12 +2,19 @@
 // caption, choose what the customer sees, and attach to jobs.
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { activity, file, jobMedia, type MediaTag } from "@/db/schema";
+import {
+  activity,
+  file,
+  jobAssignment,
+  jobMedia,
+  type MediaTag,
+} from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { createUploadUrl, statObject } from "@/lib/media-storage";
 import { getCustomerWithVehicles } from "./customers";
-import { recordActivity, type RequestMeta } from "./records";
+import { currentMemberRole } from "./membership";
+import { audit, recordActivity, type RequestMeta } from "./records";
 
 export const MEDIA_TYPES: Record<string, { ext: string; video: boolean }> = {
   "image/jpeg": { ext: "jpg", video: false },
@@ -130,7 +137,8 @@ export async function finishMediaUpload(
       mediaType: type?.video ? "video" : "photo",
       tag: input.tag,
       caption: input.caption?.trim() || null,
-      showCustomer: !!input.showCustomer,
+      // Uploads always start private. A staff/owner advisor must approve sharing separately.
+      showCustomer: false,
     })
     .returning();
   await recordActivity(tx, {
@@ -154,6 +162,7 @@ export async function updateMedia(
     jobId?: string | null;
     remove?: boolean;
   },
+  meta?: RequestMeta,
 ) {
   const [m] = await tx
     .select()
@@ -166,6 +175,15 @@ export async function updateMedia(
       ),
     );
   if (!m) throw notFound("That photo");
+  if (input.showCustomer !== undefined) {
+    const role = await currentMemberRole(tx);
+    if (role !== "owner" && role !== "staff") {
+      throw new AppError(
+        "FORBIDDEN",
+        "Only the owner or front office can approve customer-visible media.",
+      );
+    }
+  }
   if (input.jobId && (await jobCustomer(tx, input.jobId)) !== m.customerId)
     throw notFound("That job");
   await tx
@@ -183,6 +201,19 @@ export async function updateMedia(
       updatedAt: new Date(),
     })
     .where(and(eq(jobMedia.businessId, tx.businessId), eq(jobMedia.id, m.id)));
+  if (
+    meta &&
+    input.showCustomer !== undefined &&
+    input.showCustomer !== m.showCustomer
+  ) {
+    await audit(tx, meta, {
+      action: "media.customer_visibility_changed",
+      targetType: "job_media",
+      targetId: m.id,
+      before: { showCustomer: m.showCustomer },
+      after: { showCustomer: input.showCustomer, jobId: m.jobId },
+    });
+  }
   return { id: m.id };
 }
 
@@ -232,6 +263,31 @@ export async function estimatePhotos(tx: TenantTx, jobId: string) {
 
 // Storage key for a shop user viewing their own file.
 export async function shopMediaKey(tx: TenantTx, fileId: string) {
+  // Technicians may open only media associated with repair orders currently
+  // assigned to their authenticated account, not arbitrary shop/customer files.
+  if ((await currentMemberRole(tx)) === "technician") {
+    if (tx.actor.type !== "user" || !tx.actor.id) return null;
+    const [allowed] = await tx
+      .select({ fileId: jobMedia.fileId })
+      .from(jobMedia)
+      .innerJoin(
+        jobAssignment,
+        and(
+          eq(jobAssignment.businessId, jobMedia.businessId),
+          eq(jobAssignment.jobId, jobMedia.jobId),
+        ),
+      )
+      .where(
+        and(
+          eq(jobMedia.businessId, tx.businessId),
+          eq(jobMedia.fileId, fileId),
+          eq(jobAssignment.userId, tx.actor.id),
+          isNull(jobMedia.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!allowed) return null;
+  }
   const [f] = await tx
     .select({ key: file.storageKey, status: file.status })
     .from(file)

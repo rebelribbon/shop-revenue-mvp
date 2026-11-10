@@ -43,10 +43,16 @@ const workPaths = ["/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
   automotive = false,
+  canSeeMoney = true,
+  technicianOnly = false,
   counts = {},
 }: {
   mobile?: boolean;
   automotive?: boolean;
+  // Only the owner sees Reports.
+  canSeeMoney?: boolean;
+  // Technicians get Tasks and their own ROs, nothing else.
+  technicianOnly?: boolean;
   counts?: Record<string, number>;
 }) {
   const path = usePathname();
@@ -56,8 +62,16 @@ export function WorkspaceNavigation({
         mobile ? "mobile-nav shop-mobile-nav" : "desktop-nav workspace-nav"
       }
       aria-label={mobile ? "Mobile navigation" : "Main"}
+      data-technician-nav={technicianOnly || undefined}
     >
       {shopItems
+        .filter((item) => canSeeMoney || item.href !== "/app/reports")
+        .filter(
+          (item) =>
+            !technicianOnly ||
+            item.href === "/app/tasks" ||
+            item.href === "/app/jobs",
+        )
         .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link

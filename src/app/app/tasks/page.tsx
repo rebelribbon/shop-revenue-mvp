@@ -47,8 +47,12 @@ export default async function TasksPage(props: {
 }) {
   const p = await props.searchParams;
   const s = await requireShopSession("/app/tasks");
-  const readOnly = s.actor.type === "support" || s.role === "technician";
-  const jobId = p.add && !readOnly ? p.jobId : undefined;
+  const readOnly = s.actor.type === "support";
+  // Technicians get their assigned ROs here and can open them, but can't
+  // add office tasks or customer follow-ups.
+  const technician = s.role === "technician";
+  const canAdd = !readOnly && !technician;
+  const jobId = p.add && canAdd ? p.jobId : undefined;
   const view = p.view === "later" ? "later" : "due";
   const [data, customers, context, profile] = await withTenant(
     s.businessId,
@@ -56,7 +60,7 @@ export default async function TasksPage(props: {
     (tx) =>
       Promise.all([
         listTasks(tx),
-        p.add && !readOnly && !jobId ? listCustomers(tx) : [],
+        p.add && canAdd && !jobId ? listCustomers(tx) : [],
         jobId ? getJobFollowUp(tx, jobId) : null,
         jobId ? getBusinessProfile(tx) : null,
       ]),
@@ -67,7 +71,7 @@ export default async function TasksPage(props: {
     <HydratedMain id="main-content" tabIndex={-1}>
       <header className="task-heading">
         <h1>Tasks</h1>
-        {!readOnly && !p.add && (
+        {canAdd && !p.add && (
           <Link
             className="btn primary"
             data-page-primary
@@ -77,7 +81,7 @@ export default async function TasksPage(props: {
           </Link>
         )}
       </header>
-      <TasksNavigation current={view} />
+      <TasksNavigation current={view} technicianOnly={technician} />
       {p.followUp === "1" && (
         <p className="notice ok" role="status">
           Follow-up scheduled.
@@ -128,7 +132,7 @@ export default async function TasksPage(props: {
           </Link>
         </section>
       )}
-      {p.add && !readOnly && !context && (
+      {p.add && canAdd && !context && (
         <section className="card add-panel" aria-label="Add a task">
           <h2>Add a task</h2>
           <ActionForm
@@ -195,6 +199,7 @@ export default async function TasksPage(props: {
               today={data.today}
               later={view === "later"}
               readOnly={readOnly}
+              technician={technician}
             />
           ))}
         </ul>
@@ -262,11 +267,13 @@ function TaskItem({
   today,
   later,
   readOnly,
+  technician,
 }: {
   t: TaskRow;
   today: string;
   later: boolean;
   readOnly: boolean;
+  technician: boolean;
 }) {
   const when = later
     ? nice(t.dueOn)
@@ -302,7 +309,7 @@ function TaskItem({
     : related?.startsWith("/app/jobs?")
       ? "View job"
       : "View details";
-  const canUpdate = !readOnly && !later && t.source !== "work";
+  const canUpdate = !readOnly && !technician && !later && t.source !== "work";
   const canLogCall = canUpdate && action?.kind === "call";
   let contactTask: ContactTask | undefined;
   if (

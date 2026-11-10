@@ -153,7 +153,9 @@ export default async function CustomerDetailPage(props: {
         scope={`${s.businessId}:${s.actor.id}`}
       />
       <p>
-        <Link href="/app/customers">← Customers</Link>
+        <Link href="/app/customers" className="btn secondary">
+          ← All Customers
+        </Link>
       </p>
       <header className="customer-hero" aria-label="Customer summary">
         <CustomerContactActions

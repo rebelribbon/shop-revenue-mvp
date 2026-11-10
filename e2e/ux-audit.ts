@@ -141,7 +141,11 @@ export async function auditUX(page: Page, collect = false) {
       const count = Array.from(nav.querySelectorAll("a,button")).filter(
         shown,
       ).length;
-      if (count < 3 || count > 5) issues.push(`Navigation has ${count} items`);
+      const scopedPair =
+        nav.hasAttribute("data-technician-nav") ||
+        nav.getAttribute("aria-label") === "Inspection navigation";
+      if (scopedPair ? count !== 2 : count < 3 || count > 5)
+        issues.push(`Navigation has ${count} items`);
       for (const link of Array.from(
         nav.querySelectorAll<HTMLElement>("a,button"),
       ).filter(shown))
