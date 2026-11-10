@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import styles from "./desktop-demo.module.css";
 import { RoWorkspace } from "./ro-workspace";
 import { VehicleWorkspace } from "./vehicle-workspace";
+import { EstimateWorkspace } from "./estimate-workspace";
 
 export const metadata: Metadata = {
   title: "Desktop Design Preview | Shop Revenue",
@@ -45,6 +46,7 @@ export default async function DesktopDemo({
 }) {
   const params = await searchParams;
   const customerScreen = params.screen !== "ro";
+  const estimateScreen = params.screen === "estimate";
   const vehiclesScreen = params.screen === "vehicles";
   const vehicleScreen = params.screen === "vehicle";
   const vehicleId = params.vehicle === "accord" ? "accord" : "f150";
@@ -81,13 +83,13 @@ export default async function DesktopDemo({
               ☑ <span>Tasks</span>
             </span>
             <Link
-              className={customerScreen ? styles.selected : ""}
+              className={customerScreen && !estimateScreen ? styles.selected : ""}
               href="/desktop-demo?screen=customers"
             >
               ♙ <span>Customers</span>
             </Link>
             <Link
-              className={!customerScreen ? styles.selected : ""}
+              className={!customerScreen || estimateScreen ? styles.selected : ""}
               href="/desktop-demo?screen=ro&ro=RO-10482"
             >
               ▤ <span>Jobs / ROs</span>
@@ -139,8 +141,10 @@ export default async function DesktopDemo({
                     ? "/ Vehicles"
                     : vehicleScreen
                       ? "/ Vehicles / Vehicle Details"
-                      : !customerScreen
-                        ? `/ ${roId}`
+                      : estimateScreen
+                        ? `/ ${roId} / Estimate`
+                        : !customerScreen
+                          ? `/ ${roId}`
                         : ""}
                 </>
               )}
@@ -160,7 +164,7 @@ export default async function DesktopDemo({
                 </div>
               </div>
             )}
-            {!listScreen && !vehiclesScreen && !vehicleScreen && (
+            {!listScreen && !vehiclesScreen && !vehicleScreen && !estimateScreen && (
               <div className={styles.metrics}>
                 <div>
                   <span>REPAIR ORDERS</span>
@@ -180,7 +184,14 @@ export default async function DesktopDemo({
                 </div>
               </div>
             )}
-            {vehiclesScreen || vehicleScreen ? (
+            {estimateScreen ? (
+              <EstimateWorkspace
+                key={roId}
+                roId={roId}
+                vehicleId={vehicleId}
+                newTitle={newTitle}
+              />
+            ) : vehiclesScreen || vehicleScreen ? (
               <>
                 <p className={styles.customerReturn}>
                   <Link
