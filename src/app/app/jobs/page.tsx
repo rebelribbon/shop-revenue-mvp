@@ -1320,7 +1320,7 @@ export default async function JobsPage({
               List
             </Link>
           </div>
-          {data.pipeline && data.techs.length > 1 && !techOnly && (
+          {data.pipeline && data.techs.length > 0 && !techOnly && (
             <div
               className="view-toggle tech-filter"
               role="group"

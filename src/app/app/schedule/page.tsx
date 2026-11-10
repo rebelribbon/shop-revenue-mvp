@@ -233,7 +233,7 @@ export default async function VisitsPage({
                                 variant="secondary"
                               />
                             )}
-                            {data.techs.length > 1 && (
+                            {data.techs.length > 0 && (
                               <div
                                 className="visit-tech"
                                 key={a.assignedUserId ?? "none"}
