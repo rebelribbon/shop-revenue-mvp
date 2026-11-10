@@ -463,3 +463,11 @@
 .inspectionStatusButtons button:nth-child(3).inspectionSelected{background:#ffebea;border-color:#b92e31;color:#86262b}
 .inspectionStatusButtons button:nth-child(4).inspectionSelected{background:#e9eff2;border-color:#647e89;color:#31505f}
 @media(min-width:540px){.inspectionStatusButtons{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+
+.inspectionTireReadings{display:grid;gap:10px;border:1px solid #d8e6e9;border-radius:9px;padding:12px;background:#f8fbfc}
+.inspectionTireReadings>strong{font-size:12px}
+.inspectionTireReadings>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.inspectionTireReadings label{display:grid;gap:5px;font-size:11px;font-weight:800;color:#426473}
+.inspectionTireReadings input{min-width:0;width:100%;border:1px solid #b4cad2;border-radius:7px;background:white;min-height:44px;padding:8px;font:inherit}
+@media(min-width:540px){.inspectionTireReadings>div{grid-template-columns:repeat(5,minmax(0,1fr))}}
