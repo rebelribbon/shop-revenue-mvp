@@ -16,7 +16,7 @@ export type ServiceLine = {
   cost: number | null;
   notes?: string;
 };
-type Stage = "intake" | "assignment" | "inspection" | "pricing" | "send" | "authorization";
+export type Stage = "intake" | "assignment" | "inspection" | "pricing" | "send" | "authorization";
 const stages: { id: Stage; title: string; owner: string }[] = [
   { id: "intake", title: "Advisor Intake", owner: "Service advisor" },
   { id: "assignment", title: "Assign Technician", owner: "Service advisor" },
@@ -85,11 +85,15 @@ export function ServiceFlowDemo({
   jobs,
   onAddFinding,
   onPriceJob,
+  onStageChange,
+  onReadyChange,
 }: {
   roId: string;
   jobs: ServiceLine[];
   onAddFinding: (description: string, notes: string) => void;
   onPriceJob: (id: number, cost: number, price: number) => void;
+  onStageChange: (stage: Stage) => void;
+  onReadyChange: (ready: boolean) => void;
 }) {
   const [record, setRecord] = useState<ServiceRecord>(defaults);
   const [loaded, setLoaded] = useState(false);
@@ -124,6 +128,8 @@ export function ServiceFlowDemo({
     queueMicrotask(() => {
       if (active) {
         setRecord(stored ?? defaults);
+        onStageChange((stored ?? defaults).stage);
+        onReadyChange(areServiceDocumentsCurrent(stored ?? defaults, jobs));
         setLoaded(true);
       }
     });
@@ -132,6 +138,8 @@ export function ServiceFlowDemo({
 
   function save(next: ServiceRecord) {
     setRecord(next);
+    onStageChange(next.stage);
+    onReadyChange(areServiceDocumentsCurrent(next, jobs));
     try { sessionStorage.setItem(keyFor(roId), JSON.stringify(next)); } catch { /* Demo only. */ }
     window.dispatchEvent(new Event("shop-revenue-demo-documents-changed"));
   }
@@ -162,6 +170,9 @@ export function ServiceFlowDemo({
     j.cost !== null && Number.isFinite(j.cost) && Number.isFinite(j.price)
   );
   const documentsCurrent = areServiceDocumentsCurrent(record,jobs);
+  // If a recommendation or price changes, older signed documents no longer
+  // authorize the new list. The QC gate independently checks exact snapshots.
+
   const customerLink = `/desktop-demo?screen=customer-link&ro=${encodeURIComponent(roId)}`;
   const quoted = jobs.reduce((n,j) => n + j.price,0);
   function addFinding() {
