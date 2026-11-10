@@ -51,6 +51,7 @@ export async function getInspection(tx: TenantTx, jobId: string) {
     items.filter((i) => i.status === s).length;
   return {
     saved: !!row,
+    complete: !!row?.completedAt,
     items,
     counts: {
       good: count("good"),
@@ -66,11 +67,14 @@ export async function getInspection(tx: TenantTx, jobId: string) {
 export async function saveInspection(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { jobId: string; items: InspectionItem[] },
+  input: { jobId: string; items: InspectionItem[]; submit?: boolean },
 ) {
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const items = inspectionItems.parse(input.items);
-  const done = items.every((i) => i.status !== "unchecked");
+  const allChecked=items.every((i) => i.status !== "unchecked");
+  const done=input.submit!==false && allChecked;
+  if(input.submit===true && !allChecked)
+    throw new AppError("VALIDATION","Complete every inspection point before submitting.");
   if(items.some(i=>(i.status==="watch" || i.status==="fix")&&!i.note.trim() ||
     i.status==="fix" && !i.recommendedWork?.trim())){
     throw new AppError("VALIDATION","Service Soon requires findings; Service Now requires findings and recommended work.");
