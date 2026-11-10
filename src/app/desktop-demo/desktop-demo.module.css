@@ -471,3 +471,51 @@
 .inspectionTireReadings label{display:grid;gap:5px;font-size:11px;font-weight:800;color:#426473}
 .inspectionTireReadings input{min-width:0;width:100%;border:1px solid #b4cad2;border-radius:7px;background:white;min-height:44px;padding:8px;font:inherit}
 @media(min-width:540px){.inspectionTireReadings>div{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+
+/* Current-action RO shell, preserving older work tables only as optional details. */
+.roStageCard{border:1px solid #c4d9de;border-radius:14px;background:#f4f9fa;margin:16px 0;overflow:hidden}
+.roStageSummary{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;padding:20px 22px}
+.roStageSummary h2{font-size:22px;line-height:1.2;margin:6px 0;color:#183946}
+.roStageSummary p{font-size:13px;margin:0;color:#55717f}
+.roStageCounts{display:flex;flex-wrap:wrap;gap:7px}
+.roStageCounts span{background:#e2edef;color:#2a6172;border:1px solid #cbdde2;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:800}
+.roStageProgress{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;border-top:1px solid #d5e5e9;padding:18px 12px}
+.roStageProgress>div{display:grid;justify-items:center;align-content:start;gap:6px;text-align:center;min-width:0;opacity:.55}
+.roStageProgress>div>span{display:grid;place-items:center;border-radius:50%;width:26px;height:26px;background:#d7e3e7;color:#395867;font-size:11px;font-weight:900}
+.roStageProgress>div>small{font-size:9px;line-height:1.25;overflow-wrap:anywhere}
+.roStageProgress .roStageNow,.roStageProgress .roStagePast{opacity:1}
+.roStageProgress .roStageNow>span{background:#165e79;color:white}
+.roStageProgress .roStagePast>span{background:#16764d;color:white}
+.roStageCustomerLink{display:inline-flex;margin:0 16px 12px;border:1px solid #8abbb9;border-radius:8px;padding:10px 14px;color:#176350;text-decoration:none;font-weight:800;font-size:13px}
+.roStageDisclaimer{font-size:11px;color:#607d88;margin:0;padding:0 16px 16px}
+.roExtraDetails{background:#fafcfd;border:1px solid #d4e3e8;border-radius:10px;margin:16px 0;overflow:hidden}
+.roExtraDetails>summary{cursor:pointer;padding:16px 20px;font-size:14px;font-weight:800;color:#2d6071}
+.roExtraDetails[open]>summary{border-bottom:1px solid #dbe8ec}
+.roExtraDetails>.billingBanner,.roExtraDetails>.roSplit{margin:14px}
+.inspectionGroupProgress{padding:16px;display:grid;gap:8px;background:#f2f7f9;border-top:1px solid #dce7e9;border-bottom:1px solid #dce7e9}
+.inspectionGroupProgress>span{font-size:10px;letter-spacing:.07em;color:#50717f;font-weight:900}
+.inspectionGroupProgress>strong{font-size:19px;color:#193d4c}
+.inspectionGroupProgress>div{display:flex;flex-wrap:wrap;gap:5px}
+.inspectionGroupProgress button{width:28px;height:28px;border-radius:7px;border:1px solid #a9c5ce;background:white;color:#2e6271;font:inherit;font-size:11px;font-weight:900;cursor:pointer}
+.inspectionGroupProgress button.inspectionGroupActive{background:#1d6b80;color:white;border-color:#1d6b80}
+.inspectionGroupNav{display:flex;justify-content:space-between;gap:10px;padding:14px;border-top:1px solid #dbe8eb}
+.inspectionGroupNav button{min-height:44px;flex:1;border:1px solid #a6c2cb;border-radius:9px;background:#f4f9fa;color:#245b70;font:inherit;font-weight:800;font-size:13px;cursor:pointer}
+.inspectionGroupNav button:disabled{opacity:.35;cursor:default}
+.customerInspectionStats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:14px 0}
+.customerInspectionStats span{background:#f4f7f9;border:1px solid #dbe5e9;padding:10px;border-radius:8px;font-size:12px;display:grid;gap:4px}
+.customerInspectionStats b{font-size:20px;color:#1b5669}
+.customerInspectionIssues{display:grid;gap:8px}
+.customerInspectionIssue{border:1px solid #d3e2e8;border-radius:9px;padding:12px;display:grid;gap:7px}
+.customerInspectionIssue strong{font-size:14px}
+.customerInspectionIssue p{font-size:13px;margin:0;color:#506b78}
+.customerInspectionIssue small{font-size:12px;color:#52717f}
+.customerServiceNow{color:#9c2f30;font-weight:800;font-size:12px}
+.customerServiceSoon{color:#956015;font-weight:800;font-size:12px}
+.customerInspectionAll{margin-top:16px;border:1px solid #d4e3e9;border-radius:9px;overflow:hidden}
+.customerInspectionAll summary{padding:14px;font-weight:800;font-size:13px;color:#1d6273;cursor:pointer}
+.customerInspectionAll>div{padding:0 14px 14px}
+.customerInspectionResult{border-top:1px solid #e2eaee;display:grid;gap:3px;padding:10px 0;font-size:12px}
+.customerInspectionResult span{color:#446f7e}
+.customerInspectionResult small,.customerInspectionResult p{color:#596f7b;margin:0}
+@media(max-width:650px){.roStageProgress{grid-template-columns:repeat(5,minmax(0,1fr));row-gap:12px}.roStageProgress>div>small{font-size:10px}.roStageSummary{padding:16px}.roStageSummary h2{font-size:20px}.roExtraDetails>.billingBanner,.roExtraDetails>.roSplit{margin:8px}}
