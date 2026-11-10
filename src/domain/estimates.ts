@@ -25,6 +25,7 @@ import { audit, recordActivity, type RequestMeta } from "./records";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { repeatSummary } from "@/lib/service-plans";
 import { estimatePhotos } from "./job-media";
+import { completeAdvisorHandoff } from "./job-handoffs";
 import {
   completeDecisions,
   signatureSchema,
