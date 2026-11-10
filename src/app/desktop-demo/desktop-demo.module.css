@@ -223,3 +223,13 @@
 .mobileQuestionButtons{display:grid;gap:4px}
 @media(min-width:720px){.mobileCustomerContent{padding:32px 24px 64px}.mobileSection{padding:32px}.mobileCustomerHeader{padding:20px max(32px,calc((100vw - 720px)/2))}.mobileQuestionOverlay{align-items:center}.mobileQuestionSheet{border-radius:16px}}
 @media(max-width:370px){.mobileStepDots small{font-size:9px}.mobileVisitHero h1{font-size:23px}.mobileRecTop h3{font-size:15px}.mobileSection{padding:20px 14px}}
+
+
+.mobileConfirmation{border-top:1px solid #d4e3e6;margin-top:24px;padding-top:24px;display:grid;gap:12px}
+.mobileConfirmation h3{margin:0;font-size:18px}
+.mobileConfirmation p{margin:0;color:#506872;font-size:13px}
+.mobileConfirmation>label:not(.mobileConfirmCheck){font-size:13px;font-weight:800;margin-top:8px}
+.mobileConfirmation>input{width:100%;min-height:48px;border:1px solid #a9bdc7;border-radius:8px;padding:12px;font:inherit}
+.mobileConfirmCheck{display:flex;align-items:flex-start;gap:12px;line-height:1.5;font-size:13px;margin:12px 0}
+.mobileConfirmCheck input{flex:none;width:20px;height:20px;accent-color:#087857}
+.mobileSuccessMessage{border-radius:10px;background:#e0f5e7;color:#145c3c;padding:20px;font-weight:800;margin-top:16px}
