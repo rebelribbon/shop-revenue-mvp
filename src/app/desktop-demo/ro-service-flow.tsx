@@ -477,84 +477,108 @@ export function ServiceFlowDemo({
           )}
           {record.stage === "inspection" && (
             <div className={styles.focusedStageBody}>
+              <div className={styles.workflowAlert} role="status">
+                <strong>New technician task · {record.assignedTech}</strong>
+                <p>{record.handoffs.filter(h=>h.to==="technician").at(-1)?.message ??
+                  "Pick up the vehicle, bring it to a bay/rack, and begin assessment."}</p>
+                <small>In-app demo notification; no device push alert was sent.</small>
+              </div>
               <div className={styles.focusedReadOnly}>
-                <strong>Customer concern · {record.assignedTech}</strong>
-                <p>{record.complaint}</p>
+                <strong>Customer concern</strong><p>{record.complaint}</p>
               </div>
-              <label>
-                Technician diagnosis
-                <textarea
-                  rows={3}
-                  value={record.diagnosis}
-                  onChange={(e) => saveField("diagnosis", e.target.value)}
-                  placeholder="Cause, verification, measurements…"
-                />
-              </label>
-              <label>
-                Complete multi-point inspection
-                <textarea
-                  rows={4}
-                  value={record.inspection}
-                  onChange={(e) => saveField("inspection", e.target.value)}
-                  placeholder="Brakes, tires, battery, fluid levels, lighting, steering…"
-                />
-              </label>
-              <label>
-                Photo/video notes
-                <textarea
-                  rows={2}
-                  value={record.mediaNotes}
-                  onChange={(e) => saveField("mediaNotes", e.target.value)}
-                  placeholder="Reference photos/videos in the RO media gallery"
-                />
-              </label>
-              <div className={styles.focusedAddFinding}>
-                <strong>Add inspection work / recommendation</strong>
-                <input
-                  value={newFinding}
-                  maxLength={120}
-                  onChange={(e) => setNewFinding(e.target.value)}
-                  placeholder="e.g., Replace rear brake pads"
-                />
-                <textarea
-                  rows={2}
-                  value={findingNotes}
-                  onChange={(e) => setFindingNotes(e.target.value)}
-                  placeholder="Condition found and why work is recommended"
-                />
-                <button
-                  type="button"
-                  className={styles.addButton}
-                  disabled={!newFinding.trim()}
-                  onClick={addFinding}
-                >
-                  + Add recommendation
+              {!record.techAccepted ? (
+                <button type="button" className={styles.mobilePrimaryButton}
+                  onClick={()=>save({...record,techAccepted:true,history:[...record.history,
+                    `Technician ${record.assignedTech} accepted vehicle pickup task.`]})}>
+                  Accept task → Pick up vehicle
                 </button>
-                {record.findings.map((name, i) => (
-                  <p key={i}>✓ {name}</p>
-                ))}
-              </div>
-              <p className={styles.note}>
-                Use the RO media gallery to upload technician pictures/videos.
-                Advisor approval controls what customers can see.
-              </p>
-              <button
-                type="button"
-                className={styles.mobilePrimaryButton}
-                disabled={!record.diagnosis.trim() || !record.inspection.trim()}
-                onClick={() =>
-                  advance(
-                    "pricing",
-                    "Technician completed diagnosis and inspection; advisor pricing is ready.",
-                  )
-                }
-              >
-                Complete inspection → Build estimate
-              </button>
+              ) : (
+                <>
+                  <label>Vehicle bay / rack
+                    <input value={record.bay} onChange={e=>save({...record,bay:e.target.value})}
+                      placeholder="e.g. Bay 3 · Lift 2" maxLength={60}/>
+                  </label>
+                  {record.bay.trim() && <div className={styles.workflowAlert}>
+                    <strong>Vehicle in {record.bay}</strong>
+                    <p>Complete diagnosis and every point of the inspection before submitting.</p>
+                  </div>}
+                  <label>Technician diagnosis and problem verification
+                    <textarea rows={3} value={record.diagnosis}
+                      onChange={e=>saveField("diagnosis",e.target.value)}
+                      placeholder="Confirmed concern, cause and measurements…"/>
+                  </label>
+                  <div className={styles.inspectionChecklist}>
+                    <div className={styles.inspectionChecklistHeader}>
+                      <h4>Multi-point inspection</h4>
+                      <strong>{inspectionPoints.filter(p=>record.inspectionResults[p.id]?.result).length} / {inspectionPoints.length} checked</strong>
+                    </div>
+                    <p>Check every point: OK, Needs attention or N/A. Problems require findings and recommended work.</p>
+                    {inspectionPoints.map((point,i)=>{
+                      const item=record.inspectionResults[point.id] ?? {notes:"",recommendedWork:""};
+                      const lastSection=i===0 ? null : inspectionPoints[i-1].section;
+                      return <div className={styles.inspectionItem} key={point.id}>
+                        {point.section!==lastSection && <div className={styles.inspectionCategory}>{point.section}</div>}
+                        <strong>{point.label}</strong>
+                        <div className={styles.inspectionStatusButtons} role="group" aria-label={`Inspection status: ${point.label}`}>
+                          {([["pass","✓ OK"],["attention","! Attention"],["not_applicable","N/A"]] as const).map(([value,label])=>
+                            <button type="button" key={value}
+                              aria-pressed={item.result===value}
+                              className={item.result===value ? styles.inspectionSelected : ""}
+                              onClick={()=>updateInspectionPoint(point.id,"result",value as InspectionResult)}>
+                              {label}
+                            </button>)}
+                        </div>
+                        {item.result==="attention" && <>
+                          <label>What did you find?
+                            <textarea rows={2} value={item.notes}
+                              onChange={e=>updateInspectionPoint(point.id,"notes",e.target.value)}
+                              placeholder="Measurements, condition, urgency…" />
+                          </label>
+                          <label>Recommended work (automatically added to estimate)
+                            <input value={item.recommendedWork}
+                              onChange={e=>updateInspectionPoint(point.id,"recommendedWork",e.target.value)}
+                              placeholder="e.g. Replace front brake pads and rotors"/>
+                          </label>
+                        </>}
+                        {item.result==="pass" && <label>Notes (optional)
+                          <input value={item.notes} onChange={e=>updateInspectionPoint(point.id,"notes",e.target.value)}
+                            placeholder="Measurements or comments"/>
+                        </label>}
+                      </div>;
+                    })}
+                  </div>
+                  <label>Photo and video notes
+                    <textarea rows={2} value={record.mediaNotes}
+                      onChange={e=>saveField("mediaNotes",e.target.value)}
+                      placeholder="Identify the photos/video uploaded under this RO"/>
+                  </label>
+                  <p className={styles.note}>
+                    Use the RO media panel below for photos and videos. Uploads remain
+                    private until an advisor approves sharing. Production upload is not
+                    simulated by this inspection form.
+                  </p>
+                  <button type="button" className={styles.mobilePrimaryButton}
+                    disabled={!record.bay.trim()||!record.diagnosis.trim()||
+                      !inspectReady(record.inspectionResults)}
+                    onClick={submitInspection}>
+                    Submit inspection → Notify advisor
+                  </button>
+                  {!inspectReady(record.inspectionResults) && <p className={styles.journeyNeedChoices}>
+                    Every inspection point needs a status. Items needing attention
+                    also need technician findings and recommended work.
+                  </p>}
+                </>
+              )}
             </div>
           )}
           {record.stage === "pricing" && (
             <div className={styles.focusedStageBody}>
+              <div className={styles.workflowAlert} role="status">
+                <strong>Advisor notification · Inspection submitted</strong>
+                <p>{record.handoffs.filter(h=>h.to==="advisor").at(-1)?.message ??
+                  "Technician submitted diagnosis and inspection. Prepare the estimate."}</p>
+                <small>In-app demo notification. No email, SMS or device push was sent.</small>
+              </div>
               <div className={styles.focusedReadOnly}>
                 <strong>Technician diagnosis</strong>
                 <p>{record.diagnosis}</p>
