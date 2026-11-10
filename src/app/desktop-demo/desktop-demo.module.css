@@ -365,3 +365,10 @@
 .checkoutGuardError{padding:12px;border-radius:9px;background:#fff3ec;border:1px solid #f1c5a7;color:#8c431f;font-size:13px}
 @media(min-width:640px){.journeyBody{padding:26px 24px 60px;gap:18px}.journeyCard{padding:26px 28px}.journeyInspectionColumns{grid-template-columns:repeat(2,minmax(0,1fr))}.journeyRecHeading h3{font-size:17px}}
 @media(max-width:340px){.journeyRecHeading>strong{font-size:15px}.journeyHeader span{font-size:10px}.journeyHero h1{font-size:24px}}
+
+
+/* A customer's decline is reversible, but a previously submitted decision
+   requires a new authorization instead of modifying the old record. */
+.journeyUndoDecline,.journeyUndecline{display:block;width:100%;min-height:44px;border:1px solid #b7ccd5;border-radius:9px;padding:10px 14px;margin-top:10px;background:#f3f8fa;color:#225969;text-align:center;font:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.journeyUndecline{background:#e6f5ed;color:#17623f;border-color:#8bc3aa}
+.journeyRevisionNotice{padding:12px;border:1px solid #bbd8c8;border-radius:8px;background:#f0f8f3;color:#286746!important;font-size:12px!important}
