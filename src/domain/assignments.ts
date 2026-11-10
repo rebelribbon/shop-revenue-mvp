@@ -1,17 +1,17 @@
 // Who's on each job and visit. Kept apart from the board and "My day" so
 // both can read it without importing each other.
-import { and, eq, inArray, isNotNull } from "drizzle-orm";
-import { appointment, jobAssignment, membership, user } from "@/db/schema";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { activity, appointment, jobAssignment, membership, user } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { currentMemberRole } from "./membership";
 import { getJob } from "./jobs";
-import { audit, type RequestMeta } from "./records";
-import { notifyTechnicianAssigned } from "./job-handoffs";
+import { audit, recordActivity, type RequestMeta } from "./records";
+import { notifyTechnicianAssigned, assignedAdvisorForJob, reassignAdvisorHandoff } from "./job-handoffs";
 
 export type Tech = { userId: string; name: string };
 
-// Everyone active on the team, owner included: anyone can be on a job.
+// Only active technician accounts may be assigned technician work.
 export async function listTechs(tx: TenantTx): Promise<Tech[]> {
   const rows = await tx
     .select({
@@ -35,6 +35,32 @@ export async function listTechs(tx: TenantTx): Promise<Tech[]> {
     userId: r.userId!,
     name: r.name?.trim() || r.email?.split("@")[0] || "Team member",
   }));
+}
+
+export async function listAdvisors(tx:TenantTx):Promise<Tech[]>{
+  const rows=await tx.select({userId:membership.userId,name:user.displayName,email:user.email})
+    .from(membership).innerJoin(user,eq(user.id,membership.userId))
+    .where(and(eq(membership.businessId,tx.businessId),
+      eq(membership.status,"active"),
+      inArray(membership.role,["staff","owner"]),isNotNull(membership.userId)))
+    .orderBy(membership.createdAt);
+  return rows.map(r=>({userId:r.userId!,
+    name:r.name?.trim()||r.email?.split("@")[0]||"Advisor"}));
+}
+export async function assignAdvisor(tx:TenantTx,meta:RequestMeta,
+  input:{jobId:string;userId:string}){
+  await assertCanAssign(tx);
+  if(!(await getJob(tx,input.jobId)))throw notFound("That job");
+  const advisor=(await listAdvisors(tx)).find(x=>x.userId===input.userId);
+  if(!advisor)throw new AppError("VALIDATION","Choose an active advisor or owner from this shop.");
+  const before=await assignedAdvisorForJob(tx,input.jobId);
+  await recordActivity(tx,{kind:"job.advisor_assigned",subjectType:"job",
+    subjectId:input.jobId,summary:`Service advisor assigned: ${advisor.name}`,
+    data:{advisorUserId:input.userId}});
+  await reassignAdvisorHandoff(tx,input.jobId,input.userId);
+  await audit(tx,meta,{action:"job.advisor_assigned",targetType:"job",
+    targetId:input.jobId,before:{userId:before},after:{userId:input.userId}});
+  return {jobId:input.jobId,advisor:advisor.name};
 }
 
 // jobId → userId for the jobs given (or every job).
@@ -85,7 +111,8 @@ export async function assignJob(
   // The assignment and targeted handoff are committed atomically. Reassignment
   // creates a newer handoff, invalidating the former technician's inbox item.
   if (input.userId && tx.actor.type === "user" && tx.actor.id) {
-    await notifyTechnicianAssigned(tx, input.jobId, input.userId, tx.actor.id);
+    await notifyTechnicianAssigned(tx, input.jobId, input.userId,
+      (await assignedAdvisorForJob(tx,input.jobId)) ?? tx.actor.id);
   }
   await audit(tx, meta, {
     action: "job.assigned",
