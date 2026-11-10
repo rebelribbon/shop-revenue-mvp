@@ -896,8 +896,8 @@ export default async function JobsPage({
                     <section aria-label="Photos and videos" id="job-photos">
                       <h3>Photos &amp; videos</h3>
                       <p className="muted">
-                        Technician uploads stay private until the service advisor
-                        approves them for the next estimate or invoice.
+                        Technician uploads stay private until the service
+                        advisor approves them for the next estimate or invoice.
                       </p>
                       <MediaGallery
                         quoteHref={

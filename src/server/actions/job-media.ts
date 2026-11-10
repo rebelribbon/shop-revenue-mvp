@@ -61,14 +61,18 @@ export const updateMediaAction = defineShopAction({
     remove: z.enum(["true"]).optional(),
   }),
   run: ({ tx, meta }, i) =>
-    updateMedia(tx, {
-      mediaId: i.mediaId,
-      tag: i.tag,
-      caption: i.caption,
-      showCustomer:
-        i.showCustomer === undefined ? undefined : i.showCustomer === "true",
-      jobId: i.jobId,
-      remove: i.remove === "true",
-    }, meta),
+    updateMedia(
+      tx,
+      {
+        mediaId: i.mediaId,
+        tag: i.tag,
+        caption: i.caption,
+        showCustomer:
+          i.showCustomer === undefined ? undefined : i.showCustomer === "true",
+        jobId: i.jobId,
+        remove: i.remove === "true",
+      },
+      meta,
+    ),
   persist: () => ({ message: "Saved." }),
 });

@@ -172,7 +172,10 @@ export async function updateMedia(
   if (input.showCustomer !== undefined) {
     const role = await currentMemberRole(tx);
     if (role !== "owner" && role !== "staff") {
-      throw new AppError("FORBIDDEN", "Only the owner or front office can approve customer-visible media.");
+      throw new AppError(
+        "FORBIDDEN",
+        "Only the owner or front office can approve customer-visible media.",
+      );
     }
   }
   if (input.jobId && (await jobCustomer(tx, input.jobId)) !== m.customerId)
@@ -192,7 +195,11 @@ export async function updateMedia(
       updatedAt: new Date(),
     })
     .where(and(eq(jobMedia.businessId, tx.businessId), eq(jobMedia.id, m.id)));
-  if (meta && input.showCustomer !== undefined && input.showCustomer !== m.showCustomer) {
+  if (
+    meta &&
+    input.showCustomer !== undefined &&
+    input.showCustomer !== m.showCustomer
+  ) {
     await audit(tx, meta, {
       action: "media.customer_visibility_changed",
       targetType: "job_media",

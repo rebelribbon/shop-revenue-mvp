@@ -171,7 +171,9 @@ export function MediaUploader({
           }
         />
       </label>
-      <p className="muted">Uploads are private until a service advisor approves sharing.</p>
+      <p className="muted">
+        Uploads are private until a service advisor approves sharing.
+      </p>
       <input
         ref={input}
         type="file"
