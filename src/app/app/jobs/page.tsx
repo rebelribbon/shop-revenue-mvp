@@ -327,6 +327,47 @@ export default async function JobsPage({
       style: "currency",
       currency: "USD",
     }).format(c / 100);
+  // Technicians get a dedicated assigned-work workspace. The general RO
+  // editor, profit, invoices, estimates, customer administration and
+  // advisor-only actions are never rendered for technician sessions.
+  if(s.role==="technician"){
+    const assignedInput=selected ? jobInput.parse(selected.data) : null;
+    return <HydratedMain id="main-content" tabIndex={-1}>
+      <h1>My assigned repair orders</h1>
+      <p className="muted">Only work assigned to your account appears here.</p>
+      {selected ? <>
+        <Link href="/app/jobs">← My assigned ROs</Link>
+        <section className="card">
+          <h2>{assignedInput?.title || "Repair order"}</h2>
+          <p>Record your diagnosis, complete the 40-point inspection and submit it to your advisor.</p>
+          {data.inspection && <InspectionForm
+            key={JSON.stringify(data.inspection.items)}
+            jobId={selected.id}
+            initial={data.inspection.items}
+            readOnly={s.actor.type==="support" || data.inspection.complete}
+            completed={data.inspection.complete}
+          />}
+        </section>
+        {assignedInput?.customerId && <section className="card">
+          <h2>Technician media</h2>
+          <p>Upload photos and videos of findings. Media stays private until the service advisor approves sharing.</p>
+          <MediaUploader customerId={assignedInput.customerId}
+            jobId={selected.id} vehicleId={assignedInput.vehicleId ?? null}
+            serviceAssetId={assignedInput.serviceAssetId ?? null} defaultTag="issue"/>
+          <MediaGallery items={data.jobMedia} readOnly canPublish={false}
+            timeZone={data.profile?.timezone ?? "America/Chicago"}/>
+        </section>}
+      </> : <>
+        {data.jobs.length===0 ? <p>No repair orders assigned. You will receive a task when your advisor assigns a vehicle.</p> :
+          <ul className="row-list card">{data.jobs.map(j=><li key={j.id}>
+            <Link href={`/app/jobs?job=${j.id}`}>
+              <strong>{(j.data as {title?:string}).title || "Repair order"}</strong>
+              <span className="muted"> · Open inspection</span>
+            </Link>
+          </li>)}</ul>}
+      </>}
+    </HydratedMain>;
+  }
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>{editing ? (selected ? "Edit job" : labels.newJob) : labels.jobs}</h1>
