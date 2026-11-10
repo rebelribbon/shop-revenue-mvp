@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import styles from "./desktop-demo.module.css";
 import { ShareMediaDemo } from "./customer-media";
 import { AdvisorCheckoutDemo } from "./ro-checkout-demo";
-import { ServiceFlowDemo } from "./ro-service-flow";
+import { ServiceFlowDemo, type Stage } from "./ro-service-flow";
 
 export type Decision = "approved" | "pending" | "declined";
 export type DemoJob = {
@@ -138,6 +138,8 @@ export function RoWorkspace({
   const storageKey = `shop-revenue-desktop-demo-ro-v2:${roId}`;
   const [jobs, setJobs] = useState<DemoJob[]>(() => [...ro.jobs]);
   const [showAdd, setShowAdd] = useState(false);
+  const [workflowStage, setWorkflowStage] = useState<Stage>("intake");
+  const [workflowReady, setWorkflowReady] = useState(false);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [cost, setCost] = useState("");
@@ -232,6 +234,21 @@ export function RoWorkspace({
   );
   const costKnown = approved.every((job) => job.cost !== null);
   const approvedCosts = approved.reduce((sum, job) => sum + (job.cost ?? 0), 0);
+  function addInspectedRecommendation(description: string, findings: string) {
+    if (preventChangesAfterInvoice()) return;
+    const id = nextId;
+    setJobs(old => [...old, {
+      id, name:description,notes:findings,price:0,cost:null,
+      decision:"pending",origin:"inspection",addedInDemo:true,
+    }]);
+    setNextId(current => current + 1);
+    setWorkflowReady(false);
+  }
+  function priceExistingJob(id:number,cost:number,price:number) {
+    if (preventChangesAfterInvoice()) return;
+    setJobs(old => old.map(j=>j.id===id?{...j,cost,price}:j));
+    setWorkflowReady(false);
+  }
   function preventChangesAfterInvoice() {
     try {
       const saved = sessionStorage.getItem(
@@ -509,7 +526,7 @@ export function RoWorkspace({
         </div>
         <div className={styles.roActions}>
           <span className={styles.pill}>In progress</span>
-          <button
+          {(!internal || workflowStage === "authorization") && <button
             type="button"
             className={styles.addButton}
             onClick={() => {
@@ -520,10 +537,10 @@ export function RoWorkspace({
             aria-controls="new-demo-job"
           >
             + Add Work / Recommendation
-          </button>
+          </button>}
         </div>
       </div>
-      <div className={styles.tabs}>
+      {(!internal || workflowReady) && <div className={styles.tabs}>
         <strong>Overview</strong>
         <a
           href={`/desktop-demo?screen=estimate&ro=${roId}&vehicle=${vehicleId ?? "f150"}&title=${encodeURIComponent(newTitle ?? "")}`}
@@ -533,8 +550,8 @@ export function RoWorkspace({
         <a href="#ro-checkout-workspace">Work</a>
         <span>Documents</span>
         <a href="#ro-checkout-workspace">Cashiering</a>
-      </div>
-      {showAdd && (
+      </div>}
+      {showAdd && (!internal || workflowStage === "authorization") && (
         <form id="new-demo-job" className={styles.addForm} onSubmit={addJob}>
           <div>
             <h3>
@@ -703,9 +720,18 @@ export function RoWorkspace({
           </div>
         </div>
       )}
-      {internal && <ServiceFlowDemo roId={roId} jobs={jobs} />}
-      {internal && <AdvisorCheckoutDemo roId={roId} jobs={jobs} />}
-      <div className={styles.billingBanner}>
+      {internal && (
+        <ServiceFlowDemo
+          roId={roId}
+          jobs={jobs}
+          onAddFinding={addInspectedRecommendation}
+          onPriceJob={priceExistingJob}
+          onStageChange={setWorkflowStage}
+          onReadyChange={setWorkflowReady}
+        />
+      )}
+      {internal && workflowReady && <AdvisorCheckoutDemo roId={roId} jobs={jobs} />}
+      {(!internal || workflowReady) && <div className={styles.billingBanner}>
         <div>
           <span className={styles.eyebrow}>APPROVED WORK · BILLING BASIS</span>
           <strong>{money(approvedTotal)}</strong>
@@ -720,8 +746,8 @@ export function RoWorkspace({
           <strong>{money(suggestedTotal)}</strong>
           <span>{recommendations.length} pending or declined</span>
         </div>
-      </div>
-      <div className={styles.roSplit}>
+      </div>}
+      {(!internal || workflowReady) && <div className={styles.roSplit}>
         <section className={styles.panel} aria-label="Approved work">
           <div className={styles.panelHeader}>
             <div>
@@ -779,8 +805,10 @@ export function RoWorkspace({
             <strong>{money(suggestedTotal)}</strong>
           </div>
         </section>
-      </div>
-      {internal && <ShareMediaDemo key={roId} roId={roId} />}
+      </div>}
+      {internal && (workflowStage === "inspection" || workflowStage === "send" || workflowStage === "authorization") && (
+        <ShareMediaDemo key={roId} roId={roId} />
+      )}
       <div className={styles.note}>
         Demo only. Approval and removal buttons simulate decisions for layout
         review; they do not capture a signature, send email, alter a live RO, or
