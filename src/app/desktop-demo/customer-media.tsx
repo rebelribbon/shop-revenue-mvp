@@ -146,10 +146,6 @@ const mediaSeeds: Record<string, SampleMedia[]> = {
     },
   ],
 };
-const money = (value: number) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-    value,
-  );
 
 export function ShareMediaDemo({
   roId,
@@ -257,9 +253,6 @@ export function ShareMediaDemo({
         setCopyMessage("Open the customer preview link and copy its address."),
       );
   }
-  const subtotal = jobs
-    .filter((j) => j.decision === "approved")
-    .reduce((sum, j) => sum + j.price, 0);
   function saveCustomerSelections(
     choices: Record<number, "approved" | "declined">,
   ) {
