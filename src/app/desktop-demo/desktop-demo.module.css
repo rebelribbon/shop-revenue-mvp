@@ -233,3 +233,12 @@
 .mobileConfirmCheck{display:flex;align-items:flex-start;gap:12px;line-height:1.5;font-size:13px;margin:12px 0}
 .mobileConfirmCheck input{flex:none;width:20px;height:20px;accent-color:#087857}
 .mobileSuccessMessage{border-radius:10px;background:#e0f5e7;color:#145c3c;padding:20px;font-weight:800;margin-top:16px}
+
+
+.mobileServiceStatus{display:grid;gap:8px;background:#e7f2f5;border:1px solid #bdd8df;border-radius:12px;padding:16px;margin:4px 0 16px}
+.mobileServiceStatus strong{color:#174456;font-size:14px}
+.mobileServiceStatus p{margin:6px 0 0;color:#425f6e;font-size:12px;line-height:1.5}
+.mobileServiceStatus>span{font-size:11px;font-weight:800;color:#23596c}
+.mobileCheckoutStatus{padding:20px 16px;background:#f2f8f6;border:1px solid #b9dbce;border-radius:12px;margin:16px 0}
+.mobileCheckoutStatus h3{margin:0 0 8px;font-size:18px}
+.mobileCheckoutStatus p{color:#426254;font-size:13px;line-height:1.6;margin:0 0 16px}
