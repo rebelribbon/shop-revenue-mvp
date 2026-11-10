@@ -7,6 +7,7 @@ import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { createUploadUrl, statObject } from "@/lib/media-storage";
 import { getCustomerWithVehicles } from "./customers";
+import { currentMemberRole } from "./membership";
 import { recordActivity, type RequestMeta } from "./records";
 
 export const MEDIA_TYPES: Record<string, { ext: string; video: boolean }> = {
@@ -130,7 +131,8 @@ export async function finishMediaUpload(
       mediaType: type?.video ? "video" : "photo",
       tag: input.tag,
       caption: input.caption?.trim() || null,
-      showCustomer: !!input.showCustomer,
+      // Uploads always start private. A staff/owner advisor must approve sharing separately.
+      showCustomer: false,
     })
     .returning();
   await recordActivity(tx, {
@@ -166,6 +168,12 @@ export async function updateMedia(
       ),
     );
   if (!m) throw notFound("That photo");
+  if (input.showCustomer !== undefined) {
+    const role = await currentMemberRole(tx);
+    if (role !== "owner" && role !== "staff") {
+      throw new AppError("FORBIDDEN", "Only the owner or front office can approve customer-visible media.");
+    }
+  }
   if (input.jobId && (await jobCustomer(tx, input.jobId)) !== m.customerId)
     throw notFound("That job");
   await tx
