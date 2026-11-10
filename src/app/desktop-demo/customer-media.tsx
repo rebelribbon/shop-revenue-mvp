@@ -265,11 +265,14 @@ export function ShareMediaDemo({
     questions: Record<number, string>,
   ) {
     const requestedDefaults: Record<string, number[]> = {
-      "RO-10482": [1, 3], "RO-10193": [1], "RO-09914": [1, 2],
+      "RO-10482": [1, 3],
+      "RO-10193": [1],
+      "RO-09914": [1, 2],
     };
     const baseIds = requestedDefaults[roId] ?? [];
     const updated = jobs.map((j) => {
-      if (j.origin === "requested" || (!j.origin && baseIds.includes(j.id))) return j;
+      if (j.origin === "requested" || (!j.origin && baseIds.includes(j.id)))
+        return j;
       return choices[j.id] ? { ...j, decision: choices[j.id] } : j;
     });
     setJobs(updated);
@@ -283,7 +286,10 @@ export function ShareMediaDemo({
         return choice ? { ...j, decision: choice.decision } : j;
       });
       sessionStorage.setItem(jobsKey, JSON.stringify(next));
-      sessionStorage.setItem(`shop-revenue-desktop-demo-questions:${roId}`, JSON.stringify(questions));
+      sessionStorage.setItem(
+        `shop-revenue-desktop-demo-questions:${roId}`,
+        JSON.stringify(questions),
+      );
     } catch {
       // Demo state is only stored in this browser.
     }
