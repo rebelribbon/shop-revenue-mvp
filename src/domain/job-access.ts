@@ -3,6 +3,7 @@ import { notFound } from "@/lib/errors";
 import { and, eq, sql } from "drizzle-orm";
 import { file, jobMedia } from "@/db/schema";
 import { getJob } from "./jobs";
+import { assertAssignedTechnician } from "./job-handoffs";
 
 export async function requireAssignedJob(
   tx: TenantTx,
@@ -10,6 +11,7 @@ export async function requireAssignedJob(
 ) {
   if (!input.jobId || !(await getJob(tx, input.jobId)))
     throw notFound("That assigned job");
+  await assertAssignedTechnician(tx,input.jobId);
 }
 
 export async function requireAssignedCustomer(
