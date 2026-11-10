@@ -56,6 +56,9 @@ export default async function DesktopDemo({
       ? params.ro!
       : "RO-10482";
   const newTitle = params.title?.slice(0, 100) ?? "";
+  const roQueryExtra = roId.startsWith("RO-DEMO-")
+    ? `&vehicle=${vehicleId}&title=${encodeURIComponent(newTitle)}`
+    : "";
   return (
     <main id="main-content" className={styles.demo}>
       <div className={styles.notice}>
@@ -103,14 +106,14 @@ export default async function DesktopDemo({
                 <Link
                   aria-current={!internal ? "page" : undefined}
                   className={!internal ? styles.active : ""}
-                  href={`/desktop-demo?screen=ro&ro=${roId}&mode=customer`}
+                  href={`/desktop-demo?screen=ro&ro=${roId}&mode=customer${roQueryExtra}`}
                 >
                   Customer
                 </Link>
                 <Link
                   aria-current={internal ? "page" : undefined}
                   className={internal ? styles.active : ""}
-                  href={`/desktop-demo?screen=ro&ro=${roId}&mode=internal`}
+                  href={`/desktop-demo?screen=ro&ro=${roId}&mode=internal${roQueryExtra}`}
                 >
                   Internal
                 </Link>
