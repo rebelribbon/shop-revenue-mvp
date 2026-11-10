@@ -3,7 +3,25 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
-import { roRecords, type DemoJob } from "./ro-workspace";
+type PublicJob = { id: number; name: string; price: number; decision: "approved" | "pending" | "declined" };
+const safeROs: Record<string, { title: string; vehicle: string; jobs: PublicJob[] }> = {
+  "RO-10482": { title: "Brake Service", vehicle: "2021 Ford F-150", jobs: [
+    {id: 1, name: "Front brake pads and rotors", price: 425, decision:"approved"},
+    {id: 2, name: "Brake fluid flush", price: 180, decision:"pending"},
+    {id: 3, name: "Multi-point inspection", price: 80, decision:"approved"},
+    {id: 4, name: "Cabin air filter replacement", price: 65, decision:"declined"},
+  ] },
+  "RO-10193": { title: "Oil Change & Inspection", vehicle: "2021 Ford F-150", jobs: [
+    {id:1,name:"Engine oil and filter change",price:115,decision:"approved"},
+    {id:2,name:"Tire rotation",price:45,decision:"approved"},
+    {id:3,name:"Air filter replacement",price:55,decision:"declined"},
+  ] },
+  "RO-09914": { title: "Battery Replacement", vehicle: "2018 Honda Accord", jobs: [
+    {id:1,name:"Battery replacement",price:285,decision:"approved"},
+    {id:2,name:"Charging system diagnostic",price:89,decision:"approved"},
+    {id:3,name:"Clean corroded terminals",price:35,decision:"pending"},
+  ] },
+};
 
 type SampleMedia = {
   id: string;
@@ -76,8 +94,8 @@ export function ShareMediaDemo({
   const [media, setMedia] = useState<SampleMedia[]>(() => [
     ...(mediaSeeds[roId] ?? []),
   ]);
-  const existing = roRecords[roId as keyof typeof roRecords];
-  const [jobs, setJobs] = useState<DemoJob[]>(() => [
+  const existing = safeROs[roId];
+  const [jobs, setJobs] = useState<PublicJob[]>(() => [
     ...(existing?.jobs ?? []),
   ]);
   const [hydrated, setHydrated] = useState(false);
@@ -90,7 +108,7 @@ export function ShareMediaDemo({
   useEffect(() => {
     let live = true;
     let stored: SampleMedia[] | null = null;
-    let storedJobs: DemoJob[] | null = null;
+    let storedJobs: PublicJob[] | null = null;
     try {
       const raw = sessionStorage.getItem(mediaKey);
       if (raw) {
@@ -124,7 +142,7 @@ export function ShareMediaDemo({
               ["approved", "declined", "pending"].includes(v.decision),
           )
         ) {
-          storedJobs = parsed as DemoJob[];
+          storedJobs = (parsed as PublicJob[]).map((j) => ({id:j.id, name:j.name, price:j.price, decision:j.decision}));
         }
       }
     } catch {
