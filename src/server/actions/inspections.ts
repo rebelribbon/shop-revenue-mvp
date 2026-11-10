@@ -28,7 +28,9 @@ export const saveInspectionAction = defineShopAction({
   persist: (r) => ({
     ...r,
     message: r.complete
-      ? "Inspection submitted. Your advisor has been notified in Tasks."
+      ? r.advisorNotified
+        ? "Inspection submitted. Your advisor has been notified in Tasks."
+        : "Inspection submitted. No assigned-advisor handoff was available; ask the front office to review."
       : "Inspection saved.",
   }),
 });

@@ -79,6 +79,9 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   // Book a visit and put the tech on it from the schedule.
   await page.goto("/app/schedule?new=1");
   await page
+    .getByLabel("Find customer", { exact: true })
+    .fill(`Tech TEST ${info.project.name}`);
+  await page
     .getByLabel("Customer", { exact: true })
     .selectOption({ label: `Tech TEST ${info.project.name}` });
   await page.getByLabel("Date and time").fill(chicagoTomorrow());

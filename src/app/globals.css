@@ -1461,10 +1461,14 @@ input::-webkit-datetime-edit {
   padding: 16px 0;
 }
 .shop-mobile-nav {
-  grid-template-columns: minmax(48px, 1fr) minmax(104px, 1.5fr) repeat(
-      3,
-      minmax(48px, 1fr)
-    );
+  grid-template-columns:
+    minmax(48px, 1fr) minmax(48px, 1fr) minmax(80px, 1.4fr)
+    minmax(48px, 1fr) minmax(64px, 1.1fr);
+}
+.shop-mobile-nav:has(> :last-child:nth-child(4)) {
+  grid-template-columns:
+    minmax(48px, 1fr) minmax(48px, 1fr) minmax(80px, 1.4fr)
+    minmax(48px, 1fr);
 }
 @media (max-width: 599px) {
   .overview-metrics {
@@ -1474,10 +1478,7 @@ input::-webkit-datetime-edit {
 
 @media (max-width: 359px) {
   .shop-mobile-nav {
-    grid-template-columns: minmax(104px, 1.5fr) repeat(3, minmax(48px, 1fr));
-  }
-  .shop-mobile-nav a[href="/app"] {
-    display: none !important;
+    padding-inline: 0;
   }
 }
 

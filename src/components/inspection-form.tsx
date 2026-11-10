@@ -181,7 +181,7 @@ export function InspectionForm({
       <ul className="inspection-list">
         {visible.map((i) => (
           <li key={i.key} className={`inspection-item is-${i.status}`}>
-            <fieldset disabled={readOnly || completed}>
+            <fieldset disabled={readOnly || completed || !ready || pending}>
               <legend>{i.label}</legend>
               {i.hint && <p className="muted">{i.hint}</p>}
               <div className="inspection-choices">
@@ -312,9 +312,7 @@ export function InspectionForm({
           </button>
         </div>
       )}
-      {completed && (
-        <p className="notice">Inspection submitted to your advisor.</p>
-      )}
+      {completed && <p className="notice">Inspection submitted.</p>}
       {!canSubmit && !completed && (
         <p className="muted">
           Confirm {automotive ? "pickup and bay" : "arrival and work area"},

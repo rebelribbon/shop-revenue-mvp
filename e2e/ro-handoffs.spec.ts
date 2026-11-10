@@ -199,7 +199,7 @@ test("routes an assigned inspection from the technician to its advisor without e
       })
       .click();
     await expect(
-      tech.getByText("Inspection submitted to your advisor.", { exact: true }),
+      tech.getByText("Inspection submitted.", { exact: true }),
     ).toBeVisible();
     expect((await readTasks(tech)).some((task) => task.jobId === jobId)).toBe(
       false,

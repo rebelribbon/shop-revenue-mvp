@@ -64,6 +64,7 @@ describe("Digital inspections", () => {
       }),
     );
     expect(saved.complete).toBe(true);
+    expect(saved.advisorNotified).toBe(false);
     const after = await run((tx) => getInspection(tx, job.id));
     expect(after.counts).toMatchObject({ fix: 1, watch: 1, unchecked: 0 });
     expect(after.assessment).toMatchObject(assessment);

@@ -209,6 +209,7 @@ export async function saveInspection(
     data: { ...assessment, pickedUpAt },
     recordedAtNow: true,
   });
+  let advisorNotified = false;
   if (done) {
     await recordActivity(tx, {
       kind: "inspection.submitted",
@@ -218,7 +219,7 @@ export async function saveInspection(
       data: { items, assessment: { ...assessment, pickedUpAt } },
       recordedAtNow: true,
     });
-    await notifyAdvisorInspectionComplete(tx, input.jobId);
+    advisorNotified = await notifyAdvisorInspectionComplete(tx, input.jobId);
   }
   await audit(tx, meta, {
     action: "inspection.saved",
@@ -229,7 +230,7 @@ export async function saveInspection(
       watch: items.filter((i) => i.status === "watch").length,
     },
   });
-  return { jobId: input.jobId, complete: done };
+  return { jobId: input.jobId, complete: done, advisorNotified };
 }
 
 // Turn "Needs work" items into labor lines on the job, priced at the

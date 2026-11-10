@@ -122,7 +122,7 @@ export async function reassignAdvisorHandoff(
 export async function notifyAdvisorInspectionComplete(
   tx: TenantTx,
   jobId: string,
-) {
+): Promise<boolean> {
   const [assignment] = await tx
     .select({ userId: jobAssignment.userId })
     .from(jobAssignment)
@@ -133,7 +133,7 @@ export async function notifyAdvisorInspectionComplete(
       ),
     )
     .limit(1);
-  if (!assignment?.userId) return;
+  if (!assignment?.userId) return false;
   const history = await tx
     .select({ data: activity.data })
     .from(activity)
@@ -154,7 +154,7 @@ export async function notifyAdvisorInspectionComplete(
         e?.stage === "inspect_vehicle" &&
         e.technicianUserId === assignment.userId,
     );
-  if (!assignmentEvent) return;
+  if (!assignmentEvent) return false;
   const advisorId =
     (await assignedAdvisorForJob(tx, jobId)) ?? assignmentEvent.advisorUserId;
   await recordActivity(tx, {
@@ -170,6 +170,7 @@ export async function notifyAdvisorInspectionComplete(
     } satisfies HandoffData,
     recordedAtNow: true,
   });
+  return true;
 }
 
 export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
