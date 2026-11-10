@@ -547,3 +547,11 @@
 .customerSigningLines p{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #d8e7e8;font-size:13px;margin:0}
 .customerSigningLines strong{white-space:nowrap}
 @media(max-width:340px){.customerSigningSteps{grid-template-columns:1fr}.roStageCounts span{font-size:10px}}
+
+
+.workflowAuthorized{margin:16px 0;padding:20px;background:#e8f6ed;border:1px solid #b9dec8;border-radius:12px;color:#195b39;display:grid;gap:8px}
+.workflowAuthorized>strong{font-size:16px}
+.workflowAuthorized>p{font-size:13px;margin:0;line-height:1.6}
+.workflowAuthorized details{font-size:12px;padding-top:8px}
+.workflowAuthorized summary{font-weight:800;cursor:pointer}
+.workflowAuthorized details p{margin:8px 0}
