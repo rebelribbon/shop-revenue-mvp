@@ -8,6 +8,7 @@ import {
   inspectionPoints,
   inspectionRecommendations,
   inspectReady,
+  inspectionLabels,
   type InspectionResults,
   type InspectionPointId,
   type InspectionResult,
@@ -265,7 +266,7 @@ export function ServiceFlowDemo({
       recommendedWork: "",
     };
     const next = { ...before, [field]: value };
-    if (field === "result" && value !== "borderline" && value !== "bad") {
+    if (field === "result" && value !== "service_soon" && value !== "service_now") {
       next.recommendedWork = "";
     }
     save({
@@ -305,7 +306,7 @@ export function ServiceFlowDemo({
       inspection: inspectionPoints
         .map((point) => {
           const item = record.inspectionResults[point.id];
-          return `${point.label}: ${item?.result === "bad" ? "BAD" : item?.result === "borderline" ? "BORDERLINE" : item?.result === "good" ? "GOOD" : "N/A"}${item?.notes ? " — " + item.notes : ""}`;
+          return `${point.label}: ${item?.result ? inspectionLabels[item.result] : "Not checked"}${item?.notes ? " — " + item.notes : ""}`;
         })
         .join("\n"),
       handoffs: [...record.handoffs, handoff],
@@ -617,8 +618,7 @@ export function ServiceFlowDemo({
                       </strong>
                     </div>
                     <p>
-                      Check every point: OK, Needs attention or N/A. Problems
-                      require findings and recommended work.
+                      Choose Satisfactory, Service Soon, Service Now, or N/A for each point. Record measurements and findings for concerns; Service Now requires a recommendation.
                     </p>
                     {inspectionPoints.map((point, i) => {
                       const item = record.inspectionResults[point.id] ?? {
@@ -634,7 +634,8 @@ export function ServiceFlowDemo({
                               {point.section}
                             </div>
                           )}
-                          <strong>{point.label}</strong>
+                          <strong>{i + 1}. {point.label}</strong>
+                          {point.hint && <p className={styles.inspectionHint}>{point.hint}</p>}
                           <div
                             className={styles.inspectionStatusButtons}
                             role="group"
@@ -642,9 +643,9 @@ export function ServiceFlowDemo({
                           >
                             {(
                               [
-                                ["good", "✓ Good"],
-                                ["borderline", "◐ Borderline"],
-                                ["bad", "✕ Bad"],
+                                ["satisfactory", "● Satisfactory"],
+                                ["service_soon", "▲ Service Soon"],
+                                ["service_now", "⬟ Service Now"],
                                 ["na", "N/A"],
                               ] as const
                             ).map(([value, label]) => (
@@ -669,8 +670,8 @@ export function ServiceFlowDemo({
                               </button>
                             ))}
                           </div>
-                          {(item.result === "borderline" ||
-                            item.result === "bad") && (
+                          {(item.result === "service_soon" ||
+                            item.result === "service_now") && (
                             <>
                               <label>
                                 What did you find?
@@ -688,8 +689,7 @@ export function ServiceFlowDemo({
                                 />
                               </label>
                               <label>
-                                Recommended work (automatically added to
-                                estimate)
+                                Recommended work (optional for Service Soon, required for Service Now)
                                 <input
                                   value={item.recommendedWork}
                                   onChange={(e) =>
@@ -704,7 +704,7 @@ export function ServiceFlowDemo({
                               </label>
                             </>
                           )}
-                          {item.result === "good" && (
+                          {item.result === "satisfactory" && (
                             <label>
                               Notes (optional)
                               <input
