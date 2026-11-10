@@ -519,3 +519,31 @@
 .customerInspectionResult span{color:#446f7e}
 .customerInspectionResult small,.customerInspectionResult p{color:#596f7b;margin:0}
 @media(max-width:650px){.roStageProgress{grid-template-columns:repeat(5,minmax(0,1fr));row-gap:12px}.roStageProgress>div>small{font-size:10px}.roStageSummary{padding:16px}.roStageSummary h2{font-size:20px}.roExtraDetails>.billingBanner,.roExtraDetails>.roSplit{margin:8px}}
+
+
+/* Per-RO reference vault and mobile customer document acknowledgments. */
+.roVault{border:1px solid #d4e5e9;background:#f9fcfd;border-radius:11px;overflow:hidden;margin:16px 0}
+.roVault>summary{font-size:14px;font-weight:800;color:#275b6c;cursor:pointer;padding:18px}
+.roVaultBody{padding:18px;border-top:1px solid #dce9ed;display:grid;gap:18px}
+.roVaultBody>p,.roVaultBody section>p{font-size:12px;color:#617984;margin:4px 0}
+.roVaultBody h3{font-size:16px;margin:0 0 10px}
+.roVaultGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.roVaultGrid>section{border:1px solid #d7e5e9;background:white;padding:16px;border-radius:10px;min-width:0}
+.roVaultGrid details summary{font-size:12px;color:#19677a;font-weight:800;padding:9px 0;cursor:pointer}
+.roVaultRow{border-top:1px solid #e3edef;padding:9px 0;display:grid;gap:4px;font-size:12px}
+.roVaultRow strong{overflow-wrap:anywhere}
+.roVaultRow span,.roVaultRow small,.roVaultRow p{color:#55707e;margin:0}
+.roVaultLog{border-left:2px solid #b6d3dd;padding-left:9px;font-size:12px}
+.customerSigning{border:1px solid #cfe1e3;border-radius:12px;padding:16px;margin-top:20px;background:#f6fbf9;display:grid;gap:14px}
+.customerSigningSteps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.customerSigningSteps button{min-height:46px;padding:7px 4px;font:inherit;font-size:11px;font-weight:800;border:1px solid #b6cdd4;border-radius:8px;background:white;color:#3c6572;cursor:pointer}
+.customerSigningSteps button.customerSigningActive{background:#d8f0e3;border-color:#328d61;color:#135738}
+.customerSigningBody{display:grid;gap:14px}
+.customerSigningBody h3{margin:0;font-size:17px}
+.customerSigningBody>p{color:#546e78;font-size:13px;margin:0}
+.customerSigningBody>label:not(.journeyCheck){display:grid;gap:6px;font-size:13px;font-weight:800}
+.customerSigningBody input:not([type=checkbox]){min-height:48px;width:100%;padding:12px;border:1px solid #afc4cb;border-radius:9px;font:inherit}
+.customerSigningLines{display:grid;gap:0}
+.customerSigningLines p{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #d8e7e8;font-size:13px;margin:0}
+.customerSigningLines strong{white-space:nowrap}
+@media(max-width:340px){.customerSigningSteps{grid-template-columns:1fr}.roStageCounts span{font-size:10px}}
