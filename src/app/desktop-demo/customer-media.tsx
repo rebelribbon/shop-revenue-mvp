@@ -262,7 +262,6 @@ export function ShareMediaDemo({
     .reduce((sum, j) => sum + j.price, 0);
   function saveCustomerSelections(
     choices: Record<number, "approved" | "declined">,
-    questions: Record<number, string>,
   ) {
     const requestedDefaults: Record<string, number[]> = {
       "RO-10482": [1, 3],
@@ -277,16 +276,45 @@ export function ShareMediaDemo({
     });
     setJobs(updated);
     try {
-      // Only publish the customer's decisions; never replace shop-side cost/notes data
-      // with the smaller customer-safe data model.
+      const historyKey = `shop-revenue-desktop-demo-auth-history-v1:${roId}`;
+      const oldHistoryRaw = sessionStorage.getItem(historyKey);
+      const oldHistory: unknown = oldHistoryRaw ? JSON.parse(oldHistoryRaw) : [];
+      const version = Array.isArray(oldHistory) ? oldHistory.length + 1 : 1;
+      // Append each complete decision snapshot. Previous declines remain recorded
+      // even if the advisor later wins the customer over.
+      const snapshot = {
+        version,
+        recordedAt: new Date().toISOString(),
+        choices: { ...choices },
+        services: updated.map(j=>({id:j.id,name:j.name,price:j.price,decision:j.decision})),
+        demoOnly: true,
+      };
+      const nextHistory = Array.isArray(oldHistory) ? [...oldHistory,snapshot] : [snapshot];
+      sessionStorage.setItem(historyKey,JSON.stringify(nextHistory));
       sessionStorage.setItem(
         `shop-revenue-desktop-demo-customer-choices-v1:${roId}`,
         JSON.stringify(choices),
       );
-      sessionStorage.setItem(
-        `shop-revenue-desktop-demo-questions:${roId}`,
-        JSON.stringify(questions),
-      );
+      // A newly approved recommendation must return to the technician queue
+      // and invalidate any earlier QC/invoice draft. Finalized invoices are
+      // immutable; the UI blocks revisions at that point.
+      const stateKey = `shop-revenue-desktop-demo-checkout-v1:${roId}`;
+      const rawCheckout = sessionStorage.getItem(stateKey);
+      if (rawCheckout) {
+        const checkout = JSON.parse(rawCheckout) as {
+          phase?: string; completed?: number[];
+          history?: string[]; invoiceLines?: unknown[];
+        };
+        if (checkout.phase === "qc" || checkout.phase === "invoice_draft") {
+          sessionStorage.setItem(stateKey,JSON.stringify({
+            ...checkout,
+            phase: "working",
+            invoiceLines: [],
+            history: [...(checkout.history ?? []),
+              `Customer revised recommendations (authorization version ${version}); returned to technician queue.`],
+          }));
+        }
+      }
     } catch {
       // Demo state is only stored in this browser.
     }
