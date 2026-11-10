@@ -89,5 +89,7 @@ test("Technicians see only their jobs and no owner pages", async ({
   expect(csv.status()).toBe(404);
   await tech.goto("/app/settings");
   await expect(tech.getByText("Support access")).toHaveCount(0);
+  await tech.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(tech).toHaveURL(/\/sign-in$/);
   await ctx.close();
 });

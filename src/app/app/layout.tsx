@@ -114,6 +114,15 @@ export default async function ShopLayout({
               <WorkspaceIcon name="settings" />
             </Link>
           )}
+          {s.role === "technician" && (
+            <form
+              className="workspace-sign-out"
+              action="/auth/sign-out"
+              method="post"
+            >
+              <button className="btn secondary">Sign out</button>
+            </form>
+          )}
         </header>
         <div className="workspace-body">
           {billing.kind === "unavailable" && (
