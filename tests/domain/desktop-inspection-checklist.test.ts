@@ -52,7 +52,7 @@ describe("technician multi-point inspection", () => {
   it("prepopulates only recommended borderline/bad work in the advisor estimate", () => {
     const inspection = allPassed();
     inspection.brakes = {
-      result: "attention",
+      result: "bad",
       notes: "Measured 2 mm",
       recommendedWork: "Replace front pads",
     };
