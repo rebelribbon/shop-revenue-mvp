@@ -125,7 +125,7 @@ export default async function DesktopDemo({
                   123 Main St, San Antonio, TX
                 </div>
               </div>
-            </div>
+            </div>}
             {!listScreen && <div className={styles.metrics}>
               <div>
                 <span>REPAIR ORDERS</span>
@@ -143,7 +143,7 @@ export default async function DesktopDemo({
                 <span>LAST VISIT</span>
                 <strong>Nov 9</strong>
               </div>
-            </div>
+            </div>}
             {listScreen ? (
               <section className={styles.panel} aria-label="Customer directory">
                 <div className={styles.panelHeader}>
