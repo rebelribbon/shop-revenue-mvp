@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./desktop-demo.module.css";
 
 type Decision = "approved" | "pending" | "declined";
@@ -54,6 +54,40 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
   const [cost, setCost] = useState("");
   const [error, setError] = useState("");
   const [nextId, setNextId] = useState(5);
+  const [restored, setRestored] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("shop-revenue-desktop-demo-ro-v1");
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every((item) =>
+          typeof item === "object" && item !== null &&
+          typeof item.id === "number" && typeof item.name === "string" &&
+          typeof item.price === "number" &&
+          (item.cost === null || typeof item.cost === "number") &&
+          ["approved", "pending", "declined"].includes(item.decision)
+        )) {
+          const previous = parsed as DemoJob[];
+          setJobs(previous);
+          setNextId(Math.max(4, ...previous.map((item) => item.id)) + 1);
+        }
+      }
+    } catch {
+      // The preview still works with built-in sample data when storage is unavailable.
+    } finally {
+      setRestored(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      sessionStorage.setItem("shop-revenue-desktop-demo-ro-v1", JSON.stringify(jobs));
+    } catch {
+      // Session persistence is only a preview convenience.
+    }
+  }, [jobs, restored]);
   const approved = jobs.filter((job) => job.decision === "approved");
   const recommendations = jobs.filter((job) => job.decision !== "approved");
   const approvedTotal = approved.reduce((sum, job) => sum + job.price, 0);
