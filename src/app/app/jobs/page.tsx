@@ -43,11 +43,12 @@ import { calculateJob } from "@/domain/job-costing";
 import { jobInput } from "@/domain/jobs";
 import { loadPipeline, STAGES, type StageKey } from "@/domain/pipeline";
 import { jobProfit, myClock } from "@/domain/job-profit";
-import { jobAssignees, listTechs } from "@/domain/assignments";
+import { jobAssignees, listTechs, listAdvisors } from "@/domain/assignments";
+import { assignedAdvisorForJob } from "@/domain/job-handoffs";
 import { partCatalog } from "@/domain/parts";
 import { jobDeposit } from "@/domain/deposits";
 import { startDepositAction } from "@/server/actions/deposits";
-import { assignJobAction } from "@/server/actions/assignments";
+import { assignJobAction, assignAdvisorAction } from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
 import { addInspectionToJobAction } from "@/server/actions/inspections";
@@ -222,6 +223,9 @@ export default async function JobsPage({
       clock: await myClock(tx),
       deposit: page.selected ? await jobDeposit(tx, page.selected.id) : null,
       techs: await listTechs(tx),
+      advisors: s.role==="technician" ? [] : await listAdvisors(tx),
+      advisorId: page.selected && s.role!=="technician"
+        ? await assignedAdvisorForJob(tx,page.selected.id) : null,
       catalog: edit || creating ? await partCatalog(tx) : [],
       assignee: page.selected
         ? ((await jobAssignees(tx, [page.selected.id])).get(page.selected.id) ??
@@ -487,6 +491,17 @@ export default async function JobsPage({
                     {assetName ? ` · ${assetName}` : ""}
                   </p>
                 </div>
+                {s.actor.type!=="support" && <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
+                  <ActionForm action={assignAdvisorAction} hidden={{jobId:selected.id}}
+                    submitLabel="Assign advisor" variant="secondary">
+                    <label htmlFor="job-advisor">Service advisor for this RO</label>
+                    <select id="job-advisor" name="userId" defaultValue={data.advisorId ?? s.actor.id ?? ""} required>
+                      <option value="">Choose advisor</option>
+                      {data.advisors.map(a=><option value={a.userId} key={a.userId}>{a.name}</option>)}
+                    </select>
+                  </ActionForm>
+                  <p className="muted">When the inspection is submitted, this advisor receives the Build Estimate task.</p>
+                </div>}
                 {flow && (
                   <span className={statusTone(statusOf(selected.id))}>
                     {statusLabels[statusOf(selected.id)]}
