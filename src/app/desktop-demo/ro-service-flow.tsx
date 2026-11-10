@@ -58,8 +58,8 @@ type ServiceRecord = {
   techAccepted: boolean;
   bay: string;
   inspectionResults: InspectionResults;
-  handoffs: {to:"technician"|"advisor";message:string;at:string}[];
-  submittedInspectionAt?:string;
+  handoffs: { to: "technician" | "advisor"; message: string; at: string }[];
+  submittedInspectionAt?: string;
   customerExplanation: string;
   findings: string[];
   breakdowns: Record<string, Breakdown>;
@@ -123,7 +123,7 @@ export function ServiceFlowDemo({
 }: {
   roId: string;
   jobs: ServiceLine[];
-  onAddFindings: (findings: {description:string;notes:string}[]) => void;
+  onAddFindings: (findings: { description: string; notes: string }[]) => void;
   onPriceJob: (id: number, cost: number, price: number) => void;
   onStageChange: (stage: Stage) => void;
   onReadyChange: (ready: boolean) => void;
@@ -217,51 +217,92 @@ export function ServiceFlowDemo({
   function advance(to: Stage, description: string) {
     setMessage("");
     const now = new Date().toISOString();
-    const handoff = to==="inspection"
-      ? {to:"technician" as const,message:`RO ${roId} assigned to ${record.assignedTech}. Pick up vehicle, move to a rack/bay and begin diagnosis and MPI.`,at:now}
-      : to==="pricing"
-        ? {to:"advisor" as const,message:`RO ${roId}: technician inspection submitted by ${record.assignedTech}. Build the estimate from diagnosis and recommendations.`,at:now}
-        : null;
+    const handoff =
+      to === "inspection"
+        ? {
+            to: "technician" as const,
+            message: `RO ${roId} assigned to ${record.assignedTech}. Pick up vehicle, move to a rack/bay and begin diagnosis and MPI.`,
+            at: now,
+          }
+        : to === "pricing"
+          ? {
+              to: "advisor" as const,
+              message: `RO ${roId}: technician inspection submitted by ${record.assignedTech}. Build the estimate from diagnosis and recommendations.`,
+              at: now,
+            }
+          : null;
     save({
       ...record,
       stage: to,
-      handoffs: handoff ? [...record.handoffs,handoff] : record.handoffs,
+      handoffs: handoff ? [...record.handoffs, handoff] : record.handoffs,
       history: [
         ...record.history,
         `${new Date().toLocaleString()} · ${description}`,
-        ...(handoff ? [`In-app demo notification for ${handoff.to}: ${handoff.message}`] : []),
+        ...(handoff
+          ? [`In-app demo notification for ${handoff.to}: ${handoff.message}`]
+          : []),
       ],
     });
   }
-  function updateInspectionPoint(id: InspectionPointId, field: "result"|"notes"|"recommendedWork", value:string) {
-    const before = record.inspectionResults[id] ?? {notes:"",recommendedWork:""};
-    const next = {...before,[field]:value};
-    if(field==="result" && value!=="attention") {
-      next.recommendedWork="";
+  function updateInspectionPoint(
+    id: InspectionPointId,
+    field: "result" | "notes" | "recommendedWork",
+    value: string,
+  ) {
+    const before = record.inspectionResults[id] ?? {
+      notes: "",
+      recommendedWork: "",
+    };
+    const next = { ...before, [field]: value };
+    if (field === "result" && value !== "attention") {
+      next.recommendedWork = "";
     }
-    save({...record,inspectionResults:{...record.inspectionResults,[id]:next}});
-  }
-  function submitInspection() {
-    if (!record.techAccepted || !record.bay.trim() ||
-        !record.diagnosis.trim() || !inspectReady(record.inspectionResults)) return;
-    const recommendations=inspectionRecommendations(record.inspectionResults);
-    const newlyFound=recommendations
-      .filter(rec=>!record.findings.includes(rec.name))
-      .map(rec=>({description:rec.name,notes:`${rec.inspectionArea}: ${rec.notes}`}));
-    if(newlyFound.length) onAddFindings(newlyFound);
-    const now=new Date().toISOString();
-    const handoff={to:"advisor" as const,at:now,message:`RO ${roId} technician inspection complete. ${recommendations.length} recommendations ready. Build estimate.`};
     save({
       ...record,
-      stage:"pricing",
-      submittedInspectionAt:now,
-      findings:[...new Set([...record.findings,...recommendations.map(x=>x.name)])],
-      inspection:inspectionPoints.map(point=>{
-        const item=record.inspectionResults[point.id];
-        return `${point.label}: ${item?.result === "attention" ? "NEEDS ATTENTION" : item?.result === "pass" ? "OK" : "N/A"}${item?.notes ? " — "+item.notes : ""}`;
-      }).join("\n"),
-      handoffs:[...record.handoffs,handoff],
-      history:[...record.history,`Tech ${record.assignedTech} submitted inspection from bay ${record.bay}.`,`In-app demo notification for advisor: ${handoff.message}`],
+      inspectionResults: { ...record.inspectionResults, [id]: next },
+    });
+  }
+  function submitInspection() {
+    if (
+      !record.techAccepted ||
+      !record.bay.trim() ||
+      !record.diagnosis.trim() ||
+      !inspectReady(record.inspectionResults)
+    )
+      return;
+    const recommendations = inspectionRecommendations(record.inspectionResults);
+    const newlyFound = recommendations
+      .filter((rec) => !record.findings.includes(rec.name))
+      .map((rec) => ({
+        description: rec.name,
+        notes: `${rec.inspectionArea}: ${rec.notes}`,
+      }));
+    if (newlyFound.length) onAddFindings(newlyFound);
+    const now = new Date().toISOString();
+    const handoff = {
+      to: "advisor" as const,
+      at: now,
+      message: `RO ${roId} technician inspection complete. ${recommendations.length} recommendations ready. Build estimate.`,
+    };
+    save({
+      ...record,
+      stage: "pricing",
+      submittedInspectionAt: now,
+      findings: [
+        ...new Set([...record.findings, ...recommendations.map((x) => x.name)]),
+      ],
+      inspection: inspectionPoints
+        .map((point) => {
+          const item = record.inspectionResults[point.id];
+          return `${point.label}: ${item?.result === "attention" ? "NEEDS ATTENTION" : item?.result === "pass" ? "OK" : "N/A"}${item?.notes ? " — " + item.notes : ""}`;
+        })
+        .join("\n"),
+      handoffs: [...record.handoffs, handoff],
+      history: [
+        ...record.history,
+        `Tech ${record.assignedTech} submitted inspection from bay ${record.bay}.`,
+        `In-app demo notification for advisor: ${handoff.message}`,
+      ],
     });
   }
   const index = stages.findIndex((s) => s.id === record.stage);
@@ -466,94 +507,216 @@ export function ServiceFlowDemo({
             <div className={styles.focusedStageBody}>
               <div className={styles.workflowAlert} role="status">
                 <strong>New technician task · {record.assignedTech}</strong>
-                <p>{record.handoffs.filter(h=>h.to==="technician").at(-1)?.message ??
-                  "Pick up the vehicle, bring it to a bay/rack, and begin assessment."}</p>
-                <small>In-app demo notification; no device push alert was sent.</small>
+                <p>
+                  {record.handoffs.filter((h) => h.to === "technician").at(-1)
+                    ?.message ??
+                    "Pick up the vehicle, bring it to a bay/rack, and begin assessment."}
+                </p>
+                <small>
+                  In-app demo notification; no device push alert was sent.
+                </small>
               </div>
               <div className={styles.focusedReadOnly}>
-                <strong>Customer concern</strong><p>{record.complaint}</p>
+                <strong>Customer concern</strong>
+                <p>{record.complaint}</p>
               </div>
               {!record.techAccepted ? (
-                <button type="button" className={styles.mobilePrimaryButton}
-                  onClick={()=>save({...record,techAccepted:true,history:[...record.history,
-                    `Technician ${record.assignedTech} accepted vehicle pickup task.`]})}>
+                <button
+                  type="button"
+                  className={styles.mobilePrimaryButton}
+                  onClick={() =>
+                    save({
+                      ...record,
+                      techAccepted: true,
+                      history: [
+                        ...record.history,
+                        `Technician ${record.assignedTech} accepted vehicle pickup task.`,
+                      ],
+                    })
+                  }
+                >
                   Accept task → Pick up vehicle
                 </button>
               ) : (
                 <>
-                  <label>Vehicle bay / rack
-                    <input value={record.bay} onChange={e=>save({...record,bay:e.target.value})}
-                      placeholder="e.g. Bay 3 · Lift 2" maxLength={60}/>
+                  <label>
+                    Vehicle bay / rack
+                    <input
+                      value={record.bay}
+                      onChange={(e) => save({ ...record, bay: e.target.value })}
+                      placeholder="e.g. Bay 3 · Lift 2"
+                      maxLength={60}
+                    />
                   </label>
-                  {record.bay.trim() && <div className={styles.workflowAlert}>
-                    <strong>Vehicle in {record.bay}</strong>
-                    <p>Complete diagnosis and every point of the inspection before submitting.</p>
-                  </div>}
-                  <label>Technician diagnosis and problem verification
-                    <textarea rows={3} value={record.diagnosis}
-                      onChange={e=>saveField("diagnosis",e.target.value)}
-                      placeholder="Confirmed concern, cause and measurements…"/>
+                  {record.bay.trim() && (
+                    <div className={styles.workflowAlert}>
+                      <strong>Vehicle in {record.bay}</strong>
+                      <p>
+                        Complete diagnosis and every point of the inspection
+                        before submitting.
+                      </p>
+                    </div>
+                  )}
+                  <label>
+                    Technician diagnosis and problem verification
+                    <textarea
+                      rows={3}
+                      value={record.diagnosis}
+                      onChange={(e) => saveField("diagnosis", e.target.value)}
+                      placeholder="Confirmed concern, cause and measurements…"
+                    />
                   </label>
                   <div className={styles.inspectionChecklist}>
                     <div className={styles.inspectionChecklistHeader}>
                       <h4>Multi-point inspection</h4>
-                      <strong>{inspectionPoints.filter(p=>record.inspectionResults[p.id]?.result).length} / {inspectionPoints.length} checked</strong>
+                      <strong>
+                        {
+                          inspectionPoints.filter(
+                            (p) => record.inspectionResults[p.id]?.result,
+                          ).length
+                        }{" "}
+                        / {inspectionPoints.length} checked
+                      </strong>
                     </div>
-                    <p>Check every point: OK, Needs attention or N/A. Problems require findings and recommended work.</p>
-                    {inspectionPoints.map((point,i)=>{
-                      const item=record.inspectionResults[point.id] ?? {notes:"",recommendedWork:""};
-                      const lastSection=i===0 ? null : inspectionPoints[i-1].section;
-                      return <div className={styles.inspectionItem} key={point.id}>
-                        {point.section!==lastSection && <div className={styles.inspectionCategory}>{point.section}</div>}
-                        <strong>{point.label}</strong>
-                        <div className={styles.inspectionStatusButtons} role="group" aria-label={`Inspection status: ${point.label}`}>
-                          {([["pass","✓ OK"],["attention","! Attention"],["not_applicable","N/A"]] as const).map(([value,label])=>
-                            <button type="button" key={value}
-                              aria-pressed={item.result===value}
-                              className={item.result===value ? styles.inspectionSelected : ""}
-                              onClick={()=>updateInspectionPoint(point.id,"result",value as InspectionResult)}>
-                              {label}
-                            </button>)}
+                    <p>
+                      Check every point: OK, Needs attention or N/A. Problems
+                      require findings and recommended work.
+                    </p>
+                    {inspectionPoints.map((point, i) => {
+                      const item = record.inspectionResults[point.id] ?? {
+                        notes: "",
+                        recommendedWork: "",
+                      };
+                      const lastSection =
+                        i === 0 ? null : inspectionPoints[i - 1].section;
+                      return (
+                        <div className={styles.inspectionItem} key={point.id}>
+                          {point.section !== lastSection && (
+                            <div className={styles.inspectionCategory}>
+                              {point.section}
+                            </div>
+                          )}
+                          <strong>{point.label}</strong>
+                          <div
+                            className={styles.inspectionStatusButtons}
+                            role="group"
+                            aria-label={`Inspection status: ${point.label}`}
+                          >
+                            {(
+                              [
+                                ["pass", "✓ OK"],
+                                ["attention", "! Attention"],
+                                ["not_applicable", "N/A"],
+                              ] as const
+                            ).map(([value, label]) => (
+                              <button
+                                type="button"
+                                key={value}
+                                aria-pressed={item.result === value}
+                                className={
+                                  item.result === value
+                                    ? styles.inspectionSelected
+                                    : ""
+                                }
+                                onClick={() =>
+                                  updateInspectionPoint(
+                                    point.id,
+                                    "result",
+                                    value as InspectionResult,
+                                  )
+                                }
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          {item.result === "attention" && (
+                            <>
+                              <label>
+                                What did you find?
+                                <textarea
+                                  rows={2}
+                                  value={item.notes}
+                                  onChange={(e) =>
+                                    updateInspectionPoint(
+                                      point.id,
+                                      "notes",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="Measurements, condition, urgency…"
+                                />
+                              </label>
+                              <label>
+                                Recommended work (automatically added to
+                                estimate)
+                                <input
+                                  value={item.recommendedWork}
+                                  onChange={(e) =>
+                                    updateInspectionPoint(
+                                      point.id,
+                                      "recommendedWork",
+                                      e.target.value,
+                                    )
+                                  }
+                                  placeholder="e.g. Replace front brake pads and rotors"
+                                />
+                              </label>
+                            </>
+                          )}
+                          {item.result === "pass" && (
+                            <label>
+                              Notes (optional)
+                              <input
+                                value={item.notes}
+                                onChange={(e) =>
+                                  updateInspectionPoint(
+                                    point.id,
+                                    "notes",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Measurements or comments"
+                              />
+                            </label>
+                          )}
                         </div>
-                        {item.result==="attention" && <>
-                          <label>What did you find?
-                            <textarea rows={2} value={item.notes}
-                              onChange={e=>updateInspectionPoint(point.id,"notes",e.target.value)}
-                              placeholder="Measurements, condition, urgency…" />
-                          </label>
-                          <label>Recommended work (automatically added to estimate)
-                            <input value={item.recommendedWork}
-                              onChange={e=>updateInspectionPoint(point.id,"recommendedWork",e.target.value)}
-                              placeholder="e.g. Replace front brake pads and rotors"/>
-                          </label>
-                        </>}
-                        {item.result==="pass" && <label>Notes (optional)
-                          <input value={item.notes} onChange={e=>updateInspectionPoint(point.id,"notes",e.target.value)}
-                            placeholder="Measurements or comments"/>
-                        </label>}
-                      </div>;
+                      );
                     })}
                   </div>
-                  <label>Photo and video notes
-                    <textarea rows={2} value={record.mediaNotes}
-                      onChange={e=>saveField("mediaNotes",e.target.value)}
-                      placeholder="Identify the photos/video uploaded under this RO"/>
+                  <label>
+                    Photo and video notes
+                    <textarea
+                      rows={2}
+                      value={record.mediaNotes}
+                      onChange={(e) => saveField("mediaNotes", e.target.value)}
+                      placeholder="Identify the photos/video uploaded under this RO"
+                    />
                   </label>
                   <p className={styles.note}>
-                    Use the RO media panel below for photos and videos. Uploads remain
-                    private until an advisor approves sharing. Production upload is not
-                    simulated by this inspection form.
+                    Use the RO media panel below for photos and videos. Uploads
+                    remain private until an advisor approves sharing. Production
+                    upload is not simulated by this inspection form.
                   </p>
-                  <button type="button" className={styles.mobilePrimaryButton}
-                    disabled={!record.bay.trim()||!record.diagnosis.trim()||
-                      !inspectReady(record.inspectionResults)}
-                    onClick={submitInspection}>
+                  <button
+                    type="button"
+                    className={styles.mobilePrimaryButton}
+                    disabled={
+                      !record.bay.trim() ||
+                      !record.diagnosis.trim() ||
+                      !inspectReady(record.inspectionResults)
+                    }
+                    onClick={submitInspection}
+                  >
                     Submit inspection → Notify advisor
                   </button>
-                  {!inspectReady(record.inspectionResults) && <p className={styles.journeyNeedChoices}>
-                    Every inspection point needs a status. Items needing attention
-                    also need technician findings and recommended work.
-                  </p>}
+                  {!inspectReady(record.inspectionResults) && (
+                    <p className={styles.journeyNeedChoices}>
+                      Every inspection point needs a status. Items needing
+                      attention also need technician findings and recommended
+                      work.
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -562,9 +725,15 @@ export function ServiceFlowDemo({
             <div className={styles.focusedStageBody}>
               <div className={styles.workflowAlert} role="status">
                 <strong>Advisor notification · Inspection submitted</strong>
-                <p>{record.handoffs.filter(h=>h.to==="advisor").at(-1)?.message ??
-                  "Technician submitted diagnosis and inspection. Prepare the estimate."}</p>
-                <small>In-app demo notification. No email, SMS or device push was sent.</small>
+                <p>
+                  {record.handoffs.filter((h) => h.to === "advisor").at(-1)
+                    ?.message ??
+                    "Technician submitted diagnosis and inspection. Prepare the estimate."}
+                </p>
+                <small>
+                  In-app demo notification. No email, SMS or device push was
+                  sent.
+                </small>
               </div>
               <div className={styles.focusedReadOnly}>
                 <strong>Technician diagnosis</strong>

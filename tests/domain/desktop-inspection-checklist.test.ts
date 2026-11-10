@@ -8,9 +8,14 @@ import {
 
 const allPassed = (): InspectionResults =>
   Object.fromEntries(
-    inspectionPoints.map((point) => [point.id, {
-      result: "pass" as const, notes:"", recommendedWork:"",
-    }]),
+    inspectionPoints.map((point) => [
+      point.id,
+      {
+        result: "pass" as const,
+        notes: "",
+        recommendedWork: "",
+      },
+    ]),
   );
 
 describe("technician multi-point inspection", () => {
@@ -24,26 +29,37 @@ describe("technician multi-point inspection", () => {
 
   it("requires findings and proposed work for a failed inspection point", () => {
     const inspection = allPassed();
-    inspection.brakes = {result:"attention",notes:"",recommendedWork:"Replace pads"};
+    inspection.brakes = {
+      result: "attention",
+      notes: "",
+      recommendedWork: "Replace pads",
+    };
     expect(inspectReady(inspection)).toBe(false);
-    inspection.brakes.notes="Pads measured at 2 mm";
+    inspection.brakes.notes = "Pads measured at 2 mm";
     expect(inspectReady(inspection)).toBe(true);
-    inspection.brakes.recommendedWork="";
+    inspection.brakes.recommendedWork = "";
     expect(inspectReady(inspection)).toBe(false);
   });
 
   it("prepopulates only attention recommendations in the advisor estimate", () => {
-    const inspection=allPassed();
+    const inspection = allPassed();
     inspection.brakes = {
-      result:"attention", notes:"Measured 2 mm",
-      recommendedWork:"Replace front pads",
+      result: "attention",
+      notes: "Measured 2 mm",
+      recommendedWork: "Replace front pads",
     };
     inspection.filters = {
-      result:"not_applicable",notes:"",recommendedWork:"",
+      result: "not_applicable",
+      notes: "",
+      recommendedWork: "",
     };
-    expect(inspectionRecommendations(inspection)).toEqual([{
-      id:"brakes",inspectionArea:"Brake pads, rotors and hydraulic system",
-      name:"Replace front pads",notes:"Measured 2 mm",
-    }]);
+    expect(inspectionRecommendations(inspection)).toEqual([
+      {
+        id: "brakes",
+        inspectionArea: "Brake pads, rotors and hydraulic system",
+        name: "Replace front pads",
+        notes: "Measured 2 mm",
+      },
+    ]);
   });
 });
