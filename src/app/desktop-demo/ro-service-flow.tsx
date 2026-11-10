@@ -278,6 +278,17 @@ export function ServiceFlowDemo({
       inspectionResults: { ...record.inspectionResults, [id]: next },
     });
   }
+  function updateTireReading(
+    id: "tire_pressure" | "tire_tread",
+    location: "lf" | "rf" | "lr" | "rr" | "spare",
+    value: string,
+  ) {
+    const prior=record.inspectionResults[id] ?? {notes:"",recommendedWork:""};
+    save({...record,inspectionResults:{
+      ...record.inspectionResults,
+      [id]:{...prior,measurements:{...prior.measurements,[location]:value}}
+    }});
+  }
   function submitInspection() {
     if (
       !record.techAccepted ||
@@ -310,7 +321,7 @@ export function ServiceFlowDemo({
       inspection: inspectionPoints
         .map((point) => {
           const item = record.inspectionResults[point.id];
-          return `${point.label}: ${item?.result ? inspectionLabels[item.result] : "Not checked"}${item?.notes ? " — " + item.notes : ""}`;
+          return `${point.label}: ${item?.result ? inspectionLabels[item.result] : "Not checked"}${item?.measurements ? " — " + Object.entries(item.measurements).filter(([,value])=>value).map(([position,value])=>`${position.toUpperCase()} ${value}`).join(", ") : ""}${item?.notes ? " — " + item.notes : ""}`;
         })
         .join("\n"),
       handoffs: [...record.handoffs, handoff],
@@ -682,6 +693,23 @@ export function ServiceFlowDemo({
                               </button>
                             ))}
                           </div>
+                          {(point.id === "tire_pressure" || point.id === "tire_tread") && item.result && item.result !== "na" && (
+                            <div className={styles.inspectionTireReadings}>
+                              <strong>{point.id === "tire_pressure" ? "Tire pressure (PSI)" : "Tread depth (32nds)"}</strong>
+                              <div>
+                                {(["lf","rf","lr","rr","spare"] as const).map(location=>(
+                                  <label key={location}>
+                                    {location.toUpperCase()}
+                                    <input type="number" min="0" step={point.id === "tire_pressure" ? "1" : "0.5"}
+                                      inputMode="decimal"
+                                      value={item.measurements?.[location] ?? ""}
+                                      onChange={e=>updateTireReading(point.id as "tire_pressure" | "tire_tread",location,e.target.value)}
+                                      placeholder="—" />
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           {(item.result === "service_soon" ||
                             item.result === "service_now") && (
                             <>
