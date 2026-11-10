@@ -2,7 +2,13 @@
 // caption, choose what the customer sees, and attach to jobs.
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { activity, file, jobAssignment, jobMedia, type MediaTag } from "@/db/schema";
+import {
+  activity,
+  file,
+  jobAssignment,
+  jobMedia,
+  type MediaTag,
+} from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { createUploadUrl, statObject } from "@/lib/media-storage";
@@ -262,15 +268,25 @@ export async function shopMediaKey(tx: TenantTx, fileId: string) {
   if ((await currentMemberRole(tx)) === "technician") {
     if (tx.actor.type !== "user" || !tx.actor.id) return null;
     const [allowed] = await tx
-      .select({fileId:jobMedia.fileId})
+      .select({ fileId: jobMedia.fileId })
       .from(jobMedia)
-      .innerJoin(jobAssignment,
-        and(eq(jobAssignment.businessId,jobMedia.businessId),
-          eq(jobAssignment.jobId,jobMedia.jobId)))
-      .where(and(eq(jobMedia.businessId,tx.businessId),
-        eq(jobMedia.fileId,fileId),eq(jobAssignment.userId,tx.actor.id),
-        isNull(jobMedia.deletedAt))).limit(1);
-    if(!allowed) return null;
+      .innerJoin(
+        jobAssignment,
+        and(
+          eq(jobAssignment.businessId, jobMedia.businessId),
+          eq(jobAssignment.jobId, jobMedia.jobId),
+        ),
+      )
+      .where(
+        and(
+          eq(jobMedia.businessId, tx.businessId),
+          eq(jobMedia.fileId, fileId),
+          eq(jobAssignment.userId, tx.actor.id),
+          isNull(jobMedia.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!allowed) return null;
   }
   const [f] = await tx
     .select({ key: file.storageKey, status: file.status })
