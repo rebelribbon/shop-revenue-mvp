@@ -135,7 +135,7 @@ export function CustomerMobileFlow({
   const ready = ["invoice_ready", "paid", "delivered"].includes(phase);
   const statusLabel =
     phase === "working"
-      ? "In service"
+      ? accepted ? "Service in progress" : "Your authorization is needed"
       : phase === "qc"
         ? "Final quality check"
         : phase === "invoice_draft"
@@ -147,7 +147,7 @@ export function CustomerMobileFlow({
               : "Delivered";
   const statusCopy =
     phase === "working"
-      ? "Your technician is working on the authorized services."
+      ? accepted ? "The technician can now complete the work you authorized." : "Review the inspection and select which recommendations to approve or decline."
       : phase === "qc"
         ? "The work is complete. The advisor is checking the vehicle."
         : phase === "invoice_draft"
