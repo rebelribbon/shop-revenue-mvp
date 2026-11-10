@@ -123,9 +123,10 @@ export function RoWorkspace({
   const existing = roRecords[roId as keyof typeof roRecords];
   const ro = existing ?? {
     title: newTitle || "New Repair Order",
-    vehicle: vehicleId === "accord"
-      ? "2018 Honda Accord · VIN ending 9134"
-      : "2021 Ford F-150 · VIN ending 4821",
+    vehicle:
+      vehicleId === "accord"
+        ? "2018 Honda Accord · VIN ending 9134"
+        : "2021 Ford F-150 · VIN ending 4821",
     jobs: [] as DemoJob[],
   };
   const storageKey = `shop-revenue-desktop-demo-ro-v2:${roId}`;

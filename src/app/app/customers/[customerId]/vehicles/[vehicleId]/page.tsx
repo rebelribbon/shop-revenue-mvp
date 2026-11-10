@@ -28,13 +28,16 @@ export default async function VehicleDetailPage(props: {
   const s = await requireShopSession(
     `/app/customers/${customerId}/vehicles/${vehicleId}`,
   );
-  const [v, notes, readings, customerJobs] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([
-      getVehicle(tx, customerId, vehicleId),
-      listNotes(tx, customerId, vehicleId),
-      listReadings(tx, vehicleId),
-      listCustomerJobs(tx, customerId),
-    ]),
+  const [v, notes, readings, customerJobs] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        getVehicle(tx, customerId, vehicleId),
+        listNotes(tx, customerId, vehicleId),
+        listReadings(tx, vehicleId),
+        listCustomerJobs(tx, customerId),
+      ]),
   );
   const { view: requestedView } = await props.searchParams;
   const view =
@@ -42,7 +45,12 @@ export default async function VehicleDetailPage(props: {
       ? requestedView
       : "overview";
   const vehicleJobs = customerJobs.filter((job) => job.vehicleId === vehicleId);
-  const activeJobs = vehicleJobs.filter((job) => !["paid", "closed", "completed", "canceled", "cancelled"].includes(job.status));
+  const activeJobs = vehicleJobs.filter(
+    (job) =>
+      !["paid", "closed", "completed", "canceled", "cancelled"].includes(
+        job.status,
+      ),
+  );
   const previousJobs = vehicleJobs.filter((job) => !activeJobs.includes(job));
   const statusLabels = jobStatusLabels("automotive");
   const base = `/app/customers/${customerId}/vehicles/${vehicleId}`;
@@ -98,9 +106,14 @@ export default async function VehicleDetailPage(props: {
                     <Link href={`/app/jobs?job=${job.id}`}>
                       <span className="row-main">
                         <strong>{job.title}</strong>
-                        <span className="muted">RO {job.id.slice(0, 8).toUpperCase()} · {job.createdAt.toLocaleDateString("en-US")}</span>
+                        <span className="muted">
+                          RO {job.id.slice(0, 8).toUpperCase()} ·{" "}
+                          {job.createdAt.toLocaleDateString("en-US")}
+                        </span>
                       </span>
-                      <span className={statusTone(job.status)}>{statusLabels[job.status]}</span>
+                      <span className={statusTone(job.status)}>
+                        {statusLabels[job.status]}
+                      </span>
                     </Link>
                   </li>
                 ))}
@@ -111,7 +124,9 @@ export default async function VehicleDetailPage(props: {
           </section>
           <section className="card" aria-label="Vehicle service history">
             <h2>Previous Service History</h2>
-            <p className="muted">Historical repair orders linked to this vehicle.</p>
+            <p className="muted">
+              Historical repair orders linked to this vehicle.
+            </p>
             {previousJobs.length ? (
               <ul className="row-list">
                 {previousJobs.map((job) => (
@@ -119,15 +134,22 @@ export default async function VehicleDetailPage(props: {
                     <Link href={`/app/jobs?job=${job.id}`}>
                       <span className="row-main">
                         <strong>{job.title}</strong>
-                        <span className="muted">RO {job.id.slice(0, 8).toUpperCase()} · {job.createdAt.toLocaleDateString("en-US")}</span>
+                        <span className="muted">
+                          RO {job.id.slice(0, 8).toUpperCase()} ·{" "}
+                          {job.createdAt.toLocaleDateString("en-US")}
+                        </span>
                       </span>
-                      <span className={statusTone(job.status)}>{statusLabels[job.status]}</span>
+                      <span className={statusTone(job.status)}>
+                        {statusLabels[job.status]}
+                      </span>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="muted">No completed repair-order history for this vehicle.</p>
+              <p className="muted">
+                No completed repair-order history for this vehicle.
+              </p>
             )}
           </section>
           <section className="card">

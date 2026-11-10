@@ -35,7 +35,13 @@ const history = [
 export default async function DesktopDemo({
   searchParams,
 }: {
-  searchParams: Promise<{ screen?: string; mode?: string; ro?: string; vehicle?: string; title?: string }>;
+  searchParams: Promise<{
+    screen?: string;
+    mode?: string;
+    ro?: string;
+    vehicle?: string;
+    title?: string;
+  }>;
 }) {
   const params = await searchParams;
   const customerScreen = params.screen !== "ro";
@@ -121,8 +127,19 @@ export default async function DesktopDemo({
           </header>
           <div className={styles.page}>
             <div className={styles.breadcrumb}>
-              {listScreen ? "Customers" : (
-                <>Customers / John Smith {vehiclesScreen ? "/ Vehicles" : vehicleScreen ? "/ Vehicles / Vehicle Details" : !customerScreen ? `/ ${roId}` : ""}</>
+              {listScreen ? (
+                "Customers"
+              ) : (
+                <>
+                  Customers / John Smith{" "}
+                  {vehiclesScreen
+                    ? "/ Vehicles"
+                    : vehicleScreen
+                      ? "/ Vehicles / Vehicle Details"
+                      : !customerScreen
+                        ? `/ ${roId}`
+                        : ""}
+                </>
               )}
             </div>
             {!listScreen && (
@@ -163,14 +180,22 @@ export default async function DesktopDemo({
             {vehiclesScreen || vehicleScreen ? (
               <>
                 <p className={styles.customerReturn}>
-                  <Link className={styles.returnButton} href="/desktop-demo?screen=customer">← Customer Profile</Link>
+                  <Link
+                    className={styles.returnButton}
+                    href="/desktop-demo?screen=customer"
+                  >
+                    ← Customer Profile
+                  </Link>
                 </p>
                 <div className={styles.tabs} aria-label="Customer sections">
                   <Link href="/desktop-demo?screen=customer">History</Link>
                   <strong>Vehicles</strong>
-                  <span>Appointments</span><span>Communications</span>
+                  <span>Appointments</span>
+                  <span>Communications</span>
                 </div>
-                <VehicleWorkspace vehicleId={vehicleScreen ? vehicleId : undefined}/>
+                <VehicleWorkspace
+                  vehicleId={vehicleScreen ? vehicleId : undefined}
+                />
               </>
             ) : listScreen ? (
               <section className={styles.panel} aria-label="Customer directory">
