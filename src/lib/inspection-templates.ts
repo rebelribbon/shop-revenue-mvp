@@ -12,13 +12,15 @@ export type InspectionItem = {
   recommendedWork?: string;
   section?: string;
   hint?: string;
-  measurements?: Partial<Record<"lf"|"rf"|"lr"|"rr"|"spare", string>>;
+  measurements?: Partial<Record<"lf" | "rf" | "lr" | "rr" | "spare", string>>;
   // Hours to quote if it becomes estimate work (hundredths).
   hoursHundredths: number;
   addedToJob: boolean;
 };
 
-const AUTO = inspectionPoints.map(item=>[item.id,item.label,100] as const);
+const AUTO = inspectionPoints.map(
+  (item) => [item.id, item.label, 100] as const,
+);
 
 const HVAC = [
   ["filter", "Air filter", 25],
@@ -49,10 +51,12 @@ export function inspectionTemplate(businessType: string): InspectionItem[] {
   return list.map(([key, label, hours]) => ({
     key,
     label,
-    ...(isAutomotive(businessType) ? (()=>{
-      const point=inspectionPoints.find(p=>p.id===key);
-      return point? {section:point.section,hint:point.hint} : {};
-    })() : {}),
+    ...(isAutomotive(businessType)
+      ? (() => {
+          const point = inspectionPoints.find((p) => p.id === key);
+          return point ? { section: point.section, hint: point.hint } : {};
+        })()
+      : {}),
     status: "unchecked",
     note: "",
     recommendedWork: "",

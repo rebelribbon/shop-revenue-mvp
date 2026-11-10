@@ -13,8 +13,12 @@ export async function requireShopSession(path: string): Promise<ShopSession> {
     redirect(`/verify?next=${encodeURIComponent(path)}`);
   // Applied to every /app page that uses this guard, including nested deep
   // links. Hiding navigation alone is not an access-control boundary.
-  if(state.session.role==="technician" && path.startsWith("/app/") &&
-    !path.startsWith("/app/jobs") && !path.startsWith("/app/tasks"))
+  if (
+    state.session.role === "technician" &&
+    path.startsWith("/app/") &&
+    !path.startsWith("/app/jobs") &&
+    !path.startsWith("/app/tasks")
+  )
     redirect("/app/tasks");
   return state.session;
 }
@@ -27,8 +31,10 @@ export async function requireOwnerView(path: string): Promise<ShopSession> {
 }
 
 /** Advisor/owner page guard: technician deep links must not expose front-office data. */
-export async function requireFrontOfficeView(path:string):Promise<ShopSession> {
-  const s=await requireShopSession(path);
-  if(s.role==="technician") redirect("/app/tasks");
+export async function requireFrontOfficeView(
+  path: string,
+): Promise<ShopSession> {
+  const s = await requireShopSession(path);
+  if (s.role === "technician") redirect("/app/tasks");
   return s;
 }

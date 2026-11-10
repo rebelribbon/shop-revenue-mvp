@@ -37,7 +37,12 @@ describe("Digital inspections", () => {
 
     const items = blank.items.map((i) =>
       i.key === "brake_fluid"
-        ? { ...i, status: "fix" as const, note: "fluid has moisture", recommendedWork:"Brake fluid flush" }
+        ? {
+            ...i,
+            status: "fix" as const,
+            note: "fluid has moisture",
+            recommendedWork: "Brake fluid flush",
+          }
         : i.key === "tire_tread"
           ? { ...i, status: "watch" as const, note: "4/32 tread" }
           : { ...i, status: "good" as const },

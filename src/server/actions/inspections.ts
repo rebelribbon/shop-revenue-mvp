@@ -11,7 +11,11 @@ import { defineShopAction } from "./define";
 export const saveInspectionAction = defineShopAction({
   name: "saveInspection",
   technicianAccess: requireAssignedJob,
-  input: z.object({ jobId: z.uuid(), items: z.string().max(100000), submit: z.boolean().optional() }),
+  input: z.object({
+    jobId: z.uuid(),
+    items: z.string().max(100000),
+    submit: z.boolean().optional(),
+  }),
   run: ({ tx, meta }, i) =>
     saveInspection(tx, meta, {
       jobId: i.jobId,

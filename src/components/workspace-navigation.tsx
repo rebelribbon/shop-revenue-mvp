@@ -61,7 +61,12 @@ export function WorkspaceNavigation({
     >
       {shopItems
         .filter((item) => canSeeMoney || item.href !== "/app/money")
-        .filter((item) => !technicianOnly || item.href === "/app/tasks" || item.href === "/app/jobs")
+        .filter(
+          (item) =>
+            !technicianOnly ||
+            item.href === "/app/tasks" ||
+            item.href === "/app/jobs",
+        )
         .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link

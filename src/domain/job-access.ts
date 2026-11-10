@@ -11,7 +11,7 @@ export async function requireAssignedJob(
 ) {
   if (!input.jobId || !(await getJob(tx, input.jobId)))
     throw notFound("That assigned job");
-  await assertAssignedTechnician(tx,input.jobId);
+  await assertAssignedTechnician(tx, input.jobId);
 }
 
 export async function requireAssignedCustomer(
