@@ -406,6 +406,19 @@ export function CustomerMobileFlow({
                     ✕ Decline
                   </button>
                 </div>
+                {!accepted && choices[j.id] === "declined" && (
+                  <button
+                    type="button"
+                    className={styles.journeyUndoDecline}
+                    onClick={() => setChoices(current => {
+                      const next = { ...current };
+                      delete next[j.id];
+                      return next;
+                    })}
+                  >
+                    Undo decline
+                  </button>
+                )}
                 {mayReviseDecline && choices[j.id] === "declined" && (
                   <button
                     type="button"
