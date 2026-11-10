@@ -41,6 +41,7 @@ type ServiceRecord = {
   diagnosis: string;
   inspection: string;
   mediaNotes: string;
+  customerExplanation: string;
   findings: string[];
   breakdowns: Record<string, Breakdown>;
   estimateSentAt?: string;
@@ -59,6 +60,7 @@ const defaults: ServiceRecord = {
   diagnosis: "",
   inspection: "",
   mediaNotes: "",
+  customerExplanation: "",
   findings: [],
   breakdowns: {},
   history: [],
@@ -147,7 +149,7 @@ export function ServiceFlowDemo({
     try { sessionStorage.setItem(keyFor(roId), JSON.stringify(next)); } catch { /* Demo only. */ }
     window.dispatchEvent(new Event("shop-revenue-demo-documents-changed"));
   }
-  function saveField(field: "complaint" | "assignedTech" | "diagnosis" | "inspection" | "mediaNotes", value: string) {
+  function saveField(field: "complaint" | "assignedTech" | "diagnosis" | "inspection" | "mediaNotes" | "customerExplanation", value: string) {
     save({
       ...record,
       [field]: value,
@@ -296,11 +298,16 @@ export function ServiceFlowDemo({
           </div>}
           {record.stage==="send" && <div className={styles.focusedStageBody}>
             <div className={styles.focusedReadOnly}><strong>Diagnosis to relay</strong><p>{record.diagnosis}</p><strong>Inspection findings</strong><p>{record.inspection}</p></div>
+            <label>Customer-facing diagnosis and explanation
+              <textarea rows={3} value={record.customerExplanation} onChange={e=>saveField("customerExplanation",e.target.value)} placeholder="Explain the diagnosis and findings in customer-friendly language. Technician's internal notes stay private." />
+            </label>
+
             {jobs.map(j=><div className={styles.focusedPriceSummary} key={j.id}><span>{j.name}</span><strong>{money(j.price)}</strong></div>)}
             <div className={styles.focusedPriceSummary}><strong>Total proposed, before taxes/fees</strong><strong>{money(quoted)}</strong></div>
             <p className={styles.note}>Advisor-approved photos/videos will be shown alongside the relevant recommendations on the customer preview. Actual sending is not wired into the demo.</p>
             <Link className={styles.mobileCheckoutLink} href={customerLink}>Preview customer link</Link>
-            <button type="button" className={styles.mobilePrimaryButton} onClick={()=>save({...record,stage:"authorization",estimateSentAt:new Date().toISOString(),history:[...record.history,"Advisor marked customer proposal shared (demo only; no message was sent)."]})}>Mark estimate shared (demo) → Customer authorization</button>
+            <button type="button" className={styles.mobilePrimaryButton} disabled={!record.customerExplanation.trim()}
+              onClick={()=>save({...record,stage:"authorization",estimateSentAt:new Date().toISOString(),history:[...record.history,"Advisor marked customer proposal shared (demo only; no message was sent)."]})}>Mark estimate shared (demo) → Customer authorization</button>
             <button type="button" className={styles.mobileTextButton} onClick={reopenPricing}>Revise pricing</button>
           </div>}
           {record.stage==="authorization" && <div className={styles.focusedStageBody}>
