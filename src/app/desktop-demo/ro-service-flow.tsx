@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
 import {
+  inspectionPoints,
+  inspectionRecommendations,
+  inspectReady,
+  type InspectionResults,
+  type InspectionPointId,
+  type InspectionResult,
+} from "./inspection-checklist";
+import {
   areServiceDocumentsCurrent,
   type SignedItem,
 } from "./ro-document-guard";
@@ -47,6 +55,11 @@ type ServiceRecord = {
   diagnosis: string;
   inspection: string;
   mediaNotes: string;
+  techAccepted: boolean;
+  bay: string;
+  inspectionResults: InspectionResults;
+  handoffs: {to:"technician"|"advisor";message:string;at:string}[];
+  submittedInspectionAt?:string;
   customerExplanation: string;
   findings: string[];
   breakdowns: Record<string, Breakdown>;
@@ -69,6 +82,10 @@ const defaults: ServiceRecord = {
   diagnosis: "",
   inspection: "",
   mediaNotes: "",
+  techAccepted: false,
+  bay: "",
+  inspectionResults: {},
+  handoffs: [],
   customerExplanation: "",
   findings: [],
   breakdowns: {},
@@ -141,6 +158,10 @@ export function ServiceFlowDemo({
               : "intake",
             findings: Array.isArray(parsed.findings) ? parsed.findings : [],
             breakdowns: parsed.breakdowns ?? {},
+            techAccepted: !!parsed.techAccepted,
+            bay: parsed.bay ?? "",
+            inspectionResults: parsed.inspectionResults ?? {},
+            handoffs: Array.isArray(parsed.handoffs) ? parsed.handoffs : [],
             history: Array.isArray(parsed.history) ? parsed.history : [],
           };
         }
@@ -197,13 +218,51 @@ export function ServiceFlowDemo({
   }
   function advance(to: Stage, description: string) {
     setMessage("");
+    const now = new Date().toISOString();
+    const handoff = to==="inspection"
+      ? {to:"technician" as const,message:`RO ${roId} assigned to ${record.assignedTech}. Pick up vehicle, move to a rack/bay and begin diagnosis and MPI.`,at:now}
+      : to==="pricing"
+        ? {to:"advisor" as const,message:`RO ${roId}: technician inspection submitted by ${record.assignedTech}. Build the estimate from diagnosis and recommendations.`,at:now}
+        : null;
     save({
       ...record,
       stage: to,
+      handoffs: handoff ? [...record.handoffs,handoff] : record.handoffs,
       history: [
         ...record.history,
         `${new Date().toLocaleString()} · ${description}`,
+        ...(handoff ? [`In-app demo notification for ${handoff.to}: ${handoff.message}`] : []),
       ],
+    });
+  }
+  function updateInspectionPoint(id: InspectionPointId, field: "result"|"notes"|"recommendedWork", value:string) {
+    const before = record.inspectionResults[id] ?? {notes:"",recommendedWork:""};
+    const next = {...before,[field]:value};
+    if(field==="result" && value!=="attention") {
+      next.recommendedWork="";
+    }
+    save({...record,inspectionResults:{...record.inspectionResults,[id]:next}});
+  }
+  function submitInspection() {
+    if (!record.techAccepted || !record.bay.trim() ||
+        !record.diagnosis.trim() || !inspectReady(record.inspectionResults)) return;
+    const recommendations=inspectionRecommendations(record.inspectionResults);
+    for(const rec of recommendations) {
+      if (!record.findings.includes(rec.name)) onAddFinding(rec.name,`${rec.inspectionArea}: ${rec.notes}`);
+    }
+    const now=new Date().toISOString();
+    const handoff={to:"advisor" as const,at:now,message:`RO ${roId} technician inspection complete. ${recommendations.length} recommendations ready. Build estimate.`};
+    save({
+      ...record,
+      stage:"pricing",
+      submittedInspectionAt:now,
+      findings:[...new Set([...record.findings,...recommendations.map(x=>x.name)])],
+      inspection:inspectionPoints.map(point=>{
+        const item=record.inspectionResults[point.id];
+        return `${point.label}: ${item?.result === "attention" ? "NEEDS ATTENTION" : item?.result === "pass" ? "OK" : "N/A"}${item?.notes ? " — "+item.notes : ""}`;
+      }).join("\n"),
+      handoffs:[...record.handoffs,handoff],
+      history:[...record.history,`Tech ${record.assignedTech} submitted inspection from bay ${record.bay}.`,`In-app demo notification for advisor: ${handoff.message}`],
     });
   }
   const index = stages.findIndex((s) => s.id === record.stage);
