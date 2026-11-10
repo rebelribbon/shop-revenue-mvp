@@ -234,23 +234,22 @@ export function RoWorkspace({
   );
   const costKnown = approved.every((job) => job.cost !== null);
   const approvedCosts = approved.reduce((sum, job) => sum + (job.cost ?? 0), 0);
-  function addInspectedRecommendation(description: string, findings: string) {
-    if (preventChangesAfterInvoice()) return;
-    const id = nextId;
-    setJobs((old) => [
-      ...old,
-      {
-        id,
-        name: description,
-        notes: findings,
-        price: 0,
-        cost: null,
-        decision: "pending",
-        origin: "inspection",
-        addedInDemo: true,
-      },
-    ]);
-    setNextId((current) => current + 1);
+  function addInspectedRecommendations(findings:{description:string;notes:string}[]) {
+    if (preventChangesAfterInvoice() || !findings.length) return;
+    setJobs(old=>{
+      const startId=Math.max(0,...old.map(x=>x.id))+1;
+      return [...old,...findings.map((finding,index)=>({
+        id:startId+index,
+        name:finding.description,
+        notes:finding.notes,
+        price:0,
+        cost:null,
+        decision:"pending" as const,
+        origin:"inspection" as const,
+        addedInDemo:true,
+      }))];
+    });
+    setNextId(current=>current+findings.length);
     setWorkflowReady(false);
   }
   function priceExistingJob(id: number, cost: number, price: number) {
@@ -737,7 +736,7 @@ export function RoWorkspace({
         <ServiceFlowDemo
           roId={roId}
           jobs={jobs}
-          onAddFinding={addInspectedRecommendation}
+          onAddFindings={addInspectedRecommendations}
           onPriceJob={priceExistingJob}
           onStageChange={setWorkflowStage}
           onReadyChange={setWorkflowReady}
