@@ -4,6 +4,7 @@ import styles from "./desktop-demo.module.css";
 import { RoWorkspace } from "./ro-workspace";
 import { VehicleWorkspace } from "./vehicle-workspace";
 import { EstimateWorkspace } from "./estimate-workspace";
+import { ShareMediaDemo } from "./customer-media";
 
 export const metadata: Metadata = {
   title: "Desktop Design Preview | Shop Revenue",
@@ -61,6 +62,7 @@ export default async function DesktopDemo({
   const roQueryExtra = roId.startsWith("RO-DEMO-")
     ? `&vehicle=${vehicleId}&title=${encodeURIComponent(newTitle)}`
     : "";
+  if (params.screen === "customer-link") return <ShareMediaDemo roId={roId} customerOnly />;
   return (
     <main id="main-content" className={styles.demo}>
       <div className={styles.notice}>
