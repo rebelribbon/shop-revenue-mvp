@@ -186,7 +186,7 @@ export function RoWorkspace({
         if (choices && typeof choices === "object" && !Array.isArray(choices)) {
           customerChoices = Object.fromEntries(
             Object.entries(choices).filter(([id, v]) =>
-              /^\\d+$/.test(id) && (v === "approved" || v === "declined")
+              Number.isSafeInteger(Number(id)) && (v === "approved" || v === "declined")
             ),
           ) as Record<string, Decision>;
         }
