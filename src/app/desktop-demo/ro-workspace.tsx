@@ -52,18 +52,54 @@ const roRecords = {
     title: "Oil Change & Inspection",
     vehicle: "2021 Ford F-150 · VIN ending 4821",
     jobs: [
-      { id: 1, name: "Engine oil and filter change", price: 115, cost: 42, decision: "approved" },
-      { id: 2, name: "Tire rotation", price: 45, cost: 12, decision: "approved" },
-      { id: 3, name: "Air filter replacement", price: 55, cost: 16, decision: "declined" },
+      {
+        id: 1,
+        name: "Engine oil and filter change",
+        price: 115,
+        cost: 42,
+        decision: "approved",
+      },
+      {
+        id: 2,
+        name: "Tire rotation",
+        price: 45,
+        cost: 12,
+        decision: "approved",
+      },
+      {
+        id: 3,
+        name: "Air filter replacement",
+        price: 55,
+        cost: 16,
+        decision: "declined",
+      },
     ] satisfies DemoJob[],
   },
   "RO-09914": {
     title: "Battery Replacement",
     vehicle: "2018 Honda Accord · VIN ending 9134",
     jobs: [
-      { id: 1, name: "Battery replacement", price: 285, cost: 112, decision: "approved" },
-      { id: 2, name: "Charging system diagnostic", price: 89, cost: 26, decision: "approved" },
-      { id: 3, name: "Clean corroded terminals", price: 35, cost: 8, decision: "pending" },
+      {
+        id: 1,
+        name: "Battery replacement",
+        price: 285,
+        cost: 112,
+        decision: "approved",
+      },
+      {
+        id: 2,
+        name: "Charging system diagnostic",
+        price: 89,
+        cost: 26,
+        decision: "approved",
+      },
+      {
+        id: 3,
+        name: "Clean corroded terminals",
+        price: 35,
+        cost: 8,
+        decision: "pending",
+      },
     ] satisfies DemoJob[],
   },
 } as const;
@@ -73,7 +109,13 @@ const money = (value: number) =>
     value,
   );
 
-export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId }) {
+export function RoWorkspace({
+  internal,
+  roId,
+}: {
+  internal: boolean;
+  roId: RoId;
+}) {
   const ro = roRecords[roId];
   const storageKey = `shop-revenue-desktop-demo-ro-v2:${roId}`;
   const [jobs, setJobs] = useState<DemoJob[]>(() => [...ro.jobs]);
@@ -82,10 +124,14 @@ export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId 
   const [price, setPrice] = useState("");
   const [cost, setCost] = useState("");
   const [error, setError] = useState("");
-  const [nextId, setNextId] = useState(() => Math.max(0, ...ro.jobs.map((job) => job.id)) + 1);
+  const [nextId, setNextId] = useState(
+    () => Math.max(0, ...ro.jobs.map((job) => job.id)) + 1,
+  );
   const [restored, setRestored] = useState(false);
   const [removalId, setRemovalId] = useState<number | null>(null);
-  const [removalReason, setRemovalReason] = useState("Customer changed their mind");
+  const [removalReason, setRemovalReason] = useState(
+    "Customer changed their mind",
+  );
 
   useEffect(() => {
     try {
@@ -120,10 +166,7 @@ export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId 
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(
-        storageKey,
-        JSON.stringify(jobs),
-      );
+      sessionStorage.setItem(storageKey, JSON.stringify(jobs));
     } catch {
       // Session persistence is only a preview convenience.
     }
@@ -233,7 +276,9 @@ export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId 
                         : "Awaiting approval"}
                   </span>
                   {job.removalReason && (
-                    <small className={styles.removalNote}>Removed: {job.removalReason}</small>
+                    <small className={styles.removalNote}>
+                      Removed: {job.removalReason}
+                    </small>
                   )}
                 </td>
                 {internal && (
@@ -284,10 +329,7 @@ export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId 
             ))}
             {!items.length && (
               <tr>
-                <td
-                  colSpan={internal ? 6 : 4}
-                  className={styles.emptyState}
-                >
+                <td colSpan={internal ? 6 : 4} className={styles.emptyState}>
                   {proposed
                     ? "No unapproved recommendations."
                     : "No work has been approved yet."}
@@ -398,12 +440,17 @@ export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId 
         </form>
       )}
       {removalId !== null && (
-        <div className={styles.removalPanel} role="group" aria-label="Remove approval">
+        <div
+          className={styles.removalPanel}
+          role="group"
+          aria-label="Remove approval"
+        >
           <div>
             <strong>Remove this job from Approved Work?</strong>
             <p>
               {jobs.find((job) => job.id === removalId)?.name}
-              {" — "}it will move to Not Approved and leave the billing subtotal.
+              {" — "}it will move to Not Approved and leave the billing
+              subtotal.
             </p>
           </div>
           <label>
@@ -508,10 +555,10 @@ export function RoWorkspace({ internal, roId }: { internal: boolean; roId: RoId 
         </section>
       </div>
       <div className={styles.note}>
-        Demo only. Approval and removal buttons simulate decisions for layout review; they
-        do not capture a signature, send email, alter a live RO, or generate an
-        invoice. A finalized invoice would include only approved work actually
-        performed, plus applicable taxes and fees.
+        Demo only. Approval and removal buttons simulate decisions for layout
+        review; they do not capture a signature, send email, alter a live RO, or
+        generate an invoice. A finalized invoice would include only approved
+        work actually performed, plus applicable taxes and fees.
       </div>
     </>
   );

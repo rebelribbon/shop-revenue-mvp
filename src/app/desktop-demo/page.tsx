@@ -40,9 +40,11 @@ export default async function DesktopDemo({
   const customerScreen = params.screen !== "ro";
   const listScreen = params.screen === "customers";
   const internal = !customerScreen && params.mode === "internal";
-  const roId = (["RO-10482", "RO-10193", "RO-09914"].includes(params.ro ?? "")
-    ? params.ro
-    : "RO-10482") as "RO-10482" | "RO-10193" | "RO-09914";
+  const roId = (
+    ["RO-10482", "RO-10193", "RO-09914"].includes(params.ro ?? "")
+      ? params.ro
+      : "RO-10482"
+  ) as "RO-10482" | "RO-10193" | "RO-09914";
   return (
     <main id="main-content" className={styles.demo}>
       <div className={styles.notice}>
@@ -114,111 +116,180 @@ export default async function DesktopDemo({
           </header>
           <div className={styles.page}>
             <div className={styles.breadcrumb}>
-              {listScreen ? "Customers" : <>Customers / John Smith {!customerScreen && `/ ${roId}`}</>}
+              {listScreen ? (
+                "Customers"
+              ) : (
+                <>Customers / John Smith {!customerScreen && `/ ${roId}`}</>
+              )}
             </div>
-            {!listScreen && <div className={styles.customerHead}>
-              <div className={styles.initials}>JS</div>
-              <div className={styles.identity}>
-                <div className={styles.titleRow}>
-                  <h1>John Smith</h1>
-                  <span className={styles.status}>Active customer</span>
+            {!listScreen && (
+              <div className={styles.customerHead}>
+                <div className={styles.initials}>JS</div>
+                <div className={styles.identity}>
+                  <div className={styles.titleRow}>
+                    <h1>John Smith</h1>
+                    <span className={styles.status}>Active customer</span>
+                  </div>
+                  <div className={styles.contact}>
+                    (210) 555-0184 <span>·</span> john@example.com{" "}
+                    <span>·</span> 123 Main St, San Antonio, TX
+                  </div>
                 </div>
-                <div className={styles.contact}>
-                  (210) 555-0184 <span>·</span> john@example.com <span>·</span>{" "}
-                  123 Main St, San Antonio, TX
+              </div>
+            )}
+            {!listScreen && (
+              <div className={styles.metrics}>
+                <div>
+                  <span>REPAIR ORDERS</span>
+                  <strong>3</strong>
+                </div>
+                <div>
+                  <span>VEHICLES</span>
+                  <strong>2</strong>
+                </div>
+                <div>
+                  <span>OPEN TASKS</span>
+                  <strong>1</strong>
+                </div>
+                <div>
+                  <span>LAST VISIT</span>
+                  <strong>Nov 9</strong>
                 </div>
               </div>
-            </div>}
-            {!listScreen && <div className={styles.metrics}>
-              <div>
-                <span>REPAIR ORDERS</span>
-                <strong>3</strong>
-              </div>
-              <div>
-                <span>VEHICLES</span>
-                <strong>2</strong>
-              </div>
-              <div>
-                <span>OPEN TASKS</span>
-                <strong>1</strong>
-              </div>
-              <div>
-                <span>LAST VISIT</span>
-                <strong>Nov 9</strong>
-              </div>
-            </div>}
+            )}
             {listScreen ? (
               <section className={styles.panel} aria-label="Customer directory">
                 <div className={styles.panelHeader}>
                   <div>
                     <h2>All Customers</h2>
-                    <p>Browse customer records and open a profile. Sample data only.</p>
+                    <p>
+                      Browse customer records and open a profile. Sample data
+                      only.
+                    </p>
                   </div>
                   <span className={styles.pill}>3 customers</span>
                 </div>
                 <div className={styles.tableWrap}>
                   <table>
-                    <thead><tr><th>Customer</th><th>Contact</th><th>Vehicle</th><th>ROs</th><th>Profile</th></tr></thead>
-                    <tbody>
-                      <tr><td><strong>John Smith</strong></td><td>john@example.com</td><td>2021 Ford F-150</td><td>3</td><td><Link href="/desktop-demo?screen=customer">Open profile →</Link></td></tr>
-                      <tr><td><strong>Maria Garcia</strong></td><td>maria@example.com</td><td>2020 Honda CR-V</td><td>2</td><td><Link href="/desktop-demo?screen=customer">Open sample profile →</Link></td></tr>
-                      <tr><td><strong>Alex Johnson</strong></td><td>alex@example.com</td><td>2019 Chevrolet Silverado</td><td>1</td><td><Link href="/desktop-demo?screen=customer">Open sample profile →</Link></td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className={styles.note}>The preview uses one interactive customer record (John Smith); other rows are illustrative.</div>
-              </section>
-            ) : customerScreen ? (
-              <>
-                <p className={styles.customerReturn}><Link className={styles.returnButton} href="/desktop-demo?screen=customers">← All Customers</Link></p>
-                <div className={styles.panel}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <h2>Customer history</h2>
-                    <p>
-                      Every repair order stays linked to the vehicle and
-                      original customer record.
-                    </p>
-                  </div>
-                  <span className={styles.pill}>3 repair orders</span>
-                </div>
-                <div className={styles.tabs}>
-                  <strong>History</strong>
-                  <span>Vehicles</span>
-                  <span>Appointments</span>
-                  <span>Communications</span>
-                </div>
-                <div className={styles.tableWrap}>
-                  <table>
                     <thead>
                       <tr>
-                        <th>RO Number</th>
-                        <th>Service / Reason</th>
+                        <th>Customer</th>
+                        <th>Contact</th>
                         <th>Vehicle</th>
-                        <th>Date</th>
-                        <th>Status</th>
-                        <th></th>
+                        <th>ROs</th>
+                        <th>Profile</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map((item) => (
-                        <tr key={item.id}>
-                          <td>
-                            <strong>{item.id}</strong>
-                          </td>
-                          <td>{item.title}</td>
-                          <td>{item.asset}</td>
-                          <td>{item.date}</td>
-                          <td>{item.status}</td>
-                          <td>
-                            <Link href={`/desktop-demo?screen=ro&ro=${item.id}`}>Open →</Link>
-                          </td>
-                        </tr>
-                      ))}
+                      <tr>
+                        <td>
+                          <strong>John Smith</strong>
+                        </td>
+                        <td>john@example.com</td>
+                        <td>2021 Ford F-150</td>
+                        <td>3</td>
+                        <td>
+                          <Link href="/desktop-demo?screen=customer">
+                            Open profile →
+                          </Link>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Maria Garcia</strong>
+                        </td>
+                        <td>maria@example.com</td>
+                        <td>2020 Honda CR-V</td>
+                        <td>2</td>
+                        <td>
+                          <Link href="/desktop-demo?screen=customer">
+                            Open sample profile →
+                          </Link>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <strong>Alex Johnson</strong>
+                        </td>
+                        <td>alex@example.com</td>
+                        <td>2019 Chevrolet Silverado</td>
+                        <td>1</td>
+                        <td>
+                          <Link href="/desktop-demo?screen=customer">
+                            Open sample profile →
+                          </Link>
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
-              </div>
+                <div className={styles.note}>
+                  The preview uses one interactive customer record (John Smith);
+                  other rows are illustrative.
+                </div>
+              </section>
+            ) : customerScreen ? (
+              <>
+                <p className={styles.customerReturn}>
+                  <Link
+                    className={styles.returnButton}
+                    href="/desktop-demo?screen=customers"
+                  >
+                    ← All Customers
+                  </Link>
+                </p>
+                <div className={styles.panel}>
+                  <div className={styles.panelHeader}>
+                    <div>
+                      <h2>Customer history</h2>
+                      <p>
+                        Every repair order stays linked to the vehicle and
+                        original customer record.
+                      </p>
+                    </div>
+                    <span className={styles.pill}>3 repair orders</span>
+                  </div>
+                  <div className={styles.tabs}>
+                    <strong>History</strong>
+                    <span>Vehicles</span>
+                    <span>Appointments</span>
+                    <span>Communications</span>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>RO Number</th>
+                          <th>Service / Reason</th>
+                          <th>Vehicle</th>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((item) => (
+                          <tr key={item.id}>
+                            <td>
+                              <strong>{item.id}</strong>
+                            </td>
+                            <td>{item.title}</td>
+                            <td>{item.asset}</td>
+                            <td>{item.date}</td>
+                            <td>{item.status}</td>
+                            <td>
+                              <Link
+                                href={`/desktop-demo?screen=ro&ro=${item.id}`}
+                              >
+                                Open →
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </>
             ) : (
               <>

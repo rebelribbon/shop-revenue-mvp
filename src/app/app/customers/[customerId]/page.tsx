@@ -145,7 +145,9 @@ export default async function CustomerDetailPage(props: {
     <HydratedMain id="main-content" tabIndex={-1}>
       <RememberCustomer id={customerId} name={c.displayName} />
       <p>
-        <Link href="/app/customers" className="btn secondary">← All Customers</Link>
+        <Link href="/app/customers" className="btn secondary">
+          ← All Customers
+        </Link>
       </p>
       <div className="profile-layout">
         <aside className="card profile-card">
