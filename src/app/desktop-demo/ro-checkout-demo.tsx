@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
+import { areServiceDocumentsCurrent, type DocumentGuardRecord } from "./ro-document-guard";
 import {
   eligibleInvoiceLines,
   invoiceMatchesAuthorizedCompletedWork,
@@ -114,6 +115,19 @@ export function AdvisorCheckoutDemo({
     "Online (demo)" | "Counter (demo)"
   >("Counter (demo)");
   const [resetOpen, setResetOpen] = useState(false);
+  const [documentsReady,setDocumentsReady] = useState(false);
+  useEffect(() => {
+    function readDocuments() {
+      try {
+        const raw = sessionStorage.getItem(`shop-revenue-desktop-demo-service-flow-v1:${roId}`);
+        const document: DocumentGuardRecord | undefined = raw ? JSON.parse(raw) as DocumentGuardRecord : undefined;
+        setDocumentsReady(areServiceDocumentsCurrent(document,jobs));
+      } catch { setDocumentsReady(false); }
+    }
+    readDocuments();
+    window.addEventListener("shop-revenue-demo-documents-changed",readDocuments);
+    return () => window.removeEventListener("shop-revenue-demo-documents-changed",readDocuments);
+  },[roId,jobs]);
   const approved = jobs.filter((j) => j.decision === "approved");
   const completed = approved.filter((j) => state.completed.includes(j.id));
   const total = state.invoiceLines.reduce((sum, l) => sum + l.price, 0);
@@ -132,7 +146,7 @@ export function AdvisorCheckoutDemo({
   ) =>
     update({ ...state, ...extra, phase, history: [...state.history, label] });
   function toggleComplete(id: number) {
-    if (state.phase !== "working") return;
+    if (state.phase !== "working" || !documentsReady) return;
     update({
       ...state,
       invoiceLines: [],
@@ -142,7 +156,7 @@ export function AdvisorCheckoutDemo({
     });
   }
   function makeDraft() {
-    if (!allCompleted || state.phase !== "qc") return;
+    if (!allCompleted || !documentsReady || state.phase !== "qc") return;
     const invoiceLines = eligibleInvoiceLines(jobs, state.completed);
     if (!invoiceLines.length || invoiceLines.length !== approved.length) return;
     log(
@@ -155,7 +169,7 @@ export function AdvisorCheckoutDemo({
     );
   }
   function finalizeInvoice() {
-    if (state.phase !== "invoice_draft" || !invoiceCurrent) return;
+    if (state.phase !== "invoice_draft" || !invoiceCurrent || !documentsReady) return;
     log(
       "invoice_ready",
       "Advisor verified completed, authorized work and finalized the demo invoice.",
@@ -215,6 +229,9 @@ export function AdvisorCheckoutDemo({
           {state.phase === "working" && (
             <div className={styles.checkoutBody}>
               <h3>Technician: complete authorized work</h3>
+              {!documentsReady && <p className={styles.checkoutGuardError} role="alert">
+                Repair is blocked until the customer-reported concern and technician diagnosis are recorded, all estimate decisions are made, and the customer has acknowledged the approved estimate, any declinations, and the privacy notice. Review the document section above.
+              </p>}
               <p>
                 Mark individual services finished. Pending or declined
                 recommendations never enter the work checklist.
@@ -224,6 +241,7 @@ export function AdvisorCheckoutDemo({
                   <input
                     type="checkbox"
                     checked={state.completed.includes(j.id)}
+                    disabled={!documentsReady}
                     onChange={() => toggleComplete(j.id)}
                   />
                   <span>{j.name}</span>
@@ -239,7 +257,7 @@ export function AdvisorCheckoutDemo({
                 <button
                   type="button"
                   className={styles.addButton}
-                  disabled={!allCompleted}
+                  disabled={!allCompleted || !documentsReady}
                   onClick={() =>
                     log(
                       "qc",
@@ -286,6 +304,7 @@ export function AdvisorCheckoutDemo({
                   type="button"
                   className={styles.addButton}
                   disabled={!allCompleted}
+                  disabled={!documentsReady}
                   onClick={makeDraft}
                 >
                   Pass QC → Prepare invoice
@@ -333,7 +352,7 @@ export function AdvisorCheckoutDemo({
                 <button
                   type="button"
                   className={styles.addButton}
-                  disabled={!invoiceCurrent}
+                  disabled={!invoiceCurrent || !documentsReady}
                   onClick={finalizeInvoice}
                 >
                   Finalize invoice → Customer checkout
