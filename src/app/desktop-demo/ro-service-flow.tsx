@@ -10,6 +10,7 @@ import {
   inspectReady,
   inspectionLabels,
   type InspectionResults,
+  type InspectionItem,
   type InspectionPointId,
   type InspectionResult,
 } from "./inspection-checklist";
@@ -638,7 +639,7 @@ export function ServiceFlowDemo({
                       Service Now requires a recommendation.
                     </p>
                     {inspectionPoints.map((point, i) => {
-                      const item = record.inspectionResults[point.id] ?? {
+                      const item: InspectionItem = record.inspectionResults[point.id] ?? {
                         notes: "",
                         recommendedWork: "",
                       };
