@@ -6,6 +6,7 @@ import { ShareMediaDemo } from "./customer-media";
 import { AdvisorCheckoutDemo } from "./ro-checkout-demo";
 import { ServiceFlowDemo, type Stage } from "./ro-service-flow";
 import { RoStageOverview } from "./ro-stage-overview";
+import { RoRecordsVault } from "./ro-records-vault";
 
 export type Decision = "approved" | "pending" | "declined";
 export type DemoJob = {
@@ -856,6 +857,7 @@ export function RoWorkspace({
           workflowStage === "authorization") && (
           <ShareMediaDemo key={roId} roId={roId} />
         )}
+      {internal && <RoRecordsVault roId={roId} />}
       <div className={styles.note}>
         Demo only. Approval and removal buttons simulate decisions for layout
         review; they do not capture a signature, send email, alter a live RO, or
