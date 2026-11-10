@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styles from "./desktop-demo.module.css";
+import { ShareMediaDemo } from "./customer-media";
 
 export type Decision = "approved" | "pending" | "declined";
 export type DemoJob = {
@@ -732,6 +733,7 @@ export function RoWorkspace({
           </div>
         </section>
       </div>
+      {internal && <ShareMediaDemo key={roId} roId={roId} />}
       <div className={styles.note}>
         Demo only. Approval and removal buttons simulate decisions for layout
         review; they do not capture a signature, send email, alter a live RO, or
