@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import styles from "./desktop-demo.module.css";
+import { areServiceDocumentsCurrent, type SignedItem } from "./ro-document-guard";
 
 export type ServiceLine = {
   id: number; name: string; decision: "approved" | "pending" | "declined";
   price: number; cost: number | null;
 };
-type DemoSignature = { name: string; recordedAt: string; version: number; items: number[] };
+type DemoSignature = { name: string; recordedAt: string; version: number; items: number[]; lines: SignedItem[] };
 type ServiceRecord = {
   complaint: string; assignedTech: string; diagnosis: string;
   inspection: string; mediaNotes: string;
@@ -33,7 +34,7 @@ export function ServiceFlowDemo({roId,jobs}:{roId:string;jobs:ServiceLine[]}) {
   const approvedTotal=approved.reduce((n,j)=>n+j.price,0);
   const completedPrices=jobs.every(j=>j.cost!==null);
   const signed=(key:"estimate"|"declination"|"privacy")=>!!record[key];
-  const allSigned=signed("estimate") && (declined.length===0 || signed("declination")) && signed("privacy");
+  const allSigned=areServiceDocumentsCurrent(record,jobs);
   useEffect(()=>{
     let alive=true;let saved:ServiceRecord|null=null;
     try {const raw=sessionStorage.getItem(keyFor(roId));if(raw){const v=JSON.parse(raw) as ServiceRecord;if(typeof v.complaint==="string"&&typeof v.assignedTech==="string")saved=v;}}catch{}
@@ -42,6 +43,7 @@ export function ServiceFlowDemo({roId,jobs}:{roId:string;jobs:ServiceLine[]}) {
   },[roId]);
   function update(next:ServiceRecord){
     setRecord(next);try{sessionStorage.setItem(keyFor(roId),JSON.stringify(next));}catch{}
+    window.dispatchEvent(new Event("shop-revenue-demo-documents-changed"));
   }
   function setField<K extends keyof ServiceRecord>(field:K,value:ServiceRecord[K]){
     update({...record,[field]:value,estimate:undefined,declination:undefined,privacy:undefined});
@@ -56,7 +58,8 @@ export function ServiceFlowDemo({roId,jobs}:{roId:string;jobs:ServiceLine[]}) {
     const prev=record[selectedDoc];
     update({...record,[selectedDoc]:{
       name:signer.trim(),recordedAt:new Date().toISOString(),
-      version:(prev?.version??0)+1,items:(selectedDoc==="declination"?declined:approved).map(j=>j.id)
+      version:(prev?.version??0)+1,items:(selectedDoc==="declination"?declined:approved).map(j=>j.id),
+      lines:(selectedDoc==="declination"?declined:approved).map(j=>({id:j.id,name:j.name,price:j.price}))
     }});
     setSigner("");setConfirmSign(false);setNoticeAcknowledged(false);
   }
