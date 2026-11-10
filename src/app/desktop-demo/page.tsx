@@ -1,18 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import styles from "./desktop-demo.module.css";
+import { RoWorkspace } from "./ro-workspace";
 
 export const metadata: Metadata = {
   title: "Desktop Design Preview | Shop Revenue",
   robots: { index: false, follow: false },
 };
 
-const work = [
-  { name: "Front brake pads and rotors", price: 425, cost: 175, status: "Approved" },
-  { name: "Brake fluid flush", price: 180, cost: 55, status: "Pending" },
-  { name: "Multi-point inspection", price: 80, cost: 20, status: "Approved" },
-];
-const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 const history = [
   { id: "RO-10482", title: "Brake Service", asset: "2021 Ford F-150", date: "Nov 9, 2026", status: "In progress" },
   { id: "RO-10193", title: "Oil Change & Inspection", asset: "2021 Ford F-150", date: "Aug 18, 2026", status: "Completed" },
@@ -22,8 +17,6 @@ export default async function DesktopDemo({ searchParams }: { searchParams: Prom
   const params = await searchParams;
   const customerScreen = params.screen !== "ro";
   const internal = !customerScreen && params.mode === "internal";
-  const subtotal = work.reduce((sum, item) => sum + item.price, 0);
-  const costs = work.reduce((sum, item) => sum + item.cost, 0);
   return (
     <main id="main-content" className={styles.demo}>
       <div className={styles.notice}><strong>DESIGN PREVIEW · SAMPLE DATA ONLY</strong><span>No login, real customers, real payments, or document sending.</span></div>
@@ -38,13 +31,15 @@ export default async function DesktopDemo({ searchParams }: { searchParams: Prom
             <Link className={!customerScreen ? styles.selected : ""} href="/desktop-demo?screen=ro">▤ <span>Jobs / ROs</span></Link>
             <span>▥ <span>Reports</span></span>
           </nav>
-          <div className={styles.bottom}>
-            <div className={styles.eyebrow}>VIEW MODE</div>
-            <div className={styles.switcher} aria-label="Repair order view selector">
-              <Link aria-current={!internal ? "page" : undefined} className={!internal ? styles.active : ""} href={customerScreen ? "/desktop-demo?screen=customer" : "/desktop-demo?screen=ro&mode=customer"}>Customer</Link>
-              <Link aria-current={internal ? "page" : undefined} className={internal ? styles.active : ""} href="/desktop-demo?screen=ro&mode=internal">Internal</Link>
+          {!customerScreen && (
+            <div className={styles.bottom}>
+              <div className={styles.eyebrow}>RO VIEW MODE</div>
+              <div className={styles.switcher} aria-label="Repair order view selector">
+                <Link aria-current={!internal ? "page" : undefined} className={!internal ? styles.active : ""} href="/desktop-demo?screen=ro&mode=customer">Customer</Link>
+                <Link aria-current={internal ? "page" : undefined} className={internal ? styles.active : ""} href="/desktop-demo?screen=ro&mode=internal">Internal</Link>
+              </div>
             </div>
-          </div>
+          )}
         </aside>
         <div className={styles.app}>
           <header className={styles.topbar}><div className={styles.search}>⌕ &nbsp; Search customers, ROs, vehicles...</div><span className={styles.avatar}>SR</span></header>
@@ -73,15 +68,7 @@ export default async function DesktopDemo({ searchParams }: { searchParams: Prom
               </div>
             ) : (
               <>
-                <div className={styles.roHead}><div><div className={styles.eyebrow}>REPAIR ORDER · RO-10482</div><h2>Brake Service</h2><p>2021 Ford F-150 · VIN ending 4821</p></div><span className={styles.pill}>In progress</span></div>
-                <div className={styles.tabs}><strong>Overview</strong><span>Estimate</span><span>Work</span><span>Documents</span><span>Cashiering</span></div>
-                <div className={styles.columns}>
-                  <div className={styles.panel}><div className={styles.panelHeader}><h2>Work & customer selections</h2><span className={styles.pill}>3 jobs</span></div>
-                    <div className={styles.tableWrap}><table><thead><tr><th>Job</th><th>Approval</th><th>Customer price</th>{internal && <><th>Internal cost</th><th>Gross profit</th></>}</tr></thead><tbody>{work.map(item => <tr key={item.name}><td><strong>{item.name}</strong></td><td>{item.status}</td><td>{money(item.price)}</td>{internal && <><td>{money(item.cost)}</td><td>{money(item.price-item.cost)}</td></>}</tr>)}</tbody></table></div>
-                    <div className={styles.note}>{internal ? "Internal mode · financial details visible to authorized staff only." : "Customer mode · prices and authorizations only. No internal cost or profit fields."}</div>
-                  </div>
-                  <div className={styles.panel}><div className={styles.panelHeader}><h2>RO summary</h2></div><div className={styles.summaryLine}><span>Customer subtotal</span><strong>{money(subtotal)}</strong></div>{internal && <><div className={styles.summaryLine}><span>Internal cost</span><strong>{money(costs)}</strong></div><div className={styles.summaryLine}><span>Gross profit</span><strong>{money(subtotal-costs)}</strong></div></>}<div className={styles.summaryLine}><span>Payment collected</span><strong>$0.00</strong></div><div className={styles.note}>Customer authorization and payment statuses are illustrative.</div></div>
-                </div>
+                <RoWorkspace key={internal ? "internal" : "customer"} internal={internal} />
                 <div className={styles.back}><Link href="/desktop-demo?screen=customer">← Back to customer history</Link></div>
               </>
             )}
