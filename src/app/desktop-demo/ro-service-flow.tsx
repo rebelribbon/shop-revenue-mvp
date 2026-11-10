@@ -722,7 +722,7 @@ export function ServiceFlowDemo({
                     <p>
                       Service/contact data is processed for repairs, updates,
                       payments and recordkeeping. The real notice will reflect
-                      the shop's actual data practices and rights.
+                      the shop’s actual data practices and rights.
                     </p>
                     <label className={styles.serviceFlowCheck}>
                       <input
