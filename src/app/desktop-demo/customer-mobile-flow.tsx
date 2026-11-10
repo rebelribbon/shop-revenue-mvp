@@ -66,6 +66,8 @@ export function CustomerMobileFlow({
   const [advisorExplanation, setAdvisorExplanation] = useState<string | null>(
     null,
   );
+  const [proposalReady,setProposalReady] = useState(false);
+  const [proposalChecked,setProposalChecked] = useState(false);
   const [publishedInspection,setPublishedInspection] = useState<PublishedInspectionPoint[]>([]);
   const [choices, setChoices] = useState<Record<number, Choice>>({});
   const [accepted, setAccepted] = useState(false);
@@ -142,6 +144,7 @@ export function CustomerMobileFlow({
       };
       if (record.estimateSentAt && record.customerExplanation?.trim()) {
         queueMicrotask(() => {
+          setProposalReady(true);
           setAdvisorExplanation(record.customerExplanation!.trim());
           if(record.submittedInspectionAt && record.inspectionResults) {
             setPublishedInspection(publicInspection(record.inspectionResults));
@@ -150,7 +153,7 @@ export function CustomerMobileFlow({
       }
     } catch {
       /* Sample preview may not have advisor data in this session. */
-    }
+    } finally { queueMicrotask(()=>setProposalChecked(true)); }
   }, [roId]);
   useEffect(() => {
     let alive = true;
@@ -214,6 +217,17 @@ export function CustomerMobileFlow({
     setReviewing(false);
   }
 
+  if (!proposalChecked) return <main className={styles.customerJourney}><div className={styles.journeyBody}>Loading your service visit…</div></main>;
+  if (!proposalReady) return <main className={styles.customerJourney}>
+    <header className={styles.journeyHeader}><strong>◆ SHOP REVENUE</strong><span>Service update · Demo</span></header>
+    <div className={styles.journeyBody}>
+      <div className={styles.journeyCard}>
+        <h1>Estimate not yet shared</h1>
+        <p>The advisor is preparing your diagnosis, 40-point inspection report, recommendation pricing and approved media. The customer review becomes available once the estimate is marked as shared.</p>
+        <p className={styles.journeyDemoDisclaimer}>Preview only. No real customer notifications have been sent.</p>
+      </div>
+    </div>
+  </main>;
   return (
     <main id="main-content" className={styles.customerJourney}>
       <header className={styles.journeyHeader}>
