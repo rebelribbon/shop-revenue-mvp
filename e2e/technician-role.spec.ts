@@ -84,7 +84,7 @@ test("Technicians see only their jobs and no owner pages", async ({
   await expect(tech.getByRole("group", { name: "Whose jobs" })).toHaveCount(0);
   // Owner pages and money exports are off limits.
   await tech.goto("/app/settings/booking");
-  await expect(tech).toHaveURL(/\/app\?denied=1/);
+  await expect(tech).toHaveURL(/\/app\/tasks$/);
   const csv = await tech.request.get("/app/money/reports/csv?report=sales");
   expect(csv.status()).toBe(404);
   await tech.goto("/app/settings");

@@ -58,6 +58,7 @@ export function WorkspaceNavigation({
         mobile ? "mobile-nav shop-mobile-nav" : "desktop-nav workspace-nav"
       }
       aria-label={mobile ? "Mobile navigation" : "Main"}
+      data-technician-nav={technicianOnly || undefined}
     >
       {shopItems
         .filter((item) => canSeeMoney || item.href !== "/app/money")

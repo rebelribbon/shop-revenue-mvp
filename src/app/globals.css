@@ -1092,6 +1092,9 @@ details {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.shop-mobile-nav[data-technician-nav] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .quick-find-trigger kbd {
   margin-left: auto;
   white-space: nowrap;
@@ -2599,6 +2602,36 @@ a.card.create-tile:hover {
   padding: 0;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+.inspection-section-tabs,
+.inspection-group-nav,
+.inspection-submit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+.inspection-section-tabs button,
+.inspection-group-nav button,
+.inspection-submit-actions button {
+  margin: 0;
+  min-width: 48px;
+}
+.inspection-section-tabs button[aria-current="step"] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.inspection-group-nav button,
+.inspection-submit-actions button {
+  flex: 1 1 160px;
+}
+.inspection-readings {
+  display: grid;
+  gap: 8px;
+}
+.inspection-readings label {
+  display: grid;
   gap: 8px;
 }
 .inspection-item fieldset {

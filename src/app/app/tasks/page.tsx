@@ -35,7 +35,7 @@ export default async function TasksPage(props: {
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Tasks</h1>
-      <TasksNavigation current={view} />
+      <TasksNavigation current={view} technicianOnly={technician} />
       {p.add && !readOnly && !technician && (
         <section className="card add-panel" aria-label="Add a task">
           <h2>Add a task</h2>

@@ -382,6 +382,25 @@ export default async function JobsPage({
             <Link href="/app/jobs">← My assigned ROs</Link>
             <section className="card">
               <h2>{assignedInput?.title || "Repair order"}</h2>
+              {data.clock?.jobId === selected.id ? (
+                <ActionForm
+                  action={stopClockAction}
+                  submitLabel={`■ Stop clock · ${clockText(data.clock.startedAt)}`}
+                  variant="secondary"
+                />
+              ) : (
+                <ActionForm
+                  action={startClockAction}
+                  hidden={{ jobId: selected.id }}
+                  submitLabel={
+                    data.clock ? "▶ Switch clock to this job" : "▶ Start clock"
+                  }
+                  variant="secondary"
+                />
+              )}
+              <a className="btn secondary" href="#technician-media">
+                + Photo / video
+              </a>
               <p>
                 Record your diagnosis, complete the 40-point inspection and
                 submit it to your advisor.
@@ -401,7 +420,7 @@ export default async function JobsPage({
               )}
             </section>
             {assignedInput?.customerId && (
-              <section className="card">
+              <section className="card" id="technician-media">
                 <h2>Technician media</h2>
                 <p>
                   Upload photos and videos of findings. Media stays private
