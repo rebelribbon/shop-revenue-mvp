@@ -61,13 +61,19 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
       const raw = sessionStorage.getItem("shop-revenue-desktop-demo-ro-v1");
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.every((item) =>
-          typeof item === "object" && item !== null &&
-          typeof item.id === "number" && typeof item.name === "string" &&
-          typeof item.price === "number" &&
-          (item.cost === null || typeof item.cost === "number") &&
-          ["approved", "pending", "declined"].includes(item.decision)
-        )) {
+        if (
+          Array.isArray(parsed) &&
+          parsed.every(
+            (item) =>
+              typeof item === "object" &&
+              item !== null &&
+              typeof item.id === "number" &&
+              typeof item.name === "string" &&
+              typeof item.price === "number" &&
+              (item.cost === null || typeof item.cost === "number") &&
+              ["approved", "pending", "declined"].includes(item.decision),
+          )
+        ) {
           const previous = parsed as DemoJob[];
           setJobs(previous);
           setNextId(Math.max(4, ...previous.map((item) => item.id)) + 1);
@@ -83,7 +89,10 @@ export function RoWorkspace({ internal }: { internal: boolean }) {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem("shop-revenue-desktop-demo-ro-v1", JSON.stringify(jobs));
+      sessionStorage.setItem(
+        "shop-revenue-desktop-demo-ro-v1",
+        JSON.stringify(jobs),
+      );
     } catch {
       // Session persistence is only a preview convenience.
     }
