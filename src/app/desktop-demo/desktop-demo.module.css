@@ -391,3 +391,34 @@
 .serviceFlowCheck input{height:20px;width:20px;flex:none;accent-color:#11764e}
 @media(min-width:800px){.serviceFlowLayout{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
 @media(max-width:440px){.serviceFlowLayout{padding:14px}.serviceFlowStep{padding:16px}.serviceFlowCosts{grid-template-columns:1fr}.serviceDocStatus>div{align-items:flex-start;flex-direction:column;gap:5px}}
+
+
+/* Focused one-stage-at-a-time RO flow: advisor, technician and estimate. */
+.focusedWorkflow{max-width:780px;margin:0 auto;padding:20px 16px 24px;display:grid;gap:18px;min-width:0}
+.focusedStageHeader{background:#f0f6f8;border:1px solid #d5e5e9;border-radius:13px;padding:20px;display:grid;gap:8px}
+.focusedStageHeader h3{font-size:24px;line-height:1.2;letter-spacing:-.02em;margin:0;color:#193846}
+.focusedStageHeader>p{font-size:13px;color:#506b79;margin:0;line-height:1.6}
+.focusedStageBody{display:grid;gap:18px;background:#fff;border:1px solid #d6e4e9;border-radius:13px;padding:20px;min-width:0}
+.focusedStageBody>label,.focusedPriceGrid label{display:grid;gap:7px;font-size:13px;font-weight:800}
+.focusedStageBody input:not([type=checkbox]),.focusedStageBody textarea,.focusedStageBody select,.focusedAddFinding input,.focusedAddFinding textarea{background:#fff;width:100%;min-width:0;border:1px solid #b1c7cf;border-radius:9px;padding:12px;font:inherit;font-size:14px;min-height:48px}
+.focusedStageBody textarea,.focusedAddFinding textarea{resize:vertical}
+.focusedReadOnly{background:#f5f9fa;border:1px solid #dbe9ed;border-radius:9px;padding:16px;display:grid;gap:6px;font-size:13px}
+.focusedReadOnly strong{color:#1c5664}
+.focusedReadOnly p{margin:0 0 8px;white-space:pre-wrap;overflow-wrap:anywhere;color:#435f6d}
+.focusedReadOnly p:last-child{margin-bottom:0}
+.focusedAddFinding{border:1px solid #d0e0e6;border-radius:10px;padding:16px;background:#f7fafb;display:grid;gap:12px}
+.focusedAddFinding>p{font-size:13px;color:#28644b;margin:0}
+.focusedAddFinding button,.focusedStageBody>.addButton{min-height:48px;justify-self:stretch}
+.focusedPriceItem{padding:16px;border:1px solid #d5e3e8;border-radius:11px;background:#f8fbfc;display:grid;gap:14px}
+.focusedPriceItem h4{font-size:16px;margin:0}
+.focusedPriceItem>p{font-size:13px;margin:0;color:#55707e}
+.focusedPriceGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.focusedItemTotal,.focusedPriceSummary{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:12px 0;border-top:1px solid #dbe6e9;font-size:14px}
+.focusedItemTotal strong,.focusedPriceSummary strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.focusedStageBody>.mobilePrimaryButton{font-size:15px}
+.focusedHistory{border:1px solid #d5e3e8;border-radius:10px;background:#f9fbfc;overflow:hidden}
+.focusedHistory summary{cursor:pointer;padding:16px;font-size:13px;font-weight:800;color:#3a6170}
+.focusedHistory>div{padding:4px 16px 16px;border-top:1px solid #e2eaee}
+.focusedHistory p{font-size:12px;color:#576e7b;margin:10px 0;overflow-wrap:anywhere}
+@media(min-width:750px){.focusedWorkflow{padding:28px}.focusedStageHeader{padding:26px}.focusedStageBody{padding:28px}}
+@media(max-width:400px){.focusedWorkflow{padding:14px 10px}.focusedStageBody{padding:16px}.focusedPriceGrid{grid-template-columns:1fr}.focusedStageHeader h3{font-size:21px}}
