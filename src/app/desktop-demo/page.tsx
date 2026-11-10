@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import styles from "./desktop-demo.module.css";
 import { RoWorkspace } from "./ro-workspace";
+import { VehicleWorkspace } from "./vehicle-workspace";
 
 export const metadata: Metadata = {
   title: "Desktop Design Preview | Shop Revenue",
@@ -34,17 +35,21 @@ const history = [
 export default async function DesktopDemo({
   searchParams,
 }: {
-  searchParams: Promise<{ screen?: string; mode?: string; ro?: string }>;
+  searchParams: Promise<{ screen?: string; mode?: string; ro?: string; vehicle?: string; title?: string }>;
 }) {
   const params = await searchParams;
   const customerScreen = params.screen !== "ro";
+  const vehiclesScreen = params.screen === "vehicles";
+  const vehicleScreen = params.screen === "vehicle";
+  const vehicleId = params.vehicle === "accord" ? "accord" : "f150";
   const listScreen = params.screen === "customers";
   const internal = !customerScreen && params.mode === "internal";
-  const roId = (
-    ["RO-10482", "RO-10193", "RO-09914"].includes(params.ro ?? "")
-      ? params.ro
-      : "RO-10482"
-  ) as "RO-10482" | "RO-10193" | "RO-09914";
+  const roId =
+    ["RO-10482", "RO-10193", "RO-09914"].includes(params.ro ?? "") ||
+    /^RO-DEMO-[A-F0-9]{8}$/.test(params.ro ?? "")
+      ? params.ro!
+      : "RO-10482";
+  const newTitle = params.title?.slice(0, 100) ?? "";
   return (
     <main id="main-content" className={styles.demo}>
       <div className={styles.notice}>
@@ -116,10 +121,8 @@ export default async function DesktopDemo({
           </header>
           <div className={styles.page}>
             <div className={styles.breadcrumb}>
-              {listScreen ? (
-                "Customers"
-              ) : (
-                <>Customers / John Smith {!customerScreen && `/ ${roId}`}</>
+              {listScreen ? "Customers" : (
+                <>Customers / John Smith {vehiclesScreen ? "/ Vehicles" : vehicleScreen ? "/ Vehicles / Vehicle Details" : !customerScreen ? `/ ${roId}` : ""}</>
               )}
             </div>
             {!listScreen && (
@@ -137,7 +140,7 @@ export default async function DesktopDemo({
                 </div>
               </div>
             )}
-            {!listScreen && (
+            {!listScreen && !vehiclesScreen && !vehicleScreen && (
               <div className={styles.metrics}>
                 <div>
                   <span>REPAIR ORDERS</span>
@@ -157,7 +160,19 @@ export default async function DesktopDemo({
                 </div>
               </div>
             )}
-            {listScreen ? (
+            {vehiclesScreen || vehicleScreen ? (
+              <>
+                <p className={styles.customerReturn}>
+                  <Link className={styles.returnButton} href="/desktop-demo?screen=customer">← Customer Profile</Link>
+                </p>
+                <div className={styles.tabs} aria-label="Customer sections">
+                  <Link href="/desktop-demo?screen=customer">History</Link>
+                  <strong>Vehicles</strong>
+                  <span>Appointments</span><span>Communications</span>
+                </div>
+                <VehicleWorkspace vehicleId={vehicleScreen ? vehicleId : undefined}/>
+              </>
+            ) : listScreen ? (
               <section className={styles.panel} aria-label="Customer directory">
                 <div className={styles.panelHeader}>
                   <div>
@@ -251,7 +266,7 @@ export default async function DesktopDemo({
                   </div>
                   <div className={styles.tabs}>
                     <strong>History</strong>
-                    <span>Vehicles</span>
+                    <Link href="/desktop-demo?screen=vehicles">Vehicles</Link>
                     <span>Appointments</span>
                     <span>Communications</span>
                   </div>
@@ -297,6 +312,8 @@ export default async function DesktopDemo({
                   key={`${roId}-${internal ? "internal" : "customer"}`}
                   internal={internal}
                   roId={roId}
+                  vehicleId={vehicleId}
+                  newTitle={newTitle}
                 />
                 <div className={styles.back}>
                   <Link href="/desktop-demo?screen=customer">
