@@ -14,10 +14,6 @@ export type DocumentGuardRecord = {
   assignedTech: string;
   diagnosis: string;
   inspection: string;
-  partsCost: string;
-  partsPrice: string;
-  laborCost: string;
-  laborPrice: string;
   estimate?: SignedRecord;
   declination?: SignedRecord;
   privacy?: SignedRecord;
