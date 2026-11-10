@@ -66,6 +66,8 @@ export function CustomerMobileFlow({
 }) {
   const { state: checkoutState, loaded: checkoutLoaded } =
     useDemoCheckout(roId);
+  const [advisorExplanation,setAdvisorExplanation] = useState<string | null>(null);
+  const [advisorInspection,setAdvisorInspection] = useState<string | null>(null);
   const [choices, setChoices] = useState<Record<number, Choice>>({});
   const [accepted, setAccepted] = useState(false);
   const [loadedChoices, setLoadedChoices] = useState(false);
@@ -124,6 +126,19 @@ export function CustomerMobileFlow({
               ? "Payment received. The vehicle is waiting for pickup."
               : "Your vehicle has been delivered and the RO is closed.";
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`shop-revenue-desktop-demo-service-flow-v1:${roId}`);
+      if (!raw) return;
+      const record = JSON.parse(raw) as {estimateSentAt?: string;customerExplanation?:string;inspection?:string};
+      if (record.estimateSentAt && record.customerExplanation?.trim()) {
+        queueMicrotask(()=>{
+          setAdvisorExplanation(record.customerExplanation!.trim());
+          setAdvisorInspection(record.inspection?.trim() || null);
+        });
+      }
+    } catch { /* Sample preview may not have advisor data in this session. */ }
+  },[roId]);
   useEffect(() => {
     let alive = true;
     let previous: Record<number, Choice> | null = null;
@@ -256,6 +271,13 @@ export function CustomerMobileFlow({
               <p>What the technician checked and found.</p>
             </div>
           </div>
+          {advisorExplanation && (
+            <div className={styles.focusedReadOnly}>
+              <strong>Diagnosis from your service advisor</strong>
+              <p>{advisorExplanation}</p>
+              {advisorInspection && <><strong>Technician inspection summary</strong><p>{advisorInspection}</p></>}
+            </div>
+          )}
           <div className={styles.journeyInspectionColumns}>
             <div className={styles.journeyInspectionGroup}>
               <h3>
