@@ -81,7 +81,7 @@ export async function saveInspection(
       "Complete every inspection point before submitting.",
     );
   if (
-    items.some(
+    input.submit !== false && items.some(
       (i) =>
         ((i.status === "watch" || i.status === "fix") && !i.note.trim()) ||
         (i.status === "fix" && !i.recommendedWork?.trim()),
