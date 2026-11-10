@@ -285,3 +285,83 @@
 .mobileCheckoutLink{display:flex;justify-content:center;align-items:center;min-height:48px;text-align:center;padding:12px 16px;border-radius:8px;background:#087857;color:#fff!important;font-size:14px;font-weight:800;text-decoration:none}
 .mobileCheckoutLink:hover{background:#075c43}
 @media(max-width:650px){.checkoutSteps{gap:2px;padding:16px 8px}.checkoutSteps span{height:26px;width:26px}.checkoutSteps small{font-size:8px}.checkoutBody{padding:16px}.checkoutChecklist{flex-wrap:wrap}.checkoutAmount{flex-wrap:wrap}.customerCheckoutCard{padding:24px 16px}}
+
+
+/* One continuous, mobile-first customer service journey (no wizard or tables). */
+.customerJourney{min-height:100dvh;background:#f1f5f6;color:#17313b;font:15px/1.55 "Public Sans Variable",system-ui,sans-serif;overflow-x:hidden}
+.journeyHeader{background:#143847;color:white;padding:14px max(16px,env(safe-area-inset-right));display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px}
+.journeyHeader strong{letter-spacing:.04em;font-size:15px}
+.journeyHeader span{color:#c5d9df;font-size:11px}
+.journeyBody{max-width:780px;margin:auto;padding:18px 14px calc(48px + env(safe-area-inset-bottom));display:grid;gap:14px}
+.journeyHero{padding:8px 4px 4px}
+.journeyEyebrow{font-size:11px;letter-spacing:.08em;font-weight:800;color:#5c7380}
+.journeyHero h1{font-size:28px;line-height:1.2;margin:6px 0 3px;letter-spacing:-.025em}
+.journeyHero>p{font-size:13px;color:#617784;margin:0 0 16px}
+.journeyStatus{background:#e7f2f5;border:1px solid #bdd6df;border-radius:12px;padding:14px 16px}
+.journeyStatus>div{display:flex;align-items:center;gap:9px;font-weight:800}
+.journeyStatusDot{height:9px;width:9px;border-radius:50%;background:#18815a;display:inline-block}
+.journeyStatus p{font-size:12px;color:#476474;margin:5px 0 0}
+.journeyCard{background:#fff;border:1px solid #dce6e9;border-radius:14px;padding:19px 16px;box-shadow:0 2px 12px #14384708;min-width:0}
+.journeySectionHead{display:flex;align-items:flex-start;gap:12px;margin:0 0 16px}
+.journeyNumber{display:grid;place-items:center;background:#dff0e8;color:#14633f;border-radius:9px;width:32px;height:32px;flex:none;font-weight:900}
+.journeySectionHead h2{margin:0;font-size:19px;letter-spacing:-.02em;line-height:1.35}
+.journeySectionHead p{font-size:12px;color:#5b7380;margin:3px 0 0}
+.journeyPriceRow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:12px 0;border-bottom:1px solid #e4ecef}
+.journeyPriceRow span{min-width:0;overflow-wrap:anywhere}
+.journeyPriceRow strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.journeySubtotal{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:14px;font-weight:800}
+.journeySubtotal strong{font-size:19px;white-space:nowrap}
+.journeyInspectionColumns{display:grid;gap:12px}
+.journeyInspectionGroup{background:#f7fafb;border:1px solid #e1e9ec;border-radius:10px;padding:14px}
+.journeyInspectionGroup h3{display:flex;align-items:center;gap:8px;font-size:14px;margin:0 0 10px}
+.journeyInspectionGroup p{display:flex;gap:10px;align-items:flex-start;margin:8px 0;color:#4d6471;font-size:13px}
+.journeyInspectionGroup p span{width:18px;flex:none;text-align:center;font-weight:900;color:#1d845c}
+.journeyPassed,.journeyNeeds{display:grid;place-items:center;background:#dff1e5;color:#176c48;border-radius:6px;height:24px;width:24px;font-size:13px}
+.journeyNeeds{background:#fff0d1;color:#865b14}
+.journeyCallout{border-left:3px solid #b4802d;background:#fff8e9;color:#6e501e;border-radius:6px;padding:12px;margin:14px 0 0;font-size:12px}
+.journeyDecisionProgress{display:grid;gap:7px;color:#526d79;font-size:12px;font-weight:800;margin:0 0 10px}
+.journeyDecisionProgress>div{height:6px;background:#e5eeea;border-radius:10px;overflow:hidden}
+.journeyDecisionProgress>div>span{display:block;height:100%;background:#18815a;transition:width .2s}
+.journeyRecommendation{padding:16px 0;border-top:1px solid #e1e9ed}
+.journeyRecHeading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.journeyRecHeading h3{margin:0;font-size:16px;line-height:1.35}
+.journeyRecHeading>strong{font-size:17px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.journeyRecommendation>p{font-size:12px;color:#637984;margin:8px 0 10px}
+.journeyRecLinks{display:flex;gap:10px;flex-wrap:wrap}
+.journeyRecLinks button{background:#f5f9fa;border:1px solid #bfced5;border-radius:8px;color:#285c6c;min-height:42px;padding:8px 12px;font:inherit;font-weight:700;font-size:12px;cursor:pointer}
+.journeyEvidence{background:#eff6f8;border:1px solid #cadde5;border-radius:10px;padding:12px;margin:12px 0;display:grid;gap:12px;font-size:12px}
+.journeyEvidence>p{margin:0}
+.journeyMedia{display:grid;grid-template-columns:92px 1fr;gap:12px;align-items:center}
+.journeyMedia>div{background:linear-gradient(140deg,#c1d9e0,#e2edf0);border-radius:8px;min-height:76px;display:grid;place-content:center;justify-items:center;color:#365d6e}
+.journeyMedia>div span{font-size:24px}
+.journeyMedia>div small{font-size:9px;font-weight:800}
+.journeyMedia p{margin:0;display:grid;gap:4px}
+.journeyMedia p strong{font-size:12px}
+.journeyQuestion{background:#f4f7ff!important;border-radius:8px;padding:8px}
+.journeyChoiceButtons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.journeyChoiceButtons button{min-height:48px;padding:10px 6px;background:white;border:1px solid #b2c7cf;border-radius:9px;font:inherit;font-weight:800;color:#315a69;cursor:pointer}
+.journeyChoiceButtons button.journeyChoiceApproved{border:2px solid #168254;background:#e3f5e9;color:#11633e}
+.journeyChoiceButtons button.journeyChoiceDeclined{border:2px solid #ae6158;background:#fff0ec;color:#9a453d}
+.journeyChoiceButtons button:disabled{cursor:default;opacity:.8}
+.journeyReviewAnchor{scroll-margin-top:12px}
+.journeyGrandTotal{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#e4f3e9;border-radius:9px;padding:16px 12px;margin:14px 0 10px;color:#1a5f40;font-weight:800}
+.journeyGrandTotal strong{font-size:22px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.journeySubtotalDisclaimer{font-size:12px;color:#5d7480;margin:0 0 14px}
+.journeyConfirm{display:grid;gap:12px;margin-top:16px}
+.journeyConfirm h3{font-size:17px;margin:0}
+.journeyConfirm p{font-size:13px;margin:0;color:#536b78}
+.journeyConfirm>label:not(.journeyCheck){font-weight:800;font-size:13px}
+.journeyConfirm>input{min-height:48px;border:1px solid #aec4cd;border-radius:9px;padding:12px;font:inherit;width:100%}
+.journeyCheck{display:flex;align-items:flex-start;gap:10px;font-size:13px}
+.journeyCheck input{width:20px;height:20px;flex:none;accent-color:#168254}
+.journeyNeedChoices{color:#906220!important;font-size:12px!important;text-align:center}
+.journeyDone{background:#e7f6ec;border:1px solid #c0e5cc;border-radius:9px;padding:15px;color:#125d39}
+.journeyDone p{font-size:12px;margin:6px 0 0}
+.journeyAfter{border-top:1px solid #dfebea;margin-top:20px;padding-top:16px}
+.journeyAfter h3{font-size:15px;margin:0 0 4px}
+.journeyAfter p{font-size:12px;color:#556f79;margin:0}
+.journeyPayLink{display:block;text-align:center;background:#087857;color:white!important;text-decoration:none;padding:13px;border-radius:9px;font-weight:800;margin-top:14px;min-height:48px}
+.journeyDemoDisclaimer{font-size:11px;color:#70828a;margin:4px 6px}
+.checkoutGuardError{padding:12px;border-radius:9px;background:#fff3ec;border:1px solid #f1c5a7;color:#8c431f;font-size:13px}
+@media(min-width:640px){.journeyBody{padding:26px 24px 60px;gap:18px}.journeyCard{padding:26px 28px}.journeyInspectionColumns{grid-template-columns:repeat(2,minmax(0,1fr))}.journeyRecHeading h3{font-size:17px}}
+@media(max-width:340px){.journeyRecHeading>strong{font-size:15px}.journeyHeader span{font-size:10px}.journeyHero h1{font-size:24px}}
