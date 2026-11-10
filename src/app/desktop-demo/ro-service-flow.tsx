@@ -116,14 +116,14 @@ function sumCost(b: Breakdown) {
 export function ServiceFlowDemo({
   roId,
   jobs,
-  onAddFinding,
+  onAddFindings,
   onPriceJob,
   onStageChange,
   onReadyChange,
 }: {
   roId: string;
   jobs: ServiceLine[];
-  onAddFinding: (description: string, notes: string) => void;
+  onAddFindings: (findings: {description:string;notes:string}[]) => void;
   onPriceJob: (id: number, cost: number, price: number) => void;
   onStageChange: (stage: Stage) => void;
   onReadyChange: (ready: boolean) => void;
@@ -245,9 +245,10 @@ export function ServiceFlowDemo({
     if (!record.techAccepted || !record.bay.trim() ||
         !record.diagnosis.trim() || !inspectReady(record.inspectionResults)) return;
     const recommendations=inspectionRecommendations(record.inspectionResults);
-    for(const rec of recommendations) {
-      if (!record.findings.includes(rec.name)) onAddFinding(rec.name,`${rec.inspectionArea}: ${rec.notes}`);
-    }
+    const newlyFound=recommendations
+      .filter(rec=>!record.findings.includes(rec.name))
+      .map(rec=>({description:rec.name,notes:`${rec.inspectionArea}: ${rec.notes}`}));
+    if(newlyFound.length) onAddFindings(newlyFound);
     const now=new Date().toISOString();
     const handoff={to:"advisor" as const,at:now,message:`RO ${roId} technician inspection complete. ${recommendations.length} recommendations ready. Build estimate.`};
     save({
