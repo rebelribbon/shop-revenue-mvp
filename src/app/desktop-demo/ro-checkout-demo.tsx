@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
+import { eligibleInvoiceLines, invoiceMatchesAuthorizedCompletedWork } from "./ro-invoice-guard";
 
 export type CheckoutLine = {
   id: number;
@@ -115,6 +116,9 @@ export function AdvisorCheckoutDemo({
   const total = state.invoiceLines.reduce((sum, l) => sum + l.price, 0);
   const allCompleted =
     approved.length > 0 && completed.length === approved.length;
+  const invoiceCurrent = invoiceMatchesAuthorizedCompletedWork(
+    state.invoiceLines, jobs, state.completed
+  );
   const index = phases.indexOf(state.phase);
   const log = (
     phase: Phase,
@@ -126,10 +130,24 @@ export function AdvisorCheckoutDemo({
     if (state.phase !== "working") return;
     update({
       ...state,
+      invoiceLines: [],
       completed: state.completed.includes(id)
         ? state.completed.filter((x) => x !== id)
         : [...state.completed, id],
     });
+  }
+  function makeDraft() {
+    if (!allCompleted || state.phase !== "qc") return;
+    const invoiceLines = eligibleInvoiceLines(jobs, state.completed);
+    if (!invoiceLines.length || invoiceLines.length !== approved.length) return;
+    log("invoice_draft", "Advisor passed QC; eligible completed work copied to the invoice draft.", {
+      qcNotes: notes,
+      invoiceLines,
+    });
+  }
+  function finalizeInvoice() {
+    if (state.phase !== "invoice_draft" || !invoiceCurrent) return;
+    log("invoice_ready", "Advisor verified completed, authorized work and finalized the demo invoice.");
   }
   function reset() {
     update(initialState);
@@ -255,20 +273,8 @@ export function AdvisorCheckoutDemo({
                 <button
                   type="button"
                   className={styles.addButton}
-                  onClick={() =>
-                    log(
-                      "invoice_draft",
-                      "Advisor passed QC and prepared invoice draft.",
-                      {
-                        qcNotes: notes,
-                        invoiceLines: approved.map((j) => ({
-                          id: j.id,
-                          name: j.name,
-                          price: j.price,
-                        })),
-                      },
-                    )
-                  }
+                  disabled={!allCompleted}
+                  onClick={makeDraft}
                 >
                   Pass QC → Prepare invoice
                 </button>
@@ -304,16 +310,17 @@ export function AdvisorCheckoutDemo({
                 <span>Illustrative subtotal · taxes and fees not included</span>
                 <strong>{money(total)}</strong>
               </div>
+              {!invoiceCurrent && (
+                <p className={styles.checkoutGuardError} role="alert">
+                  Approved services or prices changed after QC. Return to QC and prepare a fresh invoice. Declined, pending, or unfinished items cannot be billed.
+                </p>
+              )}
               <div className={styles.checkoutActions}>
                 <button
                   type="button"
                   className={styles.addButton}
-                  onClick={() =>
-                    log(
-                      "invoice_ready",
-                      "Advisor finalized the demo invoice and made it available on the customer link.",
-                    )
-                  }
+                  disabled={!invoiceCurrent}
+                  onClick={finalizeInvoice}
                 >
                   Finalize invoice → Customer checkout
                 </button>
@@ -346,7 +353,7 @@ export function AdvisorCheckoutDemo({
               <div className={styles.checkoutActions}>
                 <Link
                   className={styles.returnButton}
-                  href={`/desktop-demo?screen=customer-link&ro=${encodeURIComponent(roId)}`}
+                  href={`/desktop-demo?screen=checkout&ro=${encodeURIComponent(roId)}`}
                 >
                   Open customer checkout ↗
                 </Link>
