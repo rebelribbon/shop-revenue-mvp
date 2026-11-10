@@ -299,6 +299,7 @@ export async function freezeEstimate(
     summary: `Estimate version ${row.version} published`,
     data: { versionId: row.id },
   });
+  await completeAdvisorHandoff(tx,input.jobId);
   return {
     id: row.id,
     version: row.version,
