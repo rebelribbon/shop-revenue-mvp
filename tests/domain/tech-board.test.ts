@@ -16,18 +16,28 @@ describe("Tech board and My day", () => {
     const t = await seedTenant("Techs", { withStaff: true });
     const asOwner = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
       withTenant(t.businessId, t.owner.actor, fn);
-    const techEmail=`tech-${randomUUID()}@shop.example.test`;
-    const invite=await asOwner(tx=>inviteStaff(tx,meta(),{
-      name:"Techs Technician",email:techEmail,role:"technician",
-    }));
-    const subject=randomUUID();
-    const accepted=await acceptInvite(meta(),invite.token,{
-      authSubject:subject,email:techEmail,phoneE164:null,
-      displayName:"Techs Technician",
+    const techEmail = `tech-${randomUUID()}@shop.example.test`;
+    const invite = await asOwner((tx) =>
+      inviteStaff(tx, meta(), {
+        name: "Techs Technician",
+        email: techEmail,
+        role: "technician",
+      }),
+    );
+    const subject = randomUUID();
+    const accepted = await acceptInvite(meta(), invite.token, {
+      authSubject: subject,
+      email: techEmail,
+      phoneE164: null,
+      displayName: "Techs Technician",
     });
-    const staff={
-      userId:accepted.userId,
-      actor:{type:"user" as const,id:accepted.userId,authSubject:subject},
+    const staff = {
+      userId: accepted.userId,
+      actor: {
+        type: "user" as const,
+        id: accepted.userId,
+        authSubject: subject,
+      },
     };
     const asStaff = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
       withTenant(t.businessId, staff.actor, fn);
