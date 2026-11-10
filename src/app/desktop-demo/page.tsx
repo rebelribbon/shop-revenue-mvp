@@ -5,6 +5,7 @@ import { RoWorkspace } from "./ro-workspace";
 import { VehicleWorkspace } from "./vehicle-workspace";
 import { EstimateWorkspace } from "./estimate-workspace";
 import { ShareMediaDemo } from "./customer-media";
+import { CustomerCheckoutDemo } from "./ro-checkout-demo";
 
 export const metadata: Metadata = {
   title: "Desktop Design Preview | Shop Revenue",
@@ -62,6 +63,10 @@ export default async function DesktopDemo({
   const roQueryExtra = roId.startsWith("RO-DEMO-")
     ? `&vehicle=${vehicleId}&title=${encodeURIComponent(newTitle)}`
     : "";
+  if (params.screen === "checkout") {
+    const vehicle = roId === "RO-09914" ? "2018 Honda Accord" : "2021 Ford F-150";
+    return <CustomerCheckoutDemo roId={roId} vehicle={vehicle} />;
+  }
   if (params.screen === "customer-link")
     return <ShareMediaDemo roId={roId} customerOnly />;
   return (
