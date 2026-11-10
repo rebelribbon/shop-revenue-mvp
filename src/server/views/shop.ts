@@ -11,6 +11,11 @@ export async function requireShopSession(path: string): Promise<ShopSession> {
   if (state.kind === "no_access") redirect("/no-access");
   if (await sessionNeedsMfa())
     redirect(`/verify?next=${encodeURIComponent(path)}`);
+  // Applied to every /app page that uses this guard, including nested deep
+  // links. Hiding navigation alone is not an access-control boundary.
+  if(state.session.role==="technician" && path.startsWith("/app/") &&
+    !path.startsWith("/app/jobs") && !path.startsWith("/app/tasks"))
+    redirect("/app/tasks");
   return state.session;
 }
 
