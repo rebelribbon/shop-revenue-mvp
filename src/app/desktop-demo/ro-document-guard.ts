@@ -14,6 +14,11 @@ export type DocumentGuardRecord = {
   assignedTech: string;
   diagnosis: string;
   inspection: string;
+  /** Legacy preview fields; new estimates use per-service parts/labor breakdowns. */
+  partsCost?: string;
+  partsPrice?: string;
+  laborCost?: string;
+  laborPrice?: string;
   estimate?: SignedRecord;
   declination?: SignedRecord;
   privacy?: SignedRecord;
