@@ -242,3 +242,46 @@
 .mobileCheckoutStatus{padding:20px 16px;background:#f2f8f6;border:1px solid #b9dbce;border-radius:12px;margin:16px 0}
 .mobileCheckoutStatus h3{margin:0 0 8px;font-size:18px}
 .mobileCheckoutStatus p{color:#426254;font-size:13px;line-height:1.6;margin:0 0 16px}
+
+
+/* End-to-end work completion, QC, invoice, checkout and handover demo. */
+.checkoutSteps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:16px 24px;border-bottom:1px solid #deeaed}
+.checkoutSteps>div{display:grid;gap:8px;justify-items:center;text-align:center;opacity:.5;min-width:0}
+.checkoutSteps span{display:grid;place-items:center;border-radius:50%;background:#d8e3e8;color:#425f6a;width:32px;height:32px;font-size:12px;font-weight:800}
+.checkoutSteps .checkoutStepDone{opacity:1}
+.checkoutSteps .checkoutStepDone span{background:#087857;color:white}
+.checkoutSteps small{font-size:10px;font-weight:700;line-height:1.3}
+.checkoutBody{padding:24px;display:grid;gap:16px}
+.checkoutBody h3{font-size:19px;margin:0}
+.checkoutBody>p{color:#587080;margin:0}
+.checkoutChecklist{display:flex;gap:12px;align-items:center;padding:14px;border:1px solid #d8e6eb;border-radius:8px;font-weight:700;cursor:pointer}
+.checkoutChecklist input{width:20px;height:20px;accent-color:#087857;flex:none}
+.checkoutChecklist span{flex:1}
+.checkoutChecklist strong{white-space:nowrap}
+.checkoutActions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.checkoutActions button:disabled{opacity:.55;cursor:not-allowed}
+.checkoutLine{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #e1e9ec}
+.checkoutField{display:grid;gap:8px;font-weight:700;font-size:13px}
+.checkoutField textarea,.checkoutField select{width:100%;padding:12px;border:1px solid #b5cad4;border-radius:8px;font:inherit;min-height:44px}
+.checkoutAmount{display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:2px solid #bdd5d6;padding-top:16px}
+.checkoutAmount strong{font-size:25px;white-space:nowrap}
+.checkoutHistory{padding:16px 24px;background:#f6f9fb}
+.checkoutHistory strong{font-size:13px}
+.checkoutHistory p{font-size:12px;margin:8px 0;color:#48616e}
+.customerCheckoutScreen{min-height:100dvh;background:#edf4f6;padding:16px;font:16px/1.5 "Public Sans Variable",system-ui,sans-serif;color:#1b313c}
+.customerCheckoutScreen>.mobileShopBrand{max-width:680px;margin:8px auto 24px}
+.customerCheckoutCard{max-width:680px;margin:0 auto;background:#fff;border:1px solid #d4e2e8;border-radius:16px;padding:24px 20px;display:grid;gap:20px}
+.customerCheckoutCard h1{font-size:27px;margin:0}
+.customerCheckoutCard h2{font-size:21px;margin:0}
+.customerCheckoutCard p{margin:0;color:#506875}
+.customerCheckoutStatus{background:#e6f4ec;border:1px solid #bedfcc;color:#176341;padding:12px 16px;border-radius:8px;font-weight:800}
+.checkoutReceipt{display:grid;gap:12px;background:#f8fafb;border:1px solid #e1e9ed;padding:16px;border-radius:10px}
+.checkoutReceipt>div:not(.checkoutAmount){display:flex;justify-content:space-between;gap:16px;font-size:14px;padding:8px 0}
+.checkoutReceipt strong{white-space:nowrap}
+.checkoutReceipt .checkoutAmount{align-items:flex-start;flex-wrap:wrap}
+.checkoutReceipt .checkoutAmount span{font-size:12px;color:#546e7a}
+.checkoutPaymentConfirm{display:grid;gap:16px;border:1px solid #b4d6ce;border-radius:10px;padding:16px}
+.checkoutPaymentConfirm h3{margin:0}
+.mobileCheckoutLink{display:flex;justify-content:center;align-items:center;min-height:48px;text-align:center;padding:12px 16px;border-radius:8px;background:#087857;color:#fff!important;font-size:14px;font-weight:800;text-decoration:none}
+.mobileCheckoutLink:hover{background:#075c43}
+@media(max-width:650px){.checkoutSteps{gap:2px;padding:16px 8px}.checkoutSteps span{height:26px;width:26px}.checkoutSteps small{font-size:8px}.checkoutBody{padding:16px}.checkoutChecklist{flex-wrap:wrap}.checkoutAmount{flex-wrap:wrap}.customerCheckoutCard{padding:24px 16px}}
