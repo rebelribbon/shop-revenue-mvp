@@ -134,6 +134,8 @@ export function RoWorkspace({
   );
 
   useEffect(() => {
+    let cancelled = false;
+    let previous: DemoJob[] | null = null;
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (raw) {
@@ -151,16 +153,24 @@ export function RoWorkspace({
               ["approved", "pending", "declined"].includes(item.decision),
           )
         ) {
-          const previous = parsed as DemoJob[];
-          setJobs(previous);
-          setNextId(Math.max(0, ...previous.map((item) => item.id)) + 1);
+          previous = parsed as DemoJob[];
         }
       }
     } catch {
       // The preview still works with built-in sample data when storage is unavailable.
-    } finally {
-      setRestored(true);
     }
+    // Defer React state updates until after the effect setup.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (previous) {
+        setJobs(previous);
+        setNextId(Math.max(0, ...previous.map((item) => item.id)) + 1);
+      }
+      setRestored(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [storageKey]);
 
   useEffect(() => {
