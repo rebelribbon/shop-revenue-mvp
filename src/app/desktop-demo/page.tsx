@@ -83,13 +83,17 @@ export default async function DesktopDemo({
               ☑ <span>Tasks</span>
             </span>
             <Link
-              className={customerScreen && !estimateScreen ? styles.selected : ""}
+              className={
+                customerScreen && !estimateScreen ? styles.selected : ""
+              }
               href="/desktop-demo?screen=customers"
             >
               ♙ <span>Customers</span>
             </Link>
             <Link
-              className={!customerScreen || estimateScreen ? styles.selected : ""}
+              className={
+                !customerScreen || estimateScreen ? styles.selected : ""
+              }
               href="/desktop-demo?screen=ro&ro=RO-10482"
             >
               ▤ <span>Jobs / ROs</span>
@@ -145,7 +149,7 @@ export default async function DesktopDemo({
                         ? `/ ${roId} / Estimate`
                         : !customerScreen
                           ? `/ ${roId}`
-                        : ""}
+                          : ""}
                 </>
               )}
             </div>
@@ -164,26 +168,29 @@ export default async function DesktopDemo({
                 </div>
               </div>
             )}
-            {!listScreen && !vehiclesScreen && !vehicleScreen && !estimateScreen && (
-              <div className={styles.metrics}>
-                <div>
-                  <span>REPAIR ORDERS</span>
-                  <strong>3</strong>
+            {!listScreen &&
+              !vehiclesScreen &&
+              !vehicleScreen &&
+              !estimateScreen && (
+                <div className={styles.metrics}>
+                  <div>
+                    <span>REPAIR ORDERS</span>
+                    <strong>3</strong>
+                  </div>
+                  <div>
+                    <span>VEHICLES</span>
+                    <strong>2</strong>
+                  </div>
+                  <div>
+                    <span>OPEN TASKS</span>
+                    <strong>1</strong>
+                  </div>
+                  <div>
+                    <span>LAST VISIT</span>
+                    <strong>Nov 9</strong>
+                  </div>
                 </div>
-                <div>
-                  <span>VEHICLES</span>
-                  <strong>2</strong>
-                </div>
-                <div>
-                  <span>OPEN TASKS</span>
-                  <strong>1</strong>
-                </div>
-                <div>
-                  <span>LAST VISIT</span>
-                  <strong>Nov 9</strong>
-                </div>
-              </div>
-            )}
+              )}
             {estimateScreen ? (
               <EstimateWorkspace
                 key={roId}

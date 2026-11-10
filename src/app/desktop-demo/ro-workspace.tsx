@@ -386,7 +386,11 @@ export function RoWorkspace({
       </div>
       <div className={styles.tabs}>
         <strong>Overview</strong>
-        <a href={`/desktop-demo?screen=estimate&ro=${roId}&vehicle=${vehicleId ?? "f150"}&title=${encodeURIComponent(newTitle ?? "")}`}>Estimate</a>
+        <a
+          href={`/desktop-demo?screen=estimate&ro=${roId}&vehicle=${vehicleId ?? "f150"}&title=${encodeURIComponent(newTitle ?? "")}`}
+        >
+          Estimate
+        </a>
         <span>Work</span>
         <span>Documents</span>
         <span>Cashiering</span>
