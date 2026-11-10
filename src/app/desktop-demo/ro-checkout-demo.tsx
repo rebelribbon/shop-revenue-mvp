@@ -24,6 +24,7 @@ type CheckoutState = {
   qcNotes: string;
   invoiceLines: FrozenLine[];
   paymentMethod?: "Online (demo)" | "Counter (demo)";
+  receipt?: { receiptNumber: string; recordedAt: string; subtotal: number; lines: FrozenLine[]; delivery: "not-sent-demo" };
   history: string[];
 };
 const initialState: CheckoutState = {
@@ -131,6 +132,16 @@ export function AdvisorCheckoutDemo({
   const approved = jobs.filter((j) => j.decision === "approved");
   const completed = approved.filter((j) => state.completed.includes(j.id));
   const total = state.invoiceLines.reduce((sum, l) => sum + l.price, 0);
+  function createDemoReceipt() {
+    return {
+      receiptNumber: `DEMO-${roId}-01`,
+      recordedAt: new Date().toISOString(),
+      subtotal: total,
+      lines: state.invoiceLines.map(l=>({...l})),
+      delivery: "not-sent-demo" as const,
+    };
+  }
+
   const allCompleted =
     approved.length > 0 && completed.length === approved.length;
   const invoiceCurrent = invoiceMatchesAuthorizedCompletedWork(
@@ -414,7 +425,7 @@ export function AdvisorCheckoutDemo({
                     log(
                       "paid",
                       `Mock payment recorded by shop: ${paymentChoice}.`,
-                      { paymentMethod: paymentChoice },
+                      { paymentMethod: paymentChoice, receipt: createDemoReceipt() },
                     )
                   }
                 >
@@ -459,6 +470,14 @@ export function AdvisorCheckoutDemo({
                 <span>Demo paid total</span>
                 <strong>{money(total)}</strong>
               </div>
+            </div>
+          )}
+          {state.receipt && (
+            <div className={styles.checkoutHistory}>
+              <strong>Archived receipt · {state.receipt.receiptNumber}</strong>
+              <p>Recorded: {new Date(state.receipt.recordedAt).toLocaleString()}</p>
+              <p>Subtotal: {money(state.receipt.subtotal)}</p>
+              <p>Demo only: receipt saved to this browser. Automatic email delivery will require production integration.</p>
             </div>
           )}
           <div className={styles.checkoutHistory}>
@@ -513,6 +532,13 @@ export function CustomerCheckoutDemo({
   const { state, loaded, update } = useDemoCheckout(roId);
   const [showConfirm, setShowConfirm] = useState(false);
   const total = state.invoiceLines.reduce((sum, l) => sum + l.price, 0);
+  const createReceipt=()=>({
+    receiptNumber: `DEMO-${roId}-01`,
+    recordedAt: new Date().toISOString(),
+    subtotal: total,
+    lines: state.invoiceLines.map(l=>({...l})),
+    delivery: "not-sent-demo" as const,
+  });
   if (!loaded)
     return (
       <div className={styles.customerCheckoutScreen}>
@@ -595,6 +621,7 @@ export function CustomerCheckoutDemo({
                         ...state,
                         phase: "paid",
                         paymentMethod: "Online (demo)",
+                        receipt: createReceipt(),
                         history: [
                           ...state.history,
                           "Customer recorded simulated online payment.",
@@ -614,6 +641,13 @@ export function CustomerCheckoutDemo({
                   </button>
                 </div>
               ))}
+            {state.receipt && (
+              <div className={styles.checkoutReceipt}>
+                <strong>Payment receipt saved · {state.receipt.receiptNumber}</strong>
+                <span>Recorded {new Date(state.receipt.recordedAt).toLocaleString()}</span>
+                <span>Demonstration only — no email or SMS has been sent.</span>
+              </div>
+            )}
             {paid && (
               <p className={styles.mobileNextPrompt}>
                 Payment complete. Please collect your vehicle and keys from the
