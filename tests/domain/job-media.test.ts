@@ -87,6 +87,17 @@ it("uploads job photos; customers see only the ones switched on", async () => {
         showCustomer: show,
       }),
     );
+    // Even a forged showCustomer=true upload must remain private until
+    // an explicitly authorized front-office publication.
+    const uploaded = (await run((tx) => listMedia(tx, { jobId: job.id })))
+      .find((item) => item.fileId === prep.fileId)!;
+    expect(uploaded.showCustomer).toBe(false);
+    if (show) {
+      await run((tx) => updateMedia(tx, { mediaId: uploaded.id, showCustomer: true }, meta()));
+      const published = (await run((tx) => listMedia(tx, { jobId: job.id })))
+        .find((item) => item.fileId === prep.fileId)!;
+      expect(published.showCustomer).toBe(true);
+    }
     return prep.fileId;
   };
   await expect(
