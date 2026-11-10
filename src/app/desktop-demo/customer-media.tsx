@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./desktop-demo.module.css";
-type PublicJob = {
-  id: number;
-  name: string;
-  price: number;
-  decision: "approved" | "pending" | "declined";
-};
+import { CustomerMobileFlow, type CustomerLine } from "./customer-mobile-flow";
+type PublicJob = CustomerLine;
 const safeROs: Record<
   string,
   { title: string; vehicle: string; jobs: PublicJob[] }
@@ -202,6 +198,7 @@ export function ShareMediaDemo({
             name: j.name,
             price: j.price,
             decision: j.decision,
+            origin: j.origin,
           }));
         }
       }
@@ -247,103 +244,43 @@ export function ShareMediaDemo({
   const subtotal = jobs
     .filter((j) => j.decision === "approved")
     .reduce((sum, j) => sum + j.price, 0);
+  function saveCustomerSelections(
+    choices: Record<number, "approved" | "declined">,
+    questions: Record<number, string>,
+  ) {
+    const requestedDefaults: Record<string, number[]> = {
+      "RO-10482": [1, 3], "RO-10193": [1], "RO-09914": [1, 2],
+    };
+    const baseIds = requestedDefaults[roId] ?? [];
+    const updated = jobs.map((j) => {
+      if (j.origin === "requested" || (!j.origin && baseIds.includes(j.id))) return j;
+      return choices[j.id] ? { ...j, decision: choices[j.id] } : j;
+    });
+    setJobs(updated);
+    try {
+      const raw = sessionStorage.getItem(jobsKey);
+      const existingRows: unknown = raw ? JSON.parse(raw) : null;
+      const oldRows = Array.isArray(existingRows) ? existingRows : jobs;
+      // Preserve shop-side internal costs and notes; change only decisions.
+      const next = oldRows.map((j: PublicJob) => {
+        const choice = updated.find((item) => item.id === j.id);
+        return choice ? { ...j, decision: choice.decision } : j;
+      });
+      sessionStorage.setItem(jobsKey, JSON.stringify(next));
+      sessionStorage.setItem(`shop-revenue-desktop-demo-questions:${roId}`, JSON.stringify(questions));
+    } catch {
+      // Demo state is only stored in this browser.
+    }
+  }
   return customerOnly ? (
-    <main id="main-content" className={styles.shareCustomerPage}>
-      <div className={styles.shareCustomerHeader}>
-        <strong>◆ SHOP REVENUE</strong>
-        <span>DEMO CUSTOMER PORTAL · FICTIONAL RECORDS</span>
-      </div>
-      <div className={styles.shareCustomerBody}>
-        <p className={styles.eyebrow}>YOUR SERVICE VISIT · {roId}</p>
-        <h1>{existing?.title ?? "Vehicle service visit"}</h1>
-        <p>{existing?.vehicle ?? "Vehicle"} · John Smith</p>
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <h2>Service status and selections</h2>
-              <p>
-                Work approved for this visit, and recommendations that are not
-                authorized.
-              </p>
-            </div>
-          </div>
-          <div className={styles.tableWrap}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Service</th>
-                  <th>Decision</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((j) => (
-                  <tr key={j.id}>
-                    <td>
-                      <strong>{j.name}</strong>
-                    </td>
-                    <td>
-                      {j.decision === "approved"
-                        ? "Approved"
-                        : j.decision === "declined"
-                          ? "Declined"
-                          : "Awaiting decision"}
-                    </td>
-                    <td>{money(j.price)}</td>
-                  </tr>
-                ))}
-                {!jobs.length && (
-                  <tr>
-                    <td colSpan={3}>No services on this demo RO yet.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className={styles.sectionTotal}>
-            <span>Currently approved subtotal (before tax/fees)</span>
-            <strong>{money(subtotal)}</strong>
-          </div>
-        </section>
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <h2>Photos & videos shared by your advisor</h2>
-              <p>Only media explicitly approved for sharing is shown here.</p>
-            </div>
-            <span className={styles.pill}>{visible.length} shared</span>
-          </div>
-          <div className={styles.shareMediaGrid}>
-            {visible.map((item) => (
-              <MediaTile key={item.id} item={item} />
-            ))}
-          </div>
-          {!visible.length && (
-            <p className={styles.vehicleEmpty}>
-              Your advisor has not shared photos or videos for this repair
-              order.
-            </p>
-          )}
-        </section>
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <h2>Estimates, documents & payments</h2>
-              <p>
-                In the production customer link, signed estimates, invoices and
-                payment links will live here.
-              </p>
-            </div>
-          </div>
-        </section>
-        <p className={styles.estimateDisclaimer}>
-          Design demo only. This page uses fictional data and session-only
-          sample decisions. It does not retrieve real customer records, display
-          actual uploaded files, synchronize between devices, or accept
-          payments.
-        </p>
-      </div>
-    </main>
+    <CustomerMobileFlow
+      roId={roId}
+      title={existing?.title ?? "Vehicle service visit"}
+      vehicle={existing?.vehicle ?? "Vehicle"}
+      jobs={jobs}
+      media={visible}
+      onSubmit={saveCustomerSelections}
+    />
   ) : (
     <section
       className={styles.panel}
