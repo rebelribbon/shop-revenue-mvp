@@ -64,7 +64,6 @@ export function CustomerMobileFlow({
   media: CustomerMedia[];
   onSubmit: (
     choices: Record<number, Choice>,
-    questionNotes: Record<number, string>,
   ) => void;
 }) {
   const { state: checkoutState, loaded: checkoutLoaded } =
@@ -73,9 +72,6 @@ export function CustomerMobileFlow({
   const [accepted, setAccepted] = useState(false);
   const [loadedChoices, setLoadedChoices] = useState(false);
   const [evidenceId, setEvidenceId] = useState<number | null>(null);
-  const [questionId, setQuestionId] = useState<number | null>(null);
-  const [questions, setQuestions] = useState<Record<number, string>>({});
-  const [draftQuestion, setDraftQuestion] = useState("");
   const [signer, setSigner] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -97,6 +93,8 @@ export function CustomerMobileFlow({
   const decisionsMade = recommendations.filter((j) => choices[j.id]).length;
   const allDecided = decisionsMade === recommendations.length;
   const locked = accepted || checkoutState.phase !== "working";
+  const mayReviseDecline = accepted && checkoutState.phase === "working";
+  const [isRevision, setIsRevision] = useState(false);
   const phase = checkoutState.phase;
   const ready = ["invoice_ready", "paid", "delivered"].includes(phase);
   const statusLabel =
@@ -166,19 +164,21 @@ export function CustomerMobileFlow({
       reviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
     );
   }
-  function saveQuestion() {
-    if (questionId === null || !draftQuestion.trim()) return;
-    setQuestions((current) => ({
-      ...current,
-      [questionId]: draftQuestion.trim(),
-    }));
-    setQuestionId(null);
-    setDraftQuestion("");
+  function changeDeclinedToApproved(id: number) {
+    if (!mayReviseDecline || choices[id] !== "declined") return;
+    // The last confirmation remains recorded; this creates a NEW draft decision
+    // that requires another explicit confirmation before entering the RO queue.
+    setIsRevision(true);
+    setAccepted(false);
+    setReviewing(false);
+    setConfirmed(false);
+    setSigner("");
+    setChoices(current => ({ ...current, [id]: "approved" }));
   }
   function submitChoices() {
     if (locked || !allDecided || !signer.trim() || !confirmed || !loadedChoices)
       return;
-    onSubmit(choices, questions);
+    onSubmit(choices);
     setAccepted(true);
     setReviewing(false);
   }
@@ -298,8 +298,7 @@ export function CustomerMobileFlow({
             <div>
               <h2 id="journey-recommendations">Your recommendations</h2>
               <p>
-                See the price, review evidence, then approve or decline each
-                item.
+                See the price and view media, then approve or decline each item.
               </p>
             </div>
           </div>
@@ -339,17 +338,8 @@ export function CustomerMobileFlow({
                       setEvidenceId(evidenceId === j.id ? null : j.id)
                     }
                   >
-                    <span aria-hidden="true">▧</span> View evidence
+                    <span aria-hidden="true">▧</span> View Media
                     {visibleMedia.length ? ` (${visibleMedia.length})` : ""}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuestionId(j.id);
-                      setDraftQuestion(questions[j.id] ?? "");
-                    }}
-                  >
-                    Ask the advisor
                   </button>
                 </div>
                 {evidenceId === j.id && (
@@ -373,17 +363,11 @@ export function CustomerMobileFlow({
                       ))
                     ) : (
                       <p>
-                        No advisor-approved photos or video are available for
-                        this recommendation. Ask the advisor for evidence if you
-                        have questions.
+                        No media has been shared by the advisor for this
+                        recommendation.
                       </p>
                     )}
                   </div>
-                )}
-                {questions[j.id] && (
-                  <p className={styles.journeyQuestion}>
-                    Question saved in this demo: {questions[j.id]}
-                  </p>
                 )}
                 <div
                   className={styles.journeyChoiceButtons}
@@ -421,6 +405,18 @@ export function CustomerMobileFlow({
                     ✕ Decline
                   </button>
                 </div>
+                {mayReviseDecline && choices[j.id] === "declined" && (
+                  <button
+                    type="button"
+                    className={styles.journeyUndecline}
+                    onClick={() => changeDeclinedToApproved(j.id)}
+                  >
+                    Changed your mind? Approve this work →
+                  </button>
+                )}
+                {isRevision && !accepted && choices[j.id] === "approved" && (
+                  <p className={styles.journeyRevisionNotice}>Changed from declined to approved. Confirm your updated choices below before the technician starts this work.</p>
+                )}
               </article>
             );
           })}
@@ -486,7 +482,7 @@ export function CustomerMobileFlow({
               )}
               {reviewing && (
                 <>
-                  <h3>Confirm your selections</h3>
+                  <h3>{isRevision ? "Confirm updated authorization" : "Confirm your selections"}</h3>
                   <p>
                     Approve:{" "}
                     {recommendations
@@ -524,7 +520,7 @@ export function CustomerMobileFlow({
                     disabled={!signer.trim() || !confirmed || !allDecided}
                     onClick={submitChoices}
                   >
-                    Confirm decisions (demo)
+                    {isRevision ? "Confirm revised decisions (demo)" : "Confirm decisions (demo)"}
                   </button>
                   <button
                     type="button"
@@ -560,53 +556,10 @@ export function CustomerMobileFlow({
           </div>
         </section>
         <p className={styles.journeyDemoDisclaimer}>
-          Sample-data preview. Photos/video are placeholders; questions are
-          saved only in this browser. Confirmation is not a legal electronic
-          signature, and no payment is processed.
+          Sample-data preview. Photos/videos are placeholders. Revised decisions
+          require fresh confirmation, but no legally binding signature or real payment occurs.
         </p>
       </div>
-      {questionId !== null && (
-        <div
-          className={styles.mobileQuestionOverlay}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Question for service advisor"
-        >
-          <div className={styles.mobileQuestionSheet}>
-            <h2>Ask your advisor</h2>
-            <p>{recommendations.find((j) => j.id === questionId)?.name}</p>
-            <label htmlFor="journey-question">
-              What would you like to ask?
-            </label>
-            <textarea
-              id="journey-question"
-              value={draftQuestion}
-              onChange={(e) => setDraftQuestion(e.target.value)}
-              maxLength={500}
-              rows={4}
-              placeholder="Can you explain why this service is needed?"
-            />
-            <p className={styles.journeyDemoDisclaimer}>
-              Demo only. This does not send a message.
-            </p>
-            <button
-              type="button"
-              className={styles.mobilePrimaryButton}
-              disabled={!draftQuestion.trim()}
-              onClick={saveQuestion}
-            >
-              Save question (demo)
-            </button>
-            <button
-              type="button"
-              className={styles.mobileTextButton}
-              onClick={() => setQuestionId(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
