@@ -896,8 +896,8 @@ export default async function JobsPage({
                     <section aria-label="Photos and videos" id="job-photos">
                       <h3>Photos &amp; videos</h3>
                       <p className="muted">
-                        Photos switched to “Show the customer” appear on the
-                        next estimate you send, and on the invoice.
+                        Technician uploads stay private until the service advisor
+                        approves them for the next estimate or invoice.
                       </p>
                       <MediaGallery
                         quoteHref={
@@ -916,6 +916,7 @@ export default async function JobsPage({
                                 })}`
                         }
                         items={data.jobMedia}
+                        canPublish={s.role !== "technician"}
                         readOnly={s.actor.type === "support"}
                         timeZone={data.profile?.timezone || "America/Chicago"}
                       />
