@@ -20,3 +20,10 @@ export async function requireOwnerView(path: string): Promise<ShopSession> {
   if (s.role === "staff" || s.role === "technician") redirect("/app?denied=1");
   return s;
 }
+
+/** Advisor/owner page guard: technician deep links must not expose front-office data. */
+export async function requireFrontOfficeView(path:string):Promise<ShopSession> {
+  const s=await requireShopSession(path);
+  if(s.role==="technician") redirect("/app/tasks");
+  return s;
+}
