@@ -85,7 +85,12 @@ export function CustomerMobileFlow({
   const [confirmed, setConfirmed] = useState(false);
   // These are illustrative shop milestones, not actual work or invoice events.
   const shopStatus = exampleStatuses[roId] ?? "in_progress";
-  const statusLabel = shopStatus === "in_progress" ? "Service in progress" : shopStatus === "work_complete" ? "Original work completed" : "Invoice ready";
+  const statusLabel =
+    shopStatus === "in_progress"
+      ? "Service in progress"
+      : shopStatus === "work_complete"
+        ? "Original work completed"
+        : "Invoice ready";
 
   // Work ordered by the customer is not an inspection recommendation.
   const requested = jobs.filter(
@@ -161,13 +166,19 @@ export function CustomerMobileFlow({
         <div className={styles.mobileServiceStatus} role="status">
           <div>
             <strong>Vehicle status: {statusLabel}</strong>
-            <p>{shopStatus === "in_progress"
-              ? "The shop is still working on the originally requested services. Reviewing recommendations does not mean the vehicle is finished."
-              : shopStatus === "work_complete"
-                ? "The original services are finished, but checkout is not available until an invoice is issued."
-                : "The shop has completed the original services and prepared an invoice. Checkout is available after your recommendation decisions are confirmed."}</p>
+            <p>
+              {shopStatus === "in_progress"
+                ? "The shop is still working on the originally requested services. Reviewing recommendations does not mean the vehicle is finished."
+                : shopStatus === "work_complete"
+                  ? "The original services are finished, but checkout is not available until an invoice is issued."
+                  : "The shop has completed the original services and prepared an invoice. Checkout is available after your recommendation decisions are confirmed."}
+            </p>
           </div>
-          <span>{shopStatus === "invoice_ready" ? "Ready to review invoice" : "Not ready for checkout"}</span>
+          <span>
+            {shopStatus === "invoice_ready"
+              ? "Ready to review invoice"
+              : "Not ready for checkout"}
+          </span>
         </div>
         <div className={styles.mobileStepDots} aria-label="Review steps">
           {steps.map((s, i) => (
@@ -550,22 +561,30 @@ export function CustomerMobileFlow({
 
             {accepted && (
               <div className={styles.mobileCheckoutStatus}>
-                <h3>{additional > 0
-                  ? "Your service visit continues"
-                  : shopStatus === "in_progress"
-                    ? "We’re finishing your original services"
-                    : shopStatus === "work_complete"
-                      ? "Original work complete — invoice being prepared"
-                      : "Ready for checkout"}</h3>
-                <p>{additional > 0
-                  ? "The shop must finish your newly approved services and issue an invoice before payment becomes available."
-                  : shopStatus === "in_progress"
-                    ? "You do not need to approve anything else. We’ll let you know when the originally requested work is complete."
-                    : shopStatus === "work_complete"
-                      ? "Your shop must finalize an invoice before you can review and pay."
-                      : "Your original work is complete and its invoice is ready for review."}</p>
+                <h3>
+                  {additional > 0
+                    ? "Your service visit continues"
+                    : shopStatus === "in_progress"
+                      ? "We’re finishing your original services"
+                      : shopStatus === "work_complete"
+                        ? "Original work complete — invoice being prepared"
+                        : "Ready for checkout"}
+                </h3>
+                <p>
+                  {additional > 0
+                    ? "The shop must finish your newly approved services and issue an invoice before payment becomes available."
+                    : shopStatus === "in_progress"
+                      ? "You do not need to approve anything else. We’ll let you know when the originally requested work is complete."
+                      : shopStatus === "work_complete"
+                        ? "Your shop must finalize an invoice before you can review and pay."
+                        : "Your original work is complete and its invoice is ready for review."}
+                </p>
                 {additional === 0 && shopStatus === "invoice_ready" && (
-                  <button type="button" className={styles.mobilePrimaryButton} onClick={() => go("checkout")}>
+                  <button
+                    type="button"
+                    className={styles.mobilePrimaryButton}
+                    onClick={() => go("checkout")}
+                  >
                     Review invoice (demo) →
                   </button>
                 )}
@@ -588,17 +607,45 @@ export function CustomerMobileFlow({
           </section>
         )}
       </div>
-      {stage === "checkout" && accepted && additional === 0 && shopStatus === "invoice_ready" && (
-        <section className={styles.mobileSection} aria-label="Sample checkout" style={{maxWidth:720,margin:"0 auto 24px"}}>
-          <div className={styles.mobileSectionNumber}>CHECKOUT PREVIEW</div>
-          <h2>Review your invoice</h2>
-          <p className={styles.mobileIntro}>Original services completed. No additional recommendations were approved.</p>
-          {requested.map(j => <div className={styles.mobileServiceRow} key={j.id}><strong>{j.name}</strong><strong>{money(j.price)}</strong></div>)}
-          <div className={styles.mobileGrandTotal}><span>Illustrative subtotal, before taxes and fees</span><strong>{money(baseTotal)}</strong></div>
-          <p className={styles.estimateDisclaimer}>Demo only. No real invoice or payment has been generated. The live checkout will show the actual finalized invoice, taxes, fees and secure payment options.</p>
-          <button type="button" className={styles.mobileTextButton} onClick={()=>go("summary")}>← Back to service summary</button>
-        </section>
-      )}
+      {stage === "checkout" &&
+        accepted &&
+        additional === 0 &&
+        shopStatus === "invoice_ready" && (
+          <section
+            className={styles.mobileSection}
+            aria-label="Sample checkout"
+            style={{ maxWidth: 720, margin: "0 auto 24px" }}
+          >
+            <div className={styles.mobileSectionNumber}>CHECKOUT PREVIEW</div>
+            <h2>Review your invoice</h2>
+            <p className={styles.mobileIntro}>
+              Original services completed. No additional recommendations were
+              approved.
+            </p>
+            {requested.map((j) => (
+              <div className={styles.mobileServiceRow} key={j.id}>
+                <strong>{j.name}</strong>
+                <strong>{money(j.price)}</strong>
+              </div>
+            ))}
+            <div className={styles.mobileGrandTotal}>
+              <span>Illustrative subtotal, before taxes and fees</span>
+              <strong>{money(baseTotal)}</strong>
+            </div>
+            <p className={styles.estimateDisclaimer}>
+              Demo only. No real invoice or payment has been generated. The live
+              checkout will show the actual finalized invoice, taxes, fees and
+              secure payment options.
+            </p>
+            <button
+              type="button"
+              className={styles.mobileTextButton}
+              onClick={() => go("summary")}
+            >
+              ← Back to service summary
+            </button>
+          </section>
+        )}
       {questionId !== null && (
         <div
           className={styles.mobileQuestionOverlay}
