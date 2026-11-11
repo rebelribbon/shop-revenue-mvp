@@ -100,20 +100,21 @@ export async function reassignAdvisorHandoff(
     .orderBy(desc(activity.occurredAt), desc(activity.id))
     .limit(1);
   const current = handoffData(latest?.data);
-  if (current?.stage === "build_estimate") {
-    await recordActivity(tx, {
-      kind: "job.handoff",
-      subjectType: "job",
-      subjectId: jobId,
-      summary: "Inspection complete: newly assigned advisor to build estimate",
-      data: {
-        ...current,
-        advisorUserId: newAdvisorId,
-        recipientUserId: newAdvisorId,
-      },
-      recordedAtNow: true,
-    });
-  }
+  if (current?.stage !== "build_estimate") return false;
+  await recordActivity(tx, {
+    kind: "job.handoff",
+    subjectType: "job",
+    subjectId: jobId,
+    summary: "Inspection complete: newly assigned advisor to build estimate",
+    data: {
+      ...current,
+      advisorUserId: newAdvisorId,
+      recipientUserId: newAdvisorId,
+    },
+    recordedAtNow: true,
+  });
+  // A waiting estimate moved to a new advisor: they get the ping.
+  return true;
 }
 
 // Called once when a previously incomplete checklist becomes complete.

@@ -7,6 +7,7 @@ import {
   saveInspection,
 } from "@/domain/inspections";
 import { requireAssignedJob } from "@/domain/job-access";
+import { prepareHandoffPing, sendHandoffPing } from "@/domain/handoff-pings";
 import { defineShopAction } from "./define";
 
 export const saveInspectionAction = defineShopAction({
@@ -18,21 +19,35 @@ export const saveInspectionAction = defineShopAction({
     submit: z.boolean().optional(),
     assessment: inspectionAssessmentInput.optional(),
   }),
-  run: ({ tx, meta }, i) =>
-    saveInspection(tx, meta, {
+  run: async ({ tx, meta }, i) => {
+    const r = await saveInspection(tx, meta, {
       jobId: i.jobId,
       items: inspectionItems.parse(JSON.parse(i.items)),
       submit: i.submit,
       assessment: i.assessment,
-    }),
-  persist: (r) => ({
-    ...r,
-    message: r.complete
-      ? r.advisorNotified
-        ? "Inspection submitted. Your advisor has been notified in Tasks."
-        : "Inspection submitted. No assigned-advisor handoff was available; ask the front office to review."
-      : "Inspection saved.",
-  }),
+    });
+    return {
+      ...r,
+      message: r.complete
+        ? r.advisorNotified
+          ? "Inspection submitted. Your advisor has been notified in Tasks."
+          : "Inspection submitted. No assigned-advisor handoff was available; ask the front office to review."
+        : "Inspection saved.",
+      // The advisor is emailed after this commits.
+      ping: r.advisorNotified ? await prepareHandoffPing(tx, i.jobId) : null,
+    };
+  },
+  // The stored replay never keeps the email itself.
+  persist: (r) => ({ ...r, ping: null }),
+  afterCommit: async ({ ping, ...r }) => {
+    const emailed = await sendHandoffPing(ping);
+    return {
+      ...r,
+      message: emailed
+        ? "Inspection submitted. Your advisor has been notified in Tasks and by email."
+        : r.message,
+    };
+  },
 });
 
 export const addInspectionToJobAction = defineShopAction({

@@ -372,6 +372,13 @@
       "when": 1795792531999,
       "tag": "0052_stripe_connect_oauth",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795878931999,
+      "tag": "0053_handoff_email_pings",
+      "breakpoints": true
     }
   ]
 }

@@ -90,7 +90,7 @@ export async function assignAdvisor(
     );
   const before = await assignedAdvisorForJob(tx, input.jobId);
   if (before === input.userId)
-    return { jobId: input.jobId, advisor: advisor.name };
+    return { jobId: input.jobId, advisor: advisor.name, handoff: false };
   await recordActivity(tx, {
     kind: "job.advisor_assigned",
     subjectType: "job",
@@ -99,7 +99,7 @@ export async function assignAdvisor(
     data: { advisorUserId: input.userId },
     recordedAtNow: true,
   });
-  await reassignAdvisorHandoff(tx, input.jobId, input.userId);
+  const handoff = await reassignAdvisorHandoff(tx, input.jobId, input.userId);
   await audit(tx, meta, {
     action: "job.advisor_assigned",
     targetType: "job",
@@ -107,7 +107,7 @@ export async function assignAdvisor(
     before: { userId: before },
     after: { userId: input.userId },
   });
-  return { jobId: input.jobId, advisor: advisor.name };
+  return { jobId: input.jobId, advisor: advisor.name, handoff };
 }
 
 // jobId → userId for the jobs given (or every job).
@@ -147,7 +147,7 @@ export async function assignJob(
   const tech = await requireTech(tx, input.userId);
   const before = (await jobAssignees(tx, [input.jobId])).get(input.jobId);
   if ((before ?? null) === input.userId)
-    return { jobId: input.jobId, tech: tech?.name ?? null };
+    return { jobId: input.jobId, tech: tech?.name ?? null, handoff: false };
   await tx
     .insert(jobAssignment)
     .values({
@@ -172,12 +172,15 @@ export async function assignJob(
       ),
     )
     .limit(1);
+  // True when this assignment handed the RO to a technician (they get pinged).
+  let handoff = false;
   if (
     input.userId &&
     tx.actor.type === "user" &&
     tx.actor.id &&
     !submittedInspection?.completedAt
   ) {
+    handoff = true;
     await notifyTechnicianAssigned(
       tx,
       input.jobId,
@@ -192,7 +195,7 @@ export async function assignJob(
     before: { userId: before ?? null },
     after: { userId: input.userId },
   });
-  return { jobId: input.jobId, tech: tech?.name ?? null };
+  return { jobId: input.jobId, tech: tech?.name ?? null, handoff };
 }
 
 export async function assignVisit(

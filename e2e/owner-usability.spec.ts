@@ -39,7 +39,9 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
-  await page.getByRole("link", { name: "New job", exact: true }).click();
+  // The customer page has its own "+ New RO"; wait for the vehicle page.
+  await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
+  await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page
     .getByLabel("Job name", { exact: true })
     .fill(`Saved brakes ${name}`);

@@ -127,7 +127,14 @@ export function PageActions() {
       document.body.style.removeProperty("--primary-space");
     };
   }, [pathname]);
-  if (!fallback || pathname.startsWith("/demo/")) return null;
+  // Demos never get the sign-in fallback; the desktop demo still has its
+  // own main button marked above.
+  if (
+    !fallback ||
+    pathname.startsWith("/demo/") ||
+    pathname.startsWith("/desktop-demo")
+  )
+    return null;
   const href =
     pathname === "/admin"
       ? "/admin/release"
