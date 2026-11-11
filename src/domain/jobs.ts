@@ -8,6 +8,7 @@ import {
   estimateVersion,
   jobAssignment,
   recommendation,
+  vehicle,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import {
@@ -35,10 +36,17 @@ export const jobInput = z.object({
   repeat: repeatInput.nullable().optional(),
   // Warranty on this work, in months (shown on the estimate and invoice).
   warrantyMonths: z.number().int().min(1).max(120).nullable().optional(),
+  // Check-in: the odometer when the vehicle arrived and what the customer
+  // came in for. Both show on the customer's estimate.
+  mileageIn: z.number().int().min(0).max(3000000).nullable().optional(),
+  concerns: z.string().trim().max(2000).optional(),
   parts: z
     .array(
       z.object({
         recommendationId: z.uuid().optional(),
+        // Added from the technician's inspection: shown to the customer as a
+        // recommendation, apart from the work they asked for.
+        fromInspection: z.boolean().optional(),
         // From the parts catalog: stock comes off when it's invoiced.
         partItemId: z.uuid().optional(),
         description: z.string().trim().min(1).max(200),
@@ -61,6 +69,7 @@ export const jobInput = z.object({
     .array(
       z.object({
         recommendationId: z.uuid().optional(),
+        fromInspection: z.boolean().optional(),
         description: z.string().trim().min(1).max(200),
         estimatedHoursHundredths: amount.max(100000),
         actualHoursHundredths: amount.max(100000).nullable(),
@@ -148,6 +157,19 @@ export async function createJob(tx: TenantTx, input: JobInput) {
     }
   const totals = calculateJob(data.parts, data.labor);
   const id = data.jobId ?? crypto.randomUUID();
+  // The check-in odometer keeps the vehicle's mileage current (never lowers it).
+  if (data.vehicleId && data.mileageIn != null)
+    await tx
+      .update(vehicle)
+      .set({
+        mileage: sql`GREATEST(coalesce(${vehicle.mileage}, 0), ${data.mileageIn})`,
+      })
+      .where(
+        and(
+          eq(vehicle.businessId, tx.businessId),
+          eq(vehicle.id, data.vehicleId),
+        ),
+      );
   if (data.jobId) {
     await tx.execute(
       sql`select pg_advisory_xact_lock(hashtextextended(${id},0))`,

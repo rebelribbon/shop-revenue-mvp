@@ -272,6 +272,7 @@ export async function addInspectionToJob(
     actualHoursHundredths: null,
     sellRateCents: sell,
     costRateCents: cost,
+    fromInspection: true,
   }));
   await createJob(tx, {
     ...input,

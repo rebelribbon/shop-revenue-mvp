@@ -5279,7 +5279,8 @@ main.customer-index-page {
   box-shadow: 0 6px 20px #0002;
   font-size: 14px;
 }
-.ro-view-switch a, .ro-view-switch span[aria-current="true"] {
+.ro-view-switch a,
+.ro-view-switch span[aria-current="true"] {
   display: inline-flex;
   min-width: 72px;
   min-height: 36px;
@@ -5295,13 +5296,159 @@ main.customer-index-page {
   font-weight: 700;
   border: 1px solid var(--accent);
 }
-.workspace-body:has(.ro-view-switch) main { padding-bottom: 104px; }
+.workspace-body:has(.ro-view-switch) main {
+  padding-bottom: 104px;
+}
 @media (max-width: 899px) {
   .ro-view-switch {
     left: 16px;
     bottom: calc(88px + var(--safe-bottom));
     max-width: calc(100vw - 32px);
   }
-  .workspace-body:has(.ro-view-switch) main { padding-bottom: 136px; }
+  .workspace-body:has(.ro-view-switch) main {
+    padding-bottom: 136px;
+  }
 }
-@media print { .ro-view-switch { display: none !important; } }
+@media print {
+  .ro-view-switch {
+    display: none !important;
+  }
+}
+
+/* RO costs and profit (staff view) */
+.ro-costs .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ro-costs th[scope="row"] {
+  font-weight: 500;
+  text-align: left;
+}
+.ro-costs-totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 16px;
+  margin: 16px 0 0;
+}
+.ro-costs-totals div {
+  border-top: 1px solid var(--line, rgba(127, 127, 127, 0.3));
+  padding-top: 8px;
+}
+.ro-costs-totals dt {
+  font-size: 0.875rem;
+  opacity: 0.75;
+}
+.ro-costs-totals dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.ro-costs-totals .is-good dd strong {
+  color: var(--ok, #1a7f45);
+}
+.ro-costs-totals .is-low dd strong {
+  color: var(--warn, #b45309);
+}
+
+/* Customer estimate, stepped: request → inspection → recommendations → sign */
+.estimate-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  counter-reset: step;
+}
+.estimate-steps li {
+  counter-increment: step;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line, rgba(127, 127, 127, 0.35));
+  font-size: 0.875rem;
+  opacity: 0.7;
+}
+.estimate-steps li::before {
+  content: counter(step) ". ";
+}
+.estimate-steps li[aria-current="step"] {
+  opacity: 1;
+  font-weight: 600;
+  border-color: currentColor;
+}
+.estimate-steps li.done {
+  opacity: 0.9;
+}
+.estimate-concerns {
+  margin: 8px 0 16px;
+  padding: 8px 16px;
+  border-left: 3px solid currentColor;
+  white-space: pre-wrap;
+}
+.estimate-decision legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+.estimate-decision-price {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.estimate-step-count {
+  display: none;
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .estimate-steps {
+    display: none;
+  }
+  .estimate-step-count {
+    display: block;
+  }
+}
+.estimate-step-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 24px;
+}
+.estimate-findings {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.estimate-findings li {
+  padding: 8px 16px;
+  border-left: 4px solid var(--line, rgba(127, 127, 127, 0.35));
+}
+.estimate-findings li.is-fix {
+  border-left-color: #c2410c;
+}
+.estimate-findings li.is-watch {
+  border-left-color: #ca8a04;
+}
+.estimate-findings p {
+  margin: 8px 0 0;
+}
+.estimate-inspection-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.estimate-review {
+  padding-left: 1.25rem;
+}
+.ro-present {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+}
+.ro-check-in p {
+  margin: 8px 0;
+  white-space: pre-wrap;
+}

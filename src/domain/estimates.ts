@@ -26,6 +26,8 @@ import { estimateTotals } from "@/lib/estimate-tax";
 import { repeatSummary } from "@/lib/service-plans";
 import { estimatePhotos } from "./job-media";
 import { completeAdvisorHandoff } from "./job-handoffs";
+import { getInspection } from "./inspections";
+import type { EstimateInspection } from "@/db/schema/m3";
 import {
   completeDecisions,
   signatureSchema,
@@ -163,6 +165,7 @@ export async function freezeEstimate(
       totalCents: partLineCents(p.quantity, p.unitPriceCents),
       taxable: p.taxable ?? shop.partsTaxableDefault,
       ...(p.partItemId ? { partItemId: p.partItemId } : {}),
+      ...(p.fromInspection || p.recommendationId ? { recommended: true } : {}),
     })),
     ...data.labor.map((l, i) => ({
       id: `labor-${i}`,
@@ -174,6 +177,7 @@ export async function freezeEstimate(
         (l.estimatedHoursHundredths * l.sellRateCents) / 100,
       ),
       taxable: l.taxable ?? shop.laborTaxableDefault,
+      ...(l.fromInspection || l.recommendationId ? { recommended: true } : {}),
     })),
   ];
   if (!lines.length)
@@ -204,7 +208,36 @@ export async function freezeEstimate(
   }
   const { subtotalCents, taxCents } = estimateTotals(lines, input.taxBps);
   const photos = await estimatePhotos(tx, input.jobId);
+  const inspected = await getInspection(tx, input.jobId);
+  const inspectionSummary: EstimateInspection | null = inspected.complete
+    ? {
+        diagnosis: inspected.assessment.diagnosis,
+        checkedCount: inspected.items.filter(
+          (i) => i.status !== "unchecked" && i.status !== "na",
+        ).length,
+        goodCount: inspected.counts.good,
+        findings: inspected.items
+          .filter((i) => i.status === "watch" || i.status === "fix")
+          .map((i) => ({
+            label: i.label,
+            ...(i.section ? { section: i.section } : {}),
+            status: i.status as "watch" | "fix",
+            note: i.note ?? "",
+            recommendedWork: i.recommendedWork ?? "",
+            ...(i.measurements && Object.keys(i.measurements).length
+              ? { measurements: i.measurements }
+              : {}),
+          }))
+          // Service now first.
+          .sort((a, b) =>
+            a.status === b.status ? 0 : a.status === "fix" ? -1 : 1,
+          ),
+      }
+    : null;
   const snapshot: EstimateSnapshot = {
+    ...(data.concerns ? { concerns: data.concerns } : {}),
+    ...(data.mileageIn != null ? { mileageIn: data.mileageIn } : {}),
+    ...(inspectionSummary ? { inspection: inspectionSummary } : {}),
     ...(data.warrantyMonths ? { warrantyMonths: data.warrantyMonths } : {}),
     title: data.title,
     shopName: shop.dba || shop.legalName,

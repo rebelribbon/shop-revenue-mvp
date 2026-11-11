@@ -8,6 +8,7 @@ import {
   rotateInvoiceLink,
   voidInvoice,
 } from "@/domain/invoices";
+import { prepareReceipt, sendReceipt } from "@/domain/receipts";
 import { defineShopAction } from "./define";
 export const issueInvoiceAction = defineShopAction({
   name: "issueInvoice",
@@ -32,7 +33,21 @@ export const recordInvoicePaymentAction = defineShopAction({
     method: z.enum(["cash", "check", "external_card", "bank_transfer"]),
     reference: z.string().max(500),
   }),
-  run: ({ tx, meta }, i) => recordInvoicePayment(tx, meta, i),
+  run: async ({ tx, meta }, i) => {
+    const r = await recordInvoicePayment(tx, meta, i);
+    // The customer's receipt is emailed after this commits.
+    return { ...r, receipt: await prepareReceipt(tx, r.id) };
+  },
+  persist: (r) => ({ ...r, receipt: null }),
+  afterCommit: async ({ receipt, ...r }) => {
+    const sent = await sendReceipt(receipt);
+    return {
+      ...r,
+      message: sent
+        ? "Payment recorded. Receipt emailed to the customer."
+        : "Payment recorded.",
+    };
+  },
 });
 export const reverseInvoicePaymentAction = defineShopAction({
   name: "reverseInvoicePayment",
