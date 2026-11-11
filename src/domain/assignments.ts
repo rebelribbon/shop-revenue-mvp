@@ -11,10 +11,12 @@ import {
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import { currentMemberRole } from "./membership";
+import { loadJobWorkflows } from "./job-workflow";
 import { getJob } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import {
   notifyTechnicianAssigned,
+  notifyTechnicianWorkApproved,
   assignedAdvisorForJob,
   reassignAdvisorHandoff,
 } from "./job-handoffs";
@@ -174,7 +176,18 @@ export async function assignJob(
     .limit(1);
   // True when this assignment handed the RO to a technician (they get pinged).
   let handoff = false;
+  // Customer-approved work that isn't finished outranks the inspection: the
+  // newly assigned technician gets the approved work list.
+  const flow = input.userId
+    ? (await loadJobWorkflows(tx, [input.jobId])).get(input.jobId)
+    : undefined;
   if (
+    flow?.latest?.authorization &&
+    flow.approved.length > 0 &&
+    flow.work !== "completed"
+  )
+    handoff = await notifyTechnicianWorkApproved(tx, input.jobId);
+  else if (
     input.userId &&
     tx.actor.type === "user" &&
     tx.actor.id &&

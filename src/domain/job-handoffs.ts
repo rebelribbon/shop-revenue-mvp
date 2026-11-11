@@ -1,13 +1,31 @@
 // Durable, recipient-addressed in-app handoffs on the existing tenant activity
 // ledger. No push/SMS delivery is implied; the logged-in recipient sees a task.
 import { and, desc, eq, sql } from "drizzle-orm";
-import { activity, jobAssignment } from "@/db/schema";
+import { activity, jobAssignment, membership } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError } from "@/lib/errors";
 import { currentMemberRole } from "./membership";
 import { recordActivity } from "./records";
 
-export type JobHandoffStage = "inspect_vehicle" | "build_estimate";
+// The relay: technician inspects -> advisor builds the estimate -> customer
+// approves -> technician does the approved work -> advisor invoices.
+export type JobHandoffStage =
+  "inspect_vehicle" | "build_estimate" | "perform_work" | "invoice_customer";
+const STAGES: readonly string[] = [
+  "inspect_vehicle",
+  "build_estimate",
+  "perform_work",
+  "invoice_customer",
+];
+// Which stages land in whose inbox.
+export const TECHNICIAN_STAGES: JobHandoffStage[] = [
+  "inspect_vehicle",
+  "perform_work",
+];
+export const ADVISOR_STAGES: JobHandoffStage[] = [
+  "build_estimate",
+  "invoice_customer",
+];
 type HandoffData = {
   stage: JobHandoffStage;
   recipientUserId: string;
@@ -24,7 +42,8 @@ function handoffData(value: unknown): HandoffData | null {
   if (!value || typeof value !== "object") return null;
   const d = value as Partial<HandoffData>;
   if (
-    (d.stage !== "inspect_vehicle" && d.stage !== "build_estimate") ||
+    typeof d.stage !== "string" ||
+    !STAGES.includes(d.stage) ||
     typeof d.recipientUserId !== "string" ||
     typeof d.advisorUserId !== "string" ||
     typeof d.technicianUserId !== "string"
@@ -100,12 +119,15 @@ export async function reassignAdvisorHandoff(
     .orderBy(desc(activity.occurredAt), desc(activity.id))
     .limit(1);
   const current = handoffData(latest?.data);
-  if (current?.stage !== "build_estimate") return false;
+  if (!current || !ADVISOR_STAGES.includes(current.stage)) return false;
   await recordActivity(tx, {
     kind: "job.handoff",
     subjectType: "job",
     subjectId: jobId,
-    summary: "Inspection complete: newly assigned advisor to build estimate",
+    summary:
+      current.stage === "build_estimate"
+        ? "Inspection complete: newly assigned advisor to build estimate"
+        : "Work completed: newly assigned advisor to invoice the customer",
     data: {
       ...current,
       advisorUserId: newAdvisorId,
@@ -217,7 +239,9 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
     .where(
       and(
         sql`${latest.data}->>'recipientUserId' = ${id}`,
-        sql`${latest.data}->>'stage' = ${role === "technician" ? "inspect_vehicle" : "build_estimate"}`,
+        role === "technician"
+          ? sql`${latest.data}->>'stage' IN ('inspect_vehicle','perform_work')`
+          : sql`${latest.data}->>'stage' IN ('build_estimate','invoice_customer')`,
         role === "technician" ? eq(jobAssignment.userId, id) : undefined,
       ),
     )
@@ -227,8 +251,9 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
   for (const row of rows) {
     const data = handoffData(row.data);
     if (!data || data.recipientUserId !== id) continue;
-    if (role === "technician" && data.stage !== "inspect_vehicle") continue;
-    if (role !== "technician" && data.stage !== "build_estimate") continue;
+    if (role === "technician" && !TECHNICIAN_STAGES.includes(data.stage))
+      continue;
+    if (role !== "technician" && !ADVISOR_STAGES.includes(data.stage)) continue;
     output.push({
       ...data,
       jobId: row.jobId,
@@ -281,6 +306,141 @@ export async function completeAdvisorHandoff(tx: TenantTx, jobId: string) {
     subjectType: "job",
     subjectId: jobId,
     summary: "Advisor published the estimate; preparation task completed",
+    data: { ...data, stage: "completed" },
+    recordedAtNow: true,
+  });
+}
+
+async function latestHandoff(tx: TenantTx, jobId: string) {
+  const [latest] = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectType, "job"),
+        eq(activity.subjectId, jobId),
+        eq(activity.kind, "job.handoff"),
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id))
+    .limit(1);
+  return handoffData(latest?.data);
+}
+
+// The advisor responsible for an RO: explicitly assigned, else whoever the
+// relay last named, else the shop owner so the handoff is never dropped.
+async function advisorFor(tx: TenantTx, jobId: string) {
+  const assigned = await assignedAdvisorForJob(tx, jobId);
+  if (assigned) return assigned;
+  // Finished handoffs still name the advisor, so read the raw event.
+  const [previous] = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectType, "job"),
+        eq(activity.subjectId, jobId),
+        eq(activity.kind, "job.handoff"),
+      ),
+    )
+    .orderBy(desc(activity.occurredAt), desc(activity.id))
+    .limit(1);
+  const named = (previous?.data as { advisorUserId?: unknown } | null)
+    ?.advisorUserId;
+  if (typeof named === "string") return named;
+  const [owner] = await tx
+    .select({ userId: membership.userId })
+    .from(membership)
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.role, "owner"),
+        eq(membership.status, "active"),
+      ),
+    )
+    .orderBy(membership.createdAt)
+    .limit(1);
+  return owner?.userId ?? null;
+}
+
+async function assignedTechnician(tx: TenantTx, jobId: string) {
+  const [assignment] = await tx
+    .select({ userId: jobAssignment.userId })
+    .from(jobAssignment)
+    .where(
+      and(
+        eq(jobAssignment.businessId, tx.businessId),
+        eq(jobAssignment.jobId, jobId),
+      ),
+    )
+    .limit(1);
+  return assignment?.userId ?? null;
+}
+
+// The customer authorized work (or finished work was reopened): the assigned
+// technician gets the approved work list. No technician yet: nothing to hand
+// off until one is assigned.
+export async function notifyTechnicianWorkApproved(
+  tx: TenantTx,
+  jobId: string,
+): Promise<boolean> {
+  const technicianUserId = await assignedTechnician(tx, jobId);
+  const advisorUserId = await advisorFor(tx, jobId);
+  if (!technicianUserId || !advisorUserId) return false;
+  await recordActivity(tx, {
+    kind: "job.handoff",
+    subjectType: "job",
+    subjectId: jobId,
+    summary: "Customer approved: technician to complete the authorized work",
+    data: {
+      stage: "perform_work",
+      recipientUserId: technicianUserId,
+      technicianUserId,
+      advisorUserId,
+    } satisfies HandoffData,
+    recordedAtNow: true,
+  });
+  return true;
+}
+
+// The technician marked the authorized work complete: the advisor invoices
+// the customer and collects payment.
+export async function notifyAdvisorWorkCompleted(
+  tx: TenantTx,
+  jobId: string,
+): Promise<boolean> {
+  const advisorUserId = await advisorFor(tx, jobId);
+  if (!advisorUserId) return false;
+  const technicianUserId =
+    (await assignedTechnician(tx, jobId)) ??
+    (tx.actor.type === "user" && tx.actor.id ? tx.actor.id : advisorUserId);
+  await recordActivity(tx, {
+    kind: "job.handoff",
+    subjectType: "job",
+    subjectId: jobId,
+    summary: "Work completed: advisor to invoice the customer and collect",
+    data: {
+      stage: "invoice_customer",
+      recipientUserId: advisorUserId,
+      technicianUserId,
+      advisorUserId,
+    } satisfies HandoffData,
+    recordedAtNow: true,
+  });
+  return true;
+}
+
+/** Issuing the invoice clears the advisor's "invoice the customer" task. */
+export async function completeInvoiceHandoff(tx: TenantTx, jobId: string) {
+  const data = await latestHandoff(tx, jobId);
+  if (data?.stage !== "invoice_customer") return;
+  await recordActivity(tx, {
+    kind: "job.handoff",
+    subjectType: "job",
+    subjectId: jobId,
+    summary: "Advisor issued the invoice; handoff completed",
     data: { ...data, stage: "completed" },
     recordedAtNow: true,
   });

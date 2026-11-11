@@ -146,12 +146,13 @@ export default async function TeamPage() {
         </p>
       )}
       {isOwner && (
-        <section className="card reminder-settings" aria-label="Handoff emails">
+        <section className="card reminder-settings">
           <h2>Handoff emails</h2>
           <p className="muted">
-            Email the technician when an RO is assigned to them, and the service
-            advisor when the inspection is submitted and the estimate is ready
-            to build. Assigned work always shows in Tasks either way.
+            Email whoever the RO passes to: the technician when it’s assigned
+            and again when the customer approves the work, and the service
+            advisor when the inspection is in and when the work is finished and
+            ready to invoice. The work always shows in Tasks either way.
           </p>
           <ActionForm
             action={setHandoffPingsAction}

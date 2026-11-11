@@ -55,6 +55,28 @@ export type TaskRow = {
   overdueDays: number;
 };
 
+const HANDOFF_TEXT: Record<
+  JobHandoff["stage"],
+  { title: string; action: string }
+> = {
+  inspect_vehicle: {
+    title: "Pick up vehicle, diagnose and inspect",
+    action: "Open assigned RO",
+  },
+  build_estimate: {
+    title: "Inspection complete — build the estimate",
+    action: "Build estimate",
+  },
+  perform_work: {
+    title: "Customer approved — do the authorized work",
+    action: "Open approved work",
+  },
+  invoice_customer: {
+    title: "Work complete — invoice the customer",
+    action: "Invoice and collect",
+  },
+};
+
 function handoffTask(h: JobHandoff, today: string): TaskRow {
   return {
     key: `handoff:${h.jobId}:${h.stage}`,
@@ -64,10 +86,7 @@ function handoffTask(h: JobHandoff, today: string): TaskRow {
     subjectId: h.jobId,
     customerId: null,
     customerName: null,
-    title:
-      h.stage === "inspect_vehicle"
-        ? "Pick up vehicle, diagnose and inspect"
-        : "Inspection complete — build the estimate",
+    title: HANDOFF_TEXT[h.stage].title,
     detail: h.title,
     amountCents: null,
     phone: null,
@@ -75,8 +94,7 @@ function handoffTask(h: JobHandoff, today: string): TaskRow {
     href: `/app/jobs?job=${h.jobId}`,
     action: {
       kind: "work",
-      label:
-        h.stage === "inspect_vehicle" ? "Open assigned RO" : "Build estimate",
+      label: HANDOFF_TEXT[h.stage].action,
       href: `/app/jobs?job=${h.jobId}`,
     },
     dueOn: today,
