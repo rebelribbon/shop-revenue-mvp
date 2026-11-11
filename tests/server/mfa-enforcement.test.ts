@@ -10,6 +10,7 @@ import { GET as reportGet } from "@/app/app/money/reports/csv/route";
 import { GET as documentGet } from "@/app/app/documents/[id]/pdf/route";
 import { GET as mediaGet } from "@/app/media/[fileId]/route";
 import { GET as exportGet } from "@/app/app/settings/export/[dataset]/route";
+import { GET as handoffGet } from "@/app/api/ro-handoffs/route";
 import {
   connectStripeAction,
   reconcileStripeAction,
@@ -112,7 +113,26 @@ it("limits the development bypass to local Auth and supports an enforced local s
   );
 });
 
+it("skips the requirement on the test-data preview site only, never on production", () => {
+  const hosted = {
+    APP_ENV: "staging",
+    NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+  };
+  expect(mfaRequired(hosted)).toBe(true);
+  expect(mfaRequired({ ...hosted, VERCEL_ENV: "preview" })).toBe(false);
+  expect(mfaRequired({ ...hosted, VERCEL_ENV: "production" })).toBe(true);
+  // A production-configured build stays protected even as a preview deployment.
+  expect(
+    mfaRequired({ ...hosted, APP_ENV: "production", VERCEL_ENV: "preview" }),
+  ).toBe(true);
+  expect(
+    mfaRequired({ ...hosted, VERCEL_ENV: "preview", REQUIRE_MFA: "true" }),
+  ).toBe(true);
+  expect(mfaRequired({ ...hosted, VERCEL_ENV: "preview" }, true)).toBe(true);
+});
+
 const reads: [string, () => Promise<Response>][] = [
+  ["assigned work inbox", () => handoffGet()],
   [
     "report CSV",
     () =>

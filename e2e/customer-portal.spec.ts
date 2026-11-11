@@ -14,6 +14,7 @@ test("Customer link opens one page with everything for that customer", async ({
   await page.getByRole("button", { name: "Add customer" }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
 
+  await page.locator(".record-customer-tools > summary").click();
   await page.getByRole("button", { name: "Create customer link" }).click();
   const copy = page.getByRole("button", { name: "Copy customer link" });
   await expect(copy).toBeVisible();

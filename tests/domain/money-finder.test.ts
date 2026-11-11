@@ -16,7 +16,11 @@ import {
   vehicle,
 } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
-import { createCustomer, createVehicle } from "@/domain/customers";
+import {
+  createCustomer,
+  createVehicle,
+  listCustomerTimeline,
+} from "@/domain/customers";
 import { createJob } from "@/domain/jobs";
 import { createAppointment } from "@/domain/appointments";
 import { recordInvoicePayment, setInvoiceDispute } from "@/domain/invoices";
@@ -44,6 +48,7 @@ import {
 } from "@/domain/money-finder";
 import { localDateKey, addLocalDays } from "@/lib/timezone";
 import {
+  addJobFollowUp,
   addTask,
   listTasks,
   saveFollowUpRules,
@@ -582,6 +587,69 @@ describe("Tasks and follow-up rules", () => {
     ).toBe(false);
   });
 
+  it("logs a left message on a lead call and keeps the retry open", async () => {
+    const f = await fixture();
+    const person = await lead(f, 2);
+    await run(f, (tx) =>
+      updateRecovery(tx, meta(), {
+        category: "new_lead",
+        subjectId: person.id,
+        action: "snooze",
+        method: "phone",
+        callOutcome: "left_message",
+        days: 1,
+      }),
+    );
+    const { due, later } = await tasksFor(f);
+    expect(due.some((row) => row.customerId === person.id)).toBe(false);
+    expect(later.find((row) => row.customerId === person.id)?.dueOn).toBe(
+      addLocalDays(today, 1),
+    );
+    const history = await run(f, (tx) => listCustomerTimeline(tx, person.id));
+    expect(
+      history.find((event) => event.kind === "recovery.snooze"),
+    ).toMatchObject({
+      summary: "Left message · try tomorrow · New leads",
+      data: { callOutcome: "left_message", deliveryConfirmed: false },
+    });
+  });
+
+  it("moves a contact reminder to the chosen date and rejects a stale update", async () => {
+    const f = await fixture();
+    const person = await lead(f, 2);
+    await run(f, (tx) =>
+      tx
+        .update(customer)
+        .set({ phoneE164: null, email: "lead@example.test" })
+        .where(eq(customer.id, person.id)),
+    );
+    const dueOn = addLocalDays(today, 5);
+    const input = {
+      category: "new_lead",
+      subjectId: person.id,
+      action: "snooze",
+      method: "email",
+      taskContact: {
+        customerId: person.id,
+        channel: "email",
+        followUpOn: dueOn,
+      },
+    } as const;
+    const before = await tasksFor(f);
+    expect(
+      before.due.find((row) => row.customerId === person.id)?.action?.kind,
+    ).toBe("email");
+    await run(f, (tx) => updateRecovery(tx, meta(), input));
+    await expect(
+      run(f, (tx) => updateRecovery(tx, meta(), input)),
+    ).rejects.toThrow("This task is already scheduled for later.");
+    const after = await tasksFor(f);
+    expect(after.due.some((row) => row.customerId === person.id)).toBe(false);
+    expect(after.later.find((row) => row.customerId === person.id)?.dueOn).toBe(
+      dueOn,
+    );
+  });
+
   it("asks for a customer update while work is in progress", async () => {
     const f = await fixture();
     const e = await estimate(f, 5, 30, ["part-0", "labor-0"]);
@@ -602,6 +670,17 @@ describe("Tasks and follow-up rules", () => {
     const update = t.due.find((r) => r.category === "job_update");
     expect(update?.subjectId).toBe(e.quoteId);
     expect(update?.title).toMatch(/^Update Real History on their Honda Civic/);
+    expect(update?.action?.href).toBe("sms:+15125550123");
+    await run(f, (tx) =>
+      tx
+        .update(customer)
+        .set({ textOptedOutAt: now })
+        .where(eq(customer.id, f.customerId)),
+    );
+    expect(
+      (await tasksFor(f)).due.find((r) => r.category === "job_update")?.action
+        ?.href,
+    ).toBe("tel:+15125550123");
     await setRules(f, { jobUpdate: { on: true, days: 5 } });
     expect(
       (await tasksFor(f)).due.some((r) => r.category === "job_update"),
@@ -708,6 +787,90 @@ describe("Tasks and follow-up rules", () => {
     await run(f, (tx) => updateTask(tx, meta(), { id, action: "done" }));
     t = await tasksFor(f);
     expect([...t.due, ...t.later].some((r) => r.subjectId === id)).toBe(false);
+  });
+
+  it("saves an RO call outcome and note in the linked customer's history", async () => {
+    const f = await fixture();
+    const job = await run(f, (tx) =>
+      createJob(tx, {
+        title: "Front brake service",
+        customerId: f.customerId,
+        vehicleId: f.vehicleId,
+        parts: [],
+        labor: [],
+      }),
+    );
+    const { id } = await run(f, (tx) =>
+      addJobFollowUp(tx, meta(), {
+        jobId: job.id,
+        method: "call",
+        dueOn: today,
+      }),
+    );
+    const before = await tasksFor(f);
+    expect(before.due.find((row) => row.subjectId === id)).toMatchObject({
+      customerId: f.customerId,
+      href: `/app/jobs?job=${job.id}`,
+      action: { href: "tel:+15125550123" },
+    });
+    await run(f, (tx) =>
+      updateTask(tx, meta(), {
+        id,
+        action: "reached",
+        note: "Customer will drop off Friday.",
+      }),
+    );
+    const history = await run(f, (tx) =>
+      listCustomerTimeline(tx, f.customerId),
+    );
+    expect(
+      history.find((event) => event.kind === "task.call_outcome"),
+    ).toMatchObject({
+      summary:
+        "Reached customer · Call about Front brake service — Customer will drop off Friday.",
+      data: { taskId: id, jobId: job.id, outcome: "reached" },
+    });
+    const after = await tasksFor(f);
+    expect(
+      [...after.due, ...after.later].some((row) => row.subjectId === id),
+    ).toBe(false);
+  });
+
+  it("uses the requested contact method without falling back to a different one", async () => {
+    const f = await fixture();
+    const text = "Text about the estimate";
+    const email = "Email the service history";
+    await run(f, async (tx) => {
+      for (const title of [text, email]) {
+        await addTask(tx, meta(), {
+          title,
+          dueOn: today,
+          customerId: f.customerId,
+        });
+      }
+    });
+    let { due } = await tasksFor(f);
+    expect(due.find((r) => r.title === text)?.action?.href).toBe(
+      "sms:+15125550123",
+    );
+    expect(due.find((r) => r.title === email)).toMatchObject({
+      action: undefined,
+      actionUnavailable: "No email address on file.",
+    });
+    await run(f, (tx) =>
+      tx
+        .update(customer)
+        .set({ textOptedOutAt: now, email: "real@example.test" })
+        .where(eq(customer.id, f.customerId)),
+    );
+    ({ due } = await tasksFor(f));
+    expect(due.find((r) => r.title === text)).toMatchObject({
+      action: undefined,
+      actionUnavailable: "Customer has opted out of texts.",
+    });
+    expect(due.find((r) => r.title === email)?.action?.href).toBe(
+      "mailto:real@example.test",
+    );
   });
 });
 

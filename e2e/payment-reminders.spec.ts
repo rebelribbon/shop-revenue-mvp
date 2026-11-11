@@ -45,6 +45,7 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   await page.getByLabel(/Who referred them/).fill("Sam TEST");
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
+  await page.locator(".record-customer-tools > summary").click();
   await expect(page.getByLabel("How did they find you?")).toHaveValue(
     "referral",
   );

@@ -1,4 +1,5 @@
 import { HydratedMain } from "@/components/hydrated-main";
+import { CopyTextButton } from "@/components/copy-text-button";
 import { Notes, Readings } from "@/components/memory";
 import { listNotes, listReadings } from "@/domain/memory";
 import { recordMileageAction } from "@/server/actions/memory";
@@ -7,6 +8,8 @@ import { ActionForm } from "@/components/action-form";
 import { VehicleFields } from "@/components/vehicle-fields";
 import { withTenant } from "@/db/tenant";
 import { getVehicle } from "@/domain/customers";
+import { listCustomerJobs } from "@/domain/customer-profile";
+import { jobStatusLabels, statusTone } from "@/lib/job-status";
 import {
   archiveVehicleAction,
   updateVehicleAction,
@@ -26,18 +29,31 @@ export default async function VehicleDetailPage(props: {
   const s = await requireShopSession(
     `/app/customers/${customerId}/vehicles/${vehicleId}`,
   );
-  const [v, notes, readings] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([
-      getVehicle(tx, customerId, vehicleId),
-      listNotes(tx, customerId, vehicleId),
-      listReadings(tx, vehicleId),
-    ]),
+  const [v, notes, readings, customerJobs] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        getVehicle(tx, customerId, vehicleId),
+        listNotes(tx, customerId, vehicleId),
+        listReadings(tx, vehicleId),
+        listCustomerJobs(tx, customerId),
+      ]),
   );
   const { view: requestedView } = await props.searchParams;
   const view =
     requestedView === "edit" || requestedView === "service"
       ? requestedView
       : "overview";
+  const vehicleJobs = customerJobs.filter((job) => job.vehicleId === vehicleId);
+  const activeJobs = vehicleJobs.filter(
+    (job) =>
+      !["paid", "closed", "completed", "canceled", "cancelled"].includes(
+        job.status,
+      ),
+  );
+  const previousJobs = vehicleJobs.filter((job) => !activeJobs.includes(job));
+  const statusLabels = jobStatusLabels("automotive");
   const base = `/app/customers/${customerId}/vehicles/${vehicleId}`;
   const label =
     [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ") || "Vehicle";
@@ -79,13 +95,72 @@ export default async function VehicleDetailPage(props: {
             data-page-primary
             href={`/app/jobs?customerId=${customerId}&vehicleId=${vehicleId}`}
           >
-            New job
+            + New RO
           </Link>
+          <section className="card" aria-label="Current repair orders">
+            <h2>Current Work</h2>
+            <p className="muted">Open repair orders for this vehicle only.</p>
+            {activeJobs.length ? (
+              <ul className="row-list">
+                {activeJobs.map((job) => (
+                  <li key={job.id}>
+                    <Link href={`/app/jobs?job=${job.id}`}>
+                      <span className="row-main">
+                        <strong>{job.title}</strong>
+                        <span className="muted">
+                          RO {job.id.slice(0, 8).toUpperCase()} ·{" "}
+                          {job.createdAt.toLocaleDateString("en-US")}
+                        </span>
+                      </span>
+                      <span className={statusTone(job.status)}>
+                        {statusLabels[job.status]}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No open repair orders for this vehicle.</p>
+            )}
+          </section>
+          <section className="card" aria-label="Vehicle service history">
+            <h2>Previous Service History</h2>
+            <p className="muted">
+              Historical repair orders linked to this vehicle.
+            </p>
+            {previousJobs.length ? (
+              <ul className="row-list">
+                {previousJobs.map((job) => (
+                  <li key={job.id}>
+                    <Link href={`/app/jobs?job=${job.id}`}>
+                      <span className="row-main">
+                        <strong>{job.title}</strong>
+                        <span className="muted">
+                          RO {job.id.slice(0, 8).toUpperCase()} ·{" "}
+                          {job.createdAt.toLocaleDateString("en-US")}
+                        </span>
+                      </span>
+                      <span className={statusTone(job.status)}>
+                        {statusLabels[job.status]}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">
+                No completed repair-order history for this vehicle.
+              </p>
+            )}
+          </section>
           <section className="card">
             <h2>Vehicle details</h2>
             <dl>
               <dt>VIN</dt>
-              <dd>{v.vin || "Not recorded"}</dd>
+              <dd className="identifier-with-copy">
+                <span>{v.vin || "Not recorded"}</span>
+                {v.vin && <CopyTextButton value={v.vin} label="Copy VIN" />}
+              </dd>
               <dt>Plate</dt>
               <dd>{v.plate || "Not recorded"}</dd>
               <dt>Mileage</dt>

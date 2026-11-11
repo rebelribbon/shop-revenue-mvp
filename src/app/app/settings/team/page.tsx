@@ -13,10 +13,12 @@ import {
   resendInviteAction,
 } from "@/server/actions/team";
 import { requireShopSession } from "@/server/views/shop";
+import { handoffPingsOn } from "@/domain/handoff-pings";
+import { setHandoffPingsAction } from "@/server/actions/assignments";
 
 export default async function TeamPage() {
   const s = await requireShopSession("/app/settings/team");
-  const { team, delivery, expired } = await withTenant(
+  const { team, delivery, expired, pingsOn } = await withTenant(
     s.businessId,
     s.actor,
     async (tx) => {
@@ -31,7 +33,7 @@ export default async function TeamPage() {
           .filter((m) => m.inviteExpiresAt && m.inviteExpiresAt < new Date())
           .map((m) => m.id),
       );
-      return { team, delivery, expired };
+      return { team, delivery, expired, pingsOn: await handoffPingsOn(tx) };
     },
   );
   const statusLabel = (m: (typeof team)[number]) => {
@@ -142,6 +144,44 @@ export default async function TeamPage() {
           You have {MAX_TEAM_SEATS} team logins, the most allowed. Remove one to
           invite someone else.
         </p>
+      )}
+      {isOwner && (
+        <section className="card reminder-settings">
+          <h2>Handoff emails</h2>
+          <p className="muted">
+            Email whoever the RO passes to: the technician when it’s assigned
+            and again when the customer approves the work, and the service
+            advisor when the inspection is in and when the work is finished and
+            ready to invoice. The work always shows in Tasks either way.
+          </p>
+          <ActionForm
+            action={setHandoffPingsAction}
+            submitLabel="Save handoff emails"
+            variant="secondary"
+          >
+            <fieldset className="reminder-switch">
+              <legend>Email team members about handed-off work</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="on"
+                  value="true"
+                  defaultChecked={pingsOn}
+                />
+                On
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="on"
+                  value="false"
+                  defaultChecked={!pingsOn}
+                />
+                Off
+              </label>
+            </fieldset>
+          </ActionForm>
+        </section>
       )}
     </HydratedMain>
   );

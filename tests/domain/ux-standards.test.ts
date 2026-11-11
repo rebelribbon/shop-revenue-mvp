@@ -55,7 +55,7 @@ it("uses the 8px grid for every authored margin, padding and layout gap", () => 
   expect(declarations.length).toBeGreaterThan(40);
   for (const [, property, value] of declarations)
     for (const [, number] of value.matchAll(/(-?[\d.]+)px/g))
-      expect(Number(number) % 8, `${property}: ${value}`).toBe(0);
+      expect(Math.abs(Number(number)) % 8, `${property}: ${value}`).toBe(0);
 });
 it("provides immediate hover, focus and reduced-motion treatment and a 65ch prose measure", () => {
   expect(css).toContain("--reading-width: 65ch");

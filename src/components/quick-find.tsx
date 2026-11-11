@@ -85,12 +85,11 @@ export function QuickFind({ automotive }: { automotive: boolean }) {
         <div className="quick-find-links" aria-label="Workspace shortcuts">
           {(
             [
-              ["/app/customers", "Customers"],
-              ["/app/jobs", "Jobs"],
-              ["/app/estimates", "Estimates"],
-              ["/app/invoices", "Invoices"],
+              ["/app/schedule", "Appointments"],
               ["/app/tasks", "Tasks"],
-              ["/app/money", "Money"],
+              ["/app/customers", "Customers"],
+              ["/app/jobs", automotive ? "ROs" : "Jobs"],
+              ["/app/reports", "Reports"],
             ] as const
           ).map(([href, label]) => (
             <Link

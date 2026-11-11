@@ -10,6 +10,9 @@ import {
   signEstimate,
   rotateEstimateLink,
 } from "@/domain/estimates";
+import { handOffApprovedWork } from "@/domain/handoff-pings";
+import { safeErrorDiagnostic } from "@/lib/errors";
+import { logger } from "@/lib/logger";
 import { defineShopAction } from "./define";
 import { getRequestMeta } from "../request";
 export const freezeEstimateAction = defineShopAction({
@@ -58,6 +61,16 @@ export async function signEstimateAction(raw: unknown) {
       meta,
       p.data.signature,
     );
+    // The signature stands whatever happens next: the approved work is handed
+    // to the assigned technician, and a problem there is only logged.
+    try {
+      await handOffApprovedWork(p.data.token);
+    } catch (error) {
+      logger.warn({
+        event: "estimate.sign_handoff_failed",
+        ...safeErrorDiagnostic(error),
+      });
+    }
     return { ok: true };
   } catch (error) {
     if (error instanceof AppError && error.code === "RATE_LIMITED")

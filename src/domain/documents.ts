@@ -8,6 +8,7 @@ import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { z } from "zod";
 import {
+  activity,
   business,
   customer,
   document,
@@ -198,15 +199,14 @@ export const STARTER_TEMPLATES: z.infer<typeof templateInput>[] = [
   },
   {
     name: "Change order",
-    body: 'This change order adds to or changes the work for "{{job_title}}" at {{job_location}}.\n\nDescribe the change:\n\nThe customer approves the change and any added cost. All other terms stay the same.\n\nCustomer: {{customer_name}} · Date: {{today}}',
+    body: 'Shop-prepared change order for "{{job_title}}" at {{job_location}}.\n\nChanges: {{change_summary}}\nPrice change: {{change_delta}}\nRevised estimated total: {{job_total}}\n\nI have reviewed the above changes and acknowledge the revised work and price. Any further changes require a new authorization.\n\nCustomer: {{customer_name}} · Date: {{today}}',
     fields: [
       {
-        key: "change",
-        label: "What is changing",
-        type: "text",
+        key: "confirm_change",
+        label: "I reviewed the shop-prepared changes and price",
+        type: "checkbox",
         required: true,
       },
-      { key: "added_cost", label: "Added cost", type: "text", required: true },
     ],
   },
   {
@@ -245,8 +245,12 @@ async function mergeValues(tx: TenantTx, jobId: string) {
     .select()
     .from(business)
     .where(eq(business.id, tx.businessId));
-  const [latest] = await tx
-    .select({ snapshot: estimateVersion.snapshot })
+  const [latest, previous] = await tx
+    .select({
+      snapshot: estimateVersion.snapshot,
+      version: estimateVersion.version,
+      supplementReason: estimateVersion.supplementReason,
+    })
     .from(estimateVersion)
     .where(
       and(
@@ -255,11 +259,14 @@ async function mergeValues(tx: TenantTx, jobId: string) {
       ),
     )
     .orderBy(desc(estimateVersion.version))
-    .limit(1);
+    .limit(2);
   const join = (...p: (string | null | undefined)[]) =>
     p.filter(Boolean).join(", ");
   return {
     customerId: input.customerId,
+    changeOrderReady: Boolean(
+      latest && previous && latest.supplementReason?.trim(),
+    ),
     values: {
       customer_name: c.displayName,
       customer_address: join(
@@ -283,6 +290,11 @@ async function mergeValues(tx: TenantTx, jobId: string) {
                   [v.year, v.make, v.model, v.plate].filter(Boolean).join(" "),
               )
             : ""),
+      change_summary: latest?.supplementReason?.trim() ?? "",
+      change_delta:
+        latest && previous
+          ? `${latest.snapshot.totalCents - previous.snapshot.totalCents >= 0 ? "+" : "-"}${money(Math.abs(latest.snapshot.totalCents - previous.snapshot.totalCents))}`
+          : "—",
       // The sent estimate's total (with tax), or the job's quoted subtotal.
       job_total: latest
         ? money(latest.snapshot.totalCents)
@@ -326,7 +338,26 @@ export async function sendDocument(
       ),
     );
   if (!t) throw notFound("That template");
-  const { customerId, values } = await mergeValues(tx, input.jobId);
+  const { customerId, values, changeOrderReady } = await mergeValues(
+    tx,
+    input.jobId,
+  );
+  const isChangeOrder = t.name.trim().toLowerCase() === "change order";
+  if (isChangeOrder && !changeOrderReady)
+    throw new AppError(
+      "VALIDATION",
+      "Create and publish the updated estimate with its change reason before preparing a change order.",
+    );
+  // Legacy templates may ask the signer to invent the change and its price.
+  // Never let a customer decide the amount of work or money on a change order.
+  const safeChangeTemplate = STARTER_TEMPLATES.find(
+    (item) => item.name === "Change order",
+  )!;
+  const frozenBody = fillMerge(
+    isChangeOrder ? safeChangeTemplate.body : t.body,
+    values,
+  );
+  const signerFields = isChangeOrder ? safeChangeTemplate.fields : t.fields;
   const token = newToken();
   const [row] = await tx
     .insert(document)
@@ -339,8 +370,8 @@ export async function sendDocument(
       category: "esign",
       title: t.name,
       templateId: t.id,
-      body: fillMerge(t.body, values),
-      fields: t.fields,
+      body: frozenBody,
+      fields: signerFields,
       tokenHash: token.hash,
       shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 30 * 86400000),
@@ -360,7 +391,7 @@ export async function sendDocument(
     summary: `Sent for signature: ${t.name}`,
     data: { documentId: row.id, jobId: input.jobId },
   });
-  return { id: row.id, path: `/sign/${token.token}` };
+  return { id: row.id, path: `/sign/${token.token}`, jobId: input.jobId };
 }
 
 export async function voidDocument(
@@ -541,6 +572,24 @@ export type CabinetItem = {
   href: string | null;
   documentId?: string;
   signLink?: string;
+  estimateShareId?: string;
+  preview?: {
+    type: "estimate" | "agreement" | "invoice";
+    customerName?: string;
+    shopName?: string;
+    subject?: string;
+    body?: string;
+    totalCents?: number;
+    taxCents?: number;
+    lines?: {
+      id: string;
+      description: string;
+      quantity: number;
+      unitPriceCents: number;
+      totalCents: number;
+    }[];
+    fields?: { label: string; type: string }[];
+  };
 };
 
 // Everything for one job: estimates, signed approvals, invoices, e-sign
@@ -551,6 +600,20 @@ export async function jobCabinet(
   unseal: (cipher: string | null) => string | null,
 ): Promise<CabinetItem[]> {
   const items: CabinetItem[] = [];
+  const deliveries = await tx
+    .select({ data: activity.data })
+    .from(activity)
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.kind, "document.email_submitted"),
+      ),
+    );
+  const emailedIds = new Set(
+    deliveries.map(
+      (event) => (event.data as { documentId?: string })?.documentId ?? "",
+    ),
+  );
   const versions = await tx
     .select({ v: estimateVersion, a: estimateAuthorization })
     .from(estimateVersion)
@@ -575,8 +638,36 @@ export async function jobCabinet(
       title: `Estimate · version ${v.version}`,
       detail: money(v.snapshot.totalCents),
       at: v.createdAt,
-      status: a ? "Signed" : v.revokedAt ? "Replaced" : "Sent",
+      status: a
+        ? "Signed"
+        : v.revokedAt
+          ? "Replaced"
+          : emailedIds.has(v.id)
+            ? "Email submitted"
+            : "Ready to send",
       href: `/app/estimates?jobId=${jobId}`,
+      preview: {
+        type: "estimate",
+        customerName: v.snapshot.customerName,
+        shopName: v.snapshot.shopName,
+        subject: v.snapshot.vehicleLabel || v.snapshot.serviceLabel,
+        totalCents: v.snapshot.totalCents,
+        taxCents: v.snapshot.taxCents,
+        lines: v.snapshot.lines.map((line) => ({
+          id: line.id,
+          description: line.description,
+          quantity: line.quantity,
+          unitPriceCents: line.unitPriceCents,
+          totalCents: line.totalCents,
+        })),
+      },
+      estimateShareId:
+        !a &&
+        !v.revokedAt &&
+        v.expiresAt > new Date() &&
+        v.id === versions[0]?.v.id
+          ? v.id
+          : undefined,
     });
     if (a)
       items.push({
@@ -605,6 +696,7 @@ export async function jobCabinet(
       at: i.createdAt,
       status: i.voidedAt ? "Void" : null,
       href: `/app/invoices?invoiceId=${i.id}`,
+      preview: { type: "invoice", totalCents: i.totalCents },
     });
   const docs = await tx
     .select()
@@ -619,7 +711,10 @@ export async function jobCabinet(
     .orderBy(desc(document.createdAt));
   for (const d of docs) {
     if (d.kind === "esign") {
-      const token = d.status === "sent" ? unseal(d.shareTokenCiphertext) : null;
+      const token =
+        d.status === "sent" && (!d.expiresAt || d.expiresAt > new Date())
+          ? unseal(d.shareTokenCiphertext)
+          : null;
       items.push({
         id: d.id,
         group: "Signed & sent",
@@ -638,10 +733,18 @@ export async function jobCabinet(
             ? "Signed"
             : d.status === "void"
               ? "Void"
-              : "Waiting",
+              : "Prepared",
         href: d.status === "signed" ? `/app/documents/${d.id}/pdf` : null,
         documentId: d.id,
         signLink: token ? `/sign/${token}` : undefined,
+        preview: {
+          type: "agreement",
+          body: d.body ?? "",
+          fields: (d.fields ?? []).map((field) => ({
+            label: field.label,
+            type: field.type,
+          })),
+        },
       });
     } else
       items.push({
@@ -701,6 +804,17 @@ export async function readPublicDocument(
     );
     return (r.rows[0]?.data ?? null) as PublicDocument | null;
   });
+}
+
+export function unsafeCustomerPricedChangeOrder(
+  doc: Pick<PublicDocument, "title" | "fields">,
+) {
+  return (
+    doc.title.trim().toLowerCase() === "change order" &&
+    doc.fields.some((field) =>
+      ["change", "added_cost", "cost", "price", "amount"].includes(field.key),
+    )
+  );
 }
 
 export function checkValues(
@@ -810,6 +924,11 @@ export async function signDocument(
 ) {
   const doc = await readPublicDocument(token);
   if (!doc || doc.status !== "sent") throw notFound("That document");
+  if (unsafeCustomerPricedChangeOrder(doc))
+    throw new AppError(
+      "VALIDATION",
+      "This older change order needs to be replaced by a shop-prepared version before it can be signed.",
+    );
   const name = raw.name?.trim() ?? "";
   if (name.length < 2) throw new AppError("VALIDATION", "Type your full name.");
   const signature = signatureSchema.safeParse(raw.signature);

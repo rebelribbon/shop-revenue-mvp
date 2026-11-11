@@ -15,7 +15,7 @@ import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import { listEstimates } from "@/domain/estimates";
 import { listInvoices } from "@/domain/invoices";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 import { revokeEstimateAction } from "@/server/actions/estimates";
 
 export default async function EstimatesPage({
@@ -23,7 +23,7 @@ export default async function EstimatesPage({
 }: {
   searchParams: Promise<{ jobId?: string }>;
 }) {
-  const s = await requireShopSession("/app/estimates");
+  const s = await requireFrontOfficeView("/app/estimates");
   const { jobId } = await searchParams;
   if (jobId && !z.uuid().safeParse(jobId).success) notFound();
   const [all, invoices, profile] = await withTenant(

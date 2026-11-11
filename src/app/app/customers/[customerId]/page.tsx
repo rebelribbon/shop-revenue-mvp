@@ -1,4 +1,11 @@
+import { LogContactButton } from "@/components/correspondence";
+import { RecordSection, WorkCard } from "@/components/record-section";
+import { CustomerContactSummary } from "@/components/customer-contact-summary";
+import { CustomerContactActions } from "@/components/customer-contact-actions";
+import { groupWork } from "@/lib/work-sections";
 import { formatPhone } from "@/lib/phone-format";
+import { jobReference } from "@/lib/job-reference";
+import { formatDateOnly } from "@/lib/timezone";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ServiceAssets } from "@/components/service-assets";
 import { listServiceAssets } from "@/domain/service-assets";
@@ -6,13 +13,6 @@ import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
 import { Notes } from "@/components/memory";
 import { RememberCustomer } from "@/components/recent-customers";
-import { FileUploader } from "@/components/file-uploader";
-import {
-  ATTACHMENT_CATEGORIES,
-  categoryLabel,
-  listAttachments,
-} from "@/domain/documents";
-import { removeDocumentAction } from "@/server/actions/documents";
 import type { HistoryItem } from "@/domain/customer-profile";
 import { listNotes } from "@/domain/memory";
 import Link from "next/link";
@@ -66,7 +66,6 @@ export default async function CustomerDetailPage(props: {
     assets,
     jobs,
     money,
-    attachments,
     portal,
     reviewLink,
     lastReview,
@@ -79,7 +78,6 @@ export default async function CustomerDetailPage(props: {
       listServiceAssets(tx, customerId),
       listCustomerJobs(tx, customerId),
       customerMoney(tx, customerId),
-      listAttachments(tx, customerId),
       portalLink(tx, customerId),
       readReviewSettings(tx).then((r) => r.link),
       lastReviewRequest(tx, customerId),
@@ -105,11 +103,11 @@ export default async function CustomerDetailPage(props: {
   const readOnly = s.actor.type === "support";
   const c = data.customer;
   const { view: requestedView, add: adding } = await props.searchParams;
-  const view = ["assets", "history", "details", "files"].includes(
+  const view = ["overview", "jobs", "assets", "history", "details"].includes(
     requestedView ?? "",
   )
     ? requestedView!
-    : "jobs";
+    : "overview";
   const auto = isAutomotive(profile?.businessType ?? "automotive");
   const base = `/app/customers/${customerId}`;
   const permissions = (
@@ -125,6 +123,9 @@ export default async function CustomerDetailPage(props: {
     />
   );
   const assetCount = data.vehicles.length + assets.length;
+  const activeJobs = jobs.filter(
+    (j) => !["paid", "lost", "ended"].includes(j.status),
+  );
 
   const when = (d: Date) =>
     d.toLocaleDateString("en-US", {
@@ -134,69 +135,112 @@ export default async function CustomerDetailPage(props: {
       year: "numeric",
     });
   const tabs = [
-    ["jobs", `Jobs${jobs.length ? ` (${jobs.length})` : ""}`],
+    ["overview", "Overview"],
+    [
+      "jobs",
+      `${auto ? "ROs" : "Jobs"}${jobs.length ? ` (${jobs.length})` : ""}`,
+    ],
     ["history", "History"],
     ["assets", auto ? "Vehicles" : "Properties"],
-    ["files", `Files${attachments.length ? ` (${attachments.length})` : ""}`],
     ["details", "Details"],
   ] as const;
 
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-      <RememberCustomer id={customerId} name={c.displayName} />
+      <RememberCustomer
+        id={customerId}
+        name={c.displayName}
+        scope={`${s.businessId}:${s.actor.id}`}
+      />
       <p>
-        <Link href="/app/customers">← Customers</Link>
+        <Link href="/app/customers" className="btn secondary">
+          ← All Customers
+        </Link>
       </p>
-      <div className="profile-layout">
-        <aside className="card profile-card">
+      <header className="customer-hero" aria-label="Customer summary">
+        <CustomerContactActions
+          target={{ customerId }}
+          phone={c.phoneE164}
+          email={c.email}
+          textAllowed={!c.textOptedOutAt && !c.doNotContact}
+          emailAllowed={!c.emailOptedOutAt && !c.doNotContact}
+        />
+        <div className="customer-hero-main">
+          <div className="customer-hero-avatar" aria-hidden="true">
+            {c.displayName.trim().charAt(0).toUpperCase()}
+          </div>
+          <div className="customer-hero-identity">
+            <p className="customer-eyebrow">Customer record</p>
+            <h1>{c.displayName}</h1>
+            <CustomerContactSummary
+              phone={c.phoneE164 ? formatPhone(c.phoneE164) : null}
+              email={c.email}
+              address={address}
+              addressHref={
+                address
+                  ? `https://maps.google.com/?q=${encodeURIComponent(address)}`
+                  : undefined
+              }
+            />
+            <p className="muted customer-hero-asset">
+              {auto
+                ? data.vehicles[0]
+                  ? [
+                      data.vehicles[0].year,
+                      data.vehicles[0].make,
+                      data.vehicles[0].model,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  : "No vehicle on file"
+                : assets.length
+                  ? `${assets.length} service asset${assets.length === 1 ? "" : "s"}`
+                  : "No property or equipment on file"}
+            </p>
+          </div>
+        </div>
+        <div
+          className="customer-hero-actions"
+          role="group"
+          aria-label="Customer work actions"
+        >
+          {!readOnly && (
+            <Link
+              className="btn primary"
+              data-page-primary
+              href={
+                assetCount
+                  ? `/app/jobs?customerId=${customerId}`
+                  : `${base}?view=assets`
+              }
+            >
+              {auto ? "+ New RO" : "+ New job"}
+            </Link>
+          )}
+          {!readOnly && (
+            <Link
+              className="btn secondary"
+              href={`/app/schedule?new=1&customerId=${customerId}`}
+            >
+              + Appointment
+            </Link>
+          )}
+        </div>
+      </header>
+      <div className="profile-layout customer-profile-layout">
+        <aside className="card profile-card customer-profile-side">
           <header className="profile-head">
             <div>
-              <h1 className="profile-title">{c.displayName}</h1>
-              <p className="profile-meta">
-                {[
-                  address ? (
-                    <a
-                      key="a"
-                      href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {address}
-                    </a>
-                  ) : null,
-                  c.phoneE164
-                    ? `${formatPhone(c.phoneE164)}${c.textOptedOutAt ? " (no texts)" : ""}`
-                    : null,
-                  c.email
-                    ? `${c.email}${c.emailOptedOutAt ? " (no emails)" : ""}`
-                    : null,
-                  `customer since ${c.createdAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", year: "numeric" })}`,
-                ]
-                  .filter(Boolean)
-                  .map((part, i) => (
-                    <span key={i}>{part}</span>
-                  ))}
+              <h2 className="profile-title">Account summary</h2>
+              <p className="muted">
+                Customer since{" "}
+                {c.createdAt.toLocaleDateString("en-US", {
+                  timeZone: tz,
+                  month: "short",
+                  year: "numeric",
+                })}
               </p>
             </div>
-            {(c.phoneE164 || c.email) && (
-              <div className="money-actions">
-                {c.phoneE164 && (
-                  <a className="btn secondary" href={`tel:${c.phoneE164}`}>
-                    Call
-                  </a>
-                )}
-                {c.phoneE164 && !c.textOptedOutAt && (
-                  <a className="btn secondary" href={`sms:${c.phoneE164}`}>
-                    Text
-                  </a>
-                )}
-                {c.email && !c.emailOptedOutAt && (
-                  <a className="btn secondary" href={`mailto:${c.email}`}>
-                    Email
-                  </a>
-                )}
-              </div>
-            )}
           </header>
           {profileNotes.map((n) =>
             n.headsUp ? (
@@ -218,116 +262,105 @@ export default async function CustomerDetailPage(props: {
               <strong>{formatMoney(money.paidCents)}</strong> paid you, all time
             </span>
           </p>
-          <div className="portal-box">
-            <h2>Customer link</h2>
-            <p className="muted">
-              One link for their estimates, invoices, papers to sign and visits.
-            </p>
-            {portal ? (
-              <CopyLink
-                path={portal}
-                label="Copy customer link"
-                intro="Here’s your account: estimates, invoices and visits in one place."
-                title={`Your account with ${profile?.dba || profile?.legalName || "us"}`}
-                phone={c.textOptedOutAt ? null : c.phoneE164}
-                email={c.emailOptedOutAt ? null : c.email}
-              />
-            ) : (
-              !readOnly && (
-                <ActionForm
-                  action={createPortalLinkAction}
-                  hidden={{ customerId }}
-                  submitLabel="Create customer link"
-                  variant="secondary"
-                />
-              )
-            )}
-          </div>
-          <div className="portal-box">
-            <h2>Found us</h2>
-            {readOnly ? (
-              <p>
-                {leadSourceLabel(c.leadSource)}
-                {c.leadSourceDetail && ` · ${c.leadSourceDetail}`}
-              </p>
-            ) : (
-              <ActionForm
-                action={setLeadSourceAction}
-                hidden={{ customerId }}
-                submitLabel="Save"
-                variant="secondary"
-              >
-                <label htmlFor="lead-source">How did they find you?</label>
-                <select
-                  id="lead-source"
-                  name="leadSource"
-                  defaultValue={c.leadSource ?? ""}
-                >
-                  <option value="">Not set</option>
-                  {LEAD_SOURCES.map(([k, label]) => (
-                    <option key={k} value={k}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <label htmlFor="lead-detail">
-                  Details <span className="muted">(who referred them)</span>
-                </label>
-                <input
-                  id="lead-detail"
-                  name="leadSourceDetail"
-                  maxLength={200}
-                  defaultValue={c.leadSourceDetail ?? ""}
-                />
-              </ActionForm>
-            )}
-          </div>
-          {reviewLink && (
+          <details className="record-customer-tools">
+            <summary>Customer options</summary>
             <div className="portal-box">
-              <h2>Review</h2>
+              <h2>Customer link</h2>
               <p className="muted">
-                {lastReview
-                  ? `${lastReview.status === "sent" ? "Asked" : "Tried to ask"} ${lastReview.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
-                  : "Not asked yet."}
+                One link for their estimates, invoices, papers to sign and
+                visits.
               </p>
-              {!readOnly && c.email && !c.emailOptedOutAt && (
-                <ActionForm
-                  action={askForReviewAction}
-                  hidden={{ customerId }}
-                  submitLabel="★ Ask for a review"
-                  variant="secondary"
+              {portal ? (
+                <CopyLink
+                  path={portal}
+                  contact={{ customerId }}
+                  label="Copy customer link"
+                  intro="Here’s your account: estimates, invoices and visits in one place."
+                  title={`Your account with ${profile?.dba || profile?.legalName || "us"}`}
+                  phone={
+                    c.doNotContact || c.textOptedOutAt ? null : c.phoneE164
+                  }
+                  email={c.doNotContact || c.emailOptedOutAt ? null : c.email}
                 />
+              ) : (
+                !readOnly && (
+                  <ActionForm
+                    action={createPortalLinkAction}
+                    hidden={{ customerId }}
+                    submitLabel="Create customer link"
+                    variant="secondary"
+                  />
+                )
               )}
             </div>
-          )}
+            <div className="portal-box">
+              <h2>Found us</h2>
+              {readOnly ? (
+                <p>
+                  {leadSourceLabel(c.leadSource)}
+                  {c.leadSourceDetail && ` · ${c.leadSourceDetail}`}
+                </p>
+              ) : (
+                <ActionForm
+                  action={setLeadSourceAction}
+                  hidden={{ customerId }}
+                  submitLabel="Save"
+                  variant="secondary"
+                >
+                  <label htmlFor="lead-source">How did they find you?</label>
+                  <select
+                    id="lead-source"
+                    name="leadSource"
+                    defaultValue={c.leadSource ?? ""}
+                  >
+                    <option value="">Not set</option>
+                    {LEAD_SOURCES.map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <label htmlFor="lead-detail">
+                    Details <span className="muted">(who referred them)</span>
+                  </label>
+                  <input
+                    id="lead-detail"
+                    name="leadSourceDetail"
+                    maxLength={200}
+                    defaultValue={c.leadSourceDetail ?? ""}
+                  />
+                </ActionForm>
+              )}
+            </div>
+            {reviewLink && (
+              <div className="portal-box">
+                <h2>Review</h2>
+                <p className="muted">
+                  {lastReview
+                    ? `${lastReview.status === "sent" ? "Asked" : "Tried to ask"} ${lastReview.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`
+                    : "Not asked yet."}
+                </p>
+                {!readOnly && c.email && !c.emailOptedOutAt && (
+                  <ActionForm
+                    action={askForReviewAction}
+                    hidden={{ customerId }}
+                    submitLabel="★ Ask for a review"
+                    variant="secondary"
+                  />
+                )}
+              </div>
+            )}
+          </details>
         </aside>
-        <div className="profile-main">
+        <div className="profile-main customer-profile-main">
           {!readOnly && (
             <div className="action-bar" role="group" aria-label="Add">
-              <Link
-                className="btn primary"
-                data-page-primary
-                href={
-                  assetCount
-                    ? `/app/jobs?customerId=${customerId}`
-                    : `${base}?view=assets`
-                }
-              >
-                {assetCount ? "+ Job" : auto ? "+ Vehicle" : "+ Property"}
-              </Link>
               <Link
                 className="btn secondary"
                 href={`${base}?view=${view}&add=note`}
                 aria-current={adding === "note" ? "true" : undefined}
               >
                 + Note
-              </Link>
-              <Link
-                className="btn secondary"
-                href={`${base}?view=files&add=attachment`}
-                aria-current={adding === "attachment" ? "true" : undefined}
-              >
-                + Attachment
               </Link>
             </div>
           )}
@@ -373,30 +406,110 @@ export default async function CustomerDetailPage(props: {
               <Link href={`${base}?view=${view}`}>Done</Link>
             </section>
           )}
-          {adding === "attachment" && !readOnly && (
-            <section className="card add-panel" aria-label="Add an attachment">
-              <h2>Add an attachment</h2>
-              <FileUploader
-                customerId={customerId}
-                categories={ATTACHMENT_CATEGORIES}
-                buttonLabel="Choose file"
-              />
-              <Link href={`${base}?view=files`}>Done</Link>
-            </section>
-          )}
-          <nav className="section-tabs" aria-label="Customer sections">
+          <nav
+            className="section-tabs customer-record-tabs"
+            aria-label="Customer sections"
+          >
             {tabs.map(([key, label]) => (
               <Link
                 key={key}
-                href={`${base}${key === "jobs" ? "" : `?view=${key}`}`}
+                href={`${base}?view=${key}`}
                 aria-current={view === key ? "page" : undefined}
               >
                 {label}
               </Link>
             ))}
           </nav>
+          {view === "overview" && (
+            <section
+              className="customer-overview"
+              aria-label="Customer overview"
+            >
+              <div className="customer-overview-grid">
+                <article className="card customer-overview-card customer-work-overview">
+                  <div className="section-heading">
+                    <h2>{auto ? "Active ROs" : "Active jobs"}</h2>
+                    <Link href={`${base}?view=jobs`}>
+                      {auto ? "All ROs" : "All jobs"}
+                    </Link>
+                  </div>
+                  <div className="record-work-grid">
+                    {activeJobs.slice(0, 3).map((j) => (
+                      <WorkCard
+                        key={j.id}
+                        href={`/app/jobs?job=${j.id}`}
+                        reference={jobReference(j.id, auto)}
+                        title={j.title}
+                        status={statusLabels[j.status]}
+                        statusClass={statusTone(j.status)}
+                        amount={
+                          j.balanceCents > 0
+                            ? formatMoney(j.balanceCents)
+                            : j.amountCents !== null
+                              ? formatMoney(j.amountCents)
+                              : undefined
+                        }
+                        amountLabel={
+                          j.balanceCents > 0 ? "Balance due" : "Estimate"
+                        }
+                      />
+                    ))}
+                  </div>
+                  {!activeJobs.length && (
+                    <p className="muted">
+                      No active work. Start a new job or open the work history.
+                    </p>
+                  )}
+                </article>
+                <article className="card customer-overview-card">
+                  <div className="section-heading">
+                    <h2>Recent activity</h2>
+                    <Link href={`${base}?view=history`}>History</Link>
+                  </div>
+                  {history.slice(0, 3).map((e) => (
+                    <div className="customer-activity-row" key={e.id}>
+                      <span>{e.summary}</span>
+                      <small className="muted">{when(e.at)}</small>
+                    </div>
+                  ))}
+                  {!history.length && (
+                    <p className="muted">No activity recorded yet.</p>
+                  )}
+                </article>
+                <article className="card customer-overview-card">
+                  <div className="section-heading">
+                    <h2>{auto ? "Vehicles" : "Properties & equipment"}</h2>
+                    <Link href={`${base}?view=assets`}>View all</Link>
+                  </div>
+                  <p>{assetCount} on file</p>
+                  <Link className="btn secondary" href={`${base}?view=assets`}>
+                    {auto ? "View vehicles" : "View assets"}
+                  </Link>
+                </article>
+              </div>
+            </section>
+          )}
           {view === "jobs" && (
-            <section aria-label="Jobs" id="jobs">
+            <section
+              aria-label={auto ? "Repair orders" : "Jobs"}
+              id="jobs"
+              className="customer-job-history"
+            >
+              <div className="section-heading">
+                <h2>{auto ? "Repair order history" : "Job history"}</h2>
+                {!readOnly && (
+                  <Link
+                    className="btn primary"
+                    href={
+                      assetCount
+                        ? `/app/jobs?customerId=${customerId}`
+                        : `${base}?view=assets`
+                    }
+                  >
+                    {auto ? "+ New RO" : "+ New job"}
+                  </Link>
+                )}
+              </div>
               {jobs.length > 1 && (
                 <div className="chip-links" role="group" aria-label="Show jobs">
                   {JOB_FILTERS.filter(
@@ -408,7 +521,7 @@ export default async function CustomerDetailPage(props: {
                   ).map((f) => (
                     <Link
                       key={f.key}
-                      href={`${base}?jobs=${f.key}`}
+                      href={`${base}?view=jobs&jobs=${f.key}`}
                       aria-current={filter.key === f.key ? "true" : undefined}
                     >
                       {f.label}
@@ -417,50 +530,64 @@ export default async function CustomerDetailPage(props: {
                 </div>
               )}
               {!jobs.length && (
-                <p className="muted">No jobs yet. Tap + Job to quote one.</p>
+                <p className="muted">
+                  No previous jobs. Start a new one from this customer.
+                </p>
               )}
-              <ul className="row-list">
-                {shownJobs.map((j) => (
-                  <li key={j.id}>
-                    <Link href={`/app/jobs?job=${j.id}`}>
-                      <span className="row-main">
-                        <strong>
-                          {j.repeats && "↻ "}
-                          {j.title}
-                        </strong>
-                        <span className="muted">
-                          {j.plan && j.plan.status !== "ended"
-                            ? cadenceText(j.plan.repeat)
-                            : when(j.createdAt)}
-                        </span>
-                      </span>
-                      <span className="row-side">
-                        {j.balanceCents > 0 ? (
-                          <strong>owes {formatMoney(j.balanceCents)}</strong>
-                        ) : (
-                          j.amountCents !== null && (
-                            <span>
-                              {formatMoney(j.amountCents)}
-                              {j.plan ? "/visit" : ""}
-                            </span>
-                          )
-                        )}
-                        <span className={statusTone(j.status)}>
-                          {statusLabels[j.status]}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
+              {groupWork(shownJobs, (j) => j.status)
+                .filter((group) => group.items.length > 0)
+                .map((group) => (
+                  <RecordSection
+                    key={group.key}
+                    title={group.title}
+                    description={group.description}
+                    count={group.items.length}
+                    className={`record-section-${group.key}`}
+                  >
+                    <ul className="record-work-grid">
+                      {group.items.map((j) => (
+                        <li key={j.id}>
+                          <WorkCard
+                            href={`/app/jobs?job=${j.id}`}
+                            reference={jobReference(j.id, auto)}
+                            title={`${j.repeats ? "↻ " : ""}${j.title}`}
+                            detail={
+                              j.plan && j.plan.status !== "ended"
+                                ? cadenceText(j.plan.repeat)
+                                : when(j.createdAt)
+                            }
+                            status={statusLabels[j.status]}
+                            statusClass={statusTone(j.status)}
+                            amount={
+                              j.balanceCents > 0
+                                ? formatMoney(j.balanceCents)
+                                : j.amountCents !== null
+                                  ? formatMoney(j.amountCents)
+                                  : undefined
+                            }
+                            amountLabel={
+                              j.balanceCents > 0 ? "Balance due" : "Estimate"
+                            }
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </RecordSection>
                 ))}
-              </ul>
             </section>
           )}
           {view === "history" && (
-            <section aria-label="History">
+            <RecordSection
+              title="Customer history"
+              actions={
+                !readOnly && <LogContactButton target={{ customerId }} />
+              }
+              description="Customer contact, appointments and previous work in date order."
+            >
               <ul className="row-list">
                 {history.map((e) => (
                   <li key={e.id}>
-                    <HistoryRow item={e} timeZone={tz} />
+                    <HistoryRow item={e} timeZone={tz} automotive={auto} />
                   </li>
                 ))}
               </ul>
@@ -471,45 +598,7 @@ export default async function CustomerDetailPage(props: {
                   <Notes customerId={customerId} notes={historyNotes} />
                 </details>
               )}
-            </section>
-          )}
-          {view === "files" && (
-            <section aria-label="Files">
-              {!attachments.length && (
-                <p className="muted">
-                  No files yet. Tap + Attachment to add a license, insurance
-                  card or tax-exempt certificate. Only your shop can see these.
-                </p>
-              )}
-              <ul className="row-list">
-                {attachments.map((d) => (
-                  <li key={d.id}>
-                    <div>
-                      <a
-                        className="row-main"
-                        href={`/media/${d.fileId}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <strong>📎 {d.title}</strong>
-                        <span className="muted">
-                          {categoryLabel(d.category)} · {when(d.createdAt)}
-                        </span>
-                      </a>
-                      {!readOnly && (
-                        <ActionForm
-                          action={removeDocumentAction}
-                          hidden={{ documentId: d.id }}
-                          submitLabel="Remove"
-                          variant="secondary"
-                          confirm={`Remove ${d.title}?`}
-                        />
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            </RecordSection>
           )}
           {view === "details" && (
             <>
@@ -725,18 +814,56 @@ export default async function CustomerDetailPage(props: {
 function HistoryRow({
   item,
   timeZone,
+  automotive,
 }: {
   item: HistoryItem;
   timeZone: string;
+  automotive: boolean;
 }) {
-  const when = item.at.toLocaleString("en-US", {
-    timeZone,
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const formatTime = (at: Date) =>
+    at.toLocaleString("en-US", {
+      timeZone,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  const when = formatTime(item.at);
+  if (item.contact) {
+    const { jobId, loggedBy, opened, taskUpdate, fullNote } = item.contact;
+    const reference = jobId ? jobReference(jobId, automotive) : undefined;
+    const taskDetail =
+      taskUpdate?.kind === "follow_up"
+        ? `Follow up on ${formatDateOnly(taskUpdate.dueOn)}`
+        : taskUpdate?.kind === "complete"
+          ? "Task completed"
+          : taskUpdate?.kind === "note"
+            ? "Saved note only"
+            : undefined;
+    return (
+      <details className="contact-history">
+        <summary>
+          {item.summary}
+          {reference && ` · ${reference}`}
+          <span className="muted">{when}</span>
+        </summary>
+        <div className="contact-history-detail">
+          {fullNote && <p>{fullNote}</p>}
+          {loggedBy && <p>Logged by {loggedBy}</p>}
+          {opened && (
+            <p>
+              {opened.summary} · {formatTime(opened.at)}
+            </p>
+          )}
+          {taskDetail && <p>{taskDetail}</p>}
+          {item.href && reference && (
+            <Link href={item.href}>View {reference}</Link>
+          )}
+        </div>
+      </details>
+    );
+  }
   const body = (
     <>
       <span style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>

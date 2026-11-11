@@ -14,7 +14,9 @@ function eligible(element: HTMLElement) {
     !element.closest(
       '[hidden], [inert], details:not([open]), [data-ux-ready="false"]',
     ) &&
-    !element.matches('.danger, [data-destructive="true"]') &&
+    !element.matches(
+      '.danger, [data-destructive="true"], [data-ux-utility="true"]',
+    ) &&
     !destructive.test(element.textContent?.trim() ?? "")
   );
 }
@@ -22,6 +24,12 @@ export function PageActions() {
   const pathname = usePathname();
   const [fallback, setFallback] = useState(false);
   useEffect(() => {
+    // Public interactive demos own their navigation and controls. Never attach
+    // the global floating action or misleading sign-in fallback to a demo.
+    if (pathname.startsWith("/demo/")) {
+      document.body.style.removeProperty("--primary-space");
+      return;
+    }
     let selected: HTMLElement | null = null;
     let focusedForm: HTMLFormElement | null = null;
     let frame = 0;
@@ -119,7 +127,14 @@ export function PageActions() {
       document.body.style.removeProperty("--primary-space");
     };
   }, [pathname]);
-  if (!fallback) return null;
+  // Demos never get the sign-in fallback; the desktop demo still has its
+  // own main button marked above.
+  if (
+    !fallback ||
+    pathname.startsWith("/demo/") ||
+    pathname.startsWith("/desktop-demo")
+  )
+    return null;
   const href =
     pathname === "/admin"
       ? "/admin/release"

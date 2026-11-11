@@ -44,6 +44,7 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
+  if (s.role === "technician") redirect("/app/tasks");
   const [
     profile,
     agenda,
@@ -151,7 +152,7 @@ export default async function HomePage({
       label: "Unpaid",
       count: t.unpaid.count,
       detail: formatMoney(t.unpaid.cents),
-      href: "/app/checkout",
+      href: "/app/jobs?show=owed",
       warn: t.unpaid.count > 0,
     },
   ];
@@ -374,7 +375,7 @@ export default async function HomePage({
           ))}
         </div>
       )}
-      {light && <RecentCustomers />}
+      {light && <RecentCustomers scope={`${s.businessId}:${s.actor.id}`} />}
     </HydratedMain>
   );
 }

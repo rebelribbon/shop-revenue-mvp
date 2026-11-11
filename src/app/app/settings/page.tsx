@@ -1,9 +1,9 @@
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 
 export default async function SettingsPage() {
-  const s = await requireShopSession("/app/settings");
+  const s = await requireFrontOfficeView("/app/settings");
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Settings</h1>

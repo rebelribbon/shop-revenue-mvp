@@ -13,9 +13,13 @@ export function mfaRequired(
     }
   }
   const local = ["local", "test"].includes(env.APP_ENV ?? "local") && localAuth;
+  // The hosted preview site holds test data only, so a test login there is
+  // email and password. Vercel sets VERCEL_ENV itself; anything configured as
+  // production keeps the requirement even on a preview-type deployment.
+  const preview = env.VERCEL_ENV === "preview" && env.APP_ENV !== "production";
   return (
     force ||
-    !local ||
+    (!local && !preview) ||
     env.REQUIRE_MFA === "true" ||
     env.REQUIRE_OWNER_MFA === "true"
   );

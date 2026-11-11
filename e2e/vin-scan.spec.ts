@@ -44,7 +44,7 @@ test("No scan button where the browser can't read barcodes", async ({
   });
   await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/app/customers");
-  await page.locator(".row-list a").first().click();
+  await page.locator(".customer-directory-row").first().click();
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
   await expect(page.getByLabel("VIN", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "📷 Scan VIN" })).toHaveCount(

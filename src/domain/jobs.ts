@@ -74,13 +74,10 @@ export const jobInput = z.object({
 export type JobInput = z.infer<typeof jobInput>;
 export async function createJob(tx: TenantTx, input: JobInput) {
   const data = jobInput.parse(input);
-  if (
-    (await currentMemberRole(tx)) === "technician" &&
-    (!data.jobId || !(await getJob(tx, data.jobId)))
-  )
+  if ((await currentMemberRole(tx)) === "technician")
     throw new AppError(
       "FORBIDDEN",
-      "Technicians can update only assigned jobs.",
+      "Ask the service advisor to create or price repair orders.",
     );
   await getCustomerWithVehicles(tx, data.customerId);
   if (Boolean(data.vehicleId) === Boolean(data.serviceAssetId))

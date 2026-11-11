@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { CustomerPicker } from "./customer-picker";
 import type { JobOptions } from "./job-editor";
 import { createAppointmentAction } from "@/server/actions/appointments";
+
+const onlyTarget = (
+  rows: readonly { id: string; customerId: string }[],
+  customerId?: string,
+) => {
+  const matching = rows.filter((row) => row.customerId === customerId);
+  return matching.length === 1 ? matching[0].id : "";
+};
 export function VisitEditor({
   options,
   auto,
@@ -22,8 +30,16 @@ export function VisitEditor({
   source: { sourceRecoveryItemId?: string; sourceContactActivityId?: string };
 }) {
   const [customer, setCustomer] = useState(initial.customerId ?? ""),
-    [vehicle, setVehicle] = useState(initial.vehicleId ?? ""),
-    [asset, setAsset] = useState(initial.serviceAssetId ?? ""),
+    [vehicle, setVehicle] = useState(
+      () =>
+        initial.vehicleId ??
+        (auto ? onlyTarget(options.vehicles, initial.customerId) : ""),
+    ),
+    [asset, setAsset] = useState(
+      () =>
+        initial.serviceAssetId ??
+        (!auto ? onlyTarget(options.serviceAssets, initial.customerId) : ""),
+    ),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -68,8 +84,8 @@ export function VisitEditor({
           value={customer}
           onChange={(id) => {
             setCustomer(id);
-            setVehicle("");
-            setAsset("");
+            setVehicle(auto ? onlyTarget(options.vehicles, id) : "");
+            setAsset(auto ? "" : onlyTarget(options.serviceAssets, id));
           }}
         />
         <label htmlFor="visit-target">

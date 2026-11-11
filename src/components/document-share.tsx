@@ -2,31 +2,70 @@
 import { useActionHydration } from "./action-hydration";
 import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
-import { useState } from "react";
-import { prepareDocumentShare } from "@/server/actions/document-sharing";
-import type { ShareRecipient } from "@/domain/document-sharing";
+import { useEffect, useState } from "react";
+import {
+  emailCustomerDocument,
+  prepareDocumentShare,
+} from "@/server/actions/document-sharing";
+import type { ShareRecipient, PacketDocument } from "@/domain/document-sharing";
+import { ContactLaunchLink, useContactLog } from "./correspondence";
+import { smsDraftHref } from "@/lib/sms-draft";
 
-export type ShareData = ShareRecipient & { path: string };
+export type ShareData = ShareRecipient & {
+  path: string;
+  documents?: PacketDocument[];
+};
 export function DocumentShare({
   id,
   kind,
   primary = false,
   label,
   initial,
+  autoOpen = false,
+  selectedDocumentIds,
 }: {
   id: string;
   kind: "estimate" | "invoice";
   primary?: boolean;
   label?: string;
   initial?: ShareData;
+  autoOpen?: boolean;
+  selectedDocumentIds?: string[];
 }) {
   const ready = useActionHydration();
   const [data, setData] = useState<ShareData | null>(initial ?? null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
+  const [emailAddress, setEmailAddress] = useState(initial?.email ?? "");
+  const [phoneNumber, setPhoneNumber] = useState(initial?.phone ?? "");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailMessage, setEmailMessage] = useState("");
   const [needsReplacement, setNeedsReplacement] = useState(false),
     [revisionPath, setRevisionPath] = useState<string | undefined>();
-  const url = data ? new URL(data.path, window.location.origin).href : "";
+  const currentDocumentIds = selectedDocumentIds ?? selectedDocuments;
+  const selected = (data?.documents ?? []).filter((doc) =>
+    currentDocumentIds.includes(doc.id),
+  );
+  const previewPath =
+    data && kind === "estimate"
+      ? `/packet?${new URLSearchParams([
+          ["e", data.path.split("/").at(-1) ?? ""],
+          ...selected.map((doc): [string, string] => [
+            "d",
+            doc.path.split("/").at(-1) ?? "",
+          ]),
+        ]).toString()}`
+      : (data?.path ?? "");
+  const url = data
+    ? new URL(
+        previewPath,
+        typeof window === "undefined"
+          ? "https://example.invalid"
+          : window.location.origin,
+      ).href
+    : "";
   const from = data?.senderName ? ` from ${data.senderName}` : "";
   // Texts carry the opt-out line the FCC's standard keywords rely on.
   const textBody = `Hi ${data?.name ?? ""}, here is your ${kind}${from}: ${url}\n\nReply STOP to opt out.`;
@@ -37,12 +76,39 @@ export function DocumentShare({
     [data?.senderName, data?.senderAddress].filter(Boolean).join("\n"),
     "To stop emails from us, reply “unsubscribe”.",
   ].join("\n");
-  const canText = Boolean(data?.phone && !data.textStoppedOn);
-  const canEmail = Boolean(data?.email && !data.emailStoppedOn);
-  const ios =
-    typeof navigator !== "undefined" &&
-    (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+  const logContact = useContactLog();
+  const contactTarget = data
+    ? { customerId: data.customerId, documentId: id, documentKind: kind }
+    : undefined;
+  const sentSummary = { text: `Shared the ${kind} link.`, prefill: true };
+  const canText = Boolean(phoneNumber.trim() && !data?.textStoppedOn);
+  const canEmail = Boolean(!data?.emailStoppedOn);
+  useEffect(() => {
+    if (!autoOpen || initial) return;
+    let canceled = false;
+    void prepareDocumentShare({ id, kind })
+      .then((r) => {
+        if (canceled) return;
+        if (r.ok) {
+          setData(r.data);
+          setEmailAddress(r.data.email ?? "");
+          setPhoneNumber(r.data.phone ?? "");
+        } else {
+          setMessage(r.message);
+          setNeedsReplacement(
+            "needsReplacement" in r && r.needsReplacement === true,
+          );
+          setRevisionPath("revisionPath" in r ? r.revisionPath : undefined);
+        }
+      })
+      .catch(() => {
+        if (!canceled)
+          setMessage("Sharing is unavailable. Try opening it again.");
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [autoOpen, id, kind, initial]);
   return (
     <div className="document-sharing" data-ux-ready={ready}>
       {!data ? (
@@ -55,8 +121,11 @@ export function DocumentShare({
             setBusy(true);
             try {
               const r = await prepareDocumentShare({ id, kind });
-              if (r.ok) setData(r.data);
-              else {
+              if (r.ok) {
+                setData(r.data);
+                setEmailAddress(r.data.email ?? "");
+                setPhoneNumber(r.data.phone ?? "");
+              } else {
                 setMessage(r.message);
                 setNeedsReplacement(
                   "needsReplacement" in r && r.needsReplacement === true,
@@ -76,28 +145,172 @@ export function DocumentShare({
         </button>
       ) : (
         <section aria-label={`Send ${kind}`}>
-          <h4>
-            Send {kind} to {data.name}
-          </h4>
-          <p>Choose Text or Email, then tap Send in your own app.</p>
+          <h4>Send {kind} for customer review</h4>
+          <p>
+            <strong>Recipient:</strong> {data.name}. Confirm the email or phone
+            below before sending. The estimate is already saved in the job file
+            cabinet.
+          </p>
+          {!data.emailStoppedOn && (
+            <label>
+              Customer email address
+              <input
+                type="email"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                placeholder="customer@example.com"
+                autoComplete="email"
+              />
+            </label>
+          )}
+          {!data.textStoppedOn && (
+            <label>
+              Customer mobile number
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Customer mobile number"
+                autoComplete="tel"
+              />
+            </label>
+          )}
+          {kind === "estimate" && selectedDocumentIds === undefined && (
+            <section className="card" aria-label="Customer signing packet">
+              <h4>Documents included in this request</h4>
+              <p>Estimate &amp; work authorization (required)</p>
+              {(data.documents ?? []).map((doc) => (
+                <label key={doc.id}>
+                  <input
+                    type="checkbox"
+                    checked={selectedDocuments.includes(doc.id)}
+                    onChange={(e) =>
+                      setSelectedDocuments((previous) =>
+                        e.target.checked
+                          ? [...previous, doc.id]
+                          : previous.filter((id) => id !== doc.id),
+                      )
+                    }
+                  />
+                  {doc.title} · additional signature
+                </label>
+              ))}
+              {!data.documents?.length && (
+                <p className="muted">
+                  No additional unsigned agreements have been prepared for this
+                  job.
+                </p>
+              )}
+              <p className="muted">
+                One link will show the estimate and {selected.length} additional
+                agreement{selected.length === 1 ? "" : "s"}. Any newly added
+                work or price needs a new shop-prepared estimate.
+              </p>
+            </section>
+          )}
+          <details className="docs-message-options">
+            <summary>Edit email subject or message</summary>
+            <label>
+              Email subject
+              <input
+                value={
+                  emailSubject ||
+                  `${data.senderName || "Your shop"} — ${kind === "estimate" ? "estimate for approval" : "invoice"}`
+                }
+                onChange={(e) => setEmailSubject(e.target.value)}
+                maxLength={160}
+              />
+            </label>
+            <label>
+              Message to customer
+              <textarea
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                placeholder={`Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`}
+              />
+            </label>
+          </details>
+          <p className="muted">
+            Check the preview before sharing. Email is sent from Shop Revenue;
+            SMS opens your texting app for you to send manually.
+          </p>
+          <a
+            className="btn secondary"
+            href={previewPath}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Preview customer view
+          </a>
           <div className="money-actions">
             {canText && (
-              <a
+              <ContactLaunchLink
+                contact={contactTarget}
+                channel="text"
+                purpose={`Shared ${kind} link`}
+                sentSummary={sentSummary}
                 className={`btn ${primary ? "primary" : "secondary"}`}
                 data-page-primary={primary ? true : undefined}
-                href={`sms:${data.phone}${ios ? "&" : "?"}body=${encodeURIComponent(textBody)}`}
+                href={smsDraftHref(phoneNumber, textBody)}
               >
                 Text to customer
-              </a>
+              </ContactLaunchLink>
             )}
-            {canEmail && (
-              <a
+            {canEmail && emailAddress.trim() && (
+              <button
+                type="button"
+                className={`btn ${primary ? "primary" : "secondary"}`}
+                disabled={
+                  sendingEmail ||
+                  !ready ||
+                  !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress.trim())
+                }
+                onClick={async () => {
+                  setSendingEmail(true);
+                  setMessage("");
+                  try {
+                    const r = await emailCustomerDocument({
+                      id,
+                      kind,
+                      email: emailAddress.trim(),
+                      subject:
+                        emailSubject.trim() ||
+                        `${data.senderName || "Your shop"} — ${kind === "estimate" ? "estimate for approval" : "invoice"}`,
+                      message:
+                        emailMessage.trim() ||
+                        `Please review and ${kind === "estimate" ? "authorize the proposed work" : "review your invoice"} using the secure link below.`,
+                      documentIds:
+                        kind === "estimate"
+                          ? selected.map((doc) => doc.id)
+                          : [],
+                    });
+                    setMessage(r.message);
+                  } catch {
+                    setMessage(
+                      "Email could not be submitted. Use Open email app or Copy link instead.",
+                    );
+                  } finally {
+                    setSendingEmail(false);
+                  }
+                }}
+              >
+                {sendingEmail ? "Submitting…" : "Send email now"}
+              </button>
+            )}
+            {canEmail && emailAddress.trim() && (
+              <ContactLaunchLink
+                contact={contactTarget}
+                channel="email"
+                purpose={`Shared ${kind} link`}
+                sentSummary={sentSummary}
                 className={`btn ${primary && !canText ? "primary" : "secondary"}`}
                 data-page-primary={primary && !canText ? true : undefined}
-                href={`mailto:${encodeURIComponent(data.email ?? "").replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}
+                href={`mailto:${encodeURIComponent(emailAddress.trim()).replace(/%40/gi, "@")}?subject=${encodeURIComponent(`Your ${kind}`)}&body=${encodeURIComponent(emailBody)}`}
               >
-                Email to customer
-              </a>
+                Open email app instead
+              </ContactLaunchLink>
             )}
             {typeof navigator !== "undefined" &&
               typeof navigator.share === "function" && (
@@ -111,6 +324,15 @@ export function DocumentShare({
                         text: `Hi ${data.name}, here is your ${kind}.`,
                         url,
                       });
+                      if (contactTarget)
+                        logContact?.(
+                          {
+                            ...contactTarget,
+                            channel: "other",
+                            purpose: `Shared ${kind} link`,
+                          },
+                          true,
+                        );
                     } catch (e) {
                       if (!(e instanceof Error && e.name === "AbortError"))
                         setMessage("Use Text, Email, or Copy link instead.");
@@ -145,10 +367,9 @@ export function DocumentShare({
               . Hand them the link in person or use the other option.
             </p>
           )}
-          {!data.phone && !data.email && (
+          {!phoneNumber.trim() && !emailAddress.trim() && (
             <p>
-              Add a phone number or email on the customer record, or copy the
-              link below.
+              Enter a recipient above, or copy the secure customer link below.
             </p>
           )}
           <details>
@@ -168,6 +389,15 @@ export function DocumentShare({
                 try {
                   await navigator.clipboard.writeText(url);
                   setMessage("Link copied.");
+                  if (contactTarget)
+                    logContact?.(
+                      {
+                        ...contactTarget,
+                        channel: "other",
+                        purpose: `Shared ${kind} link`,
+                      },
+                      true,
+                    );
                 } catch {
                   setMessage("Select and copy the link above.");
                 }
@@ -201,6 +431,8 @@ export function DocumentShare({
                 const result = await prepareDocumentShare({ id, kind });
                 if (result.ok) {
                   setData(result.data);
+                  setEmailAddress(result.data.email ?? "");
+                  setPhoneNumber(result.data.phone ?? "");
                   setNeedsReplacement(false);
                   setMessage("");
                 } else setMessage(result.message);

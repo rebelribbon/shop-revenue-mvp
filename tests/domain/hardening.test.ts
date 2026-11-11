@@ -298,7 +298,8 @@ describe("owner exports and scheduled maintenance", () => {
         tx.execute(sql`SELECT * FROM app.maintenance_run`),
       ),
     ).rejects.toThrow();
-  });
+    // Visits every shop in the test database (Monday summaries, Mon-Wed).
+  }, 120_000);
   it("rejects a mismatched vehicle while maintaining export tenant isolation", async () => {
     const a = await seedTenant("Vehicles"),
       b = await seedTenant("Other vehicles");

@@ -1,5 +1,6 @@
 import { beforeAll, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
+import { customerPacketPath } from "@/domain/document-sharing";
 import { document } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import {
@@ -8,6 +9,8 @@ import {
   updateCustomer,
 } from "@/domain/customers";
 import {
+  STARTER_TEMPLATES,
+  unsafeCustomerPricedChangeOrder,
   fileDocument,
   jobCabinet,
   listAttachments,
@@ -204,4 +207,64 @@ it("keeps customer attachments separate from job files", async () => {
       }),
     ),
   ).rejects.toThrow(/PDF/);
+});
+
+it("keeps change order scope and prices controlled by the shop, not the signer", () => {
+  const change = STARTER_TEMPLATES.find((t) => t.name === "Change order")!;
+  expect(change.fields).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ key: "added_cost" })]),
+  );
+  expect(change.fields).toEqual([
+    expect.objectContaining({
+      key: "confirm_change",
+      type: "checkbox",
+      required: true,
+    }),
+  ]);
+  expect(change.body).toContain("{{change_summary}}");
+  expect(change.body).toContain("{{change_delta}}");
+  expect(
+    unsafeCustomerPricedChangeOrder({
+      title: "Change order",
+      fields: [
+        {
+          key: "change",
+          type: "text",
+          required: true,
+          label: "What is changing",
+        },
+        {
+          key: "added_cost",
+          type: "text",
+          required: true,
+          label: "Added cost",
+        },
+      ],
+    }),
+  ).toBe(true);
+  expect(
+    unsafeCustomerPricedChangeOrder({
+      title: "Change order",
+      fields: change.fields,
+    }),
+  ).toBe(false);
+});
+
+it("creates one customer packet link with immutable estimate and document tokens", () => {
+  const estimateToken = "A".repeat(43);
+  const docToken = "B".repeat(43);
+  const path = customerPacketPath(`/estimate/${estimateToken}`, [
+    {
+      id: "signed-document",
+      title: "Work authorization",
+      path: `/sign/${docToken}`,
+    },
+  ]);
+  const url = new URL(path, "https://shop.example.test");
+  expect(url.pathname).toBe("/packet");
+  expect(url.searchParams.get("e")).toBe(estimateToken);
+  expect(url.searchParams.getAll("d")).toEqual([docToken]);
+  expect(() => customerPacketPath("/estimate/not-a-token", [])).toThrow(
+    /new sharing link/,
+  );
 });

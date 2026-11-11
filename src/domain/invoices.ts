@@ -1,3 +1,4 @@
+import { completeInvoiceHandoff } from "./job-handoffs";
 import { unbilledLines } from "@/lib/supplement";
 import { shareRecipient } from "./document-sharing";
 import { sealShareToken } from "@/lib/share-token";
@@ -158,6 +159,7 @@ export async function issueInvoice(
     })
     .returning();
   await takeStockForInvoice(tx, row.id, lines);
+  await completeInvoiceHandoff(tx, v.quoteId);
   await audit(tx, meta, {
     action: "invoice.issued",
     targetType: "invoice",
