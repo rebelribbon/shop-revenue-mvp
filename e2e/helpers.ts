@@ -93,3 +93,18 @@ export async function revealField(page: Page, label: string) {
       await parent.locator(":scope > summary").click();
   }
 }
+
+// The customer estimate: when it has an inspection or recommended work it is
+// stepped (request, inspection, recommendations, sign). Approves every item on
+// each step and stops on the signing step.
+export async function approveEstimateSteps(page: Page) {
+  for (let i = 0; i < 6; i++) {
+    for (const radio of await page
+      .getByRole("radio", { name: /^Approve / })
+      .all())
+      await radio.check();
+    const next = page.getByRole("button", { name: /^Next: / });
+    if (!(await next.count())) return;
+    await next.click();
+  }
+}
