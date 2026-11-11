@@ -8,11 +8,13 @@ import { ActionForm } from "./action-form";
 export function MediaGallery({
   items,
   readOnly,
+  canPublish = true,
   timeZone,
   quoteHref,
 }: {
   items: MediaItem[];
   readOnly: boolean;
+  canPublish?: boolean;
   timeZone: string;
   // Where "Quote this" goes for an issue photo not yet on a job.
   quoteHref?: (m: MediaItem) => string;
@@ -54,7 +56,7 @@ export function MediaGallery({
                 Quote this as a new job
               </Link>
             )}
-            {!readOnly && (
+            {!readOnly && canPublish && (
               <ActionForm
                 action={updateMediaAction}
                 hidden={{

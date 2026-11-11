@@ -88,26 +88,76 @@ export default async function MoneyPage({
         </p>
       </section>
       <section className="card">
-        <h2>Estimated profit</h2>
+        <h2>Estimated profit on this month’s invoices</h2>
         <strong className="money-total">
           {m.estimatedProfitCents === null
-            ? "Job costs missing"
+            ? !m.invoiceCount && !m.counterSaleCount
+              ? "No sales issued this month"
+              : "Costs missing"
             : formatMoney(m.estimatedProfitCents)}
         </strong>
         <p className="muted">
           Sales before tax {formatMoney(m.salesCents)} − job costs{" "}
           {formatMoney(m.costCents)} − other expenses. Uses quoted hours;
-          excludes income tax and card fees.
+          excludes income tax and card fees. Sales belong to the month the
+          invoice was issued; collections above belong to the month money
+          arrived. Counter sales are included on their sale date. Actual
+          job-sheet profit uses recorded time and estimated card fees, so it can
+          differ.
         </p>
         {m.unknownCostJobs > 0 && (
           <p className="notice">
             Profit is hidden because {m.unknownCostJobs}{" "}
             {m.unknownCostJobs === 1 ? "invoiced job is" : "invoiced jobs are"}{" "}
-            missing a part cost or labor cost. Open the job and fill in what you
-            paid.
+            missing quote-time parts or labor costs. No cost has been guessed.
+            Later job edits do not rewrite this estimate.
           </p>
         )}
       </section>
+      {(m.collectionMonths.length > 0 ||
+        m.collectionMissingCosts.length > 0 ||
+        m.missingCosts.length > 0 ||
+        m.unknownCounterSales > 0) && (
+        <section className="card" aria-label="Explain this month’s money">
+          <h2>Where the numbers come from</h2>
+          {m.collectionMonths.map((month) => (
+            <p key={month}>
+              Some payments received this month are for invoices issued in{" "}
+              <Link href={`/app/money?month=${month}`}>
+                {monthName(month, true)}
+              </Link>
+              . Their sales and estimated profit appear in that month.
+            </p>
+          ))}
+          {m.collectionMissingCosts.length > 0 && (
+            <p className="notice">
+              Profit is unknown for {m.collectionMissingCosts.length} invoice(s)
+              with payments this month because quote-time costs are missing.
+            </p>
+          )}
+          {[
+            ...new Map(
+              [...m.missingCosts, ...m.collectionMissingCosts].map((i) => [
+                i.invoiceId,
+                i,
+              ]),
+            ).values(),
+          ].map((i) => (
+            <p key={i.invoiceId}>
+              <Link href={`/app/jobs?job=${i.jobId}`}>
+                {i.title}: view job and invoice history
+              </Link>
+            </p>
+          ))}
+          {m.unknownCounterSales > 0 && (
+            <p className="notice">
+              Profit is hidden because {m.unknownCounterSales} counter sale(s)
+              have an item with no recorded cost. Their full selling price is
+              not profit.
+            </p>
+          )}
+        </section>
+      )}
       {p.new === "1" && !readOnly && (
         <section id="expense-form" className="card">
           <h2>Add expense</h2>

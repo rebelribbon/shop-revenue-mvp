@@ -10,6 +10,7 @@ import {
 import { localDateKey } from "@/lib/timezone";
 import { buildReport, readConfig } from "@/domain/report-builder";
 import { getSessionState } from "@/server/auth/session";
+import { sessionNeedsMfa } from "@/server/auth/assurance";
 
 export const dynamic = "force-dynamic";
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -23,6 +24,11 @@ export async function GET(req: Request) {
     state.session.role === "technician"
   )
     return new Response("Not found", { status: 404 });
+  if (await sessionNeedsMfa())
+    return Response.json(
+      { error: "Verify your authenticator first" },
+      { status: 403, headers: { "Cache-Control": "private, no-store" } },
+    );
   const q = new URL(req.url).searchParams;
   if (q.get("custom") === "1") {
     const config = readConfig(Object.fromEntries(q));

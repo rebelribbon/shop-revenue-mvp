@@ -12,7 +12,7 @@ Scope: every existing page template, shared UI, loading/error boundary, automoti
 - Every settled interactive page has one primary action. The existing control is enhanced, never cloned, preserving its form association, validation, pending state and focus. Entering an editing form makes its safe submit action primary. List screens retain their explicit New action while their secondary search controls stay in place. Destructive actions are excluded from the sticky primary area and keep secondary/danger styling and existing confirmation.
 - The primary action stays in the bottom half on mobile, above the bottom navigation bar with an 8px gap. The content scroll area reserves room so pinned controls do not cover fields or other actions. Read-only pages get a meaningful print or navigation action. Noninteractive loading placeholders do not invent a CTA.
 - All interactive controls have a 48×48px minimum effective hit area and visible borders/backgrounds. Adjacent targets have at least 8px separation. Hover feedback uses 80ms transitions; keyboard focus and reduced-motion treatment are explicit.
-- The app has no marketing landing page: `/` redirects to sign-in or the workspace. Workspace information follows a left-aligned hierarchy; Z-pattern marketing blocks are not applicable to these forms/data pages.
+- With public signup enabled, `/` leads new visitors to `/pricing`, then `/sign-up` and `/start` for the commercial subscription flow (revision November 5, 2026). With signup closed, `/` redirects to sign-in or the workspace. Workspace information follows a left-aligned hierarchy; Z-pattern marketing blocks are not applicable to these forms/data pages.
 
 ## Verification
 
@@ -105,3 +105,39 @@ The development-mode scenario exposed the thumb-bar enhancer selecting streamed 
 Client form controls are natively disabled by a layout-free fieldset until the same readiness flag is true. This also prevents a select or typed value from being accepted before its React handler is attached, then lost when hydration installs the controlled state.
 
 Each resolved server page also renders through HydratedMain. Its readiness boundary protects native GET filters and links while the page hydrates; a layout-level boundary could become ready before its streamed page. Server children remain server-rendered.
+
+## Online payment setup clarity — November 7
+
+Online payments always shows the owner's Connect Stripe option. A platform that
+is not ready has an explicit disabled connection button, an adjacent explanation
+that Shop Revenue must finish activation, and a Check setup status action that
+refreshes the authenticated page. The page does not direct shop owners into
+Shop Revenue's private platform settings or label an unconnected shop as taking
+live payments. Once available, three short steps explain signing in or creating
+a Stripe account and authorizing the connection. Connected shops get one Manage
+Stripe or Finish Stripe setup action, with status reconciliation separate.
+Phone and desktop regression coverage checks the pending state, visible controls,
+refresh, return to Settings, geometry, contrast and browser errors.
+
+
+## November 8 customer and RO navigation
+
+The current workspace has exactly five main destinations on phones and desktop: Appointments, Tasks, Customers, ROs (Jobs for service businesses), and Reports. Quick Find follows the same destinations. Settings and the home link remain header utilities. Payment and document actions are reached from an identified job; global payment and quick-sale creation shortcuts and customer-file creation are removed from the owner navigation. Existing stored files and financial records are retained.
+
+Customer profiles have five sections: overview, job/RO history, activity history, vehicles/assets and details. The job history tab and its filters retain `view=jobs`, and display the same stable reference as the job page. Appointments can be started from the calendar and from a customer with that customer selected. Reports include shop-timezone appointment outcomes and new-customer/lead-source activity alongside financial reports; existing owner-only data protections apply.
+
+The public CRM preview evaluates request search parameters so customers, reports and appointment navigation render their requested screens in production builds. The mobile navigation keeps five icon-and-label targets with 8px gaps, including at 320px. Customer creation remains in the directory header to allow the last row to scroll clear. Floating customer actions retain their viewport width rather than inheriting a full-width grid button rule. Browser audits distinguish header actions from pinned actions while retaining hit-area, gap, overflow and contrast checks.
+
+## Customer and RO section hierarchy
+
+Customer search and the directory have separate labelled, bordered panels. Directory entries form individual cards with consistent identity, asset and contact placement. Customer overviews separate active work, activity and vehicles/assets; secondary portal, referral and review controls live under Customer options. Existing controls and permissions are preserved.
+
+RO lists group the current results into Needs attention, In progress and Closed work. Each group has a heading, count and status cue; each RO card keeps its reference, customer, status and price or balance in fixed positions. Search and filters remain in their own panel, and Board remains available. Job workflow and navigation have visible boundaries. The public pricing preview separately bounds RO details, parts/labor and the price summary. Responsive grids become a single column on phones, with the existing bottom-navigation clearance retained. Browser coverage checks panel separation, customer search, state grouping, correct-customer navigation and price recalculation on phone and desktop.
+
+Customer record headers display name, phone, email and postal address before the vehicle/asset. Contact information stays visible when changing customer sections; the separate contact panel is removed. Missing fields have explicit empty labels. Existing contact permissions and the saved-address map link are preserved. The public preview shares the same contact summary component and uses fictional contact data. Browser coverage checks the field order and placement between the name and vehicle.
+
+Call, Text and Email sit in a dedicated row at the very top of the customer record, above the identity and contact details. The actions open the existing phone, messaging and email apps; they do not send messages from the CRM. Existing missing-contact and opt-out conditions are retained. New RO and Appointment stay in their own work-action area, and the preview removes redundant Contact/History shortcuts while keeping those customer tabs. Browser coverage checks the native action destinations, placement above the name and 48px hit areas at 320px.
+
+## Owner convenience shortcuts
+
+Open jobs/ROs expose the same permission-aware native contact actions so the owner can follow up without returning to the customer. RO/job references and recorded VINs have a Copy control with confirmed success or a manual-copy fallback. Recent customer shortcuts are capped at four, kept on the device, and keyed by business and signed-in actor; the public demo uses its own scope. Malformed cache entries are ignored, and legacy unscoped names are not displayed. Appointment creation selects the customer's vehicle/property only when exactly one matching target exists; explicit selections are retained and multiple targets require a choice. Browser coverage checks copied identifiers, correct-recipient RO links, recent navigation and cache separation, and single-versus-multiple vehicle appointment selection.

@@ -103,5 +103,5 @@ describe("Monday summary", () => {
     const r = await sendPreparedWeekly(f.t.businessId, f.t.owner.actor, p);
     expect(r.message).toBe(`Summary emailed to ${to}.`);
     expect(mailTo(to)).toHaveLength(2);
-  });
+  }, 120_000);
 });

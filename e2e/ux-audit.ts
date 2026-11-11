@@ -141,7 +141,11 @@ export async function auditUX(page: Page, collect = false) {
       const count = Array.from(nav.querySelectorAll("a,button")).filter(
         shown,
       ).length;
-      if (count < 3 || count > 5) issues.push(`Navigation has ${count} items`);
+      const scopedPair =
+        nav.hasAttribute("data-technician-nav") ||
+        nav.getAttribute("aria-label") === "Inspection navigation";
+      if (scopedPair ? count !== 2 : count < 3 || count > 5)
+        issues.push(`Navigation has ${count} items`);
       for (const link of Array.from(
         nav.querySelectorAll<HTMLElement>("a,button"),
       ).filter(shown))
@@ -152,9 +156,13 @@ export async function auditUX(page: Page, collect = false) {
     }
     const primary = document.querySelector<HTMLElement>("[data-ux-primary]");
     if (!primary) return [...issues, "Missing primary action after navigation"];
-    if (!shown(primary) || !viewport(primary))
+    // Customer creation stays in the list header so it cannot cover the last
+    // customer. Only floating actions must remain pinned inside the viewport.
+    const pinned = getComputedStyle(primary).position === "fixed";
+    if (!shown(primary) || (pinned && !viewport(primary)))
       issues.push("Primary action is outside the viewport");
     if (
+      pinned &&
       !modal &&
       main.getBoundingClientRect().bottom >
         primary.getBoundingClientRect().top - 7.9
@@ -164,7 +172,7 @@ export async function auditUX(page: Page, collect = false) {
       );
     if (primary.matches('.danger,[data-destructive="true"]'))
       issues.push("Destructive action entered the sticky primary area");
-    if (innerWidth < 900) {
+    if (pinned && innerWidth < 900) {
       const r = primary.getBoundingClientRect();
       if (r.top < innerHeight / 2)
         issues.push("Primary action is outside the thumb zone");

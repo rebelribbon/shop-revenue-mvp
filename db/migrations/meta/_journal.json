@@ -358,6 +358,34 @@
       "when": 1795706131998,
       "tag": "0050_technician_role",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795792531998,
+      "tag": "0051_commercial_signup",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795792531999,
+      "tag": "0052_stripe_connect_oauth",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795878931999,
+      "tag": "0053_handoff_email_pings",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795965331999,
+      "tag": "0054_estimate_job_ref",
+      "breakpoints": true
     }
   ]
 }

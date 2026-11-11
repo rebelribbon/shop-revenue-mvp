@@ -14,10 +14,22 @@ export function StripeButton({
   kind,
   token,
   checkoutId,
+  label,
+  disabled = false,
+  describedBy,
 }: {
-  kind: "connect" | "pay" | "reconcile" | "cancel" | "retry-refund";
+  kind:
+    | "connect"
+    | "setup-status"
+    | "pay"
+    | "reconcile"
+    | "cancel"
+    | "retry-refund";
   token?: string;
   checkoutId?: string;
+  label?: string;
+  disabled?: boolean;
+  describedBy?: string;
 }) {
   const [busy, start] = useTransition();
   const [message, setMessage] = useState("");
@@ -26,11 +38,16 @@ export function StripeButton({
   return (
     <div data-ux-ready={ready}>
       <button
-        className={`btn ${kind === "cancel" || kind === "retry-refund" ? "danger" : kind === "pay" || kind === "connect" ? "primary" : "secondary"}`}
-        disabled={busy}
+        className={`btn ${kind === "cancel" || kind === "retry-refund" ? "danger" : !disabled && (kind === "pay" || kind === "connect" || kind === "setup-status") ? "primary" : "secondary"}`}
+        disabled={disabled || busy || !ready}
+        aria-describedby={describedBy}
         onClick={() =>
           start(async () => {
             try {
+              if (kind === "setup-status") {
+                router.refresh();
+                return;
+              }
               const actions = {
                 connect: () => connectStripeAction(),
                 pay: () => payInvoiceAction(token!),
@@ -70,16 +87,20 @@ export function StripeButton({
         }
       >
         {busy
-          ? "Checking Stripe…"
+          ? kind === "setup-status"
+            ? "Checking setup…"
+            : "Checking Stripe…"
           : kind === "retry-refund"
             ? "Retry / check this refund"
             : kind === "connect"
-              ? "Set up / update Stripe"
-              : kind === "cancel"
-                ? "Cancel unpaid checkout"
-                : kind === "pay"
-                  ? "Pay online securely"
-                  : "Refresh payment status"}
+              ? label || "Connect Stripe"
+              : kind === "setup-status"
+                ? "Check setup status"
+                : kind === "cancel"
+                  ? "Cancel unpaid checkout"
+                  : kind === "pay"
+                    ? "Pay online securely"
+                    : "Refresh payment status"}
       </button>
       {message && <p role="status">{message}</p>}
     </div>

@@ -1,3 +1,4 @@
+import { CorrespondenceProvider } from "@/components/correspondence";
 import { isAutomotive } from "@/lib/business-types";
 import { QuickFind } from "@/components/quick-find";
 import { WorkspaceIcon } from "@/components/workspace-icon";
@@ -10,6 +11,7 @@ import { requireShopSession } from "@/server/views/shop";
 import { shopBillingAccess } from "@/domain/billing";
 import { daysUntil } from "@/lib/billing";
 import { listTasks } from "@/domain/tasks";
+import { RoHandoffNotifications } from "@/components/ro-handoff-notifications";
 
 export default async function ShopLayout({
   children,
@@ -70,11 +72,16 @@ export default async function ShopLayout({
             {b?.dba || b?.legalName}
           </Link>
           <WorkspaceNavigation
+            automotive={isAutomotive(b?.businessType ?? "automotive")}
             canSeeMoney={s.role === "owner"}
+            technicianOnly={s.role === "technician"}
             counts={{ "/app/tasks": tasksDue }}
           />
         </aside>
         <header className="workspace-header">
+          {s.actor.type === "user" && (
+            <RoHandoffNotifications key={`${s.businessId}:${s.actor.id}`} />
+          )}
           <Link
             href="/app"
             aria-label="Go home"
@@ -82,25 +89,50 @@ export default async function ShopLayout({
           >
             {b?.dba || b?.legalName}
           </Link>
-          <QuickFind
-            automotive={isAutomotive(b?.businessType ?? "automotive")}
-          />
-          <Link className="btn new-button" href="/app/create" aria-label="New">
-            <span aria-hidden="true">+</span>
-            <span className="new-label" aria-hidden="true">
-              New
-            </span>
-          </Link>
-          <Link
-            className="btn secondary icon-button"
-            href="/app/settings"
-            aria-label="Settings"
-            title="Settings"
-          >
-            <WorkspaceIcon name="settings" />
-          </Link>
+          {s.role !== "technician" && (
+            <QuickFind
+              automotive={isAutomotive(b?.businessType ?? "automotive")}
+            />
+          )}
+          {s.role !== "technician" && (
+            <Link
+              className="btn new-button"
+              href="/app/create"
+              aria-label="New"
+            >
+              <span aria-hidden="true">+</span>
+              <span className="new-label" aria-hidden="true">
+                New
+              </span>
+            </Link>
+          )}
+          {s.role !== "technician" && (
+            <Link
+              className="btn secondary icon-button"
+              href="/app/settings"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <WorkspaceIcon name="settings" />
+            </Link>
+          )}
+          {s.role === "technician" && (
+            <form
+              className="workspace-sign-out"
+              action="/auth/sign-out"
+              method="post"
+            >
+              <button className="btn secondary">Sign out</button>
+            </form>
+          )}
         </header>
         <div className="workspace-body">
+          {billing.kind === "unavailable" && (
+            <p className="notice error">
+              Subscription billing needs attention.{" "}
+              {billingLink("Contact the owner to restore billing")}
+            </p>
+          )}
           {billing.kind === "setup" && (
             <div className="notice setup-notice" data-billing="setup">
               {owner
@@ -144,11 +176,17 @@ export default async function ShopLayout({
                 {billingLink("Review billing")}
               </div>
             )}
-          {children}
+          {s.actor.type === "user" && s.role !== "technician" ? (
+            <CorrespondenceProvider>{children}</CorrespondenceProvider>
+          ) : (
+            children
+          )}
         </div>
         <WorkspaceNavigation
           mobile
+          automotive={isAutomotive(b?.businessType ?? "automotive")}
           canSeeMoney={s.role === "owner"}
+          technicianOnly={s.role === "technician"}
           counts={{ "/app/tasks": tasksDue }}
         />
       </div>

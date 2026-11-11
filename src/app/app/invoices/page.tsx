@@ -17,7 +17,7 @@ import { activeCheckoutStates } from "@/domain/payments";
 import { withTenant } from "@/db/tenant";
 import { listEstimates } from "@/domain/estimates";
 import { listInvoices } from "@/domain/invoices";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 import {
   InvoiceIssuer,
   InvoiceLink,
@@ -45,7 +45,7 @@ export default async function InvoicesPage({
     (params.invoiceId && !z.uuid().safeParse(params.invoiceId).success)
   )
     notFound();
-  const s = await requireShopSession("/app/invoices");
+  const s = await requireFrontOfficeView("/app/invoices");
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
     const [requested] = params.versionId
       ? await tx

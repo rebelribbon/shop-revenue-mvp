@@ -73,6 +73,8 @@ describe("Quick sale", () => {
     const money = await f.run((tx) => getOwnerMoney(tx));
     expect(money.collectedCents).toBe(4871);
     expect(money.salesTaxCents).toBe(371);
+    expect(money.unknownCounterSales).toBe(1);
+    expect(money.estimatedProfitCents).toBeNull();
 
     const range = presetRange(
       "month",
@@ -171,4 +173,28 @@ describe("Quick sale", () => {
       ),
     ).rejects.toThrow(/less than the total/);
   });
+});
+
+it("subtracts known counter item costs from profit and removes voided sales", async () => {
+  const f = await shop();
+  const sale = await f.run((tx) =>
+    createCounterSale(tx, meta(), {
+      lines: [{ partItemId: f.wipers.id, quantityHundredths: 150 }],
+      chargeTax: false,
+      method: "cash",
+    }),
+  );
+  const m = await f.run((tx) => getOwnerMoney(tx));
+  expect(m).toMatchObject({
+    salesCents: 3000,
+    costCents: 1200,
+    estimatedProfitCents: 1800,
+    unknownCounterSales: 0,
+  });
+  await f.run((tx) =>
+    voidCounterSale(tx, meta(), { id: sale.id, reason: "Wrong sale" }),
+  );
+  expect(
+    (await f.run((tx) => getOwnerMoney(tx))).estimatedProfitCents,
+  ).toBeNull();
 });

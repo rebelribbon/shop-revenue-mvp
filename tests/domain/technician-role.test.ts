@@ -1,9 +1,10 @@
+import { startClock, stopClock } from "@/domain/job-profit";
 import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { withTenant } from "@/db/tenant";
 import { assignJob } from "@/domain/assignments";
 import { createCustomer, createVehicle } from "@/domain/customers";
-import { createJob, listJobs } from "@/domain/jobs";
+import { createJob, getJob, listJobs } from "@/domain/jobs";
 import {
   acceptInvite,
   assertOwner,
@@ -58,7 +59,7 @@ describe("Technician role", () => {
         }),
       );
     const mine = await mk("Assigned");
-    await mk("Not assigned");
+    const other = await mk("Not assigned");
     await asOwner((tx) =>
       assignJob(tx, meta(), { jobId: mine.id, userId: joined.userId }),
     );
@@ -67,6 +68,49 @@ describe("Technician role", () => {
         (j) => j.title,
       ),
     ).toEqual(["Assigned"]);
+    // The domain applies the restriction even if a caller omits/forges filters.
+    expect((await asTech((tx) => listJobs(tx))).map((j) => j.id)).toEqual([
+      mine.id,
+    ]);
+    expect(
+      (await asTech((tx) => listJobs(tx, "", t.owner.userId))).map((j) => j.id),
+    ).toEqual([mine.id]);
+    expect(await asTech((tx) => getJob(tx, other.id))).toBeNull();
+    await expect(
+      asTech((tx) => startClock(tx, meta(), other.id)),
+    ).rejects.toThrow();
+    await expect(
+      asTech((tx) =>
+        assignJob(tx, meta(), { jobId: other.id, userId: joined.userId }),
+      ),
+    ).rejects.toThrow(/front office/);
+    await expect(
+      asTech((tx) =>
+        createJob(tx, {
+          customerId: c.id,
+          vehicleId: v.id,
+          title: "Unauthorized",
+          parts: [],
+          labor: [],
+        }),
+      ),
+    ).rejects.toThrow(/service advisor/);
+    const assigned = (await asOwner((tx) => getJob(tx, mine.id)))!;
+    await expect(
+      asTech((tx) =>
+        createJob(tx, {
+          customerId: c.id,
+          vehicleId: v.id,
+          jobId: mine.id,
+          expectedVersion: assigned.version,
+          title: "Changed price",
+          parts: [],
+          labor: [],
+        }),
+      ),
+    ).rejects.toThrow(/service advisor/);
+    await asTech((tx) => startClock(tx, meta(), mine.id));
+    await asTech((tx) => stopClock(tx, meta()));
     expect((await asOwner((tx) => listJobs(tx))).length).toBe(2);
   });
 

@@ -1,7 +1,17 @@
+import { randomUUID } from "node:crypto";
+import { newToken } from "@/lib/tokens";
+import { getJob } from "@/domain/jobs";
+import { jobProfit } from "@/domain/job-profit";
 import { it, expect } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import { withTenant } from "@/db/tenant";
-import { expense, invoicePayment, estimateVersion } from "@/db/schema";
+import {
+  expense,
+  invoice,
+  invoicePayment,
+  estimateVersion,
+  estimateAuthorization,
+} from "@/db/schema";
 import {
   addExpense,
   reverseExpense,
@@ -354,4 +364,112 @@ it("finds visits beyond tomorrow across a DST week and never includes another sh
   expect(
     (await f.run((tx) => listVisitsRange(tx, "2026-10-26", "2026-11-02"))).rows,
   ).toHaveLength(0);
+});
+
+it("explains cross-month collections, exposes document-only jobs and never guesses their costs", async () => {
+  const f = await fixture("Cross month");
+  const j = await f.run((tx) =>
+    createJob(tx, {
+      customerId: f.c.id,
+      vehicleId: f.v.id,
+      title: "Legacy sandbox",
+      parts,
+      labor,
+    }),
+  );
+  const [saved] = await f.run((tx) => listJobs(tx));
+  const e = await f.run((tx) =>
+    freezeEstimate(tx, meta(), {
+      jobId: j.id,
+      expectedJobVersion: saved.version,
+      taxBps: 825,
+      terms: "",
+      supplementReason: "",
+    }),
+  );
+  const [original] = await f.run((tx) =>
+    tx.select().from(estimateVersion).where(eq(estimateVersion.id, e.id)),
+  );
+  const importedId = randomUUID(),
+    importedJob = randomUUID(),
+    token = newToken();
+  await f.run((tx) =>
+    tx.insert(estimateVersion).values({
+      ...original,
+      id: importedId,
+      quoteId: importedJob,
+      createdAt: new Date("2026-10-01T12:00:00Z"),
+      tokenHash: token.hash,
+      shareTokenCiphertext: sealShareToken(token.token),
+    }),
+  );
+  await signTestEstimate(token.token, "Maria", ["part-0", "labor-0"], meta());
+  const [auth] = await f.run((tx) =>
+    tx
+      .select()
+      .from(estimateAuthorization)
+      .where(eq(estimateAuthorization.versionId, importedId)),
+  );
+  const [i] = await f.run((tx) =>
+    tx
+      .insert(invoice)
+      .values({
+        businessId: f.t.businessId,
+        createdByUserId: f.t.owner.userId,
+        number: 1,
+        quoteId: importedJob,
+        versionId: importedId,
+        authorizationId: auth.id,
+        customerId: f.c.id,
+        vehicleId: f.v.id,
+        snapshot: original.snapshot,
+        totalCents: 31650,
+        tokenHash: newToken().hash,
+        expiresAt: original.expiresAt,
+        createdAt: new Date("2026-10-31T12:00:00Z"),
+      })
+      .returning(),
+  );
+  await f.run((tx) =>
+    tx.insert(invoicePayment).values({
+      businessId: f.t.businessId,
+      createdByUserId: f.t.owner.userId,
+      invoiceId: i.id,
+      amountCents: 31650,
+      method: "cash",
+      createdAt: new Date("2026-11-02T12:00:00Z"),
+    }),
+  );
+  const nov = await f.run((tx) => getOwnerMoney(tx, "2026-11"));
+  expect(nov).toMatchObject({
+    collectedCents: 31650,
+    salesTaxCents: 1650,
+    cashLeftCents: 30000,
+    salesCents: 0,
+    estimatedProfitCents: null,
+    collectionMonths: ["2026-10"],
+  });
+  expect(nov.collectionMissingCosts).toEqual([
+    {
+      invoiceId: i.id,
+      jobId: importedJob,
+      title: "Legacy sandbox",
+      month: "2026-10",
+    },
+  ]);
+  expect(
+    (await f.run((tx) => getOwnerMoney(tx, "2026-10"))).unknownCostJobs,
+  ).toBe(1);
+  expect(
+    (await f.run((tx) => listJobs(tx))).find((j) => j.id === importedJob),
+  ).toMatchObject({ title: "Legacy sandbox", documentOnly: true });
+  expect(await f.run((tx) => getJob(tx, importedJob))).toMatchObject({
+    documentOnly: true,
+  });
+  expect(
+    (await f.run((tx) => jobProfit(tx, importedJob)))!.profitCents,
+  ).toBeNull();
+  const other = await fixture("Other legacy");
+  expect(await other.run((tx) => getJob(tx, importedJob))).toBeNull();
+  expect(await other.run((tx) => listJobs(tx, "Legacy sandbox"))).toEqual([]);
 });

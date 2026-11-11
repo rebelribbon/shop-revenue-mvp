@@ -1,4 +1,5 @@
 import { formatPhone } from "@/lib/phone-format";
+import { ContactLaunchLink } from "./correspondence";
 import { isAutomotive } from "@/lib/business-types";
 import Link from "next/link";
 import { ActionForm } from "./action-form";
@@ -308,9 +309,23 @@ export function MoneyFinder({
           )}
           <div className="money-actions">
             {item.phone && (
-              <a href={`tel:${item.phone}`}>{formatPhone(item.phone)}</a>
+              <ContactLaunchLink
+                contact={{ customerId: item.customerId }}
+                channel="call"
+                href={`tel:${item.phone}`}
+              >
+                {formatPhone(item.phone)}
+              </ContactLaunchLink>
             )}
-            {item.email && <a href={`mailto:${item.email}`}>{item.email}</a>}
+            {item.email && (
+              <ContactLaunchLink
+                contact={{ customerId: item.customerId }}
+                channel="email"
+                href={`mailto:${item.email}`}
+              >
+                {item.email}
+              </ContactLaunchLink>
+            )}
             {(item.category === "declined" ||
               item.category === "open_estimate") && (
               <Link href="/app/estimates">Estimate history</Link>

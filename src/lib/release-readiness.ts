@@ -1,4 +1,117 @@
 export type ReleaseCheck = { key: string; ready: boolean; message: string };
+export function releaseProfileChecks(
+  env: Record<string, string | undefined>,
+): ReleaseCheck[] {
+  const profile = env.RELEASE_PROFILE ?? "commercial";
+  return [
+    {
+      key: "release-profile",
+      ready: profile === "commercial" || profile === "pilot",
+      message: "Release profile must be commercial or pilot",
+    },
+    ...(profile === "pilot"
+      ? [
+          {
+            key: "pilot-signup-closed",
+            ready: env.PUBLIC_SIGNUP_ENABLED === "false",
+            message:
+              "Pilot release requires public signup closed; provider database backups only",
+          },
+        ]
+      : []),
+  ];
+}
+
+export function requiredReleaseEvidence(profile = "commercial") {
+  const keys = [
+    "independentSecurityReview",
+    "productionAuthAndMfa",
+    "smtpDelivery",
+    "offsiteBackupRestore",
+    "productionRecovery",
+    "alertsAndOnCall",
+    "designPartnerApproval",
+  ];
+  // The owner-authorized closed pilot deploys for real production verification.
+  // Reviews stay visible as pending and remain mandatory for commercial release.
+  // An unknown profile retains every commercial requirement and fails above.
+  return profile === "pilot" ? [] : keys;
+}
+
+export function releaseDecision(profile: string, checks: ReleaseCheck[]) {
+  const evidence = new Set(requiredReleaseEvidence());
+  const required = new Set(requiredReleaseEvidence(profile));
+  const blocking = checks.filter(
+    (check) => !evidence.has(check.key) || required.has(check.key),
+  );
+  const expected = [
+    ...releaseConfiguration({}).map((check) => check.key),
+    "stripe-account-activation",
+    "subscription-catalog",
+    "release-commit",
+    "release-profile",
+    ...evidence,
+    ...(profile === "pilot" ? ["pilot-signup-closed"] : []),
+  ];
+  const complete = expected.every((key) =>
+    checks.some((check) => check.key === key),
+  );
+  return {
+    deploymentReady:
+      (profile === "commercial" || profile === "pilot") &&
+      complete &&
+      blocking.every((check) => check.ready),
+    launchReady:
+      profile === "commercial" &&
+      complete &&
+      checks.every((check) => check.ready),
+    pendingEvidence: [...evidence].filter(
+      (key) => !checks.some((check) => check.key === key && check.ready),
+    ),
+  };
+}
+
+export function productionRecoveryReady(
+  evidence: Record<string, unknown> | undefined,
+  now = Date.now(),
+) {
+  const recent = (value: unknown) => {
+    if (typeof value !== "string") return false;
+    const time = Date.parse(value);
+    return Number.isFinite(time) && time <= now && now - time <= 86400000;
+  };
+  if (evidence?.mode === "daily-offsite")
+    return (
+      recent(evidence.providerBackupAt) && recent(evidence.offsiteBackupAt)
+    );
+  if (evidence?.mode === "pitr")
+    return (
+      typeof evidence.retentionDays === "number" &&
+      Number.isInteger(evidence.retentionDays) &&
+      evidence.retentionDays >= 7 &&
+      recent(evidence.latestRestorePointAt)
+    );
+  return false;
+}
+export function stripeAccountReady(account: {
+  charges_enabled?: boolean;
+  payouts_enabled?: boolean;
+  details_submitted?: boolean;
+  requirements?: {
+    disabled_reason?: string | null;
+    currently_due?: string[] | null;
+    past_due?: string[] | null;
+  } | null;
+}) {
+  return (
+    account.charges_enabled === true &&
+    account.payouts_enabled === true &&
+    account.details_submitted === true &&
+    !account.requirements?.disabled_reason &&
+    !account.requirements?.currently_due?.length &&
+    !account.requirements?.past_due?.length
+  );
+}
 export function releaseConfiguration(
   env: Record<string, string | undefined>,
   allowRuntimePlaceholders = false,
@@ -80,7 +193,8 @@ export function releaseConfiguration(
     {
       key: "shop-billing",
       ready:
-        present("STRIPE_SUBSCRIPTION_PRICE_ID") &&
+        (present("STRIPE_SUBSCRIPTION_PRICE_ID") ||
+          env.STRIPE_SUBSCRIPTION_LOOKUP_KEY === "shop_revenue_monthly") &&
         present("STRIPE_BILLING_WEBHOOK_SECRET"),
       message:
         "Shop subscription price configured; shops must start a trial to make changes",

@@ -1,19 +1,19 @@
-import { and, desc, eq, gte, lt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import {
   expense,
   business,
   invoice,
   invoicePayment,
   estimateVersion,
-  activity,
+  counterSale,
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { localDateKey, localMidnightToUtc } from "@/lib/timezone";
 import { AppError, notFound } from "@/lib/errors";
 import { assertOwner } from "./membership";
 import { audit, type RequestMeta } from "./records";
-import { jobInput } from "./jobs";
-import { partLineCents } from "./job-costing";
+import { invoiceCosts } from "./invoice-costing";
+import { saleLine } from "./counter-sales";
 import { z } from "zod";
 export const expenseCategories = [
   "rent",
@@ -191,71 +191,89 @@ export async function getOwnerMoney(
     costCents = 0,
     unknownCostJobs = 0,
     estimatedLaborJobs = 0;
-  const records = invoices.length
+  const paidInvoices = withProfit
     ? await tx
-        .select({
-          subjectId: activity.subjectId,
-          data: activity.data,
-          at: activity.occurredAt,
+        .selectDistinct({
+          id: invoice.id,
+          quoteId: invoice.quoteId,
+          createdAt: invoice.createdAt,
+          title: sql<string>`${invoice.snapshot}->>'title'`,
         })
-        .from(activity)
-        .where(
+        .from(invoicePayment)
+        .innerJoin(
+          invoice,
           and(
-            eq(activity.businessId, tx.businessId),
-            eq(activity.kind, "job.costed"),
-            inArray(
-              activity.subjectId,
-              invoices.map((i) => i.quoteId),
-            ),
+            eq(invoice.businessId, invoicePayment.businessId),
+            eq(invoice.id, invoicePayment.invoiceId),
           ),
         )
-        .orderBy(desc(activity.occurredAt), desc(activity.id))
+        .where(
+          and(
+            eq(invoicePayment.businessId, tx.businessId),
+            gte(invoicePayment.createdAt, start),
+            lt(invoicePayment.createdAt, end),
+          ),
+        )
     : [];
+  const costs = await invoiceCosts(tx, [
+    ...new Set([...invoices, ...paidInvoices].map((i) => i.id)),
+  ]);
+  const missingCosts: { invoiceId: string; jobId: string; title: string }[] =
+    [];
   for (const inv of invoices) {
     salesCents += inv.snapshot.subtotalCents;
-    const source = records.find(
-      (r) => r.subjectId === inv.quoteId && r.at <= inv.estimateCreatedAt,
-    );
-    const parsed = jobInput.safeParse(source?.data);
-    if (!parsed.success) {
+    const cost = costs.get(inv.id);
+    if (cost?.costCents == null) {
       unknownCostJobs++;
+      missingCosts.push({
+        invoiceId: inv.id,
+        jobId: inv.quoteId,
+        title: inv.snapshot.title,
+      });
+    } else costCents += cost.costCents;
+    if (cost?.estimatedLabor) estimatedLaborJobs++;
+  }
+  const collectionMonths = [
+    ...new Set(
+      paidInvoices.map((i) =>
+        localDateKey(i.createdAt, shop.timezone).slice(0, 7),
+      ),
+    ),
+  ]
+    .filter((m) => m !== key)
+    .sort();
+  const collectionMissingCosts = paidInvoices
+    .filter((i) => costs.get(i.id)?.costCents == null)
+    .map((i) => ({
+      invoiceId: i.id,
+      jobId: i.quoteId,
+      title: i.title,
+      month: localDateKey(i.createdAt, shop.timezone).slice(0, 7),
+    }));
+  const counterRows = withProfit
+    ? await tx
+        .select({ lines: counterSale.lines })
+        .from(counterSale)
+        .where(
+          and(
+            eq(counterSale.businessId, tx.businessId),
+            sql`${counterSale.voidedAt} is null`,
+            gte(counterSale.createdAt, start),
+            lt(counterSale.createdAt, end),
+          ),
+        )
+    : [];
+  let unknownCounterSales = 0;
+  for (const sale of counterRows) {
+    const lines = saleLine.array().safeParse(sale.lines);
+    if (!lines.success || lines.data.some((l) => l.unitCostCents === null)) {
+      unknownCounterSales++;
       continue;
     }
-    let estimated = false,
-      unknown = false;
-    for (const line of inv.snapshot.lines) {
-      const index = Number(line.id.split("-")[1]);
-      if (!Number.isInteger(index)) {
-        unknown = true;
-        continue;
-      }
-      if (line.kind === "part") {
-        const p = parsed.data.parts[index];
-        if (!p || p.description !== line.description) {
-          unknown = true;
-          continue;
-        }
-        if (p.unitCostCents === null) {
-          unknown = true;
-          continue;
-        }
-        costCents += partLineCents(line.quantity, p.unitCostCents);
-      } else {
-        const l = parsed.data.labor[index];
-        if (!l || l.description !== line.description) {
-          unknown = true;
-          continue;
-        }
-        if (l.costRateCents === null) {
-          unknown = true;
-          continue;
-        }
-        costCents += Math.round(line.quantity * l.costRateCents);
-        estimated = true;
-      }
-    }
-    if (unknown) unknownCostJobs++;
-    if (estimated) estimatedLaborJobs++;
+    costCents += lines.data.reduce(
+      (n, l) => n + Math.round((l.quantityHundredths * l.unitCostCents!) / 100),
+      0,
+    );
   }
   const expenseCents = rows.reduce((n, e) => n + e.amountCents, 0),
     overheadCents = rows
@@ -279,11 +297,20 @@ export async function getOwnerMoney(
     salesTaxCents,
     cashLeftCents: collectedCents - salesTaxCents - expenseCents,
     estimatedProfitCents:
-      !withProfit || unknownCostJobs
+      !withProfit ||
+      unknownCostJobs ||
+      unknownCounterSales ||
+      (!invoices.length && !counterRows.length)
         ? null
         : salesCents - costCents - overheadCents,
     costCents,
     unknownCostJobs,
+    unknownCounterSales,
+    invoiceCount: invoices.length,
+    counterSaleCount: counterRows.length,
+    missingCosts,
+    collectionMonths,
+    collectionMissingCosts,
     estimatedLaborJobs,
     expenses: rows.map((e) => ({ ...e, corrected: reversed.has(e.id) })),
   };

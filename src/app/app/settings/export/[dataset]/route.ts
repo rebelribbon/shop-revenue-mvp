@@ -20,10 +20,10 @@ export async function GET(
     state.session.actor.type !== "user"
   )
     return Response.json({ error: "Owner access required" }, { status: 403 });
-  if (await sessionNeedsMfa(state.session.role))
+  if (await sessionNeedsMfa())
     return Response.json(
       { error: "Verify your authenticator first" },
-      { status: 403 },
+      { status: 403, headers: { "Cache-Control": "private, no-store" } },
     );
   const parsed = z.enum(exportDatasets).safeParse((await params).dataset);
   if (!parsed.success)

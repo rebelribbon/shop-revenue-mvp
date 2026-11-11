@@ -3,19 +3,11 @@ import Link from "next/link";
 import { WorkspaceIcon } from "./workspace-icon";
 import { usePathname } from "next/navigation";
 const shopItems = [
-  { href: "/app", label: "Today", mobile: "Today", icon: "home", phone: true },
   {
-    href: "/app/customers",
-    label: "Customers",
-    mobile: "Customers",
-    icon: "customers",
-    phone: true,
-  },
-  {
-    href: "/app/work",
-    label: "Jobs",
-    mobile: "Jobs",
-    icon: "work",
+    href: "/app/schedule",
+    label: "Appointments",
+    mobile: "Appts",
+    icon: "schedule",
     phone: true,
   },
   {
@@ -26,21 +18,41 @@ const shopItems = [
     phone: true,
   },
   {
-    href: "/app/money",
-    label: "Money",
-    mobile: "Money",
-    icon: "money",
+    href: "/app/customers",
+    label: "Customers",
+    mobile: "Customers",
+    icon: "customers",
+    phone: true,
+  },
+  {
+    href: "/app/jobs",
+    label: "Jobs",
+    mobile: "Jobs",
+    icon: "work",
+    phone: true,
+  },
+  {
+    href: "/app/reports",
+    label: "Reports",
+    mobile: "Reports",
+    icon: "reports",
     phone: true,
   },
 ] as const;
-const workPaths = ["/app/jobs", "/app/estimates", "/app/invoices"];
+const workPaths = ["/app/work", "/app/estimates", "/app/invoices"];
 export function WorkspaceNavigation({
   mobile = false,
+  automotive = false,
   canSeeMoney = true,
+  technicianOnly = false,
   counts = {},
 }: {
   mobile?: boolean;
+  automotive?: boolean;
+  // Only the owner sees Reports.
   canSeeMoney?: boolean;
+  // Technicians get Tasks and their own ROs, nothing else.
+  technicianOnly?: boolean;
   counts?: Record<string, number>;
 }) {
   const path = usePathname();
@@ -50,33 +62,52 @@ export function WorkspaceNavigation({
         mobile ? "mobile-nav shop-mobile-nav" : "desktop-nav workspace-nav"
       }
       aria-label={mobile ? "Mobile navigation" : "Main"}
+      data-technician-nav={technicianOnly || undefined}
     >
       {shopItems
-        .filter((item) => canSeeMoney || item.href !== "/app/money")
+        .filter((item) => canSeeMoney || item.href !== "/app/reports")
+        .filter(
+          (item) =>
+            !technicianOnly ||
+            item.href === "/app/tasks" ||
+            item.href === "/app/jobs",
+        )
         .filter((item) => !mobile || item.phone)
         .map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            aria-label={item.label}
+            aria-label={
+              item.href === "/app/jobs" && automotive
+                ? "Repair orders"
+                : item.label
+            }
             aria-current={
               (
-                item.href === "/app"
-                  ? path === item.href || path.startsWith("/app/schedule")
+                item.href === "/app/schedule"
+                  ? path.startsWith("/app/schedule") ||
+                    path.startsWith("/app/appointments")
                   : path.startsWith(item.href) ||
                     (item.href === "/app/tasks" &&
                       path.startsWith("/app/opportunities")) ||
-                    (item.href === "/app/money" &&
-                      path.startsWith("/app/revenue")) ||
-                    (item.href === "/app/work" &&
+                    (item.href === "/app/reports" &&
+                      (path.startsWith("/app/money/reports") ||
+                        path.startsWith("/app/revenue"))) ||
+                    (item.href === "/app/jobs" &&
                       workPaths.some((p) => path.startsWith(p)))
               )
                 ? "page"
                 : undefined
             }
           >
-            {!mobile && <WorkspaceIcon name={item.icon} />}
-            <span>{mobile ? item.mobile : item.label}</span>
+            <WorkspaceIcon name={item.icon} />
+            <span>
+              {item.href === "/app/jobs" && automotive
+                ? "ROs"
+                : mobile
+                  ? item.mobile
+                  : item.label}
+            </span>
             {!mobile && (counts[item.href] ?? 0) > 0 && (
               <span
                 className="nav-count"

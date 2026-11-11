@@ -89,6 +89,11 @@ export default async function Tenants({
           </ActionForm>
         </div>
       )}
+      <p>
+        <Link href="/admin/billing">
+          Subscription pricing and discount codes
+        </Link>
+      </p>
     </HydratedMain>
   );
 }

@@ -1,3 +1,4 @@
+import { invoiceCosts } from "./invoice-costing";
 import { countersBetween } from "./counter-sales";
 import { leadSourceLabel } from "@/lib/lead-sources";
 // Owner reports for a date range, all from the same invoices, payments, jobs,
@@ -5,7 +6,7 @@ import { leadSourceLabel } from "@/lib/lead-sources";
 // so the page and the CSV download show exactly the same thing.
 import { and, desc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
-  activity,
+  appointment,
   business,
   customer,
   expense,
@@ -19,6 +20,18 @@ import { addLocalDays, localDateKey, localMidnightToUtc } from "@/lib/timezone";
 import { assertOwner } from "./membership";
 
 export const REPORTS = [
+  {
+    key: "appointments",
+    title: "Appointments",
+    about:
+      "Appointments scheduled in the range, with their current outcome. Dates and times use your shop timezone.",
+  },
+  {
+    key: "customer-growth",
+    title: "New customers",
+    about:
+      "Customers added in the range, including their lead source and current status.",
+  },
   {
     key: "sales",
     title: "Sales",
@@ -39,7 +52,7 @@ export const REPORTS = [
     key: "profit",
     title: "Profit by job",
     about:
-      "Each invoiced job: what you billed (before tax), what it cost you, and what you kept.",
+      "Invoice-month estimate using approved lines and quote-time costs, like Money. Excludes overhead and card fees; actual job-sheet profit can differ.",
   },
   {
     key: "customers",
@@ -134,6 +147,93 @@ export async function runReport(
   const day = (d: Date) => localDateKey(d, tz);
   const sum = (rows: Report["rows"], i: number) =>
     rows.reduce((s, r) => s + Number(r[i] ?? 0), 0);
+
+  if (key === "appointments") {
+    const records = await tx
+      .select({
+        startsAt: appointment.startsAt,
+        customerName: customer.displayName,
+        reason: appointment.reason,
+        status: appointment.status,
+      })
+      .from(appointment)
+      .innerJoin(
+        customer,
+        and(
+          eq(customer.businessId, appointment.businessId),
+          eq(customer.id, appointment.customerId),
+        ),
+      )
+      .where(
+        and(
+          eq(appointment.businessId, tx.businessId),
+          gte(appointment.startsAt, start),
+          lt(appointment.startsAt, end),
+        ),
+      )
+      .orderBy(appointment.startsAt, appointment.id);
+    const labels: Record<string, string> = {
+      scheduled: "Scheduled",
+      completed: "Completed",
+      cancelled: "Canceled",
+      no_show: "No-show",
+    };
+    return {
+      columns: [
+        { label: "Date" },
+        { label: "Time" },
+        { label: "Customer" },
+        { label: "Reason" },
+        { label: "Outcome" },
+      ],
+      rows: records.map((r) => [
+        day(r.startsAt),
+        r.startsAt.toLocaleTimeString("en-US", {
+          timeZone: tz,
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+        r.customerName,
+        r.reason,
+        labels[r.status] ?? r.status,
+      ]),
+      totals: ["Total", records.length, null, null, null],
+    };
+  }
+
+  if (key === "customer-growth") {
+    const records = await tx
+      .select({
+        createdAt: customer.createdAt,
+        name: customer.displayName,
+        source: customer.leadSource,
+        status: customer.status,
+      })
+      .from(customer)
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          gte(customer.createdAt, start),
+          lt(customer.createdAt, end),
+        ),
+      )
+      .orderBy(desc(customer.createdAt), desc(customer.id));
+    return {
+      columns: [
+        { label: "Added" },
+        { label: "Customer" },
+        { label: "Lead source" },
+        { label: "Status" },
+      ],
+      rows: records.map((r) => [
+        day(r.createdAt),
+        r.name,
+        leadSourceLabel(r.source),
+        r.status === "active" ? "Active" : "Archived",
+      ]),
+      totals: ["Total", records.length, null, null],
+    };
+  }
 
   if (key === "sales" || key === "tax" || key === "profit") {
     const invoices = await tx
@@ -246,43 +346,13 @@ export async function runReport(
         ],
       };
     }
-    // profit: the job's latest costing gives what it cost the shop.
-    const jobIds = [...new Set(invoices.map((i) => i.quoteId))];
-    const costs = jobIds.length
-      ? await tx
-          .selectDistinctOn([activity.subjectId], {
-            id: activity.subjectId,
-            data: activity.data,
-          })
-          .from(activity)
-          .where(
-            and(
-              eq(activity.businessId, tx.businessId),
-              eq(activity.kind, "job.costed"),
-              inArray(activity.subjectId, jobIds),
-            ),
-          )
-          .orderBy(activity.subjectId, desc(activity.occurredAt))
-      : [];
+    // Same approved-line, quote-time basis as the monthly Money estimate.
+    const costs = await invoiceCosts(
+      tx,
+      invoices.map((i) => i.id),
+    );
     const rows = invoices.map((i) => {
-      const totals = (
-        costs.find((c) => c.id === i.quoteId)?.data as
-          | {
-              totals?: {
-                subtotalCents?: number;
-                actualCostCents?: number | null;
-                estimatedCostCents?: number | null;
-              };
-            }
-          | undefined
-      )?.totals;
-      const quoted = totals?.subtotalCents ?? 0;
-      const fullCost = totals?.actualCostCents ?? totals?.estimatedCostCents;
-      // Scale the job's cost to what was actually billed (approved work).
-      const cost =
-        fullCost == null || !quoted
-          ? null
-          : Math.round((fullCost * i.snapshot.subtotalCents) / quoted);
+      const cost = costs.get(i.id)?.costCents ?? null;
       const kept = cost === null ? null : i.snapshot.subtotalCents - cost;
       return [
         day(i.createdAt),

@@ -52,7 +52,7 @@ export async function signInWithPassword(
   // Server actions set the session cookie before redirecting. Do not let the
   // caller navigate away while that response is still in flight.
   await expect(page).toHaveURL(
-    path === "/admin/sign-in" ? /\/admin$/ : /\/app$/,
+    path === "/admin/sign-in" ? /\/admin$/ : /\/app(?:\/tasks)?$/,
   );
 }
 

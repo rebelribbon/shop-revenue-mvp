@@ -4,10 +4,16 @@ name: Deploy
 # Vercel Deployment Protection with `vercel curl` (scripts/ci/hosted-smoke.sh);
 # protection is never disabled for CI.
 # Section 24 order: CI -> migrate staging -> deploy staging -> hosted smoke ->
-# approve -> migrate production as migration_owner -> deploy app. Full M1 E2E
+# approve -> build production candidate with its real Secret variables and
+# release checks -> migrate production as migration_owner -> smoke -> promote.
+# The candidate never receives the production domains before smoke passes.
+# Full M1 E2E
 # stays in the local-stack workflow because those tests intentionally depend on
 # seeded tenants, Mailpit and the local SMS inbox. Production migrations require
-# a PITR restore point. GitHub environments "staging" and "production" hold only
+# a recent provider restore point. Commercial releases additionally require
+# independent recovery evidence; the explicitly selected, closed pilot defers
+# off-site storage under the November 6 pilot backup revision.
+# GitHub environments "staging" and "production" hold only
 # credentials; "production" requires reviewer approval.
 # Two-project hosted model (revision 2026-10-23):
 # - staging environment -> shop-revenue-dev
@@ -21,6 +27,12 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
+      release_profile:
+        description: "Commercial keeps full off-site requirements; pilot uses existing provider backups and requires public signup closed"
+        required: true
+        default: commercial
+        type: choice
+        options: [commercial, pilot]
       release_evidence_json:
         description: "Non-secret verification references for the exact release commit; production remains blocked without them"
         required: false
@@ -84,9 +96,7 @@ jobs:
           cat migrate.log check-rls.log
       - name: Deploy web (Vercel)
         run: |
-          npx --yes vercel@63.1.0 pull --yes --environment=preview
-          npx --yes vercel@63.1.0 build
-          npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
+          npx --yes vercel@63.1.0 deploy --yes > deploy-url.txt
       - name: Hosted staging smoke (exact deployment, through Deployment Protection)
         run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
 
@@ -111,37 +121,19 @@ jobs:
           missing=""
           for v in DATABASE_URL_MIGRATION SUPABASE_ACCESS_TOKEN VERCEL_TOKEN; do [ -n "${!v}" ] || missing="$missing $v"; done
           if [ -n "$missing" ]; then echo "::error::BLOCKED: production credentials not configured:$missing"; exit 1; fi
-      - name: Require reviewed release evidence
+      - name: Verify a recent production restore point exists
+        # Read-only, production-pinned check. Rejects stale/future restore points
+        # and provider failures. Applies to BOTH pilot and commercial releases.
+        run: node scripts/ci/verify-provider-backup.mjs
+      - name: Build production candidate and require reviewed release evidence inside Vercel
         env:
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
           RELEASE_EVIDENCE_JSON: ${{ inputs.release_evidence_json }}
         run: |
-          node --input-type=module -e 'import fs from "node:fs"; const data=JSON.parse(process.env.RELEASE_EVIDENCE_JSON||"{}"); fs.writeFileSync(process.env.RUNNER_TEMP+"/release-evidence.json",JSON.stringify(data));'
-          npx --yes vercel@63.1.0 pull --yes --environment=production
-          RELEASE_EVIDENCE_FILE="$RUNNER_TEMP/release-evidence.json" node --env-file=.vercel/.env.production.local --import tsx scripts/ci/release-check.ts
-      - name: Verify a recent production restore point exists
-        # GET /v1/projects/{ref}/database/backups (fine-grained permission
-        # backups_read). Response fields per the Management API reference:
-        # pitr_enabled, walg_enabled, backups[{status, inserted_at, ...}],
-        # physical_backup_data {earliest_/latest_physical_backup_date_unix}.
-        # Passes on EITHER a PITR restore point within 24 h OR (revision
-        # docs/spec-revision-2026-10-24-production-restore-point.md) a
-        # COMPLETED daily backup within 26 h. Fails closed on any error.
-        run: |
-          body=$(curl -fsS --max-time 20 -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/backups") \
-            || { echo "::error::Supabase Management API request failed; refusing to migrate production"; exit 1; }
-          now=$(date +%s)
-          summary=$(echo "$body" | jq -c '{pitr_enabled, latest_pitr: .physical_backup_data.latest_physical_backup_date_unix,
-            latest_daily: ([.backups[]? | select(.status == "COMPLETED") | .inserted_at] | max)}')
-          echo "$body" | jq -e --argjson now "$now" --argjson pitr_max 86400 --argjson daily_max 93600 '
-            def ts: (.[0:19] | strptime("%Y-%m-%dT%H:%M:%S") | mktime);
-            (.pitr_enabled == true
-              and ((.physical_backup_data.latest_physical_backup_date_unix // 0) > 0)
-              and (($now - .physical_backup_data.latest_physical_backup_date_unix) <= $pitr_max))
-            or ((([.backups[]? | select(.status == "COMPLETED") | .inserted_at | ts] | max) // 0) as $t
-                | $t > 0 and ($now - $t) <= $daily_max)' > /dev/null \
-            || { echo "::error::No recent restore point $summary; refusing to migrate production"; exit 1; }
-          echo "restore point ok: $summary"
+          npx --yes vercel@63.1.0 deploy --yes --prod --skip-domain \
+            --build-env RELEASE_COMMIT="$GITHUB_SHA" \
+            --build-env RELEASE_PROFILE="$RELEASE_PROFILE" \
+            --build-env RELEASE_EVIDENCE_JSON="$RELEASE_EVIDENCE_JSON" > deploy-url.txt
       - name: Migrate production (migration_owner; lock_timeout 5s, statement_timeout 60s)
         run: |
           set -o pipefail
@@ -152,11 +144,6 @@ jobs:
           pnpm db:migrate > migrate.log 2>&1 || { report migrate.log; exit 1; }
           pnpm db:check-rls > check-rls.log 2>&1 || { report check-rls.log; exit 1; }
           cat migrate.log check-rls.log
-      - name: Deploy web (Vercel)
-        run: |
-          npx --yes vercel@63.1.0 pull --yes --environment=production
-          npx --yes vercel@63.1.0 build --prod
-          npx --yes vercel@63.1.0 deploy --prebuilt --prod --skip-domain > deploy-url.txt
       - name: Production smoke (exact deployment)
         run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
       - name: Promote the tested production build
@@ -171,4 +158,3 @@ jobs:
             sleep 10
           done
           echo "::error::production health check failed or canonical domain is not serving $GITHUB_SHA"; exit 1
-

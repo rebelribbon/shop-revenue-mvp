@@ -2,32 +2,47 @@
 // reminders made by the shop's follow-up rules (recovery_item state), and
 // tasks the shop writes itself (app.task).
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
-import { customer, task } from "@/db/schema";
+import { business, customer, task } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
-import { AppError, notFound } from "@/lib/errors";
 import {
-  readFollowUpRules,
-  repeatAfterDays,
-  type FollowUpRules,
-} from "@/lib/follow-up-rules";
+  outcomeLabels,
+  type CallTaskOutcome,
+  type TaskContact,
+} from "@/lib/correspondence";
+import { AppError, notFound } from "@/lib/errors";
+import { readFollowUpRules, type FollowUpRules } from "@/lib/follow-up-rules";
+import {
+  CONTACT_TASK_KINDS,
+  contactKindForTitle,
+  contactTaskAction,
+  contactTaskLabels,
+  type ContactKind,
+  type TaskAction,
+} from "@/lib/task-action";
 import { addLocalDays, localDateKey } from "@/lib/timezone";
 import {
   categoryLabels,
+  followUpDueOn,
   listFollowUpItems,
   type MoneyCategory,
 } from "./money-finder";
-import { audit, type RequestMeta } from "./records";
+import { getJob, jobInput } from "./jobs";
+import { audit, recordActivity, type RequestMeta } from "./records";
 import { todayAgenda } from "./today";
+import { currentMemberRole } from "./membership";
+import { listMyJobHandoffs, type JobHandoff } from "./job-handoffs";
 
 export type TaskRow = {
   key: string;
   source: "rule" | "manual" | "work";
   category: MoneyCategory | "manual" | "work";
-  // Work tasks: the one button that finishes them (e.g. "Create invoice").
-  action?: { label: string; href: string };
+  // The step this task asks for, separate from its related record.
+  action?: TaskAction;
+  actionUnavailable?: string;
   kindLabel: string;
   subjectId: string;
   customerId: string | null;
+  jobId?: string | null;
   customerName: string | null;
   title: string;
   detail: string | null;
@@ -40,6 +55,52 @@ export type TaskRow = {
   overdueDays: number;
 };
 
+const HANDOFF_TEXT: Record<
+  JobHandoff["stage"],
+  { title: string; action: string }
+> = {
+  inspect_vehicle: {
+    title: "Pick up vehicle, diagnose and inspect",
+    action: "Open assigned RO",
+  },
+  build_estimate: {
+    title: "Inspection complete — build the estimate",
+    action: "Build estimate",
+  },
+  perform_work: {
+    title: "Customer approved — do the authorized work",
+    action: "Open approved work",
+  },
+  invoice_customer: {
+    title: "Work complete — invoice the customer",
+    action: "Invoice and collect",
+  },
+};
+
+function handoffTask(h: JobHandoff, today: string): TaskRow {
+  return {
+    key: `handoff:${h.jobId}:${h.stage}`,
+    source: "work",
+    category: "work",
+    kindLabel: "Assigned RO",
+    subjectId: h.jobId,
+    customerId: null,
+    customerName: null,
+    title: HANDOFF_TEXT[h.stage].title,
+    detail: h.title,
+    amountCents: null,
+    phone: null,
+    email: null,
+    href: `/app/jobs?job=${h.jobId}`,
+    action: {
+      kind: "work",
+      label: HANDOFF_TEXT[h.stage].action,
+      href: `/app/jobs?job=${h.jobId}`,
+    },
+    dueOn: today,
+    overdueDays: 0,
+  };
+}
 const dayDiff = (a: string, b: string) =>
   Math.round(
     (Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / 86400000,
@@ -83,6 +144,25 @@ function hrefFor(
 }
 
 export async function listTasks(tx: TenantTx, now = new Date()) {
+  const role = await currentMemberRole(tx);
+  const handoffs = await listMyJobHandoffs(tx);
+  // A technician's Tasks screen is private: no customer follow-ups, sales
+  // opportunities, office reminders or other employees' records are loaded.
+  if (role === "technician") {
+    const [shop] = await tx
+      .select({ timezone: business.timezone })
+      .from(business)
+      .where(eq(business.id, tx.businessId))
+      .limit(1);
+    const timezone = shop?.timezone ?? "America/Chicago";
+    const today = localDateKey(now, timezone);
+    return {
+      today,
+      timezone,
+      due: handoffs.map((h) => handoffTask(h, today)),
+      later: [] as TaskRow[],
+    };
+  }
   const [f, agenda] = await Promise.all([
     listFollowUpItems(tx, now),
     todayAgenda(tx, now),
@@ -90,19 +170,16 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
   const due: TaskRow[] = [];
   const later: TaskRow[] = [];
   for (const i of f.items) {
-    // Done: it comes back when the next reminder is due (unpaid invoices
-    // every day by default, until they're paid).
-    const lastDay = i.lastContactAt
-      ? localDateKey(new Date(i.lastContactAt), f.timezone)
-      : null;
-    const nextAfterContact = lastDay
-      ? addLocalDays(lastDay, repeatAfterDays(i.category, f.rules))
-      : null;
-    // Rule reminders only appear once they're due, so: due today unless
-    // snoozed or recently done.
-    const dueOn = [i.snoozedUntil, nextAfterContact, f.today]
-      .filter((d): d is string => !!d)
-      .reduce((x, y) => (x > y ? x : y));
+    const dueOn = followUpDueOn(i, f.today, f.timezone, f.rules);
+    const href = hrefFor(i.category, i.subjectId, i.customerId);
+    const action: TaskAction | undefined =
+      i.category === "unpaid_invoice"
+        ? { kind: "work", label: "Record payment", href }
+        : i.category === "new_lead"
+          ? (contactTaskAction("call", i) ?? contactTaskAction("email", i))
+          : (contactTaskAction("text", i) ??
+            contactTaskAction("email", i) ??
+            contactTaskAction("call", i));
     const row: TaskRow = {
       key: `${i.category}:${i.subjectId}`,
       source: "rule",
@@ -110,13 +187,19 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       kindLabel: categoryLabels[i.category],
       subjectId: i.subjectId,
       customerId: i.customerId,
+      jobId: i.category === "job_update" ? i.subjectId : undefined,
       customerName: i.customerName,
-      title: titleFor(i.category, i.customerName, i.vehicleLabel),
+      title:
+        i.category === "new_lead" && action?.kind !== "call"
+          ? `Follow up with new lead ${i.customerName}`
+          : titleFor(i.category, i.customerName, i.vehicleLabel),
       detail: i.reason,
       amountCents: i.amountCents,
       phone: i.phone,
       email: i.email,
-      href: hrefFor(i.category, i.subjectId, i.customerId),
+      href,
+      action,
+      actionUnavailable: action ? undefined : "No contact details on file.",
       dueOn,
       // How long it's been waiting, for sorting oldest first.
       overdueDays: Math.max(
@@ -143,7 +226,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       phone: null,
       email: null,
       href: w.href,
-      action: { label: w.action, href: w.href },
+      action: { kind: "work", label: w.action, href: w.href },
       dueOn: f.today,
       overdueDays: w.urgent ? 1 : 0,
     });
@@ -158,6 +241,10 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       customerName: customer.displayName,
       phone: customer.phoneE164,
       email: customer.email,
+      customerStatus: customer.status,
+      doNotContact: customer.doNotContact,
+      textOptedOutAt: customer.textOptedOutAt,
+      emailOptedOutAt: customer.emailOptedOutAt,
     })
     .from(task)
     .leftJoin(
@@ -171,6 +258,28 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
     .orderBy(asc(task.dueOn))
     .limit(500);
   for (const t of mine) {
+    const kind = contactKindForTitle(t.title);
+    const canContact = t.customerStatus === "active" && !t.doNotContact;
+    const action =
+      kind && canContact
+        ? contactTaskAction(kind, {
+            phone: t.phone,
+            email: t.emailOptedOutAt ? null : t.email,
+            textAllowed: !t.textOptedOutAt,
+          })
+        : undefined;
+    const actionUnavailable =
+      !kind || action || !t.customerId
+        ? undefined
+        : !canContact
+          ? "Customer contact is unavailable."
+          : kind === "text" && t.textOptedOutAt
+            ? "Customer has opted out of texts."
+            : kind === "email" && t.emailOptedOutAt
+              ? "Customer has opted out of email."
+              : kind === "email"
+                ? "No email address on file."
+                : "No phone number on file.";
     const row: TaskRow = {
       key: `manual:${t.id}`,
       source: "manual",
@@ -178,12 +287,15 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
       kindLabel: "Your task",
       subjectId: t.id,
       customerId: t.customerId,
+      jobId: t.jobId,
       customerName: t.customerName,
       title: t.title,
       detail: t.customerName,
       amountCents: null,
       phone: t.phone,
       email: t.email,
+      action,
+      actionUnavailable,
       href: t.jobId
         ? `/app/jobs?job=${t.jobId}`
         : t.customerId
@@ -194,6 +306,9 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
     };
     (row.dueOn <= f.today ? due : later).push(row);
   }
+  // Show only the logged-in advisor's own estimate handoffs, not other
+  // staff members' assigned notifications.
+  due.unshift(...handoffs.map((h) => handoffTask(h, f.today)));
   // Oldest first, money first within a day.
   due.sort(
     (a, b) =>
@@ -229,10 +344,90 @@ export async function addTask(
   return { id: row.id };
 }
 
+export async function getJobFollowUp(tx: TenantTx, jobId: string) {
+  const job = await getJob(tx, jobId);
+  if (!job) return null;
+  const identity = jobInput.pick({ customerId: true }).safeParse(job.data);
+  if (!identity.success) return null;
+  const { customerId } = identity.data;
+  const [person] = await tx
+    .select({
+      name: customer.displayName,
+      phone: customer.phoneE164,
+      email: customer.email,
+      status: customer.status,
+      doNotContact: customer.doNotContact,
+      textOff: customer.textOptedOutAt,
+      emailOff: customer.emailOptedOutAt,
+    })
+    .from(customer)
+    .where(
+      and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
+    );
+  if (!person) return null;
+  const methods =
+    person.status === "active" && !person.doNotContact
+      ? CONTACT_TASK_KINDS.filter((kind) =>
+          contactTaskAction(kind, {
+            phone: person.phone,
+            email: person.emailOff ? null : person.email,
+            textAllowed: !person.textOff,
+          }),
+        )
+      : [];
+  return {
+    jobId: job.id,
+    title: job.title,
+    customerId,
+    customerName: person.name,
+    methods,
+  };
+}
+
+async function shopToday(tx: TenantTx) {
+  const [profile] = await tx
+    .select({ timezone: business.timezone })
+    .from(business)
+    .where(eq(business.id, tx.businessId));
+  return localDateKey(new Date(), profile.timezone);
+}
+
+export async function addJobFollowUp(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: { jobId: string; method: ContactKind; dueOn: string },
+) {
+  const context = await getJobFollowUp(tx, input.jobId);
+  if (!context) throw notFound("That job");
+  if (!context.methods.includes(input.method))
+    throw new AppError("VALIDATION", "Choose an available contact method.");
+  const title =
+    `${contactTaskLabels[input.method]} about ${context.title}`.slice(0, 200);
+  const result = await addTask(tx, meta, {
+    title,
+    customerId: context.customerId,
+    jobId: context.jobId,
+    dueOn: input.dueOn,
+  });
+  const later = input.dueOn > (await shopToday(tx));
+  return {
+    ...result,
+    redirectTo: later
+      ? "/app/tasks?view=later&followUp=1"
+      : "/app/tasks?followUp=1",
+  };
+}
+
 export async function updateTask(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { id: string; action: "done" | "snooze"; days?: 1 | 7 },
+  input: {
+    id: string;
+    action: "done" | "snooze" | CallTaskOutcome;
+    days?: 1 | 7;
+    note?: string;
+    taskContact?: TaskContact;
+  },
 ) {
   const [row] = await tx
     .select()
@@ -241,24 +436,39 @@ export async function updateTask(
     .for("update");
   if (!row) throw notFound("That task");
   if (row.doneAt) throw new AppError("INVALID_TRANSITION", "Already done.");
-  const change =
-    input.action === "done"
-      ? { doneAt: new Date() }
-      : {
-          dueOn: addLocalDays(
-            localDateKey(
-              new Date(),
-              String(
-                (
-                  await tx.execute(
-                    sql`SELECT timezone FROM app.business WHERE id=${tx.businessId}`,
-                  )
-                ).rows[0].timezone,
-              ),
-            ),
-            input.days ?? 1,
-          ),
-        };
+  const contact = input.taskContact;
+  if (
+    contact &&
+    (row.customerId !== contact.customerId ||
+      row.jobId !== (contact.jobId ?? null) ||
+      contactKindForTitle(row.title) !== contact.channel)
+  )
+    throw notFound("That customer contact task");
+  const callOutcome =
+    input.action === "done" || input.action === "snooze" ? null : input.action;
+  if (
+    callOutcome &&
+    (!row.customerId || contactKindForTitle(row.title) !== "call")
+  )
+    throw new AppError("VALIDATION", "Choose a customer call task.");
+  const completed = input.action === "done" || input.action === "reached";
+  let change: { doneAt: Date } | { dueOn: string } = { doneAt: new Date() };
+  if (!completed || contact) {
+    const today = await shopToday(tx);
+    if ((callOutcome || contact) && row.dueOn > today)
+      throw new AppError(
+        "INVALID_TRANSITION",
+        `This ${callOutcome ? "call" : "task"} is already scheduled for later.`,
+      );
+    if (contact?.followUpOn && contact.followUpOn <= today)
+      throw new AppError("VALIDATION", "Choose a date after today.");
+    if (!completed)
+      change = {
+        dueOn:
+          contact?.followUpOn ??
+          addLocalDays(today, callOutcome ? 1 : (input.days ?? 1)),
+      };
+  }
   await tx
     .update(task)
     .set(change)
@@ -269,6 +479,27 @@ export async function updateTask(
     targetId: input.id,
     after: change,
   });
+  if (completed && row.customerId && !callOutcome && !contact) {
+    await recordActivity(tx, {
+      kind: "task.completed",
+      subjectType: "customer",
+      subjectId: row.customerId,
+      summary: `Task completed · ${row.title}`,
+      data: { taskId: row.id, jobId: row.jobId },
+    });
+  }
+  if (callOutcome && row.customerId) {
+    const note = input.action === "reached" ? input.note?.trim() : undefined;
+    const result =
+      outcomeLabels[callOutcome] + (completed ? "" : " · try tomorrow");
+    await recordActivity(tx, {
+      kind: "task.call_outcome",
+      subjectType: "customer",
+      subjectId: row.customerId,
+      summary: `${result} · ${row.title}${note ? ` — ${note}` : ""}`,
+      data: { taskId: row.id, jobId: row.jobId, outcome: input.action, note },
+    });
+  }
   return { id: input.id };
 }
 

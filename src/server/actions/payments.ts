@@ -3,9 +3,18 @@ import { z } from "zod";
 import { cookies } from "next/headers";
 import { safeStripeError } from "@/lib/stripe";
 import { getSessionState } from "@/server/auth/session";
+import { assertSessionAssurance } from "@/server/auth/assurance";
 import { getRequestMeta } from "@/server/request";
 import { toActionError, type ActionResult } from "./define";
 import { AppError } from "@/lib/errors";
+import {
+  beginStripeConnection,
+  currentStripeConnection,
+} from "@/domain/stripe-connect";
+import {
+  stripeConnectCookieName,
+  stripeConnectCookieOptions,
+} from "@/lib/stripe-connect";
 import {
   beginInvoiceCheckout,
   connectShop,
@@ -25,6 +34,7 @@ async function shopContext(owner = false) {
         ? "Only the shop owner can do this."
         : "Please sign in with a shop account.",
     );
+  await assertSessionAssurance();
   return state.session;
 }
 export async function connectStripeAction(): Promise<
@@ -32,7 +42,20 @@ export async function connectStripeAction(): Promise<
 > {
   const meta = await getRequestMeta();
   try {
-    return { ok: true, data: await connectShop(await shopContext(true), meta) };
+    const shop = await shopContext(true);
+    const connection = await currentStripeConnection(shop);
+    if (
+      connection?.accountId &&
+      connection.cardPaymentsStatus !== "disconnected"
+    )
+      return { ok: true, data: await connectShop(shop, meta) };
+    const result = await beginStripeConnection(shop, meta);
+    (await cookies()).set(
+      stripeConnectCookieName(),
+      result.state,
+      stripeConnectCookieOptions(),
+    );
+    return { ok: true, data: { url: result.url } };
   } catch (e) {
     return {
       ok: false,

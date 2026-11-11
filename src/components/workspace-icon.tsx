@@ -1,5 +1,6 @@
 const paths = {
   money: "M3 5h18v14H3zM16 12h5M8 9v6M6 11h4",
+  reports: "M3 3v18h18M7 16v-5M12 16V7M17 16v-9",
   home: "M3 11 12 3l9 8M5 10v11h5v-7h4v7h5V10",
   customers:
     "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3a4 4 0 0 1 0 8M22 21v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0",

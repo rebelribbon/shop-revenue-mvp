@@ -1,5 +1,6 @@
 import { assertSessionAssurance } from "../auth/assurance";
 import { safeErrorDiagnostic } from "@/lib/errors";
+import { stripeErrorDiagnostic } from "@/lib/stripe";
 // Server action contract (Section 10): Zod validation with unknown fields
 // rejected; caller resolved from the session; one withTenant transaction;
 // clientRequestId idempotency stored in request_idempotency (48 h); typed
@@ -9,7 +10,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requestIdempotency } from "@/db/schema";
 import { withTenant, type TenantTx } from "@/db/tenant";
-import { assertOwner } from "@/domain/membership";
+import { assertOwner, currentMemberRole } from "@/domain/membership";
 import { assertCanMakeChanges } from "@/domain/billing";
 import { audit, type RequestMeta } from "@/domain/records";
 import { AppError, fromDatabaseError, type ErrorCode } from "@/lib/errors";
@@ -34,6 +35,7 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
   name: string;
   input: S;
   ownerOnly?: boolean;
+  technicianAccess?: (tx: TenantTx, input: z.infer<S>) => Promise<void>;
   // Lets an action run while the shop's subscription is inactive (read-only).
   allowWhenUnpaid?: boolean;
   run: (ctx: Ctx, input: z.infer<S>) => Promise<R>;
@@ -77,7 +79,7 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
         );
         throw new AppError("FORBIDDEN", "View-as is read-only.");
       }
-      await assertSessionAssurance(session.role);
+      await assertSessionAssurance();
       const parsed = schema.safeParse(trimStrings(raw));
       if (!parsed.success) {
         const fields = Object.fromEntries(
@@ -100,6 +102,16 @@ export function defineShopAction<S extends z.ZodObject, R, A = R>(cfg: {
         cfg.name,
         clientRequestId,
         cfg.persist ?? ((r: R) => r),
+        async (tx) => {
+          if ((await currentMemberRole(tx)) === "technician") {
+            if (!cfg.technicianAccess)
+              throw new AppError(
+                "FORBIDDEN",
+                "Ask the front office to do that.",
+              );
+            await cfg.technicianAccess(tx, input as z.infer<S>);
+          }
+        },
         async (tx) => {
           if (cfg.ownerOnly) await assertOwner(tx);
           if (!cfg.allowWhenUnpaid) await assertCanMakeChanges(tx);
@@ -136,6 +148,7 @@ async function runOnce<R>(
   action: string,
   clientRequestId: string,
   persist: (r: R) => unknown,
+  authorize: (tx: TenantTx) => Promise<void>,
   fn: (tx: TenantTx) => Promise<R>,
 ) {
   const lookup = (tx: TenantTx) =>
@@ -153,6 +166,7 @@ async function runOnce<R>(
       );
   try {
     return await withTenant(session.businessId, session.actor, async (tx) => {
+      await authorize(tx);
       const [prior] = await lookup(tx);
       if (prior) {
         if (prior.action !== action)
@@ -184,7 +198,10 @@ async function runOnce<R>(
       const [prior] = await withTenant(
         session.businessId,
         session.actor,
-        lookup,
+        async (tx) => {
+          await authorize(tx);
+          return lookup(tx);
+        },
       );
       if (prior)
         return {
@@ -206,6 +223,14 @@ export function toActionError(
       ? err
       : fromDatabaseError((err as { cause?: unknown }).cause ?? err);
   if (app) {
+    const providerDiagnostic = stripeErrorDiagnostic(app);
+    if (providerDiagnostic)
+      logger.warn({
+        event: "action.provider_error",
+        action,
+        requestId: meta.requestId,
+        ...providerDiagnostic,
+      });
     if (app.code === "FORBIDDEN")
       logger.warn({
         event: "action.forbidden",

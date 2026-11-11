@@ -7,6 +7,7 @@ import { shopMediaKey } from "@/domain/job-media";
 import { createReadUrl } from "@/lib/media-storage";
 import { hashToken, isWellFormedToken } from "@/lib/tokens";
 import { getSessionState } from "@/server/auth/session";
+import { sessionNeedsMfa } from "@/server/auth/assurance";
 
 export const dynamic = "force-dynamic";
 const notFound = () =>
@@ -38,6 +39,11 @@ export async function GET(
   } else {
     const state = await getSessionState();
     if (state.kind !== "shop") return notFound();
+    if (await sessionNeedsMfa())
+      return Response.json(
+        { error: "Verify your authenticator first" },
+        { status: 403, headers: { "Cache-Control": "private, no-store" } },
+      );
     key = await withTenant(
       state.session.businessId,
       state.session.actor,

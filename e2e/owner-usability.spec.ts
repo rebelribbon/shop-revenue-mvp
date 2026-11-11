@@ -39,7 +39,9 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
-  await page.getByRole("link", { name: "New job", exact: true }).click();
+  // The customer page has its own "+ New RO"; wait for the vehicle page.
+  await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
+  await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page
     .getByLabel("Job name", { exact: true })
     .fill(`Saved brakes ${name}`);
@@ -103,7 +105,7 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     .getByLabel("Reason", { exact: true })
     .fill(`Thursday brake visit ${name}`);
   await page.getByRole("button", { name: "Book visit", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Visit booked");
+  await expect(page.getByRole("status")).toContainText("Appointment booked");
   await expect(
     page.getByText(`Thursday brake visit ${name}`, { exact: false }),
   ).toBeVisible();
@@ -144,6 +146,15 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
     fullPage: true,
   });
   await page.goto("/app/money?month=2026-10");
+  await expect(
+    page.getByRole("heading", {
+      name: "Estimated profit on this month’s invoices",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/collections above belong to the month money arrived/),
+  ).toBeVisible();
   await auditUX(page);
   await page.screenshot({
     path: `test-results/owner-money-${info.project.name}.png`,

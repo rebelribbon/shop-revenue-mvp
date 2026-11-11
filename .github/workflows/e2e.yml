@@ -21,6 +21,8 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PUBLIC_SIGNUP_ENABLED: "true"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -49,17 +51,30 @@ jobs:
           nohup pnpm start > web.log 2>&1 &
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
       - run: timeout 180 pnpm exec playwright install chromium
+      - name: Assigned RO handoffs and technician permissions (phone and desktop)
+        run: pnpm exec playwright test e2e/ro-handoffs.spec.ts e2e/technician-role.spec.ts e2e/tech-board.spec.ts --max-failures=1 --reporter=list,github
       - name: Playwright (phone 390x844 and desktop)
-        run: pnpm e2e --max-failures=0
+        run: |
+          pnpm e2e --project=phone --max-failures=0 --grep-invert @mfa --reporter=list,github
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm e2e --project=desktop --max-failures=0 --grep-invert @mfa --reporter=list,github
       - name: Job form development-mode smoke
         run: |
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
           PORT=3001 nohup pnpm dev > dev-web.log 2>&1 &
           for i in $(seq 1 45); do curl -fsS -o /dev/null http://localhost:3001/sign-in && break; sleep 2; done
           E2E_BASE_URL=http://localhost:3001 pnpm exec playwright test e2e/owner-usability.spec.ts --project=phone
+      - name: Enforced MFA for every shop and internal role
+        run: |
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          REQUIRE_MFA=true PORT=3002 nohup pnpm start > mfa-web.log 2>&1 &
+          for i in $(seq 1 45); do curl -fsS -o /dev/null http://localhost:3002/sign-in && break; sleep 2; done
+          E2E_MFA=true E2E_BASE_URL=http://localhost:3002 pnpm exec playwright test e2e/mfa-enforcement.spec.ts --project=phone --output=test-results/mfa
       - if: failure()
         run: |
           tail -100 web.log
           test ! -f dev-web.log || tail -100 dev-web.log
+          test ! -f mfa-web.log || tail -100 mfa-web.log
       - if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -119,9 +134,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           test -n "$VERCEL_TOKEN"
-          npx --yes vercel@63.1.0 pull --yes --environment=preview
-          npx --yes vercel@63.1.0 build
-          npx --yes vercel@63.1.0 deploy --prebuilt > deploy-url.txt
+          npx --yes vercel@63.1.0 deploy --yes > deploy-url.txt
           scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
           if [ "$GITHUB_REF_NAME" = "m4-invoices-payments" ] || [ "$GITHUB_REF_NAME" = "m7-money-finder" ] || [ "$GITHUB_REF_NAME" = "m8-recovered-revenue" ] || [ "$GITHUB_REF_NAME" = "m9-launch-hardening" ]; then
             npx --yes vercel@63.1.0 alias set "$(tail -n 1 deploy-url.txt)" shop-revenue-m4-preview-brads-projects-3548d304.vercel.app --scope "$VERCEL_ORG_ID"

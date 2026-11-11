@@ -5,7 +5,11 @@ import { safeNext } from "@/lib/safe-next";
 import { maskTokenPath } from "@/lib/logger";
 import { safeErrorDiagnostic } from "@/lib/errors";
 import { mfaNeeded } from "@/lib/mfa-policy";
-import { releaseConfiguration } from "@/lib/release-readiness";
+import {
+  releaseConfiguration,
+  stripeAccountReady,
+  productionRecoveryReady,
+} from "@/lib/release-readiness";
 import { checkAuthThrottle } from "@/domain/auth-throttle";
 import { runMaintenanceBatch, maintenanceStatus } from "@/domain/maintenance";
 import { withGlobalWorker, withTenant } from "@/db/tenant";
@@ -22,6 +26,131 @@ beforeAll(() => {
     "test-only-hardening-session-signing-secret";
 });
 describe("launch security boundaries", () => {
+  it("requires fresh provider and independent backups for daily recovery, or verified PITR retention", () => {
+    const now = Date.parse("2026-11-05T20:00:00Z");
+    const fresh = "2026-11-05T07:00:00Z";
+    expect(productionRecoveryReady(undefined, now)).toBe(false);
+    expect(
+      productionRecoveryReady(
+        { mode: "daily-offsite", providerBackupAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        {
+          mode: "daily-offsite",
+          providerBackupAt: fresh,
+          offsiteBackupAt: fresh,
+        },
+        now,
+      ),
+    ).toBe(true);
+    for (const invalid of [
+      "bad-date",
+      "2026-11-05T21:00:00Z",
+      "2026-11-04T19:59:59Z",
+    ]) {
+      expect(
+        productionRecoveryReady(
+          {
+            mode: "daily-offsite",
+            providerBackupAt: fresh,
+            offsiteBackupAt: invalid,
+          },
+          now,
+        ),
+      ).toBe(false);
+      expect(
+        productionRecoveryReady(
+          {
+            mode: "daily-offsite",
+            providerBackupAt: invalid,
+            offsiteBackupAt: fresh,
+          },
+          now,
+        ),
+      ).toBe(false);
+    }
+    expect(
+      productionRecoveryReady(
+        {
+          mode: "daily-offsite",
+          providerBackupAt: "2026-11-04T20:00:00Z",
+          offsiteBackupAt: fresh,
+        },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      productionRecoveryReady(
+        { mode: "pitr", retentionDays: 7, latestRestorePointAt: fresh },
+        now,
+      ),
+    ).toBe(true);
+    expect(
+      productionRecoveryReady(
+        { mode: "pitr", retentionDays: 6, latestRestorePointAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        { mode: "pitr", retentionDays: "7", latestRestorePointAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        {
+          mode: "pitr",
+          retentionDays: 7,
+          latestRestorePointAt: "2026-11-04T19:59:59Z",
+        },
+        now,
+      ),
+    ).toBe(false);
+    expect(
+      productionRecoveryReady(
+        { mode: "daily", providerBackupAt: fresh, offsiteBackupAt: fresh },
+        now,
+      ),
+    ).toBe(false);
+  });
+  it("requires activated charges, payouts and complete business verification before commercial release", () => {
+    const ready = {
+      charges_enabled: true,
+      payouts_enabled: true,
+      details_submitted: true,
+      requirements: { disabled_reason: null, currently_due: [], past_due: [] },
+    };
+    expect(stripeAccountReady(ready)).toBe(true);
+    expect(stripeAccountReady({})).toBe(false);
+    for (const field of [
+      "charges_enabled",
+      "payouts_enabled",
+      "details_submitted",
+    ])
+      expect(stripeAccountReady({ ...ready, [field]: false })).toBe(false);
+    expect(
+      stripeAccountReady({
+        ...ready,
+        requirements: { disabled_reason: "requirements.past_due" },
+      }),
+    ).toBe(false);
+    expect(
+      stripeAccountReady({
+        ...ready,
+        requirements: { currently_due: ["business_type"] },
+      }),
+    ).toBe(false);
+    expect(
+      stripeAccountReady({
+        ...ready,
+        requirements: { past_due: ["business_type"] },
+      }),
+    ).toBe(false);
+  });
   it("rejects control-character and backslash redirect bypasses", () => {
     for (const path of [
       "https://outside.example",
@@ -169,7 +298,8 @@ describe("owner exports and scheduled maintenance", () => {
         tx.execute(sql`SELECT * FROM app.maintenance_run`),
       ),
     ).rejects.toThrow();
-  });
+    // Visits every shop in the test database (Monday summaries, Mon-Wed).
+  }, 120_000);
   it("rejects a mismatched vehicle while maintaining export tenant isolation", async () => {
     const a = await seedTenant("Vehicles"),
       b = await seedTenant("Other vehicles");

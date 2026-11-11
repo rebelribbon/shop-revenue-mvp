@@ -26,7 +26,7 @@ test("Technicians see only their jobs and no owner pages", async ({
   const jobUrls: string[] = [];
   for (const title of [mine, other]) {
     await page.goto(vehicleUrl);
-    await page.getByRole("link", { name: "New job", exact: true }).click();
+    await page.getByRole("link", { name: "+ New RO", exact: true }).click();
     await page.getByLabel("Job name").fill(title);
     await page.getByRole("button", { name: "Add labor", exact: true }).click();
     await page.getByLabel("Description", { exact: true }).fill("Diagnose");
@@ -57,6 +57,22 @@ test("Technicians see only their jobs and no owner pages", async ({
   await expect(tech.getByText(mine, { exact: true }).first()).toBeVisible();
   await expect(tech.getByText(other, { exact: true })).toHaveCount(0);
   await auditUX(tech, true);
+  await tech.goto(jobUrls[0]);
+  await expect(
+    tech.getByRole("button", { name: "Save tech", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    tech.getByRole("link", { name: "+ Photo / video", exact: true }),
+  ).toBeVisible();
+  await expect(
+    tech.getByRole("link", { name: "+ File", exact: true }),
+  ).toHaveCount(0);
+  await tech
+    .getByRole("button", { name: "▶ Start clock", exact: true })
+    .click();
+  await expect(tech.getByRole("button", { name: /Stop clock/ })).toBeVisible();
+  await tech.getByRole("button", { name: /Stop clock/ }).click();
+  await auditUX(tech, true);
   // The other job's page doesn't open for them.
   await tech.goto(jobUrls[1]);
   await expect(
@@ -68,10 +84,12 @@ test("Technicians see only their jobs and no owner pages", async ({
   await expect(tech.getByRole("group", { name: "Whose jobs" })).toHaveCount(0);
   // Owner pages and money exports are off limits.
   await tech.goto("/app/settings/booking");
-  await expect(tech).toHaveURL(/\/app\?denied=1/);
+  await expect(tech).toHaveURL(/\/app\/tasks$/);
   const csv = await tech.request.get("/app/money/reports/csv?report=sales");
   expect(csv.status()).toBe(404);
   await tech.goto("/app/settings");
   await expect(tech.getByText("Support access")).toHaveCount(0);
+  await tech.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(tech).toHaveURL(/\/sign-in$/);
   await ctx.close();
 });

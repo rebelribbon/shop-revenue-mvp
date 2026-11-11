@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { HydratedMain } from "@/components/hydrated-main";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 
 // "+ New": everything you can add, one tap each.
 export default async function CreatePage() {
-  const s = await requireShopSession("/app/create");
+  const s = await requireFrontOfficeView("/app/create");
   const items = [
     ["/app/jobs?new=1", "Job", "Parts, labor and an estimate"],
     ["/app/customers/new", "Customer", "Name, phone and vehicle or address"],
-    ["/app/checkout", "Payment", "Check someone out: card, cash or check"],
-    ["/app/checkout/sale", "Quick sale", "Sell parts over the counter, no job"],
-    ["/app/schedule?new=1", "Visit", "Book a time on the calendar"],
+    ["/app/schedule?new=1", "Appointment", "Book a time on the calendar"],
     ["/app/tasks?add=1", "Task", "A reminder for you or the shop"],
     ...(s.role === "owner"
       ? [

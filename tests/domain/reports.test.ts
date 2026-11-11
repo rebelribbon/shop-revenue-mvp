@@ -8,6 +8,81 @@ import { presetRange, reportCsv, runReport } from "@/domain/reports";
 import { localDateKey } from "@/lib/timezone";
 import { signTestEstimate } from "../helpers/authorization";
 import { meta, seedTenant } from "../helpers/fixtures";
+import { createAppointment } from "@/domain/appointments";
+import { addLocalDays } from "@/lib/timezone";
+
+it("operational reports use shop calendar boundaries and keep other shops and staff out", async () => {
+  const t = await seedTenant("Operations reports", { withStaff: true });
+  const other = await seedTenant("Other operations");
+  const run = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
+    withTenant(t.businessId, t.owner.actor, fn);
+  const c = await run((tx) =>
+    createCustomer(tx, meta(), {
+      firstName: "Operations customer",
+      lastName: "",
+    }),
+  );
+  const otherCustomer = await withTenant(
+    other.businessId,
+    other.owner.actor,
+    (tx) =>
+      createCustomer(tx, meta(), {
+        firstName: "Other shop customer",
+        lastName: "",
+      }),
+  );
+  const today = localDateKey(new Date(), "America/Chicago");
+  const tomorrow = addLocalDays(today, 1);
+  for (const time of [
+    `${today}T00:00`,
+    `${today}T23:59`,
+    `${tomorrow}T00:00`,
+  ]) {
+    await run((tx) =>
+      createAppointment(tx, meta(), {
+        customerId: c.id,
+        localStartsAt: time,
+        reason: "Service",
+      }),
+    );
+  }
+  await withTenant(other.businessId, other.owner.actor, (tx) =>
+    createAppointment(tx, meta(), {
+      customerId: otherCustomer.id,
+      localStartsAt: `${today}T12:00`,
+      reason: "Other shop",
+    }),
+  );
+  const range = { from: today, to: today };
+  const appointments = await run((tx) => runReport(tx, "appointments", range));
+  expect(appointments.rows).toHaveLength(2);
+  expect(appointments.rows.map((r) => r.slice(0, 3))).toEqual([
+    [today, "12:00 AM", "Operations customer"],
+    [today, "11:59 PM", "Operations customer"],
+  ]);
+  expect(appointments.totals?.[1]).toBe(2);
+  const growth = await run((tx) => runReport(tx, "customer-growth", range));
+  expect(growth.rows).toEqual([
+    [today, "Operations customer", "Not set", "Active"],
+  ]);
+  expect(
+    (
+      await run((tx) =>
+        runReport(tx, "customer-growth", { from: tomorrow, to: tomorrow }),
+      )
+    ).rows,
+  ).toEqual([]);
+  for (const key of ["appointments", "customer-growth"] as const) {
+    await expect(
+      withTenant(t.businessId, t.staff!.actor, (tx) =>
+        runReport(tx, key, range),
+      ),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(reportCsv(await run((tx) => runReport(tx, key, range)))).toContain(
+      "Operations customer",
+    );
+  }
+});
 
 it("picks calendar ranges", () => {
   expect(presetRange("month", "2026-11-02")).toEqual({

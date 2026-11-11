@@ -17,11 +17,13 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .fill(`job-${info.project.name}@example.test`);
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
+  const customerUrl = page.url();
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
   await page.getByLabel("Make", { exact: true }).fill("Honda");
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
-  await page.getByRole("link", { name: "New job", exact: true }).click();
+  const vehicleId = new URL(page.url()).pathname.split("/").at(-1)!;
+  await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await page.getByLabel(/Warranty in months/).fill("12");
   await expect(
@@ -65,21 +67,68 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   const card = page
     .getByRole("heading", { name: `Brakes ${info.project.name}`, exact: true })
     .locator("xpath=ancestor::article[1]");
+  await card.getByRole("link", { name: "Follow up", exact: true }).click();
+  const followUp = page.getByRole("region", { name: "Add a follow-up" });
+  await expect(followUp).toContainText(`Job ${info.project.name}`);
+  await expect(followUp).toContainText(`Brakes ${info.project.name}`);
+  await expect(followUp.getByLabel("How will you follow up?")).toHaveValue(
+    "call",
+  );
+  const date = followUp.getByLabel("Due date", { exact: true });
+  const tomorrow = await date.inputValue();
+  await date.fill(
+    new Date(Date.parse(`${tomorrow}T12:00:00Z`) - 86400000)
+      .toISOString()
+      .slice(0, 10),
+  );
+  await auditUX(page);
+  await followUp
+    .getByRole("button", { name: "Save follow-up", exact: true })
+    .click();
+  await expect(
+    page.getByText("Follow-up scheduled.", { exact: true }),
+  ).toBeVisible();
+  const call = page
+    .getByRole("listitem")
+    .filter({ hasText: `Call about Brakes ${info.project.name}` });
+  await expect(
+    call.getByRole("link", { name: "Call", exact: true }),
+  ).toHaveAttribute("href", `tel:${mobile}`);
+  await expect(
+    call.getByRole("button", { name: "No answer · try tomorrow", exact: true }),
+  ).toBeVisible();
+  await call
+    .getByRole("button", { name: "Left message · try tomorrow", exact: true })
+    .click();
+  await expect(call).toHaveCount(0);
+  await page.getByRole("link", { name: "Coming up", exact: true }).click();
+  await expect(call).toBeVisible();
+  await page.goto(`${customerUrl}?view=history`);
+  await expect(
+    page.getByText(
+      `Left message · try tomorrow · Call about Brakes ${info.project.name}`,
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.goto(jobUrl);
   await card
-    .getByRole("button", { name: "Send estimate", exact: true })
+    .getByRole("button", {
+      name: "Prepare estimate & choose recipient",
+      exact: true,
+    })
     .click();
   await expect(
     card.getByRole("link", { name: "Text to customer", exact: true }),
   ).toHaveAttribute(
     "href",
-    new RegExp(`^sms:\\${mobile}[?&]body=.*%2Festimate%2F`),
+    new RegExp(`^sms:\\${mobile}[?&]body=.*%2Fpacket%3F`),
   );
   await expect(
-    card.getByRole("link", { name: "Email to customer", exact: true }),
+    card.getByRole("link", { name: "Open email app instead", exact: true }),
   ).toHaveAttribute(
     "href",
     new RegExp(
-      `^mailto:job-${info.project.name}@example\\.test\\?subject=.*&body=.*%2Festimate%2F`,
+      `^mailto:job-${info.project.name}@example\\.test\\?subject=.*&body=.*%2Fpacket%3F`,
     ),
   );
   await expect(
@@ -88,6 +137,40 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   const href = await card
     .getByRole("link", { name: "Open customer estimate", exact: true })
     .getAttribute("href");
+  const estimateDraft = await card
+    .getByRole("link", { name: "Text estimate ready", exact: true })
+    .getAttribute("href");
+  expect(estimateDraft).toMatch(new RegExp(`^sms:\\${mobile}[?&]body=`));
+  expect(decodeURIComponent(estimateDraft!)).toContain(
+    `Hi Job ${info.project.name},`,
+  );
+  expect(decodeURIComponent(estimateDraft!)).toContain(
+    new URL(href!, jobUrl).href,
+  );
+  await card
+    .getByRole("link", { name: "Text estimate ready", exact: true })
+    .click();
+  const contact = page.getByRole("dialog", { name: "Log customer contact" });
+  const summary = contact.getByLabel("Short summary");
+  await expect(summary).toHaveValue("Shared the estimate approval link.");
+  await contact.getByLabel("What happened?").selectOption("received");
+  await expect(summary).toHaveValue("");
+  await contact.getByLabel("What happened?").selectOption("sent");
+  await expect(summary).toHaveValue("Shared the estimate approval link.");
+  await contact.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(contact).not.toBeVisible();
+  await page.goto(
+    `/app/jobs?q=${encodeURIComponent(`Brakes ${info.project.name}`)}`,
+  );
+  const listedJob = page
+    .getByRole("link", {
+      name: `Open job: Brakes ${info.project.name} · Estimate sent`,
+      exact: true,
+    })
+    .locator("xpath=ancestor::article[1]");
+  await expect(
+    listedJob.getByRole("link", { name: "Follow up", exact: true }),
+  ).toBeVisible();
   await page.goto(href!);
   await expect(
     page.getByRole("heading", { name: "Estimate · Version 1", exact: true }),
@@ -120,6 +203,23 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await auditUX(page);
   await page.reload();
   await expect(page.getByText("Pads: Approved", { exact: true })).toBeVisible();
+  await page.goto(
+    `/app/jobs?q=${encodeURIComponent(`Brakes ${info.project.name}`)}`,
+  );
+  const approvedJob = page
+    .getByRole("link", {
+      name: `Open job: Brakes ${info.project.name} · Approved`,
+      exact: true,
+    })
+    .locator("xpath=ancestor::article[1]");
+  await approvedJob.getByRole("link", { name: "Book", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`[?&]vehicleId=${vehicleId}(?:&|$)`));
+  await expect(
+    page.getByLabel("Customer", { exact: true }).locator("option:checked"),
+  ).toHaveText(`Job ${info.project.name}`);
+  await expect(
+    page.getByLabel("Vehicle (optional)", { exact: true }),
+  ).toHaveValue(vehicleId);
   await page.goto(jobUrl);
   const workflow = page.getByRole("region", {
     name: "Job workflow",
@@ -196,6 +296,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await auditUX(page);
   // Invoiced job: extra work goes on a supplement, not a new job.
   await page.goto(`${jobUrl.split("&")[0]}&tab=work`);
+  const pickupDraft = await page
+    .getByRole("link", { name: "Text ready for pickup", exact: true })
+    .getAttribute("href");
+  expect(decodeURIComponent(pickupDraft!)).toContain(`sms:${mobile}`);
+  expect(decodeURIComponent(pickupDraft!)).toContain("ready for pickup");
   await expect(page.locator("[data-supplement-note]")).toContainText(
     "supplement",
   );
@@ -230,18 +335,30 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     page.getByRole("region", { name: "Job workflow" }),
   ).toContainText("Complete");
   await page.getByRole("link", { name: "History", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /^Copy (RO|job) number$/ }),
+  ).not.toHaveAttribute("data-ux-primary", "true");
   await expect(page.locator("ol.workflow-timeline")).toContainText(
     "Work completed",
   );
-  // Inspection: mark an item, save, and send it to the estimate.
+  // Inspection: save partial findings using the current 40-point template.
   await page.getByRole("link", { name: /^Inspection/ }).click();
-  const brakes = page.getByRole("group", { name: "Front brakes" });
-  await brakes.getByLabel("Needs work").check();
-  await brakes.getByLabel("What did you find?").fill("pads at 2 mm");
+  const windshield = page.getByRole("group", {
+    name: "Windshield",
+    exact: true,
+  });
+  await windshield.getByLabel("Service Now", { exact: true }).check();
+  await windshield
+    .getByLabel("Technician findings")
+    .fill("crack in driver's field of view");
+  await windshield.getByLabel(/Proposed work/).fill("Replace windshield");
   await page
-    .getByRole("button", { name: "Save inspection", exact: true })
+    .getByRole("button", { name: "Save progress", exact: true })
     .click();
-  await expect(page.getByText("1 need work")).toBeVisible();
+  await expect(page.getByText("1 service now", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Submit inspection → Notify advisor" }),
+  ).toBeDisabled();
   await auditUX(page);
   await page.screenshot({
     path: `test-results/ux-inspection-${info.project.name}.png`,
@@ -272,11 +389,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     fullPage: true,
   });
   await page.goto("/app/jobs");
-  await expect(
-    page.getByRole("link", {
-      name: new RegExp(`^Open job: Brakes ${info.project.name}`),
-    }),
-  ).toContainText("owes $150.00");
+  const workCard = page.getByRole("link", {
+    name: new RegExp(`^Open job: Brakes ${info.project.name}`),
+  });
+  await expect(workCard).toContainText("Balance due");
+  await expect(workCard).toContainText("$150.00");
   await page.goto(invoiceUrl);
   await invoice.getByText("Correct this entry", { exact: true }).click();
   await invoice

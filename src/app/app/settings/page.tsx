@@ -1,9 +1,9 @@
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
-import { requireShopSession } from "@/server/views/shop";
+import { requireFrontOfficeView } from "@/server/views/shop";
 
 export default async function SettingsPage() {
-  const s = await requireShopSession("/app/settings");
+  const s = await requireFrontOfficeView("/app/settings");
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Settings</h1>
@@ -58,6 +58,15 @@ export default async function SettingsPage() {
             <strong>Invoice layout</strong>
             <span className="muted">
               Choose what customers see on every invoice
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/payments">
+            <strong>Online payments</strong>
+            <span className="muted">
+              Set up Stripe to receive customer invoice payments in your shop’s
+              account
             </span>
           </Link>
         )}

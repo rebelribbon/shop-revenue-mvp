@@ -1,3 +1,7 @@
+import {
+  currentSubscriptionPrice,
+  billingPortalConfiguration,
+} from "./commercial-billing";
 // Shop Revenue's own subscription billing (the shop pays us). Stripe Checkout
 // collects the card and starts the trial; the Stripe Customer Portal handles card
 // changes and cancellation; webhooks keep app.shop_subscription in sync.
@@ -35,7 +39,7 @@ export async function shopBillingAccess(
   tx: TenantTx,
   now = new Date(),
 ): Promise<BillingAccess> {
-  if (!billingEnabled()) return { kind: "off" };
+  if (!billingEnabled()) return billingAccess(null, now, false);
   return billingAccess(await getShopSubscription(tx), now);
 }
 
@@ -46,14 +50,23 @@ export async function assertCanMakeChanges(tx: TenantTx) {
   if (canMakeChanges(access)) return;
   throw new AppError(
     "NOT_ELIGIBLE",
-    access.kind === "setup"
-      ? "Start your free trial in Settings → Billing to make changes."
-      : "Your Shop Revenue subscription is inactive. Update billing in Settings → Billing to make changes. You can still view and export your records.",
+    access.kind === "unavailable"
+      ? "Subscription billing is temporarily unavailable. Please contact support."
+      : access.kind === "setup"
+        ? "Start your free trial in Settings → Billing to make changes."
+        : "Your Shop Revenue subscription is inactive. Update billing in Settings → Billing to make changes. You can still view and export your records.",
     { billing: true },
   );
 }
 
-const LIVE_STATES = new Set(["trialing", "active", "past_due", "unpaid"]);
+const LIVE_STATES = new Set([
+  "trialing",
+  "active",
+  "past_due",
+  "unpaid",
+  "paused",
+  "incomplete",
+]);
 
 // Owner: start the trial (Stripe Checkout) or, if a subscription already
 // exists, open the Stripe Customer Portal to update the card or cancel.
@@ -67,17 +80,15 @@ export async function startSubscription(shop: Shop, meta: RequestMeta) {
   const stripe = stripeClient();
   let row = await withTenant(shop.businessId, shop.actor, async (tx) => {
     await assertOwner(tx);
-    const existing = await getShopSubscription(tx);
-    if (existing) return existing;
-    const [created] = await tx
+    await tx
       .insert(shopSubscription)
       .values({
         businessId: tx.businessId,
         createdByUserId: tx.actor.id,
         livemode: stripeLivemode(),
       })
-      .returning();
-    return created;
+      .onConflictDoNothing({ target: shopSubscription.businessId });
+    return (await getShopSubscription(tx))!;
   });
   if (row.livemode !== stripeLivemode())
     throw new AppError(
@@ -86,8 +97,6 @@ export async function startSubscription(shop: Shop, meta: RequestMeta) {
     );
   if (row.comped)
     throw new AppError("NOT_ELIGIBLE", "Your shop is not billed.");
-  if (row.stripeCustomerId && LIVE_STATES.has(row.status))
-    return openBillingPortal(shop);
   if (!row.stripeCustomerId) {
     const profile = await withTenant(shop.businessId, shop.actor, (tx) =>
       getBusinessProfile(tx),
@@ -108,31 +117,76 @@ export async function startSubscription(shop: Shop, meta: RequestMeta) {
       return u;
     });
   }
-  const trial = !row.trialUsedAt;
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: row.stripeCustomerId!,
-    client_reference_id: shop.businessId,
-    line_items: [
-      { price: process.env.STRIPE_SUBSCRIPTION_PRICE_ID!, quantity: 1 },
-    ],
-    payment_method_collection: "always",
-    allow_promotion_codes: true,
-    subscription_data: {
-      metadata: { business_id: shop.businessId },
-      ...(trial
-        ? {
-            trial_period_days: TRIAL_DAYS,
-            trial_settings: {
-              end_behavior: { missing_payment_method: "cancel" },
-            },
-          }
-        : {}),
-    },
-    metadata: { business_id: shop.businessId },
-    success_url: `${base}/app/settings/billing?started=1`,
-    cancel_url: `${base}/app/settings/billing`,
+  // Reconcile before opening checkout, including canceled trials whose webhook
+  // arrived late. A second click cannot grant another trial or subscription.
+  await refreshShopSubscription(shop.businessId);
+  row = (await withTenant(shop.businessId, shop.actor, (tx) =>
+    getShopSubscription(tx),
+  ))!;
+  if (LIVE_STATES.has(row.status)) return openBillingPortal(shop);
+  const price = await currentSubscriptionPrice(stripe);
+  const attempt = await withTenant(shop.businessId, shop.actor, async (tx) => {
+    await assertOwner(tx);
+    const [locked] = await tx
+      .select()
+      .from(shopSubscription)
+      .where(eq(shopSubscription.businessId, tx.businessId))
+      .for("update");
+    if (LIVE_STATES.has(locked.status)) return null;
+    if (
+      locked.checkoutAttemptId &&
+      locked.checkoutPriceId === price.id &&
+      locked.checkoutExpiresAt &&
+      locked.checkoutExpiresAt > new Date()
+    )
+      return locked;
+    const [reserved] = await tx
+      .update(shopSubscription)
+      .set({
+        checkoutAttemptId: crypto.randomUUID(),
+        checkoutPriceId: price.id,
+        checkoutExpiresAt: new Date(
+          Math.floor(Date.now() / 1000) * 1000 + 3600000,
+        ),
+        updatedAt: new Date(),
+      })
+      .where(eq(shopSubscription.id, locked.id))
+      .returning();
+    return reserved;
   });
+  if (!attempt) return openBillingPortal(shop);
+  const trial = !attempt.trialUsedAt;
+  const trackingSuffix = attempt
+    .checkoutAttemptId!.replace(/-/g, "")
+    .slice(-8)
+    .replace(/[0-9]/g, (digit) => String.fromCharCode(97 + Number(digit)));
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: "subscription",
+      customer: row.stripeCustomerId!,
+      client_reference_id: shop.businessId,
+      line_items: [{ price: attempt.checkoutPriceId!, quantity: 1 }],
+      expires_at: Math.floor(attempt.checkoutExpiresAt!.getTime() / 1000),
+      integration_identifier: `shop_revenue_billing_${trackingSuffix}`,
+      payment_method_collection: "always",
+      allow_promotion_codes: true,
+      subscription_data: {
+        metadata: { business_id: shop.businessId },
+        ...(trial
+          ? {
+              trial_period_days: TRIAL_DAYS,
+              trial_settings: {
+                end_behavior: { missing_payment_method: "cancel" },
+              },
+            }
+          : {}),
+      },
+      metadata: { business_id: shop.businessId },
+      success_url: `${base}/app/settings/billing?started=1`,
+      cancel_url: `${base}/app/settings/billing`,
+    },
+    { idempotencyKey: `shop-checkout-${attempt.checkoutAttemptId}` },
+  );
   await withTenant(shop.businessId, shop.actor, (tx) =>
     audit(tx, meta, {
       action: "billing.checkout_started",
@@ -153,7 +207,15 @@ export async function openBillingPortal(shop: Shop) {
   });
   if (!row?.stripeCustomerId)
     throw new AppError("NOT_ELIGIBLE", "Start your subscription first.");
-  const portal = await stripeClient().billingPortal.sessions.create({
+  const stripe = stripeClient();
+  const configuration = await billingPortalConfiguration(stripe);
+  if (!configuration)
+    throw new AppError(
+      "PROVIDER_UNAVAILABLE",
+      "The customer billing portal is not configured. Contact support.",
+    );
+  const portal = await stripe.billingPortal.sessions.create({
+    configuration: configuration.id,
     customer: row.stripeCustomerId,
     return_url: `${paymentBaseUrl()}/app/settings/billing`,
   });
@@ -202,6 +264,15 @@ export async function syncSubscription(
       trialUsedAt:
         row.trialUsedAt ?? (sub.trial_start ? toDate(sub.trial_start) : null),
       updatedAt: now,
+      ...(row.stripeSubscriptionId !== sub.id ||
+      row.status !== status ||
+      (!row.trialUsedAt && sub.trial_start)
+        ? {
+            checkoutAttemptId: null,
+            checkoutPriceId: null,
+            checkoutExpiresAt: null,
+          }
+        : {}),
     };
     await tx
       .update(shopSubscription)
@@ -221,6 +292,8 @@ export async function syncSubscription(
 
 export const SUBSCRIPTION_EVENTS = [
   "checkout.session.completed",
+  "checkout.session.async_payment_succeeded",
+  "checkout.session.async_payment_failed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -241,7 +314,7 @@ function subscriptionIdOf(event: Stripe.Event): string | null {
         ? String((v as { id: string }).id)
         : null;
   if (event.type.startsWith("customer.subscription.")) return ref(o.id);
-  if (event.type === "checkout.session.completed")
+  if (event.type.startsWith("checkout.session."))
     return o.mode === "subscription" ? ref(o.subscription) : null;
   if (event.type.startsWith("invoice.")) {
     const parent = o.parent as {
@@ -328,12 +401,15 @@ export async function setShopComped(
 }
 
 // "$149/month" from the configured Stripe price, or null if unavailable.
-export async function subscriptionPriceLabel() {
+export async function subscriptionPriceLabel(subscriptionId?: string) {
   if (!billingEnabled()) return null;
   try {
-    const p = await stripeClient().prices.retrieve(
-      process.env.STRIPE_SUBSCRIPTION_PRICE_ID!,
-    );
+    const stripe = stripeClient();
+    const p = subscriptionId
+      ? (await stripe.subscriptions.retrieve(subscriptionId)).items.data[0]
+          ?.price
+      : await currentSubscriptionPrice(stripe);
+    if (!p) return null;
     if (p.unit_amount == null) return null;
     const amount = (p.unit_amount / 100).toLocaleString("en-US", {
       style: "currency",
