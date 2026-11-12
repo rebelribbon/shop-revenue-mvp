@@ -3,6 +3,8 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   appointment,
+  customer,
+  task,
   inspection,
   jobAssignment,
   membership,
@@ -10,9 +12,9 @@ import {
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
-import { currentMemberRole } from "./membership";
+import { assertManager } from "./membership";
 import { loadJobWorkflows } from "./job-workflow";
-import { getJob } from "./jobs";
+import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import {
   notifyTechnicianAssigned,
@@ -81,7 +83,8 @@ export async function assignAdvisor(
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
   );
-  if (!(await getJob(tx, input.jobId))) throw notFound("That job");
+  const job = await getJob(tx, input.jobId);
+  if (!job) throw notFound("That job");
   const advisor = (await listAdvisors(tx)).find(
     (x) => x.userId === input.userId,
   );
@@ -102,6 +105,15 @@ export async function assignAdvisor(
     recordedAtNow: true,
   });
   const handoff = await reassignAdvisorHandoff(tx, input.jobId, input.userId);
+  const parsed = jobInput.pick({ customerId: true }).safeParse(job.data);
+  if (parsed.success) {
+    // Reassignment transfers contact ownership and its open advisor tasks.
+    await tx.update(customer).set({ assignedUserId: input.userId })
+      .where(and(eq(customer.businessId, tx.businessId), eq(customer.id, parsed.data.customerId)));
+    await tx.update(task).set({ assignedUserId: input.userId })
+      .where(and(eq(task.businessId, tx.businessId), sql`${task.doneAt} IS NULL`,
+        sql`(${task.jobId} = ${input.jobId} OR (${task.customerId} = ${parsed.data.customerId} AND ${task.assignedUserId} IS NOT DISTINCT FROM ${before}))`));
+  }
   await audit(tx, meta, {
     action: "job.advisor_assigned",
     targetType: "job",
@@ -239,9 +251,27 @@ export async function assignVisit(
 }
 
 async function assertCanAssign(tx: TenantTx) {
-  if ((await currentMemberRole(tx)) === "technician")
-    throw new AppError(
-      "FORBIDDEN",
-      "Ask the front office to change assignments.",
-    );
+  await assertManager(tx);
+}
+
+export async function assignCustomer(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: { customerId: string; userId: string },
+) {
+  await assertManager(tx);
+  const advisor = (await listAdvisors(tx)).find(a => a.userId === input.userId);
+  if (!advisor) throw new AppError("VALIDATION", "Choose an active advisor.");
+  const [before] = await tx.select({assignedUserId:customer.assignedUserId})
+    .from(customer)
+    .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,input.customerId)));
+  if (!before) throw notFound("That customer");
+  await tx.update(customer).set({assignedUserId:input.userId})
+    .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,input.customerId)));
+  await tx.update(task).set({assignedUserId:input.userId})
+    .where(and(eq(task.businessId,tx.businessId),eq(task.customerId,input.customerId),
+      eq(task.assignedUserId,before.assignedUserId ?? ""),sql`${task.doneAt} IS NULL`));
+  await audit(tx,meta,{action:"customer.assigned",targetType:"customer",targetId:input.customerId,
+    before:{userId:before.assignedUserId},after:{userId:input.userId}});
+  return {customerId:input.customerId,message:`Assigned to ${advisor.name}.`};
 }
