@@ -268,6 +268,9 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
 }
 
 export async function assertAssignedTechnician(tx: TenantTx, jobId: string) {
+  // The owner can step into any shop role; managers can oversee but cannot
+  // silently perform technician work without being assigned.
+  if ((await currentMemberRole(tx)) === "owner") return;
   if (tx.actor.type !== "user" || !tx.actor.id)
     throw new AppError("FORBIDDEN", "Sign in to work on this job.");
   const [assigned] = await tx
