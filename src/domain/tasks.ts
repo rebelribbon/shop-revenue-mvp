@@ -29,7 +29,9 @@ import {
 import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { todayAgenda } from "./today";
-import { currentMemberRole } from "./membership";
+import { currentMemberRole, canManageTeam, assertManager } from "./membership";
+import { listAdvisors } from "./assignments";
+import { getCustomerWithVehicles } from "./customers";
 import { listMyJobHandoffs, type JobHandoff } from "./job-handoffs";
 
 export type TaskRow = {
@@ -146,6 +148,7 @@ function hrefFor(
 export async function listTasks(tx: TenantTx, now = new Date()) {
   const role = await currentMemberRole(tx);
   const handoffs = await listMyJobHandoffs(tx);
+  const management = await canManageTeam(tx);
   // A technician's Tasks screen is private: no customer follow-ups, sales
   // opportunities, office reminders or other employees' records are loaded.
   if (role === "technician") {
@@ -169,7 +172,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
   ]);
   const due: TaskRow[] = [];
   const later: TaskRow[] = [];
-  for (const i of f.items) {
+  for (const i of management ? f.items : []) {
     const dueOn = followUpDueOn(i, f.today, f.timezone, f.rules);
     const href = hrefFor(i.category, i.subjectId, i.customerId);
     const action: TaskAction | undefined =
@@ -210,7 +213,7 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
     (row.dueOn <= f.today ? due : later).push(row);
   }
   // Work that's waiting on the shop: it leaves the list once it's done.
-  for (const w of agenda.items) {
+  for (const w of management ? agenda.items : []) {
     if (!["unbilled", "schedule", "plan", "expired"].includes(w.kind)) continue;
     due.push({
       key: `work:${w.id}`,
@@ -322,13 +325,33 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
 export async function addTask(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { title: string; dueOn: string; customerId?: string; jobId?: string },
+  input: {
+    title: string;
+    dueOn: string;
+    customerId?: string;
+    jobId?: string;
+    assignedUserId?: string;
+  },
 ) {
+  if (input.customerId) await getCustomerWithVehicles(tx, input.customerId);
+  let assignedUserId = tx.actor.id;
+  if (input.assignedUserId && input.assignedUserId !== tx.actor.id) {
+    await assertManager(tx);
+    if (
+      !(await listAdvisors(tx)).some((a) => a.userId === input.assignedUserId)
+    )
+      throw new AppError(
+        "VALIDATION",
+        "Assign advisor tasks only to active advisors.",
+      );
+    assignedUserId = input.assignedUserId;
+  }
   const [row] = await tx
     .insert(task)
     .values({
       businessId: tx.businessId,
       createdByUserId: tx.actor.id,
+      assignedUserId,
       title: input.title.trim(),
       dueOn: input.dueOn,
       customerId: input.customerId || null,

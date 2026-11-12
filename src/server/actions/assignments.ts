@@ -1,6 +1,11 @@
 "use server";
 import { z } from "zod";
-import { assignAdvisor, assignJob, assignVisit } from "@/domain/assignments";
+import {
+  assignAdvisor,
+  assignCustomer,
+  assignJob,
+  assignVisit,
+} from "@/domain/assignments";
 import {
   prepareHandoffPing,
   sendHandoffPing,
@@ -88,4 +93,10 @@ export const setHandoffPingsAction = defineShopAction({
         : "Handoff emails are off. Assigned work still shows in Tasks.",
     };
   },
+});
+
+export const assignCustomerAction = defineShopAction({
+  name: "assignCustomer",
+  input: z.object({ customerId: z.uuid(), userId: z.uuid() }),
+  run: ({ tx, meta }, input) => assignCustomer(tx, meta, input),
 });

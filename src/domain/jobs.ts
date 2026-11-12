@@ -1,5 +1,5 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { currentMemberRole } from "./membership";
+import { currentMemberRole, canManageTeam } from "./membership";
 import { AppError } from "@/lib/errors";
 import { z } from "zod";
 import {
@@ -7,6 +7,7 @@ import {
   customer,
   estimateVersion,
   jobAssignment,
+  membership,
   recommendation,
   vehicle,
 } from "@/db/schema";
@@ -32,6 +33,9 @@ export const jobInput = z.object({
   vehicleId: z.uuid().optional(),
   serviceAssetId: z.uuid().optional(),
   title: z.string().trim().min(1).max(200),
+  // Intake-created automotive ROs require an explicit technician inspection.
+  inspectionFirst: z.boolean().optional(),
+  advisorUserId: z.uuid().optional(),
   // Recurring work; absent for a one-time job.
   repeat: repeatInput.nullable().optional(),
   // Warranty on this work, in months (shown on the estimate and invoice).
@@ -155,6 +159,36 @@ export async function createJob(tx: TenantTx, input: JobInput) {
           "The declined-work link must belong to this customer and vehicle.",
         );
     }
+  // Only new inspection-first automotive ROs require an advisor at intake.
+  // Preserve legacy/imported service jobs and existing cost revisions.
+  if (data.inspectionFirst && !data.jobId) {
+    if (!data.advisorUserId)
+      throw new AppError(
+        "VALIDATION",
+        "Assign a service advisor before creating the RO.",
+      );
+    const [advisor] = await tx
+      .select({ id: membership.id })
+      .from(membership)
+      .where(
+        and(
+          eq(membership.businessId, tx.businessId),
+          eq(membership.userId, data.advisorUserId),
+          eq(membership.status, "active"),
+          sql`${membership.role} IN ('staff','owner')`,
+        ),
+      );
+    if (!advisor)
+      throw new AppError(
+        "VALIDATION",
+        "Choose an active service advisor or owner.",
+      );
+    if (data.advisorUserId !== tx.actor.id && !(await canManageTeam(tx)))
+      throw new AppError(
+        "FORBIDDEN",
+        "Only management can assign an RO to another advisor.",
+      );
+  }
   const totals = calculateJob(data.parts, data.labor);
   const id = data.jobId ?? crypto.randomUUID();
   // The check-in odometer keeps the vehicle's mileage current (never lowers it).
@@ -212,6 +246,27 @@ export async function createJob(tx: TenantTx, input: JobInput) {
     summary: data.title,
     data: { ...data, totals },
   });
+  if (data.inspectionFirst && !data.jobId && data.advisorUserId) {
+    await recordActivity(tx, {
+      kind: "job.advisor_assigned",
+      subjectType: "job",
+      subjectId: id,
+      summary: "Service advisor assigned at RO check-in",
+      data: { advisorUserId: data.advisorUserId },
+      recordedAtNow: true,
+    });
+    // An RO created through check-in is immediately in the advisor's queue.
+    // Technicians only gain access when management assigns them separately.
+    await tx
+      .update(customer)
+      .set({ assignedUserId: data.advisorUserId })
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.id, data.customerId),
+        ),
+      );
+  }
   await recordActivity(tx, {
     kind: "job.created",
     subjectType: data.vehicleId ? "vehicle" : "customer",
@@ -255,16 +310,37 @@ export async function getJob(tx: TenantTx, id: string) {
     )
     .orderBy(desc(activity.occurredAt), desc(activity.id))
     .limit(1);
-  if (job) return { ...job, documentOnly: false };
-  return (await documentJobs(tx, id))[0] ?? null;
+  const result = job
+    ? { ...job, documentOnly: false }
+    : ((await documentJobs(tx, id))[0] ?? null);
+  if (
+    result &&
+    (await currentMemberRole(tx)) === "staff" &&
+    !(await canManageTeam(tx))
+  ) {
+    const identity = jobInput.pick({ customerId: true }).safeParse(result.data);
+    if (!identity.success) return null;
+    const [visible] = await tx
+      .select({ id: customer.id })
+      .from(customer)
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.id, identity.data.customerId),
+        ),
+      );
+    if (!visible) return null;
+  }
+  return result;
 }
 export async function listJobs(
   tx: TenantTx,
   query = "",
   assigneeUserId?: string,
 ) {
-  if ((await currentMemberRole(tx)) === "technician")
-    assigneeUserId = tx.actor.id!;
+  const role = await currentMemberRole(tx);
+  if (role === "technician") assigneeUserId = tx.actor.id!;
+  const staffScoped = role === "staff" && !(await canManageTeam(tx));
   const latest = tx
     .selectDistinctOn([activity.subjectId], {
       version: activity.id,
@@ -301,11 +377,20 @@ export async function listJobs(
         assigneeUserId
           ? sql`exists(select 1 from ${jobAssignment} where ${jobAssignment.businessId}=${tx.businessId} and ${jobAssignment.jobId}=${latest.id} and ${jobAssignment.userId}=${assigneeUserId})`
           : undefined,
+        staffScoped
+          ? sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}::text=${latest.data}->>'customerId')`
+          : undefined,
       ),
     )
     .orderBy(desc(latest.createdAt), desc(latest.version))
     .limit(100);
-  const documents = await documentJobs(tx, undefined, query, assigneeUserId);
+  const documents = await documentJobs(
+    tx,
+    undefined,
+    query,
+    assigneeUserId,
+    staffScoped,
+  );
   return [...costed.map((j) => ({ ...j, documentOnly: false })), ...documents]
     .sort(
       (a, b) =>
@@ -322,6 +407,7 @@ async function documentJobs(
   id?: string,
   query = "",
   assignee?: string,
+  staffScoped = false,
 ) {
   const pattern = `%${query
     .trim()
@@ -340,6 +426,9 @@ async function documentJobs(
           : undefined,
         assignee
           ? sql`exists(select 1 from ${jobAssignment} where ${jobAssignment.businessId}=${tx.businessId} and ${jobAssignment.jobId}=${estimateVersion.quoteId} and ${jobAssignment.userId}=${assignee})`
+          : undefined,
+        staffScoped
+          ? sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}=${estimateVersion.customerId})`
           : undefined,
       ),
     )

@@ -69,6 +69,9 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
+import { canManageTeam } from "@/domain/membership";
+import { RoCheckinEditor } from "@/components/ro-checkin-editor";
+import { RoStageSummary } from "@/components/ro-stage-summary";
 import { requireShopSession } from "@/server/views/shop";
 
 const followUpPath = (jobId: string) => `/app/tasks?add=1&jobId=${jobId}`;
@@ -297,6 +300,7 @@ export default async function JobsPage({
       clock: await myClock(tx),
       deposit: page.selected ? await jobDeposit(tx, page.selected.id) : null,
       techs: await listTechs(tx),
+      canManageTeam: await canManageTeam(tx),
       advisors: s.role === "technician" ? [] : await listAdvisors(tx),
       advisorId:
         page.selected && s.role !== "technician"
@@ -415,33 +419,41 @@ export default async function JobsPage({
     }).format(c / 100);
   const advisorAssignment =
     selected && s.role !== "technician" && s.actor.type !== "support" ? (
-      <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
-        <ActionForm
-          action={assignAdvisorAction}
-          hidden={{ jobId: selected.id }}
-          submitLabel="Assign advisor"
-          variant="secondary"
-        >
-          <label htmlFor="job-advisor">Service advisor for this RO</label>
-          <select
-            id="job-advisor"
-            name="userId"
-            defaultValue={data.advisorId ?? s.actor.id ?? ""}
-            required
+      data.canManageTeam ? (
+        <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
+          <ActionForm
+            action={assignAdvisorAction}
+            hidden={{ jobId: selected.id }}
+            submitLabel="Assign advisor"
+            variant="secondary"
           >
-            <option value="">Choose advisor</option>
-            {data.advisors.map((a) => (
-              <option value={a.userId} key={a.userId}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </ActionForm>
+            <label htmlFor="job-advisor">Service advisor for this RO</label>
+            <select
+              id="job-advisor"
+              name="userId"
+              defaultValue={data.advisorId ?? s.actor.id ?? ""}
+              required
+            >
+              <option value="">Choose advisor</option>
+              {data.advisors.map((a) => (
+                <option value={a.userId} key={a.userId}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </ActionForm>
+          <p className="muted">
+            When the inspection is submitted, this advisor receives the Build
+            Estimate task.
+          </p>
+        </div>
+      ) : (
         <p className="muted">
-          When the inspection is submitted, this advisor receives the Build
-          Estimate task.
+          Assigned advisor:{" "}
+          {data.advisors.find((a) => a.userId === data.advisorId)?.name ??
+            "Not assigned"}
         </p>
-      </div>
+      )
     ) : null;
   // Technicians get a dedicated assigned-work workspace. The general RO
   // editor, profit, invoices, estimates, customer administration and
@@ -570,13 +582,30 @@ export default async function JobsPage({
             ? isAutomotive(type)
               ? "Edit RO"
               : "Edit job"
-            : labels.newJob
+            : auto
+              ? "New RO"
+              : labels.newJob
           : isAutomotive(type)
             ? "Repair orders"
             : labels.jobs}
       </h1>
 
-      {editing ? (
+      {editing &&
+      selected &&
+      auto &&
+      !data.inspection?.complete &&
+      !data.workflows.get(selected.id)?.latest ? (
+        <section className="card">
+          <h2>Inspection required first</h2>
+          <p>
+            The technician must submit the inspection before the advisor builds
+            the estimate. Assign the technician from this RO.
+          </p>
+          <Link className="btn primary" href={`/app/jobs?job=${selected.id}`}>
+            Return to RO
+          </Link>
+        </section>
+      ) : editing ? (
         <>
           <p>
             <Link
@@ -585,40 +614,56 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          <JobEditor
-            commonJobs={data.commonJobs}
-            catalog={data.catalog}
-            canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
-            laborSellRateCents={data.profile?.laborSellRateCents}
-            laborCostRateCents={data.profile?.laborCostRateCents}
-            partsTaxableDefault={data.profile?.partsTaxableDefault}
-            laborTaxableDefault={data.profile?.laborTaxableDefault}
-            businessType={data.profile?.businessType}
-            key={
-              selected?.version ??
-              [
-                customerId,
-                vehicleId,
-                serviceAssetId,
-                sourceRecoveryItemId,
-                sourceContactActivityId,
-                sourceAppointmentId,
-              ].join(":")
-            }
-            options={data.options}
-            recommendations={data.recommendations}
-            initial={initial}
-            today={localDateKey(
-              new Date(),
-              data.profile?.timezone || "America/Chicago",
-            )}
-            defaultRepeats={recurringFirst(type)}
-            attachMediaId={
-              data.fromMedia && data.fromMedia.customerId === customerId
-                ? data.fromMedia.id
-                : undefined
-            }
-          />
+          {auto && !selected ? (
+            <RoCheckinEditor
+              key={[customerId, vehicleId, sourceAppointmentId].join(":")}
+              options={data.options}
+              advisors={data.advisors}
+              canManage={data.canManageTeam}
+              currentUserId={s.actor.id ?? ""}
+              initial={initial}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          ) : (
+            <JobEditor
+              commonJobs={data.commonJobs}
+              catalog={data.catalog}
+              canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
+              laborSellRateCents={data.profile?.laborSellRateCents}
+              laborCostRateCents={data.profile?.laborCostRateCents}
+              partsTaxableDefault={data.profile?.partsTaxableDefault}
+              laborTaxableDefault={data.profile?.laborTaxableDefault}
+              businessType={data.profile?.businessType}
+              key={
+                selected?.version ??
+                [
+                  customerId,
+                  vehicleId,
+                  serviceAssetId,
+                  sourceRecoveryItemId,
+                  sourceContactActivityId,
+                  sourceAppointmentId,
+                ].join(":")
+              }
+              options={data.options}
+              recommendations={data.recommendations}
+              initial={initial}
+              today={localDateKey(
+                new Date(),
+                data.profile?.timezone || "America/Chicago",
+              )}
+              defaultRepeats={recurringFirst(type)}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          )}
         </>
       ) : selected && mode === "customer" ? (
         (() => {
@@ -754,6 +799,10 @@ export default async function JobsPage({
                     )
                   ? requestedTab!
                   : "work";
+          // An automotive RO begins with check-in and technician inspection.
+          // Existing published ROs retain their document access.
+          const awaitingInspection =
+            auto && !data.inspection?.complete && !flow?.latest;
           return (
             <>
               <p>
@@ -810,8 +859,14 @@ export default async function JobsPage({
                       />
                     </div>
                     <h2 className="profile-title">
-                      {input.repeat && "↻ "}
-                      {selected.title}
+                      {auto ? (
+                        "Repair order"
+                      ) : (
+                        <>
+                          {input.repeat && "↻ "}
+                          {selected.title}
+                        </>
+                      )}
                     </h2>
                     <p className="muted">
                       {[
@@ -844,6 +899,16 @@ export default async function JobsPage({
                       </p>
                     )}
                   </div>
+                )}
+                {auto && (
+                  <RoStageSummary
+                    inspectionComplete={!!data.inspection?.complete}
+                    hasEstimate={!!flow?.latest}
+                    technicianAssigned={!!data.assignee}
+                    stage={flow?.stage}
+                    statusLabel={statusLabels[statusOf(selected.id)]}
+                    editHref={`/app/jobs?edit=${selected.id}`}
+                  />
                 )}
                 {data.presentPath && (
                   <p className="ro-present">
@@ -911,34 +976,37 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                <nav
-                  className="section-tabs"
-                  aria-label="Job setup and customer approval"
-                >
-                  <Link
-                    href={`/app/jobs?edit=${selected.id}`}
-                    aria-current={undefined}
+                {!awaitingInspection && (
+                  <nav
+                    className="section-tabs"
+                    aria-label="Estimate preparation and customer approval"
                   >
-                    1. Set up job
-                  </Link>
-                  <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files`}
-                    aria-current={tab === "files" ? "page" : undefined}
-                  >
-                    2. Docs &amp; preview
-                  </Link>
-                  <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
-                    aria-label="Share customer packet"
-                  >
-                    3. Share
-                  </Link>
-                </nav>
-                <p className="muted">
-                  Enter work and prices first. Preview the customer&apos;s
-                  documents, then choose the recipient and send one approval
-                  link.
-                </p>
+                    <Link
+                      href={`/app/jobs?edit=${selected.id}`}
+                      aria-current={undefined}
+                    >
+                      Build estimate
+                    </Link>
+                    <Link
+                      href={`/app/jobs?job=${selected.id}&tab=files`}
+                      aria-current={tab === "files" ? "page" : undefined}
+                    >
+                      Preview documents
+                    </Link>
+                    <Link
+                      href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
+                      aria-label="Share customer packet"
+                    >
+                      Share with customer
+                    </Link>
+                  </nav>
+                )}
+                {!awaitingInspection && (
+                  <p className="muted">
+                    Review the technician&apos;s findings, build the estimate,
+                    then send the customer their approval link.
+                  </p>
+                )}
                 {data.headsUp.map((n, i) => (
                   <p
                     className="heads-up-line"
@@ -969,14 +1037,17 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {s.actor.type === "support" || false ? (
+                {!data.canManageTeam ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
                       "nobody yet"}
                   </p>
                 ) : (
-                  <div className="tech-pick" key={data.assignee ?? "none"}>
+                  <div
+                    className="tech-pick ro-assignment"
+                    key={data.assignee ?? "none"}
+                  >
                     <ActionForm
                       action={assignJobAction}
                       hidden={{ jobId: selected.id }}
@@ -1002,7 +1073,7 @@ export default async function JobsPage({
                   </div>
                 )}
                 {advisorAssignment}
-                {flow && (
+                {flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
                       <strong>
@@ -1051,7 +1122,7 @@ export default async function JobsPage({
                     )}
                   </p>
                 )}
-                {s.actor.type !== "support" && (
+                {!awaitingInspection && s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
                     {data.clock?.jobId === selected.id ? (
                       <ActionForm
@@ -1263,15 +1334,7 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
-                    {data.profit && (
-                      <RecordSection
-                        title="Costs & profit"
-                        description="What each line costs the shop and what it makes. Hidden in the customer view."
-                      >
-                        <RoCosts profit={data.profit} />
-                      </RecordSection>
-                    )}
-                    {flow && (
+                    {!awaitingInspection && flow && (
                       <RecordSection
                         title="Work & approval"
                         description="Customer authorization, the next step and progress on this job."
@@ -1284,6 +1347,14 @@ export default async function JobsPage({
                           technicianOnly={false}
                           canEditEstimate={!selected.documentOnly}
                         />
+                      </RecordSection>
+                    )}
+                    {!awaitingInspection && data.profit && (
+                      <RecordSection
+                        title="Costs & profit"
+                        description="What each line costs the shop and what it makes. Hidden in the customer view."
+                      >
+                        <RoCosts profit={data.profit} />
                       </RecordSection>
                     )}
                   </>

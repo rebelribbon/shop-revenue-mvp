@@ -45,7 +45,7 @@ beforeAll(async () => {
   adminId = (await createInternalUser("admin")).id;
 });
 
-describe("membership rules (Section 8: max one owner, up to 10 staff)", () => {
+describe("membership rules (Section 8: max one owner, up to 15 staff)", () => {
   it("rejects a second active owner", async () => {
     const solo = await seedTenant("Delta");
     const err = await sqlAs(
@@ -60,9 +60,9 @@ describe("membership rules (Section 8: max one owner, up to 10 staff)", () => {
     });
   });
 
-  it("allows up to 10 staff logins and rejects the 11th", async () => {
+  it("allows up to 15 staff logins and rejects the 16th", async () => {
     const shop = await seedTenant("Echo", { withStaff: true });
-    for (let n = 2; n <= 10; n++)
+    for (let n = 2; n <= 15; n++)
       expect(
         await sqlAs(
           shop.owner.actor,
@@ -73,7 +73,7 @@ describe("membership rules (Section 8: max one owner, up to 10 staff)", () => {
       ).toBeNull();
     const err = await sqlAs(
       shop.owner.actor,
-      `INSERT INTO app.membership (business_id, role, status, invite_email) VALUES ($1, 'staff', 'invited', 'eleventh@example.test')`,
+      `INSERT INTO app.membership (business_id, role, status, invite_email) VALUES ($1, 'staff', 'invited', 'sixteenth@example.test')`,
       [shop.businessId],
       shop.businessId,
     );
@@ -103,7 +103,7 @@ describe("membership rules (Section 8: max one owner, up to 10 staff)", () => {
     );
   });
 
-  it("role and user are immutable; memberships are never deleted", async () => {
+  it("owner role and user are immutable; memberships are never deleted", async () => {
     expect(
       (
         await sqlAs(
@@ -112,7 +112,7 @@ describe("membership rules (Section 8: max one owner, up to 10 staff)", () => {
           [A.staff!.userId],
         )
       )?.code,
-    ).toBe("42501");
+    ).toBe("P0001");
     expect(
       (
         await sqlAs(

@@ -16,6 +16,7 @@ test("Technicians see only their jobs and no owner pages", async ({
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill("Techrole");
   await page.getByLabel("Last name").fill(`TEST ${stamp}`);
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
@@ -27,16 +28,13 @@ test("Technicians see only their jobs and no owner pages", async ({
   for (const title of [mine, other]) {
     await page.goto(vehicleUrl);
     await page.getByRole("link", { name: "+ New RO", exact: true }).click();
-    await page.getByLabel("Job name").fill(title);
-    await page.getByRole("button", { name: "Add labor", exact: true }).click();
-    await page.getByLabel("Description", { exact: true }).fill("Diagnose");
-    await page.getByLabel("Quoted hours", { exact: true }).fill("1");
-    await page.getByLabel("Hourly selling rate", { exact: true }).fill("100");
+    await page.getByLabel("Customer concerns / reason for visit").fill(title);
     await page
-      .getByRole("button", { name: "Save job sheet", exact: true })
-      .click();
+      .getByLabel("Assigned service advisor")
+      .selectOption({ index: 1 });
+    await page.getByRole("button", { name: "Create RO", exact: true }).click();
     await expect(
-      page.getByRole("heading", { name: title, exact: true }),
+      page.getByRole("heading", { name: "Repair order", exact: true }),
     ).toBeVisible();
     jobUrls.push(page.url());
   }

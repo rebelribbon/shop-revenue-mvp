@@ -20,6 +20,7 @@ export const customer = app.table(
   "customer",
   {
     ...tenantColumns(),
+    assignedUserId: uuid("assigned_user_id"),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
     displayName: text("display_name").notNull(),

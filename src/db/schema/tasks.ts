@@ -16,6 +16,7 @@ export const task = app.table("task", {
   ...tenantColumns(),
   customerId: uuid("customer_id"),
   jobId: uuid("job_id"),
+  assignedUserId: uuid("assigned_user_id"),
   title: text("title").notNull(),
   dueOn: date("due_on").notNull(),
   doneAt: timestamp("done_at", { withTimezone: true }),

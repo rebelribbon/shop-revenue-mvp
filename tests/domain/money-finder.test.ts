@@ -22,6 +22,7 @@ import {
   listCustomerTimeline,
 } from "@/domain/customers";
 import { createJob } from "@/domain/jobs";
+import { assignCustomer } from "@/domain/assignments";
 import { createAppointment } from "@/domain/appointments";
 import { recordInvoicePayment, setInvoiceDispute } from "@/domain/invoices";
 import { closeRegister, registerDay } from "@/domain/register";
@@ -495,6 +496,12 @@ describe("Money Finder live list rules", () => {
   it("records manual contact once per state identity, validates methods, and never marks money recovered", async () => {
     const f = await fixture();
     await estimate(f, 3, 30, []);
+    await run(f, (tx) =>
+      assignCustomer(tx, meta(), {
+        customerId: f.customerId,
+        userId: f.staff!.userId,
+      }),
+    );
     await withTenant(f.businessId, f.staff!.actor, (tx) =>
       updateRecovery(tx, meta(), {
         category: "declined",

@@ -4,7 +4,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { activity, jobAssignment, membership } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError } from "@/lib/errors";
-import { currentMemberRole } from "./membership";
+import { currentMemberRole, canManageTeam } from "./membership";
 import { recordActivity } from "./records";
 
 // The relay: technician inspects -> advisor builds the estimate -> customer
@@ -201,6 +201,7 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
   if (!id) return [];
   const role = await currentMemberRole(tx);
   if (!role) return [];
+  const management = await canManageTeam(tx);
   const latest = tx
     .selectDistinctOn([activity.subjectId], {
       jobId: activity.subjectId,
@@ -238,11 +239,17 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
     )
     .where(
       and(
-        sql`${latest.data}->>'recipientUserId' = ${id}`,
-        role === "technician"
-          ? sql`${latest.data}->>'stage' IN ('inspect_vehicle','perform_work')`
-          : sql`${latest.data}->>'stage' IN ('build_estimate','invoice_customer')`,
-        role === "technician" ? eq(jobAssignment.userId, id) : undefined,
+        management
+          ? undefined
+          : sql`${latest.data}->>'recipientUserId' = ${id}`,
+        management
+          ? undefined
+          : role === "technician"
+            ? sql`${latest.data}->>'stage' IN ('inspect_vehicle','perform_work')`
+            : sql`${latest.data}->>'stage' IN ('build_estimate','invoice_customer')`,
+        !management && role === "technician"
+          ? eq(jobAssignment.userId, id)
+          : undefined,
       ),
     )
     .orderBy(desc(latest.occurredAt))
@@ -250,10 +257,19 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
   const output: JobHandoff[] = [];
   for (const row of rows) {
     const data = handoffData(row.data);
-    if (!data || data.recipientUserId !== id) continue;
-    if (role === "technician" && !TECHNICIAN_STAGES.includes(data.stage))
+    if (!data || (!management && data.recipientUserId !== id)) continue;
+    if (
+      !management &&
+      role === "technician" &&
+      !TECHNICIAN_STAGES.includes(data.stage)
+    )
       continue;
-    if (role !== "technician" && !ADVISOR_STAGES.includes(data.stage)) continue;
+    if (
+      !management &&
+      role !== "technician" &&
+      !ADVISOR_STAGES.includes(data.stage)
+    )
+      continue;
     output.push({
       ...data,
       jobId: row.jobId,
@@ -265,6 +281,9 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
 }
 
 export async function assertAssignedTechnician(tx: TenantTx, jobId: string) {
+  // The owner can step into any shop role; managers can oversee but cannot
+  // silently perform technician work without being assigned.
+  if ((await currentMemberRole(tx)) === "owner") return;
   if (tx.actor.type !== "user" || !tx.actor.id)
     throw new AppError("FORBIDDEN", "Sign in to work on this job.");
   const [assigned] = await tx

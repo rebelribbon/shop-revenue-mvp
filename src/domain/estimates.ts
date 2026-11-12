@@ -102,6 +102,16 @@ export async function freezeEstimate(
     .select()
     .from(business)
     .where(eq(business.id, tx.businessId));
+  // New automotive intake ROs cannot skip the technician-to-advisor handoff
+  // by calling the estimate action directly. Legacy documents remain usable.
+  if (shop.businessType === "automotive" && data.inspectionFirst) {
+    const inspection = await getInspection(tx, input.jobId);
+    if (!inspection.complete)
+      throw new AppError(
+        "INVALID_TRANSITION",
+        "The technician must submit the inspection before the advisor publishes an estimate.",
+      );
+  }
   const [policy] = await tx
     .select()
     .from(legalPolicy)

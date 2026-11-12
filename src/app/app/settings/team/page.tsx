@@ -1,14 +1,17 @@
 import { formatPhone } from "@/lib/phone-format";
+import { notFound } from "next/navigation";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
 import {
   inviteDeliveryStatus,
   listTeam,
+  canManageTeam,
   MAX_TEAM_SEATS,
 } from "@/domain/membership";
 import {
   inviteStaffAction,
+  changeTeamAccessAction,
   removeStaffAction,
   resendInviteAction,
 } from "@/server/actions/team";
@@ -18,7 +21,7 @@ import { setHandoffPingsAction } from "@/server/actions/assignments";
 
 export default async function TeamPage() {
   const s = await requireShopSession("/app/settings/team");
-  const { team, delivery, expired, pingsOn } = await withTenant(
+  const { team, delivery, expired, pingsOn, canManage } = await withTenant(
     s.businessId,
     s.actor,
     async (tx) => {
@@ -33,9 +36,16 @@ export default async function TeamPage() {
           .filter((m) => m.inviteExpiresAt && m.inviteExpiresAt < new Date())
           .map((m) => m.id),
       );
-      return { team, delivery, expired, pingsOn: await handoffPingsOn(tx) };
+      return {
+        team,
+        delivery,
+        expired,
+        pingsOn: await handoffPingsOn(tx),
+        canManage: await canManageTeam(tx),
+      };
     },
   );
+  if (!canManage) notFound();
   const statusLabel = (m: (typeof team)[number]) => {
     if (m.status !== "invited") return { text: "Active", warn: false };
     if (delivery.get(m.id) === "failed")
@@ -49,9 +59,9 @@ export default async function TeamPage() {
   const roleLabel = (role: string) => {
     if (role === "owner") return "Owner";
     if (role === "technician") return "Technician";
-    return "Staff";
+    return "Service advisor";
   };
-  const isOwner = s.role === "owner";
+  const canEdit = canManage;
   const teamSeats = team.filter(
     (m) => m.role === "staff" || m.role === "technician",
   ).length;
@@ -66,7 +76,7 @@ export default async function TeamPage() {
               <th>Name</th>
               <th>Role</th>
               <th>Status</th>
-              {isOwner && <th />}
+              {canEdit && <th />}
             </tr>
           </thead>
           <tbody>
@@ -81,7 +91,7 @@ export default async function TeamPage() {
                       formatPhone(m.phoneE164 ?? m.invitePhoneE164)}
                   </span>
                 </td>
-                <td>{roleLabel(m.role)}</td>
+                <td>{m.canManageTeam ? "Manager" : roleLabel(m.role)}</td>
                 <td>
                   <span
                     className={statusLabel(m).warn ? "pill pill-warn" : "pill"}
@@ -89,7 +99,7 @@ export default async function TeamPage() {
                     {statusLabel(m).text}
                   </span>
                 </td>
-                {isOwner && (
+                {canEdit && (
                   <td>
                     {(m.role === "staff" || m.role === "technician") &&
                       m.status === "invited" && (
@@ -99,6 +109,35 @@ export default async function TeamPage() {
                           submitLabel="Resend invite"
                           variant="secondary"
                         />
+                      )}
+                    {(m.role === "staff" || m.role === "technician") &&
+                      m.status === "active" &&
+                      m.userId !== s.userId && (
+                        <ActionForm
+                          action={changeTeamAccessAction}
+                          hidden={{ membershipId: m.id }}
+                          submitLabel="Save role"
+                          variant="secondary"
+                        >
+                          <label htmlFor={`team-role-${m.id}`}>
+                            Access role
+                          </label>
+                          <select
+                            id={`team-role-${m.id}`}
+                            name="role"
+                            defaultValue={
+                              m.canManageTeam
+                                ? "manager"
+                                : m.role === "technician"
+                                  ? "technician"
+                                  : "advisor"
+                            }
+                          >
+                            <option value="advisor">Service advisor</option>
+                            <option value="technician">Technician</option>
+                            <option value="manager">Manager</option>
+                          </select>
+                        </ActionForm>
                       )}
                     {(m.role === "staff" || m.role === "technician") && (
                       <ActionForm
@@ -116,21 +155,24 @@ export default async function TeamPage() {
           </tbody>
         </table>
       </div>
-      {isOwner && seatsLeft > 0 && (
+      {canEdit && seatsLeft > 0 && (
         <div className="card">
           <h2>Invite a teammate</h2>
           <p className="muted">
             Each person gets their own login. {seatsLeft} of {MAX_TEAM_SEATS}{" "}
             team logins left. Staff run the front office; technicians work
-            assigned jobs.
+            assigned jobs. Managers can assign work and manage access.
           </p>
           <ActionForm action={inviteStaffAction} submitLabel="Send invite">
             <label htmlFor="name">Name</label>
             <input id="name" name="name" required maxLength={100} />
             <label htmlFor="role">Role</label>
             <select id="role" name="role" defaultValue="staff" required>
-              <option value="staff">Staff (front office)</option>
-              <option value="technician">Technician (assigned jobs)</option>
+              <option value="staff">
+                Service advisor (assigned customers and ROs)
+              </option>
+              <option value="technician">Technician (assigned ROs only)</option>
+              <option value="manager">Manager (team and assignments)</option>
             </select>
             <label htmlFor="email">Email</label>
             <input id="email" name="email" type="email" />
@@ -139,13 +181,13 @@ export default async function TeamPage() {
           </ActionForm>
         </div>
       )}
-      {isOwner && seatsLeft <= 0 && (
+      {canEdit && seatsLeft <= 0 && (
         <p className="muted">
           You have {MAX_TEAM_SEATS} team logins, the most allowed. Remove one to
           invite someone else.
         </p>
       )}
-      {isOwner && (
+      {canEdit && (
         <section className="card reminder-settings">
           <h2>Handoff emails</h2>
           <p className="muted">

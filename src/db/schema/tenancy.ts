@@ -147,6 +147,7 @@ export const membership = app.table(
     ...tenantColumns(),
     userId: uuid("user_id"),
     role: text("role").notNull(),
+    canManageTeam: boolean("can_manage_team").notNull().default(false),
     status: text("status").notNull(),
     inviteName: text("invite_name"),
     inviteEmail: text("invite_email"),
@@ -169,6 +170,10 @@ export const membership = app.table(
     check(
       "membership_role_check",
       sql`${t.role} IN ('owner', 'staff', 'technician')`,
+    ),
+    check(
+      "membership_manager_is_staff_check",
+      sql`NOT ${t.canManageTeam} OR ${t.role} = 'staff'`,
     ),
     check(
       "membership_status_check",

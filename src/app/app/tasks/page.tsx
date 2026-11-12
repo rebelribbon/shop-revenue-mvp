@@ -14,6 +14,8 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { TasksNavigation } from "@/components/tasks-navigation";
 import { withTenant } from "@/db/tenant";
 import { listCustomers } from "@/domain/customers";
+import { canManageTeam } from "@/domain/membership";
+import { listAdvisors } from "@/domain/assignments";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { getJobFollowUp, listTasks, type TaskRow } from "@/domain/tasks";
 import { isAutomotive } from "@/lib/business-types";
@@ -54,17 +56,17 @@ export default async function TasksPage(props: {
   const canAdd = !readOnly && !technician;
   const jobId = p.add && canAdd ? p.jobId : undefined;
   const view = p.view === "later" ? "later" : "due";
-  const [data, customers, context, profile] = await withTenant(
-    s.businessId,
-    s.actor,
-    (tx) =>
+  const [data, customers, context, profile, management, advisors] =
+    await withTenant(s.businessId, s.actor, (tx) =>
       Promise.all([
         listTasks(tx),
         p.add && canAdd && !jobId ? listCustomers(tx) : [],
         jobId ? getJobFollowUp(tx, jobId) : null,
         jobId ? getBusinessProfile(tx) : null,
+        canManageTeam(tx),
+        listAdvisors(tx),
       ]),
-  );
+    );
   if (jobId && !context) notFound();
   const rows = view === "due" ? data.due : data.later;
   return (
@@ -162,6 +164,35 @@ export default async function TasksPage(props: {
               required
               defaultValue={addLocalDays(data.today, 1)}
             />
+            {management ? (
+              <>
+                <label htmlFor="task-assignee">Assigned service advisor</label>
+                <select
+                  id="task-assignee"
+                  name="assignedUserId"
+                  defaultValue=""
+                  required
+                >
+                  <option value="" disabled>
+                    Choose an advisor
+                  </option>
+                  {advisors.map((advisor) => (
+                    <option key={advisor.userId} value={advisor.userId}>
+                      {advisor.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <p className="muted">This task is assigned to you.</p>
+                <input
+                  type="hidden"
+                  name="assignedUserId"
+                  value={s.actor.id ?? ""}
+                />
+              </>
+            )}
             <label htmlFor="task-customer">Customer (optional)</label>
             <select
               id="task-customer"

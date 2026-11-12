@@ -109,8 +109,8 @@ describe("team: Owner + one Staff (D15, S28)", () => {
   it("the owner can invite more staff, up to the seat limit", async () => {
     const shop = await seedTenant("Seats", { withStaff: true });
     await withTenant(shop.businessId, shop.owner.actor, async (tx) => {
-      // One active staff already; fill the remaining 9 seats.
-      for (let n = 2; n <= 10; n++)
+      // One active staff already; fill the remaining 14 seats.
+      for (let n = 2; n <= 15; n++)
         await inviteStaff(tx, meta(), {
           name: `Staff ${n}`,
           email: `staff${n}@example.test`,
@@ -119,8 +119,8 @@ describe("team: Owner + one Staff (D15, S28)", () => {
     await expect(
       withTenant(shop.businessId, shop.owner.actor, (tx) =>
         inviteStaff(tx, meta(), {
-          name: "Eleventh",
-          email: "eleventh@example.test",
+          name: "Sixteenth",
+          email: "sixteenth@example.test",
         }),
       ),
     ).rejects.toMatchObject({ code: "CONFLICT" });

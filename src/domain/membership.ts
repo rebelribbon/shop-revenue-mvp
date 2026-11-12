@@ -35,6 +35,32 @@ export async function assertOwner(tx: TenantTx) {
     throw forbidden("Only the owner can do that.");
 }
 
+// Managers are staff users explicitly granted management permission.
+// This is resolved from the database, never from a browser-supplied role.
+export async function canManageTeam(tx: TenantTx): Promise<boolean> {
+  if (tx.actor.type !== "user" || !tx.actor.id) return false;
+  const [row] = await tx
+    .select({ role: membership.role, manage: membership.canManageTeam })
+    .from(membership)
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.userId, tx.actor.id),
+        eq(membership.status, "active"),
+      ),
+    );
+  return (
+    row?.role === "owner" || (row?.role === "staff" && row.manage === true)
+  );
+}
+
+export async function assertManager(tx: TenantTx) {
+  if (!(await canManageTeam(tx)))
+    throw forbidden(
+      "Only shop management can manage team access and assignments.",
+    );
+}
+
 export const INVITE_DELIVERY_ACTION = "membership.invite_delivery";
 
 // Latest delivery attempt per invited membership, from the audit trail written
@@ -69,6 +95,7 @@ export async function listTeam(tx: TenantTx) {
     .select({
       id: membership.id,
       role: membership.role,
+      canManageTeam: membership.canManageTeam,
       status: membership.status,
       inviteName: membership.inviteName,
       inviteEmail: membership.inviteEmail,
@@ -92,7 +119,7 @@ export async function listTeam(tx: TenantTx) {
 }
 
 // Mirrors the cap in app.membership_guard (db/migrations/0050).
-export const MAX_TEAM_SEATS = 10;
+export const MAX_TEAM_SEATS = 15;
 
 export type InviteDelivery = {
   membershipId: string;
@@ -109,15 +136,19 @@ export async function inviteStaff(
     name: string;
     email?: string | null;
     phoneE164?: string | null;
-    role?: "staff" | "technician";
+    role?: "staff" | "technician" | "manager";
   },
 ): Promise<InviteDelivery> {
-  await assertOwner(tx);
+  await assertManager(tx);
   if (!input.email && !input.phoneE164)
     throw new AppError("VALIDATION", "Add an email or a mobile number.");
-  const role = input.role ?? "staff";
+  const manager = input.role === "manager";
+  const role = manager ? "staff" : (input.role ?? "staff");
   if (role !== "staff" && role !== "technician")
-    throw new AppError("VALIDATION", "Role must be staff or technician.");
+    throw new AppError(
+      "VALIDATION",
+      "Role must be advisor, manager, or technician.",
+    );
   const [{ seats }] = await tx
     .select({ seats: sql<number>`count(*)::int` })
     .from(membership)
@@ -141,6 +172,7 @@ export async function inviteStaff(
       businessId: tx.businessId,
       createdByUserId: tx.actor.id,
       role,
+      canManageTeam: manager,
       status: "invited",
       inviteName: input.name,
       inviteEmail: input.email ?? null,
@@ -153,7 +185,7 @@ export async function inviteStaff(
     action: "membership.invited",
     targetType: "membership",
     targetId: m.id,
-    after: { role },
+    after: { role, manager },
   });
   await recordActivity(tx, {
     kind: "team.invited",
@@ -162,7 +194,9 @@ export async function inviteStaff(
     summary:
       role === "technician"
         ? "Technician login invited"
-        : "Staff login invited",
+        : manager
+          ? "Manager login invited"
+          : "Advisor login invited",
   });
   return {
     membershipId: m.id,
@@ -189,7 +223,7 @@ export async function resendInvite(
       ),
     );
   if (!m) throw notFound("That invite");
-  if (m.role === "staff" || m.role === "technician") await assertOwner(tx);
+  if (m.role === "staff" || m.role === "technician") await assertManager(tx);
   else if (tx.actor.type !== "internal") throw forbidden();
   if (m.status !== "invited")
     throw new AppError(
@@ -224,7 +258,7 @@ export async function removeStaff(
   membershipId: string,
 ) {
   // Owner request, or our support/admin resetting the login on the owner's behalf.
-  if (tx.actor.type !== "internal") await assertOwner(tx);
+  if (tx.actor.type !== "internal") await assertManager(tx);
   const [m] = await tx
     .select()
     .from(membership)
@@ -360,4 +394,81 @@ export async function acceptInvite(
       return { businessId: inv.businessId, userId: u.id, role: inv.role };
     },
   );
+}
+
+// Only active, non-owner team members can have their operational role changed.
+// Manager privilege is an explicit capability; no user can edit their own.
+export async function changeTeamAccess(
+  tx: TenantTx,
+  meta: RequestMeta,
+  input: { membershipId: string; role: "advisor" | "manager" | "technician" },
+) {
+  await assertManager(tx);
+  const [before] = await tx
+    .select()
+    .from(membership)
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.id, input.membershipId),
+      ),
+    );
+  if (!before || before.status !== "active" || !before.userId)
+    throw notFound("That active team member");
+  if (before.role === "owner" || before.userId === tx.actor.id)
+    throw forbidden("Owner access and your own role cannot be changed.");
+  const role = input.role === "technician" ? "technician" : "staff";
+  const canManage = input.role === "manager";
+  if (before.role === role && before.canManageTeam === canManage)
+    return { id: before.id, message: "Access is already set." };
+  // Moving between technician and advisor must not leave assigned work visible
+  // under the wrong role. Reassign their open work before changing the role.
+  if (before.role !== role) {
+    const { jobAssignment, task, customer } = await import("@/db/schema");
+    const assignedJobs = await tx
+      .select({ id: jobAssignment.jobId })
+      .from(jobAssignment)
+      .where(
+        and(
+          eq(jobAssignment.businessId, tx.businessId),
+          eq(jobAssignment.userId, before.userId),
+        ),
+      );
+    const assignedTasks = await tx
+      .select({ id: task.id })
+      .from(task)
+      .where(
+        and(
+          eq(task.businessId, tx.businessId),
+          eq(task.assignedUserId, before.userId),
+          sql`${task.doneAt} IS NULL`,
+        ),
+      );
+    const assignedCustomers = await tx
+      .select({ id: customer.id })
+      .from(customer)
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.assignedUserId, before.userId),
+        ),
+      );
+    if (assignedJobs.length || assignedTasks.length || assignedCustomers.length)
+      throw new AppError(
+        "CONFLICT",
+        "Reassign this employee's customers, active ROs, and tasks before changing their role.",
+      );
+  }
+  await tx
+    .update(membership)
+    .set({ role, canManageTeam: canManage })
+    .where(eq(membership.id, before.id));
+  await audit(tx, meta, {
+    action: "membership.access_changed",
+    targetType: "membership",
+    targetId: before.id,
+    before: { role: before.role, canManageTeam: before.canManageTeam },
+    after: { role, canManageTeam: canManage },
+  });
+  return { id: before.id, message: "User access updated." };
 }

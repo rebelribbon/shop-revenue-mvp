@@ -83,7 +83,7 @@ describe("Technician role", () => {
       asTech((tx) =>
         assignJob(tx, meta(), { jobId: other.id, userId: joined.userId }),
       ),
-    ).rejects.toThrow(/front office/);
+    ).rejects.toThrow(/management/);
     await expect(
       asTech((tx) =>
         createJob(tx, {
@@ -114,7 +114,7 @@ describe("Technician role", () => {
     expect((await asOwner((tx) => listJobs(tx))).length).toBe(2);
   });
 
-  it("technicians and staff share the 10 team logins", async () => {
+  it("technicians and staff share the 15 team logins", async () => {
     const t = await seedTenant("TechSeats");
     const invite = (i: number) =>
       withTenant(t.businessId, t.owner.actor, (tx) =>
@@ -124,11 +124,11 @@ describe("Technician role", () => {
           role: i % 2 ? "technician" : "staff",
         }),
       );
-    for (let i = 0; i < 10; i++) await invite(i);
-    await expect(invite(10)).rejects.toThrow(/up to 10 team logins/);
+    for (let i = 0; i < 15; i++) await invite(i);
+    await expect(invite(15)).rejects.toThrow(/up to 15 team logins/);
   });
 
-  it("only staff or technician can be invited", async () => {
+  it("only advisor, manager or technician can be invited", async () => {
     const t = await seedTenant("TechBad");
     await expect(
       withTenant(t.businessId, t.owner.actor, (tx) =>
@@ -138,6 +138,6 @@ describe("Technician role", () => {
           role: "owner" as never,
         }),
       ),
-    ).rejects.toThrow(/staff or technician/);
+    ).rejects.toThrow(/advisor, manager, or technician/);
   });
 });
