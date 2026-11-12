@@ -1,5 +1,5 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { currentMemberRole } from "./membership";
+import { currentMemberRole, canManageTeam } from "./membership";
 import { AppError } from "@/lib/errors";
 import { z } from "zod";
 import {
@@ -257,16 +257,24 @@ export async function getJob(tx: TenantTx, id: string) {
     )
     .orderBy(desc(activity.occurredAt), desc(activity.id))
     .limit(1);
-  if (job) return { ...job, documentOnly: false };
-  return (await documentJobs(tx, id))[0] ?? null;
+  const result = job ? { ...job, documentOnly: false } : (await documentJobs(tx, id))[0] ?? null;
+  if (result && (await currentMemberRole(tx)) === "staff" && !(await canManageTeam(tx))) {
+    const identity = jobInput.pick({customerId:true}).safeParse(result.data);
+    if (!identity.success) return null;
+    const [visible] = await tx.select({id:customer.id}).from(customer)
+      .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,identity.data.customerId)));
+    if (!visible) return null;
+  }
+  return result;
 }
 export async function listJobs(
   tx: TenantTx,
   query = "",
   assigneeUserId?: string,
 ) {
-  if ((await currentMemberRole(tx)) === "technician")
-    assigneeUserId = tx.actor.id!;
+  const role = await currentMemberRole(tx);
+  if (role === "technician") assigneeUserId = tx.actor.id!;
+  const staffScoped = role === "staff" && !(await canManageTeam(tx));
   const latest = tx
     .selectDistinctOn([activity.subjectId], {
       version: activity.id,
@@ -303,11 +311,14 @@ export async function listJobs(
         assigneeUserId
           ? sql`exists(select 1 from ${jobAssignment} where ${jobAssignment.businessId}=${tx.businessId} and ${jobAssignment.jobId}=${latest.id} and ${jobAssignment.userId}=${assigneeUserId})`
           : undefined,
+        staffScoped
+          ? sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}::text=${latest.data}->>'customerId')`
+          : undefined,
       ),
     )
     .orderBy(desc(latest.createdAt), desc(latest.version))
     .limit(100);
-  const documents = await documentJobs(tx, undefined, query, assigneeUserId);
+  const documents = await documentJobs(tx, undefined, query, assigneeUserId, staffScoped);
   return [...costed.map((j) => ({ ...j, documentOnly: false })), ...documents]
     .sort(
       (a, b) =>
@@ -324,6 +335,7 @@ async function documentJobs(
   id?: string,
   query = "",
   assignee?: string,
+  staffScoped = false,
 ) {
   const pattern = `%${query
     .trim()
@@ -342,6 +354,9 @@ async function documentJobs(
           : undefined,
         assignee
           ? sql`exists(select 1 from ${jobAssignment} where ${jobAssignment.businessId}=${tx.businessId} and ${jobAssignment.jobId}=${estimateVersion.quoteId} and ${jobAssignment.userId}=${assignee})`
+          : undefined,
+        staffScoped
+          ? sql`exists(select 1 from ${customer} where ${customer.businessId}=${tx.businessId} and ${customer.id}=${estimateVersion.customerId})`
           : undefined,
       ),
     )
