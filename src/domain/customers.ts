@@ -1,7 +1,8 @@
 import type { LeadSource } from "@/lib/lead-sources";
 import { LEAD_SOURCE_KEYS } from "@/lib/lead-sources";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { activity, asset, customer, vehicle } from "@/db/schema";
+import { activity, asset, customer, membership, vehicle } from "@/db/schema";
+import { canManageTeam } from "./membership";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
 import type { RequestMeta } from "./records";
@@ -23,6 +24,7 @@ export type CustomerInput = {
   leadSourceDetail?: string | null;
   // Set when the owner confirmed a same-phone/email customer is a different person.
   allowDuplicate?: boolean;
+  assignedUserId?: string;
 };
 
 const displayName = (firstName: string, lastName: string) =>
@@ -73,6 +75,18 @@ export async function createCustomer(
 ) {
   const name = displayName(input.firstName, input.lastName);
   if (!name) throw new AppError("VALIDATION", "Enter a customer name.");
+  const assignee = input.assignedUserId ?? (tx.actor.type === "user" ? tx.actor.id : null);
+  if (tx.actor.type === "user" && !assignee)
+    throw new AppError("VALIDATION", "Choose an assigned service advisor.");
+  if (assignee && tx.actor.type === "user") {
+    if (assignee !== tx.actor.id && !(await canManageTeam(tx)))
+      throw new AppError("FORBIDDEN", "Only management may assign customers to another employee.");
+    const [member] = await tx.select({id:membership.id}).from(membership).where(
+      and(eq(membership.businessId,tx.businessId),eq(membership.userId,assignee),
+        eq(membership.status,"active"),inArray(membership.role,["staff","owner"]))
+    );
+    if (!member) throw new AppError("VALIDATION", "Choose an active advisor or owner.");
+  }
   if (!input.allowDuplicate) {
     const match = await findMatchingCustomer(tx, input);
     if (match)
@@ -87,7 +101,7 @@ export async function createCustomer(
     .values({
       businessId: tx.businessId,
       createdByUserId: tx.actor.id,
-      assignedUserId: tx.actor.type === "user" ? tx.actor.id : null,
+      assignedUserId: assignee,
       firstName: input.firstName,
       lastName: input.lastName,
       displayName: name,
