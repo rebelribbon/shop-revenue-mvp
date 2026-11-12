@@ -124,6 +124,23 @@ describe("Manager assignment and private advisor access", () => {
         (t) => t.subjectId === manual.id,
       ),
     ).toBe(true);
+    const v = await bob.run(tx => createVehicle(tx, meta(), { customerId: first.id, make: "Ford" }));
+    await expect(bob.run(tx => createJob(tx, {
+      customerId: first.id, vehicleId: v.id, inspectionFirst: true,
+      title: "Inspection", concerns: "Brakes", parts: [], labor: [],
+    }))).rejects.toThrow(/Assign a service advisor/);
+    await expect(bob.run(tx => createJob(tx, {
+      customerId: first.id, vehicleId: v.id, inspectionFirst: true,
+      advisorUserId: alice.id, title: "Inspection", parts: [], labor: [],
+    }))).rejects.toThrow(/Only management/);
+    const ro = await bob.run(tx => createJob(tx, {
+      customerId: first.id, vehicleId: v.id, inspectionFirst: true,
+      advisorUserId: bob.id, title: "Inspection", parts: [], labor: [],
+    }));
+    expect(ro.id).toBeTruthy();
+    await expect(alice.run(tx => addTask(tx, meta(), {
+      title: "Wrong advisor", dueOn: today, assignedUserId: bob.id,
+    }))).rejects.toThrow(/Only management/);
     await expect(
       manager.run((tx) =>
         changeTeamAccess(tx, meta(), {
