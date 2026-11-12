@@ -126,7 +126,7 @@ CREATE POLICY customer_assignment_read ON app.customer
     app.current_actor_type() IS DISTINCT FROM 'user'
     OR EXISTS (
       SELECT 1 FROM app.membership m
-      WHERE m.business_id = business_id
+      WHERE m.business_id = customer.business_id
         AND m.user_id = app.current_actor_id() AND m.status = 'active'
         AND (m.role = 'owner' OR m.can_manage_team)
     )
@@ -136,8 +136,8 @@ CREATE POLICY customer_assignment_read ON app.customer
       JOIN app.activity a ON a.business_id = ja.business_id
         AND a.subject_type = 'job' AND a.subject_id = ja.job_id
         AND a.kind = 'job.costed'
-      WHERE ja.business_id = business_id AND ja.user_id = app.current_actor_id()
-        AND a.data->>'customerId' = id::text
+      WHERE ja.business_id = customer.business_id AND ja.user_id = app.current_actor_id()
+        AND a.data->>'customerId' = customer.id::text
     )
   );
 --> statement-breakpoint
@@ -145,7 +145,7 @@ CREATE POLICY vehicle_assignment_read ON app.vehicle
   AS RESTRICTIVE FOR SELECT TO app_user
   USING (
     EXISTS (SELECT 1 FROM app.customer c
-      WHERE c.business_id = business_id AND c.id = customer_id)
+      WHERE c.business_id = vehicle.business_id AND c.id = vehicle.customer_id)
     OR app.current_actor_type() IS DISTINCT FROM 'user'
   );
 --> statement-breakpoint
@@ -155,7 +155,7 @@ CREATE POLICY task_assignment_read ON app.task
     app.current_actor_type() IS DISTINCT FROM 'user'
     OR assigned_user_id = app.current_actor_id()
     OR EXISTS (
-      SELECT 1 FROM app.membership m WHERE m.business_id = business_id
+      SELECT 1 FROM app.membership m WHERE m.business_id = task.business_id
       AND m.user_id = app.current_actor_id() AND m.status = 'active'
       AND (m.role = 'owner' OR m.can_manage_team)
     )
