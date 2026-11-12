@@ -1,4 +1,4 @@
-import { revealField } from "./helpers";
+import { openFullJobSheet, revealField } from "./helpers";
 import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 
@@ -10,9 +10,9 @@ test("home-service setup creates a real property and equipment job without vehic
   test.setTimeout(60_000);
   await signInWithPassword(page, "owner.a@shop-a.test");
   try {
-    await page.goto("/app/jobs?new=1");
+    await page.goto("/app/jobs?new=1&full=1");
     await expect(
-      page.getByRole("heading", { name: "New job", exact: true }),
+      page.getByRole("heading", { name: "New RO", exact: true }),
     ).toBeVisible();
     await expect(page.locator("main")).not.toContainText(
       /property|equipment|materials/i,
@@ -169,13 +169,17 @@ test("home-service setup creates a real property and equipment job without vehic
         /properties|equipment/i,
       );
       await page.getByRole("link", { name: "New job", exact: true }).click();
+      // Back on automotive, a new RO opens as the vehicle check-in.
       await expect(
         page.getByRole("heading", {
-          name: "New job",
+          name: "New RO",
           exact: true,
         }),
       ).toBeVisible();
-      await expect(page.getByLabel("Vehicle", { exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Vehicle", exact: true }),
+      ).toBeVisible();
+      await openFullJobSheet(page);
       await expect(
         page.getByLabel("Property / equipment", { exact: true }),
       ).toHaveCount(0);

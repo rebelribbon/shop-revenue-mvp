@@ -5501,3 +5501,29 @@ main.customer-index-page {
     flex: 0 0 auto;
   }
 }
+/* Vehicle check-in */
+.ro-check-in-form h2 {
+  margin: 24px 0 8px;
+}
+.ro-check-in-form h2:first-child {
+  margin-top: 0;
+}
+.check-in-vehicle {
+  display: grid;
+  gap: 8px;
+}
+.check-in-ymm {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.check-in-vehicle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .check-in-ymm {
+    grid-template-columns: 1fr;
+  }
+}

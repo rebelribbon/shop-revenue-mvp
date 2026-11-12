@@ -69,7 +69,7 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
-import { RoCheckinEditor } from "@/components/ro-checkin-editor";
+import { RoCheckIn } from "@/components/ro-check-in";
 import { RoStageSummary } from "@/components/ro-stage-summary";
 import { requireShopSession } from "@/server/views/shop";
 
@@ -100,6 +100,7 @@ export default async function JobsPage({
     view?: string;
     tech?: string;
     mode?: string;
+    full?: string;
   }>;
 }) {
   const {
@@ -124,6 +125,7 @@ export default async function JobsPage({
     view,
     tech,
     mode,
+    full,
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
@@ -331,6 +333,12 @@ export default async function JobsPage({
     sourceRecoveryItemId ||
     sourceAppointmentId
   );
+  // ROs opened at check-in wait for the technician's inspection before
+  // pricing. Jobs priced up front (the full job sheet, older ROs) don't.
+  const inspectionFirst =
+    !!selected &&
+    !selected.documentOnly &&
+    !!jobInput.safeParse(selected.data).data?.inspectionFirst;
   const statusLabels = jobStatusLabels(type);
   const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
   const estimateName = auto ? "estimate" : "bid";
@@ -583,6 +591,7 @@ export default async function JobsPage({
       {editing &&
       selected &&
       auto &&
+      inspectionFirst &&
       !data.inspection?.complete &&
       !data.workflows.get(selected.id)?.latest ? (
         <section className="card">
@@ -604,11 +613,19 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          {auto && !selected ? (
-            <RoCheckinEditor
+          {auto && !selected && full !== "1" ? (
+            <RoCheckIn
               key={[customerId, vehicleId, sourceAppointmentId].join(":")}
-              options={data.options}
-              initial={initial}
+              customers={data.options.customers}
+              vehicles={data.options.vehicles}
+              techs={data.techs}
+              initial={{
+                customerId: initial?.customerId,
+                vehicleId: initial?.vehicleId,
+                sourceRecoveryItemId: initial?.sourceRecoveryItemId,
+                sourceContactActivityId: initial?.sourceContactActivityId,
+                sourceAppointmentId: initial?.sourceAppointmentId,
+              }}
               attachMediaId={
                 data.fromMedia && data.fromMedia.customerId === customerId
                   ? data.fromMedia.id
@@ -789,7 +806,10 @@ export default async function JobsPage({
           // An automotive RO begins with check-in and technician inspection.
           // Existing published ROs retain their document access.
           const awaitingInspection =
-            auto && !data.inspection?.complete && !flow?.latest;
+            auto &&
+            inspectionFirst &&
+            !data.inspection?.complete &&
+            !flow?.latest;
           return (
             <>
               <p>
@@ -807,6 +827,14 @@ export default async function JobsPage({
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
+                </p>
+              )}
+              {saved === "checkin" && (
+                <p role="status" className="notice ok">
+                  Vehicle checked in.{" "}
+                  {data.assignee
+                    ? `${techName(data.assignee)} has it for diagnosis and inspection. You’ll be notified to build the estimate.`
+                    : "Assign a technician to start the diagnosis."}
                 </p>
               )}
               {data.profit && (
@@ -889,7 +917,10 @@ export default async function JobsPage({
                 )}
                 {auto && (
                   <RoStageSummary
-                    inspectionComplete={!!data.inspection?.complete}
+                    inspectionComplete={
+                      !!data.inspection?.complete || !inspectionFirst
+                    }
+                    inspected={!!data.inspection?.complete}
                     hasEstimate={!!flow?.latest}
                     technicianAssigned={!!data.assignee}
                     stage={flow?.stage}

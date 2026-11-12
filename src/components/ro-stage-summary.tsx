@@ -34,13 +34,17 @@ const descriptions: Partial<Record<Stage, { title: string; detail: string }>> =
 
 export function RoStageSummary({
   inspectionComplete,
+  inspected = inspectionComplete,
   hasEstimate,
   technicianAssigned,
   stage,
   statusLabel,
   editHref,
 }: {
+  // True too for jobs priced up front, which need no inspection.
   inspectionComplete: boolean;
+  // The technician actually submitted one.
+  inspected?: boolean;
   hasEstimate: boolean;
   technicianAssigned: boolean;
   stage?: Stage;
@@ -53,7 +57,9 @@ export function RoStageSummary({
       ? "Waiting on technician inspection"
       : "Assign a technician"
     : !hasEstimate
-      ? "Inspection complete — build estimate"
+      ? inspected
+        ? "Inspection complete — build estimate"
+        : "Build the estimate"
       : (descriptions[stage ?? "draft"]?.title ??
         "Review the next service action");
   const detail = waiting
@@ -61,7 +67,9 @@ export function RoStageSummary({
       ? "The technician records the diagnosis and submits the inspection. The advisor is notified when it is ready."
       : "Assign a technician to inspect the vehicle. Estimate preparation follows submitted inspection findings."
     : !hasEstimate
-      ? "The advisor reviews submitted findings, prices parts and labor, and sends the estimate for customer approval."
+      ? inspected
+        ? "The advisor reviews submitted findings, prices parts and labor, and sends the estimate for customer approval."
+        : "Price parts and labor, then send the estimate for customer approval."
       : (descriptions[stage ?? "draft"]?.detail ??
         "Review current authorization and the next action in the Work section.");
 
