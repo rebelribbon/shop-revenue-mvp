@@ -386,6 +386,13 @@
       "when": 1795965331999,
       "tag": "0054_estimate_job_ref",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1796051731999,
+      "tag": "0055_manager_assignment_visibility",
+      "breakpoints": true
     }
   ]
 }
