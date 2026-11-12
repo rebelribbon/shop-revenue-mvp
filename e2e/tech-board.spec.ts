@@ -29,7 +29,7 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Customer concerns / reason for visit").fill(name);
   await page.getByRole("button", { name: "Create RO", exact: true }).click();
-  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Repair order", exact: true })).toBeVisible();
   const jobUrl = page.url();
 
   // Give it to the staff tech.
