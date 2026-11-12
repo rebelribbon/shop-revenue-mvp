@@ -36,6 +36,7 @@ test("routes an assigned inspection from the technician to its advisor without e
     .fill(
       `+1210555${String(Date.now()).slice(-3)}${info.project.name === "phone" ? 1 : 2}`,
     );
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   const customerUrl = page.url();
@@ -45,6 +46,7 @@ test("routes an assigned inspection from the technician to its advisor without e
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Customer concerns / reason for visit").fill(title);
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Create RO", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Repair order", exact: true }),
