@@ -5,7 +5,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { timeEntry } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
-import { calculateJob } from "./job-costing";
+import { calculateJob, partLineCents } from "./job-costing";
 import { getJob, jobInput } from "./jobs";
 import { audit, type RequestMeta } from "./records";
 
@@ -25,6 +25,17 @@ export type JobProfit = {
   cardFeesCents: number;
   // Why profit can't be shown yet (e.g. a part with no cost).
   missing: string[];
+  partsCostCents: number | null;
+  laborCostCents: number | null;
+  // Line by line, as quoted: price, cost (null when not entered) and profit.
+  lines: {
+    kind: "part" | "labor";
+    description: string;
+    quantity: string;
+    unitCostCents: number | null;
+    costCents: number | null;
+    priceCents: number;
+  }[];
 };
 
 export async function jobProfit(
@@ -98,7 +109,47 @@ export async function jobProfit(
     profitCents === null || base.subtotalCents === 0
       ? null
       : Math.round((profitCents * 10000) / base.subtotalCents);
+  const lines: JobProfit["lines"] = [
+    ...input.parts.map((p) => ({
+      kind: "part" as const,
+      description: p.description,
+      quantity: String(p.quantity),
+      unitCostCents: p.unitCostCents,
+      costCents:
+        p.unitCostCents === null
+          ? null
+          : partLineCents(p.quantity, p.unitCostCents),
+      priceCents: partLineCents(p.quantity, p.unitPriceCents),
+    })),
+    ...input.labor.map((l, n) => {
+      const hours = l.actualHoursHundredths ?? l.estimatedHoursHundredths;
+      return {
+        kind: "labor" as const,
+        description: l.description,
+        quantity: `${(hours / 100).toFixed(2)} h${l.actualHoursHundredths === null ? "" : " actual"}`,
+        unitCostCents: laborRates[n] || null,
+        costCents: laborRates[n]
+          ? Math.round((hours / 100) * laborRates[n])
+          : null,
+        priceCents: Math.round(
+          (l.estimatedHoursHundredths * l.sellRateCents) / 100,
+        ),
+      };
+    }),
+  ];
   return {
+    // Each category on its own, so a missing labor rate doesn't hide what
+    // the parts cost.
+    partsCostCents: lines
+      .filter((l) => l.kind === "part")
+      .every((l) => l.costCents !== null)
+      ? lines
+          .filter((l) => l.kind === "part")
+          .reduce((t, l) => t + (l.costCents ?? 0), 0)
+      : null,
+    laborCostCents:
+      input.labor.length && laborRates.some((r) => !r) ? null : laborCost,
+    lines,
     salesCents: base.subtotalCents,
     costCents,
     profitCents,

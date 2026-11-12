@@ -289,7 +289,13 @@ describe("owner exports and scheduled maintenance", () => {
         sql`SELECT app.enqueue_job('reconcile_revenue',jsonb_build_object('business_id',${t.businessId}::text),now(),3,${"test-maintenance-" + randomUUID()})`,
       ),
     );
-    const result = await runMaintenanceBatch({ limit: 2, budgetMs: 10000 });
+    // The queue and heartbeat only: the all-shop sweeps visit every shop in
+    // the test database and have their own tests.
+    const result = await runMaintenanceBatch({
+      limit: 2,
+      budgetMs: 10000,
+      sweeps: false,
+    });
     expect(result.status).toBe("succeeded");
     expect(result.completed).toBeGreaterThan(0);
     expect((await maintenanceStatus()).healthy).toBe(true);
@@ -298,8 +304,7 @@ describe("owner exports and scheduled maintenance", () => {
         tx.execute(sql`SELECT * FROM app.maintenance_run`),
       ),
     ).rejects.toThrow();
-    // Visits every shop in the test database (Monday summaries, Mon-Wed).
-  }, 120_000);
+  });
   it("rejects a mismatched vehicle while maintaining export tenant isolation", async () => {
     const a = await seedTenant("Vehicles"),
       b = await seedTenant("Other vehicles");

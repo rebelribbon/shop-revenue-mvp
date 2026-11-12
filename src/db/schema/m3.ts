@@ -20,6 +20,23 @@ export type EstimateLine = {
   taxable?: boolean;
   // Catalog part, so stock can come off when invoiced.
   partItemId?: string;
+  // Work the shop recommends (from the inspection or declined before), shown
+  // to the customer apart from what they came in for.
+  recommended?: boolean;
+};
+// The technician's findings, frozen with the estimate for the customer.
+export type EstimateInspection = {
+  diagnosis: string;
+  checkedCount: number;
+  goodCount: number;
+  findings: {
+    label: string;
+    section?: string;
+    status: "watch" | "fix";
+    note: string;
+    recommendedWork: string;
+    measurements?: Partial<Record<"lf" | "rf" | "lr" | "rr" | "spare", string>>;
+  }[];
 };
 export type AuthorizationPolicy = {
   id: string;
@@ -35,6 +52,10 @@ export type EstimateSnapshot = {
   vehicleLabel: string;
   serviceLabel?: string;
   lines: EstimateLine[];
+  // Check-in: what the customer came in for and the odometer reading.
+  concerns?: string;
+  mileageIn?: number;
+  inspection?: EstimateInspection;
   subtotalCents: number;
   taxBps: number;
   taxCents: number;

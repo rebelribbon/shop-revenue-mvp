@@ -27,7 +27,11 @@ export async function maintenanceStatus() {
 export async function runMaintenanceBatch({
   limit = 25,
   budgetMs = 90000,
-}: { limit?: number; budgetMs?: number } = {}) {
+  // The all-shop sweeps (service plans, reminders, review requests, weekly
+  // reports). Always on in production; a test of the job queue alone can
+  // skip them, since each sweep has its own tests.
+  sweeps = true,
+}: { limit?: number; budgetMs?: number; sweeps?: boolean } = {}) {
   return withGlobalWorker(async (tx) => {
     const lock = await tx.execute(
       sql`SELECT pg_try_advisory_xact_lock(hashtextextended('shop-revenue-maintenance',0)) AS acquired`,
@@ -89,14 +93,16 @@ export async function runMaintenanceBatch({
           },
         },
       });
-      const plans = await runServicePlanMaintenance();
-      failed += plans.failed;
-      const reminders = await runPaymentReminders();
-      failed += reminders.errors;
-      const reviews = await runReviewRequests();
-      failed += reviews.errors;
-      const weekly = await runWeeklyReports();
-      failed += weekly.errors;
+      if (sweeps) {
+        const plans = await runServicePlanMaintenance();
+        failed += plans.failed;
+        const reminders = await runPaymentReminders();
+        failed += reminders.errors;
+        const reviews = await runReviewRequests();
+        failed += reviews.errors;
+        const weekly = await runWeeklyReports();
+        failed += weekly.errors;
+      }
       const status = failed ? "failed" : "succeeded";
       await tx.execute(
         sql`UPDATE app.maintenance_run SET finished_at=now(),status=${status},completed=${completed},failed=${failed} WHERE id=${started.id}`,
