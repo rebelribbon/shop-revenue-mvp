@@ -108,3 +108,16 @@ export async function approveEstimateSteps(page: Page) {
     await next.click();
   }
 }
+
+// A new automotive RO opens as the check-in. Tests that price a job up front
+// (no technician inspection) switch to the full job sheet.
+export async function openFullJobSheet(page: Page) {
+  await expect(
+    page.getByRole("heading", { name: "New RO", exact: true }),
+  ).toBeVisible();
+  const url = new URL(page.url());
+  url.searchParams.set("new", "1");
+  url.searchParams.set("full", "1");
+  await page.goto(url.toString());
+  await expect(page.getByLabel("Job name", { exact: true })).toBeVisible();
+}

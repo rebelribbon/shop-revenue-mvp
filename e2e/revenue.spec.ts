@@ -3,6 +3,7 @@ import { test, expect } from "@playwright/test";
 import {
   approveEstimateSteps,
   drawEstimateSignature,
+  openFullJobSheet,
   signInWithPassword,
 } from "./helpers";
 test("recovered revenue follows paid recommendation lines and keeps correction history", async ({
@@ -61,6 +62,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByRole("button", { name: "Start job", exact: true })
     .click();
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
+  await openFullJobSheet(page);
   await page.getByLabel("Job name").fill(title);
   await page.getByRole("button", { name: "Add part", exact: true }).click();
   const parts = page.locator("fieldset:not(.hydration-fields):not(.chips)");

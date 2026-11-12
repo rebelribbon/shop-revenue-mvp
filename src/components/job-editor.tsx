@@ -205,6 +205,8 @@ export function JobEditor({
             title,
             repeat,
             warrantyMonths: Number(warranty) > 0 ? Number(warranty) : null,
+            // An RO opened at check-in stays one after it's priced.
+            inspectionFirst: initial?.inspectionFirst,
             mileageIn: auto && mileageIn !== "" ? Number(mileageIn) : null,
             concerns: concerns.trim() || undefined,
             parts,

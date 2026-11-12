@@ -35,7 +35,7 @@ test("Parts: add, receive, count, and pick one on a job", async ({
   await expect(page.getByText(/running low/)).toBeVisible();
 
   // Pick it on a new job: prices fill in from the list.
-  await page.goto("/app/jobs?new=1");
+  await page.goto("/app/jobs?new=1&full=1");
   await page.getByRole("button", { name: "Add part", exact: true }).click();
   await page.getByLabel("Description", { exact: true }).fill(name);
   await expect(page.getByText(/From your list · 1 on the shelf/)).toBeVisible();
