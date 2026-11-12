@@ -27,6 +27,7 @@ import {
   startRecoveryWork,
 } from "@/domain/money-finder";
 import { createJob, listJobs } from "@/domain/jobs";
+import { assignCustomer } from "@/domain/assignments";
 import { freezeEstimate, readPublicEstimate } from "@/domain/estimates";
 import {
   issueInvoice,
@@ -279,6 +280,7 @@ describe("durable revenue attribution", () => {
         method: "in_person",
       }),
     );
+    await run(f, tx => assignCustomer(tx, meta(), {customerId: f.customerId, userId: f.staff!.userId}));
     const result = await withTenant(f.businessId, f.staff!.actor, (tx) =>
       updateRecovery(tx, meta(), {
         category: "declined",
