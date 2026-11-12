@@ -167,8 +167,15 @@ export default async function TasksPage(props: {
             {management ? (
               <>
                 <label htmlFor="task-assignee">Assigned service advisor</label>
-                <select id="task-assignee" name="assignedUserId" defaultValue="" required>
-                  <option value="" disabled>Choose an advisor</option>
+                <select
+                  id="task-assignee"
+                  name="assignedUserId"
+                  defaultValue=""
+                  required
+                >
+                  <option value="" disabled>
+                    Choose an advisor
+                  </option>
                   {advisors.map((advisor) => (
                     <option key={advisor.userId} value={advisor.userId}>
                       {advisor.name}
@@ -179,7 +186,11 @@ export default async function TasksPage(props: {
             ) : (
               <>
                 <p className="muted">This task is assigned to you.</p>
-                <input type="hidden" name="assignedUserId" value={s.actor.id ?? ""} />
+                <input
+                  type="hidden"
+                  name="assignedUserId"
+                  value={s.actor.id ?? ""}
+                />
               </>
             )}
             <label htmlFor="task-customer">Customer (optional)</label>

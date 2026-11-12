@@ -163,17 +163,31 @@ export async function createJob(tx: TenantTx, input: JobInput) {
   // Preserve legacy/imported service jobs and existing cost revisions.
   if (data.inspectionFirst && !data.jobId) {
     if (!data.advisorUserId)
-      throw new AppError("VALIDATION", "Assign a service advisor before creating the RO.");
-    const [advisor] = await tx.select({id:membership.id}).from(membership).where(and(
-      eq(membership.businessId,tx.businessId),
-      eq(membership.userId,data.advisorUserId),
-      eq(membership.status,"active"),
-      sql`${membership.role} IN ('staff','owner')`,
-    ));
+      throw new AppError(
+        "VALIDATION",
+        "Assign a service advisor before creating the RO.",
+      );
+    const [advisor] = await tx
+      .select({ id: membership.id })
+      .from(membership)
+      .where(
+        and(
+          eq(membership.businessId, tx.businessId),
+          eq(membership.userId, data.advisorUserId),
+          eq(membership.status, "active"),
+          sql`${membership.role} IN ('staff','owner')`,
+        ),
+      );
     if (!advisor)
-      throw new AppError("VALIDATION", "Choose an active service advisor or owner.");
+      throw new AppError(
+        "VALIDATION",
+        "Choose an active service advisor or owner.",
+      );
     if (data.advisorUserId !== tx.actor.id && !(await canManageTeam(tx)))
-      throw new AppError("FORBIDDEN", "Only management can assign an RO to another advisor.");
+      throw new AppError(
+        "FORBIDDEN",
+        "Only management can assign an RO to another advisor.",
+      );
   }
   const totals = calculateJob(data.parts, data.labor);
   const id = data.jobId ?? crypto.randomUUID();
@@ -243,8 +257,15 @@ export async function createJob(tx: TenantTx, input: JobInput) {
     });
     // An RO created through check-in is immediately in the advisor's queue.
     // Technicians only gain access when management assigns them separately.
-    await tx.update(customer).set({ assignedUserId: data.advisorUserId })
-      .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,data.customerId)));
+    await tx
+      .update(customer)
+      .set({ assignedUserId: data.advisorUserId })
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.id, data.customerId),
+        ),
+      );
   }
   await recordActivity(tx, {
     kind: "job.created",

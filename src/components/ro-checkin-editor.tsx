@@ -40,7 +40,9 @@ export function RoCheckinEditor({
     initial?.mileageIn == null ? "" : String(initial.mileageIn),
   );
   const [concerns, setConcerns] = useState(initial?.concerns ?? "");
-  const [advisorUserId, setAdvisorUserId] = useState(canManage ? "" : currentUserId);
+  const [advisorUserId, setAdvisorUserId] = useState(
+    canManage ? "" : currentUserId,
+  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());

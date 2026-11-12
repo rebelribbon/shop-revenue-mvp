@@ -11,8 +11,15 @@ import { requireShopSession } from "@/server/views/shop";
 import { LEAD_SOURCES } from "@/lib/lead-sources";
 export default async function NewCustomerPage() {
   const s = await requireShopSession("/app/customers/new");
-  const [profile, canManage, advisors] = await withTenant(s.businessId, s.actor, (tx) =>
-    Promise.all([getBusinessProfile(tx), canManageTeam(tx), listAdvisors(tx)]),
+  const [profile, canManage, advisors] = await withTenant(
+    s.businessId,
+    s.actor,
+    (tx) =>
+      Promise.all([
+        getBusinessProfile(tx),
+        canManageTeam(tx),
+        listAdvisors(tx),
+      ]),
   );
   const auto = isAutomotive(profile?.businessType ?? "automotive");
   return (
@@ -35,18 +42,35 @@ export default async function NewCustomerPage() {
         >
           {canManage ? (
             <>
-              <label htmlFor="new-customer-advisor">Assigned service advisor</label>
-              <select id="new-customer-advisor" name="assignedUserId" defaultValue="" required>
-                <option value="" disabled>Choose an advisor</option>
+              <label htmlFor="new-customer-advisor">
+                Assigned service advisor
+              </label>
+              <select
+                id="new-customer-advisor"
+                name="assignedUserId"
+                defaultValue=""
+                required
+              >
+                <option value="" disabled>
+                  Choose an advisor
+                </option>
                 {advisors.map((a) => (
-                  <option key={a.userId} value={a.userId}>{a.name}</option>
+                  <option key={a.userId} value={a.userId}>
+                    {a.name}
+                  </option>
                 ))}
               </select>
             </>
           ) : (
             <>
-              <p className="muted">Assigned to you. A manager can transfer this customer later.</p>
-              <input type="hidden" name="assignedUserId" value={s.actor.id ?? ""} />
+              <p className="muted">
+                Assigned to you. A manager can transfer this customer later.
+              </p>
+              <input
+                type="hidden"
+                name="assignedUserId"
+                value={s.actor.id ?? ""}
+              />
             </>
           )}
           <label htmlFor="firstName">First name</label>

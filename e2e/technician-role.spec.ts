@@ -29,8 +29,10 @@ test("Technicians see only their jobs and no owner pages", async ({
     await page.goto(vehicleUrl);
     await page.getByRole("link", { name: "+ New RO", exact: true }).click();
     await page.getByLabel("Customer concerns / reason for visit").fill(title);
-    await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
-  await page.getByRole("button", { name: "Create RO", exact: true }).click();
+    await page
+      .getByLabel("Assigned service advisor")
+      .selectOption({ index: 1 });
+    await page.getByRole("button", { name: "Create RO", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "Repair order", exact: true }),
     ).toBeVisible();
