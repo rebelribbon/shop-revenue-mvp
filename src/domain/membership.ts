@@ -39,14 +39,26 @@ export async function assertOwner(tx: TenantTx) {
 // This is resolved from the database, never from a browser-supplied role.
 export async function canManageTeam(tx: TenantTx): Promise<boolean> {
   if (tx.actor.type !== "user" || !tx.actor.id) return false;
-  const [row] = await tx.select({ role: membership.role, manage: membership.canManageTeam })
+  const [row] = await tx
+    .select({ role: membership.role, manage: membership.canManageTeam })
     .from(membership)
-    .where(and(eq(membership.businessId, tx.businessId), eq(membership.userId, tx.actor.id), eq(membership.status, "active")));
-  return row?.role === "owner" || (row?.role === "staff" && row.manage === true);
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.userId, tx.actor.id),
+        eq(membership.status, "active"),
+      ),
+    );
+  return (
+    row?.role === "owner" || (row?.role === "staff" && row.manage === true)
+  );
 }
 
 export async function assertManager(tx: TenantTx) {
-  if (!(await canManageTeam(tx))) throw forbidden("Only shop management can manage team access and assignments.");
+  if (!(await canManageTeam(tx)))
+    throw forbidden(
+      "Only shop management can manage team access and assignments.",
+    );
 }
 
 export const INVITE_DELIVERY_ACTION = "membership.invite_delivery";
@@ -133,7 +145,10 @@ export async function inviteStaff(
   const manager = input.role === "manager";
   const role = manager ? "staff" : (input.role ?? "staff");
   if (role !== "staff" && role !== "technician")
-    throw new AppError("VALIDATION", "Role must be advisor, manager, or technician.");
+    throw new AppError(
+      "VALIDATION",
+      "Role must be advisor, manager, or technician.",
+    );
   const [{ seats }] = await tx
     .select({ seats: sql<number>`count(*)::int` })
     .from(membership)
@@ -179,7 +194,9 @@ export async function inviteStaff(
     summary:
       role === "technician"
         ? "Technician login invited"
-        : manager ? "Manager login invited" : "Advisor login invited",
+        : manager
+          ? "Manager login invited"
+          : "Advisor login invited",
   });
   return {
     membershipId: m.id,
@@ -387,9 +404,17 @@ export async function changeTeamAccess(
   input: { membershipId: string; role: "advisor" | "manager" | "technician" },
 ) {
   await assertManager(tx);
-  const [before] = await tx.select().from(membership)
-    .where(and(eq(membership.businessId, tx.businessId), eq(membership.id, input.membershipId)));
-  if (!before || before.status !== "active" || !before.userId) throw notFound("That active team member");
+  const [before] = await tx
+    .select()
+    .from(membership)
+    .where(
+      and(
+        eq(membership.businessId, tx.businessId),
+        eq(membership.id, input.membershipId),
+      ),
+    );
+  if (!before || before.status !== "active" || !before.userId)
+    throw notFound("That active team member");
   if (before.role === "owner" || before.userId === tx.actor.id)
     throw forbidden("Owner access and your own role cannot be changed.");
   const role = input.role === "technician" ? "technician" : "staff";
@@ -400,17 +425,50 @@ export async function changeTeamAccess(
   // under the wrong role. Reassign their open work before changing the role.
   if (before.role !== role) {
     const { jobAssignment, task, customer } = await import("@/db/schema");
-    const assignedJobs = await tx.select({ id: jobAssignment.jobId }).from(jobAssignment)
-      .where(and(eq(jobAssignment.businessId, tx.businessId), eq(jobAssignment.userId, before.userId)));
-    const assignedTasks = await tx.select({ id: task.id }).from(task)
-      .where(and(eq(task.businessId, tx.businessId), eq(task.assignedUserId, before.userId), sql`${task.doneAt} IS NULL`));
-    const assignedCustomers = await tx.select({id:customer.id}).from(customer)
-      .where(and(eq(customer.businessId,tx.businessId),eq(customer.assignedUserId,before.userId)));
+    const assignedJobs = await tx
+      .select({ id: jobAssignment.jobId })
+      .from(jobAssignment)
+      .where(
+        and(
+          eq(jobAssignment.businessId, tx.businessId),
+          eq(jobAssignment.userId, before.userId),
+        ),
+      );
+    const assignedTasks = await tx
+      .select({ id: task.id })
+      .from(task)
+      .where(
+        and(
+          eq(task.businessId, tx.businessId),
+          eq(task.assignedUserId, before.userId),
+          sql`${task.doneAt} IS NULL`,
+        ),
+      );
+    const assignedCustomers = await tx
+      .select({ id: customer.id })
+      .from(customer)
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.assignedUserId, before.userId),
+        ),
+      );
     if (assignedJobs.length || assignedTasks.length || assignedCustomers.length)
-      throw new AppError("CONFLICT", "Reassign this employee's customers, active ROs, and tasks before changing their role.");
+      throw new AppError(
+        "CONFLICT",
+        "Reassign this employee's customers, active ROs, and tasks before changing their role.",
+      );
   }
-  await tx.update(membership).set({ role, canManageTeam: canManage }).where(eq(membership.id, before.id));
-  await audit(tx, meta, {action: "membership.access_changed", targetType:"membership",targetId:before.id,
-    before: {role:before.role,canManageTeam:before.canManageTeam},after:{role,canManageTeam:canManage}});
+  await tx
+    .update(membership)
+    .set({ role, canManageTeam: canManage })
+    .where(eq(membership.id, before.id));
+  await audit(tx, meta, {
+    action: "membership.access_changed",
+    targetType: "membership",
+    targetId: before.id,
+    before: { role: before.role, canManageTeam: before.canManageTeam },
+    after: { role, canManageTeam: canManage },
+  });
   return { id: before.id, message: "User access updated." };
 }

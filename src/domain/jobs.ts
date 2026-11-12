@@ -257,12 +257,25 @@ export async function getJob(tx: TenantTx, id: string) {
     )
     .orderBy(desc(activity.occurredAt), desc(activity.id))
     .limit(1);
-  const result = job ? { ...job, documentOnly: false } : (await documentJobs(tx, id))[0] ?? null;
-  if (result && (await currentMemberRole(tx)) === "staff" && !(await canManageTeam(tx))) {
-    const identity = jobInput.pick({customerId:true}).safeParse(result.data);
+  const result = job
+    ? { ...job, documentOnly: false }
+    : ((await documentJobs(tx, id))[0] ?? null);
+  if (
+    result &&
+    (await currentMemberRole(tx)) === "staff" &&
+    !(await canManageTeam(tx))
+  ) {
+    const identity = jobInput.pick({ customerId: true }).safeParse(result.data);
     if (!identity.success) return null;
-    const [visible] = await tx.select({id:customer.id}).from(customer)
-      .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,identity.data.customerId)));
+    const [visible] = await tx
+      .select({ id: customer.id })
+      .from(customer)
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.id, identity.data.customerId),
+        ),
+      );
     if (!visible) return null;
   }
   return result;
@@ -318,7 +331,13 @@ export async function listJobs(
     )
     .orderBy(desc(latest.createdAt), desc(latest.version))
     .limit(100);
-  const documents = await documentJobs(tx, undefined, query, assigneeUserId, staffScoped);
+  const documents = await documentJobs(
+    tx,
+    undefined,
+    query,
+    assigneeUserId,
+    staffScoped,
+  );
   return [...costed.map((j) => ({ ...j, documentOnly: false })), ...documents]
     .sort(
       (a, b) =>

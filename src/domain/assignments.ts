@@ -108,11 +108,25 @@ export async function assignAdvisor(
   const parsed = jobInput.pick({ customerId: true }).safeParse(job.data);
   if (parsed.success) {
     // Reassignment transfers contact ownership and its open advisor tasks.
-    await tx.update(customer).set({ assignedUserId: input.userId })
-      .where(and(eq(customer.businessId, tx.businessId), eq(customer.id, parsed.data.customerId)));
-    await tx.update(task).set({ assignedUserId: input.userId })
-      .where(and(eq(task.businessId, tx.businessId), sql`${task.doneAt} IS NULL`,
-        sql`(${task.jobId} = ${input.jobId} OR (${task.customerId} = ${parsed.data.customerId} AND ${task.assignedUserId} IS NOT DISTINCT FROM ${before}))`));
+    await tx
+      .update(customer)
+      .set({ assignedUserId: input.userId })
+      .where(
+        and(
+          eq(customer.businessId, tx.businessId),
+          eq(customer.id, parsed.data.customerId),
+        ),
+      );
+    await tx
+      .update(task)
+      .set({ assignedUserId: input.userId })
+      .where(
+        and(
+          eq(task.businessId, tx.businessId),
+          sql`${task.doneAt} IS NULL`,
+          sql`(${task.jobId} = ${input.jobId} OR (${task.customerId} = ${parsed.data.customerId} AND ${task.assignedUserId} IS NOT DISTINCT FROM ${before}))`,
+        ),
+      );
   }
   await audit(tx, meta, {
     action: "job.advisor_assigned",
@@ -260,18 +274,51 @@ export async function assignCustomer(
   input: { customerId: string; userId: string },
 ) {
   await assertManager(tx);
-  const advisor = (await listAdvisors(tx)).find(a => a.userId === input.userId);
+  const advisor = (await listAdvisors(tx)).find(
+    (a) => a.userId === input.userId,
+  );
   if (!advisor) throw new AppError("VALIDATION", "Choose an active advisor.");
-  const [before] = await tx.select({assignedUserId:customer.assignedUserId})
+  const [before] = await tx
+    .select({ assignedUserId: customer.assignedUserId })
     .from(customer)
-    .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,input.customerId)));
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        eq(customer.id, input.customerId),
+      ),
+    );
   if (!before) throw notFound("That customer");
-  await tx.update(customer).set({assignedUserId:input.userId})
-    .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,input.customerId)));
-  await tx.update(task).set({assignedUserId:input.userId})
-    .where(and(eq(task.businessId,tx.businessId),eq(task.customerId,input.customerId),
-      before.assignedUserId ? eq(task.assignedUserId,before.assignedUserId) : isNull(task.assignedUserId),sql`${task.doneAt} IS NULL`));
-  await audit(tx,meta,{action:"customer.assigned",targetType:"customer",targetId:input.customerId,
-    before:{userId:before.assignedUserId},after:{userId:input.userId}});
-  return {customerId:input.customerId,message:`Assigned to ${advisor.name}.`};
+  await tx
+    .update(customer)
+    .set({ assignedUserId: input.userId })
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        eq(customer.id, input.customerId),
+      ),
+    );
+  await tx
+    .update(task)
+    .set({ assignedUserId: input.userId })
+    .where(
+      and(
+        eq(task.businessId, tx.businessId),
+        eq(task.customerId, input.customerId),
+        before.assignedUserId
+          ? eq(task.assignedUserId, before.assignedUserId)
+          : isNull(task.assignedUserId),
+        sql`${task.doneAt} IS NULL`,
+      ),
+    );
+  await audit(tx, meta, {
+    action: "customer.assigned",
+    targetType: "customer",
+    targetId: input.customerId,
+    before: { userId: before.assignedUserId },
+    after: { userId: input.userId },
+  });
+  return {
+    customerId: input.customerId,
+    message: `Assigned to ${advisor.name}.`,
+  };
 }

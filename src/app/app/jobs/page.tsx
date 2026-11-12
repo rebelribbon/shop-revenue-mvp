@@ -419,33 +419,41 @@ export default async function JobsPage({
     }).format(c / 100);
   const advisorAssignment =
     selected && s.role !== "technician" && s.actor.type !== "support" ? (
-      data.canManageTeam ? <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
-        <ActionForm
-          action={assignAdvisorAction}
-          hidden={{ jobId: selected.id }}
-          submitLabel="Assign advisor"
-          variant="secondary"
-        >
-          <label htmlFor="job-advisor">Service advisor for this RO</label>
-          <select
-            id="job-advisor"
-            name="userId"
-            defaultValue={data.advisorId ?? s.actor.id ?? ""}
-            required
+      data.canManageTeam ? (
+        <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
+          <ActionForm
+            action={assignAdvisorAction}
+            hidden={{ jobId: selected.id }}
+            submitLabel="Assign advisor"
+            variant="secondary"
           >
-            <option value="">Choose advisor</option>
-            {data.advisors.map((a) => (
-              <option value={a.userId} key={a.userId}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </ActionForm>
+            <label htmlFor="job-advisor">Service advisor for this RO</label>
+            <select
+              id="job-advisor"
+              name="userId"
+              defaultValue={data.advisorId ?? s.actor.id ?? ""}
+              required
+            >
+              <option value="">Choose advisor</option>
+              {data.advisors.map((a) => (
+                <option value={a.userId} key={a.userId}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </ActionForm>
+          <p className="muted">
+            When the inspection is submitted, this advisor receives the Build
+            Estimate task.
+          </p>
+        </div>
+      ) : (
         <p className="muted">
-          When the inspection is submitted, this advisor receives the Build
-          Estimate task.
+          Assigned advisor:{" "}
+          {data.advisors.find((a) => a.userId === data.advisorId)?.name ??
+            "Not assigned"}
         </p>
-      </div> : <p className="muted">Assigned advisor: {data.advisors.find(a => a.userId === data.advisorId)?.name ?? "Not assigned"}</p>
+      )
     ) : null;
   // Technicians get a dedicated assigned-work workspace. The general RO
   // editor, profit, invoices, estimates, customer administration and

@@ -56,10 +56,8 @@ export default async function TasksPage(props: {
   const canAdd = !readOnly && !technician;
   const jobId = p.add && canAdd ? p.jobId : undefined;
   const view = p.view === "later" ? "later" : "due";
-  const [data, customers, context, profile, management, advisors] = await withTenant(
-    s.businessId,
-    s.actor,
-    (tx) =>
+  const [data, customers, context, profile, management, advisors] =
+    await withTenant(s.businessId, s.actor, (tx) =>
       Promise.all([
         listTasks(tx),
         p.add && canAdd && !jobId ? listCustomers(tx) : [],
@@ -68,7 +66,7 @@ export default async function TasksPage(props: {
         canManageTeam(tx),
         listAdvisors(tx),
       ]),
-  );
+    );
   if (jobId && !context) notFound();
   const rows = view === "due" ? data.due : data.later;
   return (
@@ -169,7 +167,11 @@ export default async function TasksPage(props: {
             {management && (
               <>
                 <label htmlFor="task-assignee">Assign to advisor</label>
-                <select id="task-assignee" name="assignedUserId" defaultValue={s.userId ?? ""}>
+                <select
+                  id="task-assignee"
+                  name="assignedUserId"
+                  defaultValue={s.userId ?? ""}
+                >
                   {advisors.map((advisor) => (
                     <option key={advisor.userId} value={advisor.userId}>
                       {advisor.name}

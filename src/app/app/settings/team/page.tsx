@@ -36,7 +36,13 @@ export default async function TeamPage() {
           .filter((m) => m.inviteExpiresAt && m.inviteExpiresAt < new Date())
           .map((m) => m.id),
       );
-      return { team, delivery, expired, pingsOn: await handoffPingsOn(tx), canManage: await canManageTeam(tx) };
+      return {
+        team,
+        delivery,
+        expired,
+        pingsOn: await handoffPingsOn(tx),
+        canManage: await canManageTeam(tx),
+      };
     },
   );
   if (!canManage) notFound();
@@ -104,16 +110,35 @@ export default async function TeamPage() {
                           variant="secondary"
                         />
                       )}
-                    {(m.role === "staff" || m.role === "technician") && m.status === "active" && m.userId !== s.userId && (
-                      <ActionForm action={changeTeamAccessAction} hidden={{ membershipId: m.id }} submitLabel="Save role" variant="secondary">
-                        <label htmlFor={`team-role-${m.id}`}>Access role</label>
-                        <select id={`team-role-${m.id}`} name="role" defaultValue={m.canManageTeam ? "manager" : m.role === "technician" ? "technician" : "advisor"}>
-                          <option value="advisor">Service advisor</option>
-                          <option value="technician">Technician</option>
-                          <option value="manager">Manager</option>
-                        </select>
-                      </ActionForm>
-                    )}
+                    {(m.role === "staff" || m.role === "technician") &&
+                      m.status === "active" &&
+                      m.userId !== s.userId && (
+                        <ActionForm
+                          action={changeTeamAccessAction}
+                          hidden={{ membershipId: m.id }}
+                          submitLabel="Save role"
+                          variant="secondary"
+                        >
+                          <label htmlFor={`team-role-${m.id}`}>
+                            Access role
+                          </label>
+                          <select
+                            id={`team-role-${m.id}`}
+                            name="role"
+                            defaultValue={
+                              m.canManageTeam
+                                ? "manager"
+                                : m.role === "technician"
+                                  ? "technician"
+                                  : "advisor"
+                            }
+                          >
+                            <option value="advisor">Service advisor</option>
+                            <option value="technician">Technician</option>
+                            <option value="manager">Manager</option>
+                          </select>
+                        </ActionForm>
+                      )}
                     {(m.role === "staff" || m.role === "technician") && (
                       <ActionForm
                         action={removeStaffAction}
@@ -143,7 +168,9 @@ export default async function TeamPage() {
             <input id="name" name="name" required maxLength={100} />
             <label htmlFor="role">Role</label>
             <select id="role" name="role" defaultValue="staff" required>
-              <option value="staff">Service advisor (assigned customers and ROs)</option>
+              <option value="staff">
+                Service advisor (assigned customers and ROs)
+              </option>
               <option value="technician">Technician (assigned ROs only)</option>
               <option value="manager">Manager (team and assignments)</option>
             </select>

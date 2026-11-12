@@ -270,7 +270,10 @@ export default async function CustomerDetailPage(props: {
             </span>
           </p>
           {canManage && (
-            <section className="record-customer-tools" aria-label="Customer assignment">
+            <section
+              className="record-customer-tools"
+              aria-label="Customer assignment"
+            >
               <h3>Assigned service advisor</h3>
               <ActionForm
                 action={assignCustomerAction}

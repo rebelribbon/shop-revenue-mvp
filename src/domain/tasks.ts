@@ -325,14 +325,25 @@ export async function listTasks(tx: TenantTx, now = new Date()) {
 export async function addTask(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { title: string; dueOn: string; customerId?: string; jobId?: string; assignedUserId?: string },
+  input: {
+    title: string;
+    dueOn: string;
+    customerId?: string;
+    jobId?: string;
+    assignedUserId?: string;
+  },
 ) {
   if (input.customerId) await getCustomerWithVehicles(tx, input.customerId);
   let assignedUserId = tx.actor.id;
   if (input.assignedUserId && input.assignedUserId !== tx.actor.id) {
     await assertManager(tx);
-    if (!(await listAdvisors(tx)).some(a => a.userId === input.assignedUserId))
-      throw new AppError("VALIDATION", "Assign advisor tasks only to active advisors.");
+    if (
+      !(await listAdvisors(tx)).some((a) => a.userId === input.assignedUserId)
+    )
+      throw new AppError(
+        "VALIDATION",
+        "Assign advisor tasks only to active advisors.",
+      );
     assignedUserId = input.assignedUserId;
   }
   const [row] = await tx

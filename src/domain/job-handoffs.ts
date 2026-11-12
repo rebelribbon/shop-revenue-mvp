@@ -239,13 +239,17 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
     )
     .where(
       and(
-        management ? undefined : sql`${latest.data}->>'recipientUserId' = ${id}`,
+        management
+          ? undefined
+          : sql`${latest.data}->>'recipientUserId' = ${id}`,
         management
           ? undefined
           : role === "technician"
             ? sql`${latest.data}->>'stage' IN ('inspect_vehicle','perform_work')`
             : sql`${latest.data}->>'stage' IN ('build_estimate','invoice_customer')`,
-        !management && role === "technician" ? eq(jobAssignment.userId, id) : undefined,
+        !management && role === "technician"
+          ? eq(jobAssignment.userId, id)
+          : undefined,
       ),
     )
     .orderBy(desc(latest.occurredAt))
@@ -254,9 +258,18 @@ export async function listMyJobHandoffs(tx: TenantTx): Promise<JobHandoff[]> {
   for (const row of rows) {
     const data = handoffData(row.data);
     if (!data || (!management && data.recipientUserId !== id)) continue;
-    if (!management && role === "technician" && !TECHNICIAN_STAGES.includes(data.stage))
+    if (
+      !management &&
+      role === "technician" &&
+      !TECHNICIAN_STAGES.includes(data.stage)
+    )
       continue;
-    if (!management && role !== "technician" && !ADVISOR_STAGES.includes(data.stage)) continue;
+    if (
+      !management &&
+      role !== "technician" &&
+      !ADVISOR_STAGES.includes(data.stage)
+    )
+      continue;
     output.push({
       ...data,
       jobId: row.jobId,
