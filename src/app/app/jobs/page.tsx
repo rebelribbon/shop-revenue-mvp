@@ -62,6 +62,7 @@ import {
 } from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
+import { RoCosts } from "@/components/ro-costs";
 import { addInspectionToJobAction } from "@/server/actions/inspections";
 import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
 import { withTenant } from "@/db/tenant";
@@ -236,11 +237,31 @@ export default async function JobsPage({
         if (!(error instanceof AppError)) throw error;
       }
     }
+    // The open customer estimate, for presenting it on this screen or an iPad.
+    let presentPath: string | undefined;
+    const latestFlow = page.selected
+      ? workflows.get(page.selected.id)?.latest
+      : undefined;
+    if (
+      s.role !== "technician" &&
+      s.actor.type === "user" &&
+      latestFlow &&
+      !latestFlow.authorization
+    ) {
+      try {
+        presentPath = (
+          await getDocumentShare(tx, latestFlow.estimate.id, "estimate")
+        ).path;
+      } catch (error) {
+        if (!(error instanceof AppError)) throw error;
+      }
+    }
     return {
       ...page,
       cabinet,
       contact,
       estimateDraftPath,
+      presentPath,
       workflows,
       templates: page.selected ? await listTemplates(tx) : [],
       jobMedia: page.selected
@@ -268,8 +289,9 @@ export default async function JobsPage({
       headsUp: selectedCustomer
         ? await headsUpNotes(tx, [selectedCustomer])
         : [],
+      // Costs and profit: everyone at the front counter, never technicians.
       profit:
-        page.selected && s.role === "owner"
+        page.selected && s.role !== "technician"
           ? await jobProfit(tx, page.selected.id)
           : null,
       clock: await myClock(tx),
@@ -437,6 +459,23 @@ export default async function JobsPage({
             <Link href="/app/jobs">← My assigned ROs</Link>
             <section className="card">
               <h2>{assignedInput?.title || "Repair order"}</h2>
+              {(assignedInput?.concerns ||
+                assignedInput?.mileageIn != null) && (
+                <div className="ro-check-in" aria-label="Check-in">
+                  {assignedInput?.concerns && (
+                    <p>
+                      <strong>Customer concerns:</strong>{" "}
+                      {assignedInput.concerns}
+                    </p>
+                  )}
+                  {assignedInput?.mileageIn != null && (
+                    <p>
+                      <strong>Miles in:</strong>{" "}
+                      {assignedInput.mileageIn.toLocaleString("en-US")}
+                    </p>
+                  )}
+                </div>
+              )}
               {data.clock?.jobId === selected.id ? (
                 <ActionForm
                   action={stopClockAction}
@@ -581,7 +620,7 @@ export default async function JobsPage({
             }
           />
         </>
-      ) : selected && s.role === "owner" && mode === "customer" ? (
+      ) : selected && mode === "customer" ? (
         (() => {
           const input = jobInput.parse(selected.data);
           const totals = calculateJob(input.parts, input.labor);
@@ -608,9 +647,15 @@ export default async function JobsPage({
                   <p>
                     {customerName}
                     {assetName ? ` · ${assetName}` : ""}
+                    {input.mileageIn != null &&
+                      ` · ${input.mileageIn.toLocaleString("en-US")} miles`}
                   </p>
+                  {input.concerns && (
+                    <p>
+                      <strong>Your concerns:</strong> {input.concerns}
+                    </p>
+                  )}
                 </div>
-                {advisorAssignment}
                 {flow && (
                   <span className={statusTone(statusOf(selected.id))}>
                     {statusLabels[statusOf(selected.id)]}
@@ -683,9 +728,13 @@ export default async function JobsPage({
                 className="ro-view-switch"
                 aria-label="Repair order display mode"
               >
-                <strong>View:</strong>
-                <span aria-current="true">Customer</span>
-                <Link href={`/app/jobs?job=${selected.id}`}>Internal</Link>
+                <span>Costs and profit are hidden.</span>
+                <Link
+                  className="btn secondary"
+                  href={`/app/jobs?job=${selected.id}`}
+                >
+                  Show costs
+                </Link>
               </div>
             </section>
           );
@@ -724,16 +773,17 @@ export default async function JobsPage({
                   Job saved.
                 </p>
               )}
-              {s.role === "owner" && (
+              {data.profit && (
                 <div
                   className="ro-view-switch"
                   aria-label="Repair order display mode"
                 >
-                  <strong>View:</strong>
-                  <Link href={`/app/jobs?job=${selected.id}&mode=customer`}>
-                    Customer
+                  <Link
+                    className="btn secondary"
+                    href={`/app/jobs?job=${selected.id}&mode=customer`}
+                  >
+                    Hide costs (customer view)
                   </Link>
-                  <span aria-current="true">Internal</span>
                 </div>
               )}
               <article className="card job-profile record-job-profile">
@@ -780,6 +830,38 @@ export default async function JobsPage({
                     </span>
                   )}
                 </header>
+                {(input.concerns || input.mileageIn != null) && (
+                  <div className="ro-check-in" aria-label="Check-in">
+                    {input.mileageIn != null && (
+                      <p>
+                        <strong>Miles in:</strong>{" "}
+                        {input.mileageIn.toLocaleString("en-US")}
+                      </p>
+                    )}
+                    {input.concerns && (
+                      <p>
+                        <strong>Customer concerns:</strong> {input.concerns}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {data.presentPath && (
+                  <p className="ro-present">
+                    <a
+                      className="btn primary"
+                      href={data.presentPath}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Present estimate on this screen
+                    </a>
+                    <span className="muted">
+                      Opens the customer&apos;s review: their request, the
+                      inspection, then the recommendations. Hand them the iPad
+                      or cast it.
+                    </span>
+                  </p>
+                )}
                 {canFollowUp && (
                   <div className="job-follow-up-shortcuts">
                     <LogContactButton
@@ -1181,6 +1263,14 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
+                    {data.profit && (
+                      <RecordSection
+                        title="Costs & profit"
+                        description="What each line costs the shop and what it makes. Hidden in the customer view."
+                      >
+                        <RoCosts profit={data.profit} />
+                      </RecordSection>
+                    )}
                     {flow && (
                       <RecordSection
                         title="Work & approval"

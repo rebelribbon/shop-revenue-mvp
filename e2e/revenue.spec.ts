@@ -1,6 +1,10 @@
 import { auditUX } from "./ux-audit";
 import { test, expect } from "@playwright/test";
-import { drawEstimateSignature, signInWithPassword } from "./helpers";
+import {
+  approveEstimateSteps,
+  drawEstimateSignature,
+  signInWithPassword,
+} from "./helpers";
 test("recovered revenue follows paid recommendation lines and keeps correction history", async ({
   page,
 }, info) => {
@@ -103,14 +107,23 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .getByRole("link", { name: "Open customer estimate", exact: true })
     .getAttribute("href");
   await page.goto(estimateUrl!);
+  // Previously declined work comes back as a recommendation: the customer
+  // steps through their request, then the recommended work.
+  await expect(
+    page.getByRole("heading", { name: "What you came in for", exact: true }),
+  ).toBeVisible();
+  await auditUX(page);
+  await expect(
+    page.getByRole("button", { name: "Next: Recommended work", exact: true }),
+  ).toBeDisabled();
+  await approveEstimateSteps(page);
+  await expect(
+    page.getByRole("heading", { name: "Review and sign", exact: true }),
+  ).toBeVisible();
   await page
     .getByLabel("Your full name", { exact: true })
     .fill("Test Customer");
   await page.getByRole("checkbox", { name: /I have reviewed/ }).check();
-  for (const radio of await page
-    .getByRole("radio", { name: /^Approve / })
-    .all())
-    await radio.check();
   await drawEstimateSignature(page);
   await page
     .getByRole("button", { name: "Sign authorization", exact: true })

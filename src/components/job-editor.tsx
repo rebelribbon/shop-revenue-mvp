@@ -89,6 +89,10 @@ export function JobEditor({
       return own.length === 1 && !initial?.vehicleId ? own[0].id : "";
     }),
     [title, setTitle] = useState(initial?.title ?? ""),
+    [mileageIn, setMileageIn] = useState(
+      initial?.mileageIn != null ? String(initial.mileageIn) : "",
+    ),
+    [concerns, setConcerns] = useState(initial?.concerns ?? ""),
     [warranty, setWarranty] = useState(
       initial?.warrantyMonths ? String(initial.warrantyMonths) : "",
     ),
@@ -201,6 +205,8 @@ export function JobEditor({
             title,
             repeat,
             warrantyMonths: Number(warranty) > 0 ? Number(warranty) : null,
+            mileageIn: auto && mileageIn !== "" ? Number(mileageIn) : null,
+            concerns: concerns.trim() || undefined,
             parts,
             labor,
             clientRequestId: requestId,
@@ -321,18 +327,52 @@ export function JobEditor({
                 ))}
         </select>
         {customerId &&
-          !(auto
+          (!(auto
             ? options.vehicles.some((v) => v.customerId === customerId)
             : options.serviceAssets.some(
                 (a) => a.customerId === customerId,
-              )) && (
+              )) ? (
             <p>
               <Link href={`/app/customers/${customerId}?view=assets`}>
-                Add {auto ? "a vehicle" : "a property or equipment"} for this
-                customer first
+                Add{" "}
+                {auto ? "a vehicle (scan the VIN)" : "a property or equipment"}{" "}
+                for this customer first
               </Link>
             </p>
-          )}
+          ) : auto && !initial?.jobId ? (
+            <p>
+              <Link href={`/app/customers/${customerId}?view=assets`}>
+                New vehicle? Scan the VIN
+              </Link>
+            </p>
+          ) : null)}
+        {auto && (
+          <label>
+            Miles in
+            <input
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={7}
+              value={mileageIn}
+              placeholder="84250"
+              onChange={(e) => setMileageIn(e.target.value.replace(/\D/g, ""))}
+            />
+          </label>
+        )}
+        <label>
+          Customer concerns
+          <textarea
+            rows={3}
+            maxLength={2000}
+            value={concerns}
+            placeholder={
+              auto
+                ? "Grinding noise from the front when braking. Check engine light on since Monday."
+                : "What the customer is asking for, in their words."
+            }
+            onChange={(e) => setConcerns(e.target.value)}
+          />
+        </label>
         <label>
           Job name
           <input

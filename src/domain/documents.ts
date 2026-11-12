@@ -3,7 +3,7 @@
 // signature, entries and device evidence are sealed into a PDF.
 import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { PDFDocument, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { z } from "zod";
@@ -16,7 +16,10 @@ import {
   estimateAuthorization,
   estimateVersion,
   file,
+  inspection,
   invoice,
+  invoicePayment,
+  jobMedia,
   type DocumentField,
 } from "@/db/schema";
 import { runInContext, type TenantTx } from "@/db/tenant";
@@ -697,6 +700,105 @@ export async function jobCabinet(
       status: i.voidedAt ? "Void" : null,
       href: `/app/invoices?invoiceId=${i.id}`,
       preview: { type: "invoice", totalCents: i.totalCents },
+    });
+  // Receipts: every payment on this job's invoices.
+  if (invoices.length) {
+    const receipts = await tx
+      .select({
+        id: invoicePayment.id,
+        invoiceId: invoicePayment.invoiceId,
+        amountCents: invoicePayment.amountCents,
+        method: invoicePayment.method,
+        at: invoicePayment.createdAt,
+      })
+      .from(invoicePayment)
+      .where(
+        and(
+          eq(invoicePayment.businessId, tx.businessId),
+          inArray(
+            invoicePayment.invoiceId,
+            invoices.map((i) => i.id),
+          ),
+        ),
+      );
+    const emailed = new Set(
+      (
+        await tx
+          .select({ data: activity.data })
+          .from(activity)
+          .where(
+            and(
+              eq(activity.businessId, tx.businessId),
+              eq(activity.kind, "invoice.receipt_prepared"),
+              sql`${activity.data}->>'jobId' = ${jobId}`,
+            ),
+          )
+      ).map((e) => String((e.data as { paymentId?: string })?.paymentId)),
+    );
+    for (const p of receipts) {
+      const inv = invoices.find((i) => i.id === p.invoiceId)!;
+      items.push({
+        id: `pay-${p.id}`,
+        group: "Signed & sent",
+        title:
+          p.amountCents > 0
+            ? `Receipt · ${money(p.amountCents)}`
+            : `Refund · ${money(-p.amountCents)}`,
+        detail: `Invoice #${inv.number} · ${p.method.replace(/_/g, " ")}`,
+        at: p.at,
+        status: emailed.has(p.id) ? "Emailed" : null,
+        href: `/app/invoices?invoiceId=${inv.id}`,
+      });
+    }
+  }
+  // The technician's inspection, once submitted.
+  const [inspected] = await tx
+    .select({ completedAt: inspection.completedAt, items: inspection.items })
+    .from(inspection)
+    .where(
+      and(
+        eq(inspection.businessId, tx.businessId),
+        eq(inspection.jobId, jobId),
+      ),
+    );
+  if (inspected?.completedAt) {
+    const list = (inspected.items ?? []) as { status?: string }[];
+    const flagged = list.filter(
+      (i) => i.status === "fix" || i.status === "watch",
+    ).length;
+    items.push({
+      id: `insp-${jobId}`,
+      group: "Created for this job",
+      title: "Inspection report",
+      detail: `${list.filter((i) => i.status !== "unchecked").length} items checked · ${flagged} need attention`,
+      at: inspected.completedAt,
+      status: "Submitted",
+      href: `/app/jobs?job=${jobId}&tab=inspection`,
+    });
+  }
+  // Photos and videos taken on this job.
+  const [media] = await tx
+    .select({
+      count: sql<number>`count(*)::int`,
+      last: sql<Date | null>`max(${jobMedia.createdAt})`,
+    })
+    .from(jobMedia)
+    .where(
+      and(
+        eq(jobMedia.businessId, tx.businessId),
+        eq(jobMedia.jobId, jobId),
+        isNull(jobMedia.deletedAt),
+      ),
+    );
+  if (media?.count)
+    items.push({
+      id: `media-${jobId}`,
+      group: "Added files",
+      title: `Photos & videos (${media.count})`,
+      detail: "Technician and advisor uploads",
+      at: new Date(media.last ?? Date.now()),
+      status: null,
+      href: `/app/jobs?job=${jobId}&tab=photos`,
     });
   const docs = await tx
     .select()

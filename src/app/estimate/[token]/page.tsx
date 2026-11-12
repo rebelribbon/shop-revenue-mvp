@@ -7,6 +7,7 @@ import {
   EstimateDocument,
 } from "@/components/estimate-document";
 import { EstimateSignature } from "@/components/estimate-signature";
+import { CustomerPhotos } from "@/components/media-gallery";
 export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Review estimate | Shop Revenue",
@@ -20,6 +21,48 @@ export default async function PublicEstimatePage({
   const { token } = await params;
   const e = await readPublicEstimate(token);
   if (!e) notFound();
+  // With an inspection or recommended work, the customer steps through it:
+  // their request, the inspection, the recommendations, then signing.
+  const stepped =
+    !e.authorization &&
+    (!!e.snapshot.inspection || e.snapshot.lines.some((l) => l.recommended));
+  if (stepped)
+    return (
+      <HydratedMain id="main-content" tabIndex={-1}>
+        <h1>Estimate · Version {e.version}</h1>
+        <p className="estimate-heading">
+          <strong>{e.snapshot.shopName}</strong> · {e.snapshot.customerName}
+          {e.snapshot.title ? ` · ${e.snapshot.title}` : ""}
+        </p>
+        {e.supplementReason && (
+          <p className="notice">Change / supplement: {e.supplementReason}</p>
+        )}
+        <EstimateSignature
+          token={token}
+          snapshot={e.snapshot}
+          media={
+            e.snapshot.photos?.length ? (
+              <CustomerPhotos photos={e.snapshot.photos} token={token} />
+            ) : undefined
+          }
+        />
+        {(e.snapshot.warrantyMonths || e.snapshot.terms) && (
+          <section className="card">
+            {e.snapshot.warrantyMonths && (
+              <p data-warranty>
+                <strong>Warranty:</strong> {e.snapshot.warrantyMonths}{" "}
+                {e.snapshot.warrantyMonths === 1 ? "month" : "months"} on this
+                work from the invoice date.
+              </p>
+            )}
+            {e.snapshot.terms && (
+              <p style={{ whiteSpace: "pre-wrap" }}>{e.snapshot.terms}</p>
+            )}
+          </section>
+        )}
+        <PrintDocument label="Print estimate / Save PDF" />
+      </HydratedMain>
+    );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Estimate · Version {e.version}</h1>

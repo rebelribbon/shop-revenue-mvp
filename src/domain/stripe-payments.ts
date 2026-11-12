@@ -23,6 +23,7 @@ import {
   activeCheckoutStates,
 } from "./payments";
 import { audit, type RequestMeta } from "./records";
+import { sendReceipt } from "./receipts";
 import { getBusinessProfile } from "./business-profile";
 
 type Shop = { businessId: string; actor: Actor };
@@ -221,6 +222,7 @@ export async function beginInvoiceCheckout(token: string, meta: RequestMeta) {
   const result = await withPaymentTenant(a.businessId, (tx) =>
     settleCheckout(tx, meta, a.id, a.accountId, session),
   );
+  if ("receipt" in result) await sendReceipt(result.receipt);
   if (result.paid) return { paid: true as const };
   if (session.status !== "open" || !session.url)
     throw new AppError(
@@ -325,9 +327,10 @@ async function applySession(
 ) {
   const id = session.metadata?.checkout_id;
   if (!id) return false;
-  await withPaymentTenant(businessId, (tx) =>
+  const result = await withPaymentTenant(businessId, (tx) =>
     settleCheckout(tx, meta, id, account, session),
   );
+  if ("receipt" in result) await sendReceipt(result.receipt);
   return true;
 }
 async function importRefund(

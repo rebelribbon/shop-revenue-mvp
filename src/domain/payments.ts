@@ -17,6 +17,7 @@ import { AppError, notFound } from "@/lib/errors";
 import { hashToken, isWellFormedToken } from "@/lib/tokens";
 import { stripeLivemode } from "@/lib/stripe";
 import { assertOwner } from "./membership";
+import { prepareReceipt } from "./receipts";
 import { audit, recordActivity, type RequestMeta } from "./records";
 
 import { lockRevenue, reconcileRevenue } from "./revenue";
@@ -227,7 +228,8 @@ export async function settleCheckout(
       data: { invoiceId: i.id, paymentId: p.id },
     });
     await reconcileRevenue(tx, meta, "Verified Stripe payment", i.customerId);
-    return { paid: true };
+    // Emailed by the caller after this commits.
+    return { paid: true, receipt: await prepareReceipt(tx, p.id) };
   }
   // A slower request may carry an unpaid snapshot fetched before another worker
   // confirmed failure/expiry. Never reactivate that terminal reservation: a new
