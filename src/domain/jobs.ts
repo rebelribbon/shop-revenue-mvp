@@ -32,6 +32,8 @@ export const jobInput = z.object({
   vehicleId: z.uuid().optional(),
   serviceAssetId: z.uuid().optional(),
   title: z.string().trim().min(1).max(200),
+  // Intake-created automotive ROs require an explicit technician inspection.
+  inspectionFirst: z.boolean().optional(),
   // Recurring work; absent for a one-time job.
   repeat: repeatInput.nullable().optional(),
   // Warranty on this work, in months (shown on the estimate and invoice).

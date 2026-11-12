@@ -69,6 +69,8 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
+import { RoCheckIn } from "@/components/ro-check-in";
+import { RoStageSummary } from "@/components/ro-stage-summary";
 import { requireShopSession } from "@/server/views/shop";
 
 const followUpPath = (jobId: string) => `/app/tasks?add=1&jobId=${jobId}`;
@@ -98,6 +100,7 @@ export default async function JobsPage({
     view?: string;
     tech?: string;
     mode?: string;
+    full?: string;
   }>;
 }) {
   const {
@@ -122,6 +125,7 @@ export default async function JobsPage({
     view,
     tech,
     mode,
+    full,
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
@@ -329,6 +333,12 @@ export default async function JobsPage({
     sourceRecoveryItemId ||
     sourceAppointmentId
   );
+  // ROs opened at check-in wait for the technician's inspection before
+  // pricing. Jobs priced up front (the full job sheet, older ROs) don't.
+  const inspectionFirst =
+    !!selected &&
+    !selected.documentOnly &&
+    !!jobInput.safeParse(selected.data).data?.inspectionFirst;
   const statusLabels = jobStatusLabels(type);
   const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
   const estimateName = auto ? "estimate" : "bid";
@@ -570,13 +580,31 @@ export default async function JobsPage({
             ? isAutomotive(type)
               ? "Edit RO"
               : "Edit job"
-            : labels.newJob
+            : auto
+              ? "New RO"
+              : labels.newJob
           : isAutomotive(type)
             ? "Repair orders"
             : labels.jobs}
       </h1>
 
-      {editing ? (
+      {editing &&
+      selected &&
+      auto &&
+      inspectionFirst &&
+      !data.inspection?.complete &&
+      !data.workflows.get(selected.id)?.latest ? (
+        <section className="card">
+          <h2>Inspection required first</h2>
+          <p>
+            The technician must submit the inspection before the advisor builds
+            the estimate. Assign the technician from this RO.
+          </p>
+          <Link className="btn primary" href={`/app/jobs?job=${selected.id}`}>
+            Return to RO
+          </Link>
+        </section>
+      ) : editing ? (
         <>
           <p>
             <Link
@@ -585,40 +613,61 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          <JobEditor
-            commonJobs={data.commonJobs}
-            catalog={data.catalog}
-            canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
-            laborSellRateCents={data.profile?.laborSellRateCents}
-            laborCostRateCents={data.profile?.laborCostRateCents}
-            partsTaxableDefault={data.profile?.partsTaxableDefault}
-            laborTaxableDefault={data.profile?.laborTaxableDefault}
-            businessType={data.profile?.businessType}
-            key={
-              selected?.version ??
-              [
-                customerId,
-                vehicleId,
-                serviceAssetId,
-                sourceRecoveryItemId,
-                sourceContactActivityId,
-                sourceAppointmentId,
-              ].join(":")
-            }
-            options={data.options}
-            recommendations={data.recommendations}
-            initial={initial}
-            today={localDateKey(
-              new Date(),
-              data.profile?.timezone || "America/Chicago",
-            )}
-            defaultRepeats={recurringFirst(type)}
-            attachMediaId={
-              data.fromMedia && data.fromMedia.customerId === customerId
-                ? data.fromMedia.id
-                : undefined
-            }
-          />
+          {auto && !selected && full !== "1" ? (
+            <RoCheckIn
+              key={[customerId, vehicleId, sourceAppointmentId].join(":")}
+              customers={data.options.customers}
+              vehicles={data.options.vehicles}
+              techs={data.techs}
+              initial={{
+                customerId: initial?.customerId,
+                vehicleId: initial?.vehicleId,
+                sourceRecoveryItemId: initial?.sourceRecoveryItemId,
+                sourceContactActivityId: initial?.sourceContactActivityId,
+                sourceAppointmentId: initial?.sourceAppointmentId,
+              }}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          ) : (
+            <JobEditor
+              commonJobs={data.commonJobs}
+              catalog={data.catalog}
+              canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
+              laborSellRateCents={data.profile?.laborSellRateCents}
+              laborCostRateCents={data.profile?.laborCostRateCents}
+              partsTaxableDefault={data.profile?.partsTaxableDefault}
+              laborTaxableDefault={data.profile?.laborTaxableDefault}
+              businessType={data.profile?.businessType}
+              key={
+                selected?.version ??
+                [
+                  customerId,
+                  vehicleId,
+                  serviceAssetId,
+                  sourceRecoveryItemId,
+                  sourceContactActivityId,
+                  sourceAppointmentId,
+                ].join(":")
+              }
+              options={data.options}
+              recommendations={data.recommendations}
+              initial={initial}
+              today={localDateKey(
+                new Date(),
+                data.profile?.timezone || "America/Chicago",
+              )}
+              defaultRepeats={recurringFirst(type)}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          )}
         </>
       ) : selected && mode === "customer" ? (
         (() => {
@@ -754,6 +803,13 @@ export default async function JobsPage({
                     )
                   ? requestedTab!
                   : "work";
+          // An automotive RO begins with check-in and technician inspection.
+          // Existing published ROs retain their document access.
+          const awaitingInspection =
+            auto &&
+            inspectionFirst &&
+            !data.inspection?.complete &&
+            !flow?.latest;
           return (
             <>
               <p>
@@ -771,6 +827,14 @@ export default async function JobsPage({
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
+                </p>
+              )}
+              {saved === "checkin" && (
+                <p role="status" className="notice ok">
+                  Vehicle checked in.{" "}
+                  {data.assignee
+                    ? `${techName(data.assignee)} has it for diagnosis and inspection. You’ll be notified to build the estimate.`
+                    : "Assign a technician to start the diagnosis."}
                 </p>
               )}
               {data.profit && (
@@ -810,8 +874,14 @@ export default async function JobsPage({
                       />
                     </div>
                     <h2 className="profile-title">
-                      {input.repeat && "↻ "}
-                      {selected.title}
+                      {auto && inspectionFirst ? (
+                        "Repair order"
+                      ) : (
+                        <>
+                          {input.repeat && "↻ "}
+                          {selected.title}
+                        </>
+                      )}
                     </h2>
                     <p className="muted">
                       {[
@@ -844,6 +914,19 @@ export default async function JobsPage({
                       </p>
                     )}
                   </div>
+                )}
+                {auto && (
+                  <RoStageSummary
+                    inspectionComplete={
+                      !!data.inspection?.complete || !inspectionFirst
+                    }
+                    inspected={!!data.inspection?.complete}
+                    hasEstimate={!!flow?.latest}
+                    technicianAssigned={!!data.assignee}
+                    stage={flow?.stage}
+                    statusLabel={statusLabels[statusOf(selected.id)]}
+                    editHref={`/app/jobs?edit=${selected.id}`}
+                  />
                 )}
                 {data.presentPath && (
                   <p className="ro-present">
@@ -911,34 +994,37 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                <nav
-                  className="section-tabs"
-                  aria-label="Job setup and customer approval"
-                >
-                  <Link
-                    href={`/app/jobs?edit=${selected.id}`}
-                    aria-current={undefined}
+                {!awaitingInspection && (
+                  <nav
+                    className="section-tabs"
+                    aria-label="Estimate preparation and customer approval"
                   >
-                    1. Set up job
-                  </Link>
-                  <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files`}
-                    aria-current={tab === "files" ? "page" : undefined}
-                  >
-                    2. Docs &amp; preview
-                  </Link>
-                  <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
-                    aria-label="Share customer packet"
-                  >
-                    3. Share
-                  </Link>
-                </nav>
-                <p className="muted">
-                  Enter work and prices first. Preview the customer&apos;s
-                  documents, then choose the recipient and send one approval
-                  link.
-                </p>
+                    <Link
+                      href={`/app/jobs?edit=${selected.id}`}
+                      aria-current={undefined}
+                    >
+                      Build estimate
+                    </Link>
+                    <Link
+                      href={`/app/jobs?job=${selected.id}&tab=files`}
+                      aria-current={tab === "files" ? "page" : undefined}
+                    >
+                      Preview documents
+                    </Link>
+                    <Link
+                      href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
+                      aria-label="Share customer packet"
+                    >
+                      Share with customer
+                    </Link>
+                  </nav>
+                )}
+                {!awaitingInspection && (
+                  <p className="muted">
+                    Review the technician&apos;s findings, build the estimate,
+                    then send the customer their approval link.
+                  </p>
+                )}
                 {data.headsUp.map((n, i) => (
                   <p
                     className="heads-up-line"
@@ -976,7 +1062,10 @@ export default async function JobsPage({
                       "nobody yet"}
                   </p>
                 ) : (
-                  <div className="tech-pick" key={data.assignee ?? "none"}>
+                  <div
+                    className="tech-pick ro-assignment"
+                    key={data.assignee ?? "none"}
+                  >
                     <ActionForm
                       action={assignJobAction}
                       hidden={{ jobId: selected.id }}
@@ -1002,7 +1091,7 @@ export default async function JobsPage({
                   </div>
                 )}
                 {advisorAssignment}
-                {flow && (
+                {flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
                       <strong>
@@ -1051,7 +1140,7 @@ export default async function JobsPage({
                     )}
                   </p>
                 )}
-                {s.actor.type !== "support" && (
+                {!awaitingInspection && s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
                     {data.clock?.jobId === selected.id ? (
                       <ActionForm
@@ -1263,15 +1352,7 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
-                    {data.profit && (
-                      <RecordSection
-                        title="Costs & profit"
-                        description="What each line costs the shop and what it makes. Hidden in the customer view."
-                      >
-                        <RoCosts profit={data.profit} />
-                      </RecordSection>
-                    )}
-                    {flow && (
+                    {!awaitingInspection && flow && (
                       <RecordSection
                         title="Work & approval"
                         description="Customer authorization, the next step and progress on this job."
@@ -1284,6 +1365,14 @@ export default async function JobsPage({
                           technicianOnly={false}
                           canEditEstimate={!selected.documentOnly}
                         />
+                      </RecordSection>
+                    )}
+                    {!awaitingInspection && data.profit && (
+                      <RecordSection
+                        title="Costs & profit"
+                        description="What each line costs the shop and what it makes. Hidden in the customer view."
+                      >
+                        <RoCosts profit={data.profit} />
                       </RecordSection>
                     )}
                   </>

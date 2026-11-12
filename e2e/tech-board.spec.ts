@@ -27,15 +27,11 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
-  await page.getByLabel("Job name").fill(name);
-  await page.getByRole("button", { name: "Add labor", exact: true }).click();
-  await page.getByLabel("Description", { exact: true }).fill("Diagnose");
-  await page.getByLabel("Quoted hours", { exact: true }).fill("1");
-  await page.getByLabel("Hourly selling rate", { exact: true }).fill("100");
-  await page
-    .getByRole("button", { name: "Save job sheet", exact: true })
-    .click();
-  await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+  await page.getByLabel("Customer concerns / reason for visit").fill(name);
+  await page.getByRole("button", { name: "Create RO", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Repair order", exact: true }),
+  ).toBeVisible();
   const jobUrl = page.url();
 
   // Give it to the staff tech.
