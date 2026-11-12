@@ -27,6 +27,12 @@ test("Technicians see only their jobs and no owner pages", async ({
   for (const title of [mine, other]) {
     await page.goto(vehicleUrl);
     await page.getByRole("link", { name: "+ New RO", exact: true }).click();
+    await page
+      .getByRole("link", {
+        name: "Build the full job sheet instead",
+        exact: true,
+      })
+      .click();
     await page.getByLabel("Job name").fill(title);
     await page.getByRole("button", { name: "Add labor", exact: true }).click();
     await page.getByLabel("Description", { exact: true }).fill("Diagnose");

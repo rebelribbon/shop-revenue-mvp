@@ -44,6 +44,12 @@ test("routes an assigned inspection from the technician to its advisor without e
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
+  await page
+    .getByRole("link", {
+      name: "Build the full job sheet instead",
+      exact: true,
+    })
+    .click();
   await page.getByLabel("Job name").fill(title);
   await page.getByRole("button", { name: "Add labor", exact: true }).click();
   await page

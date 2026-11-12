@@ -10,7 +10,7 @@ test("home-service setup creates a real property and equipment job without vehic
   test.setTimeout(60_000);
   await signInWithPassword(page, "owner.a@shop-a.test");
   try {
-    await page.goto("/app/jobs?new=1");
+    await page.goto("/app/jobs?new=1&full=1");
     await expect(
       page.getByRole("heading", { name: "New job", exact: true }),
     ).toBeVisible();
@@ -169,13 +169,22 @@ test("home-service setup creates a real property and equipment job without vehic
         /properties|equipment/i,
       );
       await page.getByRole("link", { name: "New job", exact: true }).click();
+      // Back on automotive, a new RO opens as the vehicle check-in.
       await expect(
         page.getByRole("heading", {
-          name: "New job",
+          name: "Check in a vehicle",
           exact: true,
         }),
       ).toBeVisible();
-      await expect(page.getByLabel("Vehicle", { exact: true })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Vehicle", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("link", {
+          name: "Build the full job sheet instead",
+          exact: true,
+        })
+        .click();
       await expect(
         page.getByLabel("Property / equipment", { exact: true }),
       ).toHaveCount(0);

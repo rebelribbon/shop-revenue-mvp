@@ -63,6 +63,7 @@ import {
 import { getInspection } from "@/domain/inspections";
 import { InspectionForm } from "@/components/inspection-form";
 import { RoCosts } from "@/components/ro-costs";
+import { RoCheckIn } from "@/components/ro-check-in";
 import { addInspectionToJobAction } from "@/server/actions/inspections";
 import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
 import { withTenant } from "@/db/tenant";
@@ -98,6 +99,7 @@ export default async function JobsPage({
     view?: string;
     tech?: string;
     mode?: string;
+    full?: string;
   }>;
 }) {
   const {
@@ -122,6 +124,7 @@ export default async function JobsPage({
     view,
     tech,
     mode,
+    full,
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
@@ -329,6 +332,8 @@ export default async function JobsPage({
     sourceRecoveryItemId ||
     sourceAppointmentId
   );
+  // A new RO starts as a check-in; the full job sheet is one link away.
+  const checkIn = editing && !selected && auto && full !== "1";
   const statusLabels = jobStatusLabels(type);
   const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
   const estimateName = auto ? "estimate" : "bid";
@@ -570,7 +575,9 @@ export default async function JobsPage({
             ? isAutomotive(type)
               ? "Edit RO"
               : "Edit job"
-            : labels.newJob
+            : checkIn
+              ? "Check in a vehicle"
+              : labels.newJob
           : isAutomotive(type)
             ? "Repair orders"
             : labels.jobs}
@@ -585,40 +592,67 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          <JobEditor
-            commonJobs={data.commonJobs}
-            catalog={data.catalog}
-            canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
-            laborSellRateCents={data.profile?.laborSellRateCents}
-            laborCostRateCents={data.profile?.laborCostRateCents}
-            partsTaxableDefault={data.profile?.partsTaxableDefault}
-            laborTaxableDefault={data.profile?.laborTaxableDefault}
-            businessType={data.profile?.businessType}
-            key={
-              selected?.version ??
-              [
-                customerId,
-                vehicleId,
-                serviceAssetId,
-                sourceRecoveryItemId,
-                sourceContactActivityId,
-                sourceAppointmentId,
-              ].join(":")
-            }
-            options={data.options}
-            recommendations={data.recommendations}
-            initial={initial}
-            today={localDateKey(
-              new Date(),
-              data.profile?.timezone || "America/Chicago",
-            )}
-            defaultRepeats={recurringFirst(type)}
-            attachMediaId={
-              data.fromMedia && data.fromMedia.customerId === customerId
-                ? data.fromMedia.id
-                : undefined
-            }
-          />
+          {checkIn ? (
+            <RoCheckIn
+              customers={data.options.customers}
+              vehicles={data.options.vehicles}
+              techs={data.techs}
+              initial={{
+                customerId: initial?.customerId,
+                vehicleId: initial?.vehicleId,
+                sourceRecoveryItemId: initial?.sourceRecoveryItemId,
+                sourceContactActivityId: initial?.sourceContactActivityId,
+                sourceAppointmentId: initial?.sourceAppointmentId,
+              }}
+              fullSheetHref={`/app/jobs?${new URLSearchParams(
+                Object.entries({
+                  new: "1",
+                  full: "1",
+                  customerId,
+                  vehicleId,
+                  sourceRecoveryItemId,
+                  sourceContactActivityId,
+                  sourceAppointmentId,
+                  fromMedia,
+                }).filter((e): e is [string, string] => !!e[1]),
+              )}`}
+            />
+          ) : (
+            <JobEditor
+              commonJobs={data.commonJobs}
+              catalog={data.catalog}
+              canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
+              laborSellRateCents={data.profile?.laborSellRateCents}
+              laborCostRateCents={data.profile?.laborCostRateCents}
+              partsTaxableDefault={data.profile?.partsTaxableDefault}
+              laborTaxableDefault={data.profile?.laborTaxableDefault}
+              businessType={data.profile?.businessType}
+              key={
+                selected?.version ??
+                [
+                  customerId,
+                  vehicleId,
+                  serviceAssetId,
+                  sourceRecoveryItemId,
+                  sourceContactActivityId,
+                  sourceAppointmentId,
+                ].join(":")
+              }
+              options={data.options}
+              recommendations={data.recommendations}
+              initial={initial}
+              today={localDateKey(
+                new Date(),
+                data.profile?.timezone || "America/Chicago",
+              )}
+              defaultRepeats={recurringFirst(type)}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          )}
         </>
       ) : selected && mode === "customer" ? (
         (() => {
@@ -771,6 +805,14 @@ export default async function JobsPage({
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   Job saved.
+                </p>
+              )}
+              {saved === "checkin" && (
+                <p role="status" className="notice ok">
+                  Vehicle checked in.{" "}
+                  {data.assignee
+                    ? `${techName(data.assignee!)} has it for diagnosis and inspection. You’ll be notified to build the estimate.`
+                    : "Assign a technician to start the diagnosis."}
                 </p>
               )}
               {data.profit && (

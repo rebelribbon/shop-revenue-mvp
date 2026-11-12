@@ -43,6 +43,12 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page
+    .getByRole("link", {
+      name: "Build the full job sheet instead",
+      exact: true,
+    })
+    .click();
+  await page
     .getByLabel("Job name", { exact: true })
     .fill(`Saved brakes ${name}`);
   await page.getByRole("button", { name: "Add part", exact: true }).click();
@@ -80,7 +86,7 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await expect(page.getByRole("status")).not.toContainText(
     "Something went wrong",
   );
-  await page.goto("/app/jobs?new=1");
+  await page.goto("/app/jobs?new=1&full=1");
   await page
     .getByLabel("Start from a common job", { exact: true })
     .selectOption({ label: `Saved brakes ${name}` });

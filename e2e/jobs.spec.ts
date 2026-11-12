@@ -24,6 +24,12 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   const vehicleId = new URL(page.url()).pathname.split("/").at(-1)!;
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
+  await page
+    .getByRole("link", {
+      name: "Build the full job sheet instead",
+      exact: true,
+    })
+    .click();
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await page.getByLabel(/Warranty in months/).fill("12");
   await expect(

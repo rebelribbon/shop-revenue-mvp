@@ -27,6 +27,12 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await page.getByRole("button", { name: "Add vehicle", exact: true }).click();
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
+  await page
+    .getByRole("link", {
+      name: "Build the full job sheet instead",
+      exact: true,
+    })
+    .click();
   await page.getByLabel("Job name").fill(name);
   await page.getByRole("button", { name: "Add labor", exact: true }).click();
   await page.getByLabel("Description", { exact: true }).fill("Diagnose");

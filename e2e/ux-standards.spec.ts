@@ -233,17 +233,24 @@ test("core pages stay within three homepage clicks and primary actions follow th
   await expect(page.locator("[data-ux-primary]")).toHaveText("New job");
   await page.getByRole("link", { name: "New job", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/jobs\?new=1$/);
-  await page.getByLabel("Job name", { exact: true }).fill("Keep this draft");
+  // A new RO opens as the vehicle check-in.
+  await expect(
+    page.getByRole("heading", { name: "Check in a vehicle", exact: true }),
+  ).toBeVisible();
+  const concerns = page.getByLabel("What the customer says, in their words", {
+    exact: true,
+  });
+  await concerns.fill("Keep this draft");
   await page.keyboard.press("Control+k");
   await expect(finder).toBeVisible();
   await expect(finder.locator("[data-ux-primary]")).toHaveText("Search");
   await page.keyboard.press("Escape");
   await expect(finder).not.toBeVisible();
-  await expect(page.getByLabel("Job name", { exact: true })).toHaveValue(
-    "Keep this draft",
+  await expect(concerns).toHaveValue("Keep this draft");
+  await concerns.focus();
+  await expect(page.locator("[data-ux-primary]")).toHaveText(
+    "Check in vehicle",
   );
-  await page.getByLabel("Job name", { exact: true }).focus();
-  await expect(page.locator("[data-ux-primary]")).toHaveText("Save job sheet");
   await page.locator("main").evaluate((e) => e.scrollTo(0, e.scrollHeight));
   await expect(page.locator("[data-ux-primary]")).toBeInViewport();
   await auditPage(page);
