@@ -87,6 +87,7 @@ export async function createCustomer(
     .values({
       businessId: tx.businessId,
       createdByUserId: tx.actor.id,
+      assignedUserId: tx.actor.type === "user" ? tx.actor.id : null,
       firstName: input.firstName,
       lastName: input.lastName,
       displayName: name,
