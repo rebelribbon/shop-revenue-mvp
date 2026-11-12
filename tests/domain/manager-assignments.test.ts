@@ -9,10 +9,12 @@ import {
 } from "@/domain/membership";
 import {
   createCustomer,
+  createVehicle,
   getCustomerWithVehicles,
   listCustomers,
 } from "@/domain/customers";
 import { addTask, listTasks } from "@/domain/tasks";
+import { createJob } from "@/domain/jobs";
 import { assignCustomer } from "@/domain/assignments";
 import { meta, seedTenant } from "../helpers/fixtures";
 
