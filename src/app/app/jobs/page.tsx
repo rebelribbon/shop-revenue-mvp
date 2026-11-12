@@ -841,8 +841,12 @@ export default async function JobsPage({
                       />
                     </div>
                     <h2 className="profile-title">
-                      {input.repeat && "↻ "}
-                      {selected.title}
+                      {auto ? "Repair order" : (
+                        <>
+                          {input.repeat && "↻ "}
+                          {selected.title}
+                        </>
+                      )}
                     </h2>
                     <p className="muted">
                       {[
@@ -875,6 +879,60 @@ export default async function JobsPage({
                       </p>
                     )}
                   </div>
+                )}
+                {auto && (
+                  <section className="ro-stage-panel" aria-label="Current RO stage">
+                    <p className="muted">
+                      {awaitingInspection
+                        ? "CURRENT STAGE · CHECK-IN & INSPECTION"
+                        : !flow?.latest
+                          ? "CURRENT STAGE · BUILD ESTIMATE"
+                          : `CURRENT STAGE · ${statusLabels[statusOf(selected.id)]}`}
+                    </p>
+                    <h3>
+                      {awaitingInspection
+                        ? data.assignee
+                          ? "Waiting on technician inspection"
+                          : "Assign a technician"
+                        : !flow?.latest
+                          ? "Inspection complete — build estimate"
+                          : flow.stage === "awaiting"
+                            ? "Waiting for customer authorization"
+                            : flow.stage === "ready" || flow.stage === "working"
+                              ? "Technician performs authorized repairs"
+                              : flow.stage === "bill"
+                                ? "Repairs complete — advisor invoices"
+                                : flow.stage === "payment"
+                                  ? "Invoice sent — collect payment"
+                                  : flow.stage === "paid"
+                                    ? "Paid — prepare for pickup"
+                                    : "Review the next service action"}
+                    </h3>
+                    <p>
+                      {awaitingInspection
+                        ? data.assignee
+                          ? "The technician records the diagnosis and submits the inspection. The advisor is notified when it is ready."
+                          : "Assign a technician to inspect the vehicle. Estimate preparation follows submitted inspection findings."
+                        : !flow?.latest
+                          ? "The inspection is submitted. The assigned advisor reviews the findings, prices parts and labor, and sends the estimate for customer approval."
+                          : flow.stage === "awaiting"
+                            ? "The customer must approve or decline each line and sign before repairs begin."
+                            : flow.stage === "ready" || flow.stage === "working"
+                              ? "Only customer-authorized repairs should be performed. Completion sends the next task to the advisor."
+                              : flow.stage === "bill"
+                                ? "The advisor reviews completed work, issues the invoice, and sends the payment link."
+                                : flow.stage === "payment"
+                                  ? "Confirm payment before vehicle release."
+                                  : flow.stage === "paid"
+                                    ? "Payment is recorded. Complete vehicle pickup and close out the RO."
+                                    : "Use the Work section below to review the current authorization and next action."}
+                    </p>
+                    {!awaitingInspection && !flow?.latest && (
+                      <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>
+                        Build estimate
+                      </Link>
+                    )}
+                  </section>
                 )}
                 {data.presentPath && (
                   <p className="ro-present">
@@ -1002,60 +1060,6 @@ export default async function JobsPage({
                       />
                     )}
                   </div>
-                )}
-                {auto && (
-                  <section className="ro-stage-panel" aria-label="Current RO stage">
-                    <p className="muted">
-                      {awaitingInspection
-                        ? "CURRENT STAGE · CHECK-IN & INSPECTION"
-                        : !flow?.latest
-                          ? "CURRENT STAGE · BUILD ESTIMATE"
-                          : `CURRENT STAGE · ${statusLabels[statusOf(selected.id)]}`}
-                    </p>
-                    <h3>
-                      {awaitingInspection
-                        ? data.assignee
-                          ? "Waiting on technician inspection"
-                          : "Assign a technician"
-                        : !flow?.latest
-                          ? "Inspection complete — build estimate"
-                          : flow.stage === "awaiting"
-                            ? "Waiting for customer authorization"
-                            : flow.stage === "ready" || flow.stage === "working"
-                              ? "Technician performs authorized repairs"
-                              : flow.stage === "bill"
-                                ? "Repairs complete — advisor invoices"
-                                : flow.stage === "payment"
-                                  ? "Invoice sent — collect payment"
-                                  : flow.stage === "paid"
-                                    ? "Paid — prepare for pickup"
-                                    : "Review the next service action"}
-                    </h3>
-                    <p>
-                      {awaitingInspection
-                        ? data.assignee
-                          ? "The technician records the diagnosis and submits the inspection. The advisor is notified when it is ready."
-                          : "Assign a technician to inspect the vehicle. Estimate preparation follows submitted inspection findings."
-                        : !flow?.latest
-                          ? "The inspection is submitted. The assigned advisor reviews the findings, prices parts and labor, and sends the estimate for customer approval."
-                          : flow.stage === "awaiting"
-                            ? "The customer must approve or decline each line and sign before repairs begin."
-                            : flow.stage === "ready" || flow.stage === "working"
-                              ? "Only customer-authorized repairs should be performed. Completion sends the next task to the advisor."
-                              : flow.stage === "bill"
-                                ? "The advisor reviews completed work, issues the invoice, and sends the payment link."
-                                : flow.stage === "payment"
-                                  ? "Confirm payment before vehicle release."
-                                  : flow.stage === "paid"
-                                    ? "Payment is recorded. Complete vehicle pickup and close out the RO."
-                                    : "Use the Work section below to review the current authorization and next action."}
-                    </p>
-                    {!awaitingInspection && !flow?.latest && (
-                      <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>
-                        Build estimate
-                      </Link>
-                    )}
-                  </section>
                 )}
                 {s.actor.type === "support" || false ? (
                   <p className="muted">
