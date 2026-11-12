@@ -770,6 +770,10 @@ export default async function JobsPage({
                     )
                   ? requestedTab!
                   : "work";
+          // An automotive RO begins with check-in and technician inspection.
+          // Existing published ROs retain their document access.
+          const awaitingInspection =
+            auto && !data.inspection?.complete && !flow?.latest;
           return (
             <>
               <p>
@@ -927,34 +931,37 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                <nav
-                  className="section-tabs"
-                  aria-label="Job setup and customer approval"
-                >
+                {!awaitingInspection && (
+                  <nav
+                    className="section-tabs"
+                    aria-label="Estimate preparation and customer approval"
+                  >
                   <Link
                     href={`/app/jobs?edit=${selected.id}`}
                     aria-current={undefined}
                   >
-                    1. Set up job
+                    Build estimate
                   </Link>
                   <Link
                     href={`/app/jobs?job=${selected.id}&tab=files`}
                     aria-current={tab === "files" ? "page" : undefined}
                   >
-                    2. Docs &amp; preview
+                    Preview documents
                   </Link>
                   <Link
                     href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
                     aria-label="Share customer packet"
                   >
-                    3. Share
+                    Share with customer
                   </Link>
-                </nav>
-                <p className="muted">
-                  Enter work and prices first. Preview the customer&apos;s
-                  documents, then choose the recipient and send one approval
-                  link.
-                </p>
+                  </nav>
+                )}
+                {!awaitingInspection && (
+                  <p className="muted">
+                    Review the technician's findings, build the estimate, then
+                    send the customer their approval link.
+                  </p>
+                )}
                 {data.headsUp.map((n, i) => (
                   <p
                     className="heads-up-line"
@@ -985,6 +992,21 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
+                {awaitingInspection && (
+                  <section className="ro-stage-panel" aria-label="Current RO stage">
+                    <p className="muted">CURRENT STAGE · CHECK-IN &amp; INSPECTION</p>
+                    <h3>
+                      {data.assignee
+                        ? "Waiting on technician inspection"
+                        : "Assign a technician"}
+                    </h3>
+                    <p>
+                      {data.assignee
+                        ? "The assigned technician must record the diagnosis and submit the inspection. The service advisor will be notified to build the estimate."
+                        : "Select the technician responsible for inspecting this vehicle. The estimate is prepared after the inspection is submitted."}
+                    </p>
+                  </section>
+                )}
                 {s.actor.type === "support" || false ? (
                   <p className="muted">
                     Tech:{" "}
@@ -992,7 +1014,7 @@ export default async function JobsPage({
                       "nobody yet"}
                   </p>
                 ) : (
-                  <div className="tech-pick" key={data.assignee ?? "none"}>
+                  <div className="tech-pick ro-assignment" key={data.assignee ?? "none"}>
                     <ActionForm
                       action={assignJobAction}
                       hidden={{ jobId: selected.id }}
@@ -1018,7 +1040,7 @@ export default async function JobsPage({
                   </div>
                 )}
                 {advisorAssignment}
-                {flow && (
+                {flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
                       <strong>
@@ -1067,7 +1089,7 @@ export default async function JobsPage({
                     )}
                   </p>
                 )}
-                {s.actor.type !== "support" && (
+                {!awaitingInspection && s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
                     {data.clock?.jobId === selected.id ? (
                       <ActionForm
@@ -1279,7 +1301,7 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
-                    {data.profit && (
+                    {!awaitingInspection && data.profit && (
                       <RecordSection
                         title="Costs & profit"
                         description="What each line costs the shop and what it makes. Hidden in the customer view."
@@ -1287,7 +1309,7 @@ export default async function JobsPage({
                         <RoCosts profit={data.profit} />
                       </RecordSection>
                     )}
-                    {flow && (
+                    {!awaitingInspection && flow && (
                       <RecordSection
                         title="Work & approval"
                         description="Customer authorization, the next step and progress on this job."
