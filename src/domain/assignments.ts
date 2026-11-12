@@ -1,6 +1,6 @@
 // Who's on each job and visit. Kept apart from the board and "My day" so
 // both can read it without importing each other.
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import {
   appointment,
   customer,
@@ -270,7 +270,7 @@ export async function assignCustomer(
     .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,input.customerId)));
   await tx.update(task).set({assignedUserId:input.userId})
     .where(and(eq(task.businessId,tx.businessId),eq(task.customerId,input.customerId),
-      eq(task.assignedUserId,before.assignedUserId ?? ""),sql`${task.doneAt} IS NULL`));
+      before.assignedUserId ? eq(task.assignedUserId,before.assignedUserId) : isNull(task.assignedUserId),sql`${task.doneAt} IS NULL`));
   await audit(tx,meta,{action:"customer.assigned",targetType:"customer",targetId:input.customerId,
     before:{userId:before.assignedUserId},after:{userId:input.userId}});
   return {customerId:input.customerId,message:`Assigned to ${advisor.name}.`};
