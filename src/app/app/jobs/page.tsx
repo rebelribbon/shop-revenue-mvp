@@ -1027,7 +1027,7 @@ export default async function JobsPage({
                 )}
                 {!awaitingInspection && (
                   <p className="muted">
-                    Review the technician's findings, build the estimate, then
+                    Review the technician&apos;s findings, build the estimate, then
                     send the customer their approval link.
                   </p>
                 )}
