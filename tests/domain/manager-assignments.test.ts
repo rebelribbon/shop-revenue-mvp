@@ -85,7 +85,7 @@ describe("Manager assignment and private advisor access", () => {
     expect((await manager.run(tx => listTasks(tx))).due.some(t => t.title === "Send estimate")).toBe(true);
 
     await manager.run(tx => assignCustomer(tx, meta(), {customerId:first.id,userId:bob.id}));
-    expect((await alice.run(tx => listCustomers(tx)).map(c=>c.id))).not.toContain(first.id);
+    expect((await alice.run(tx => listCustomers(tx))).map(c => c.id)).not.toContain(first.id);
     await expect(alice.run(tx => getCustomerWithVehicles(tx, first.id))).rejects.toThrow();
     expect((await alice.run(tx => listTasks(tx))).due.some(t => t.subjectId === manual.id)).toBe(false);
     expect((await bob.run(tx => listTasks(tx))).due.some(t => t.subjectId === manual.id)).toBe(true);
