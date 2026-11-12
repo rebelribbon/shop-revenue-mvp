@@ -874,7 +874,7 @@ export default async function JobsPage({
                       />
                     </div>
                     <h2 className="profile-title">
-                      {auto ? (
+                      {auto && inspectionFirst ? (
                         "Repair order"
                       ) : (
                         <>
