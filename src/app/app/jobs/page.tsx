@@ -632,8 +632,8 @@ export default async function JobsPage({
                   : undefined
               }
             />
-  
-          )}        </>
+          )}
+        </>
       ) : selected && mode === "customer" ? (
         (() => {
           const input = jobInput.parse(selected.data);
