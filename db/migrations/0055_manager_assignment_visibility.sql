@@ -85,6 +85,13 @@ BEGIN
     END IF;
   ELSIF NEW.status = 'removed' THEN
     PERFORM app.raise_invalid_transition('membership', '(new)', NEW.status);
+  ELSIF NEW.can_manage_team AND app.current_actor_type() = 'user' AND NOT EXISTS (
+    SELECT 1 FROM app.membership acting
+    WHERE acting.business_id = NEW.business_id
+      AND acting.user_id = app.current_actor_id() AND acting.status = 'active'
+      AND (acting.role = 'owner' OR acting.can_manage_team)
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN: only management can grant manager access' USING ERRCODE = '42501';
   END IF;
 
   IF NEW.status = 'active' THEN
@@ -187,29 +194,49 @@ CREATE POLICY task_assignment_read ON app.task
   );
 --> statement-breakpoint
 
--- Assignment changes must not be self-service just because an employee can
--- update a customer's contact details.
-CREATE FUNCTION app.assignment_change_guard() RETURNS trigger
+-- Assignment changes must not be self-service, even through direct SQL.
+CREATE OR REPLACE FUNCTION app.assignment_change_guard() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog
 AS $$
+DECLARE
+  is_manager boolean;
 BEGIN
-  IF NEW.assigned_user_id IS DISTINCT FROM OLD.assigned_user_id
-     AND app.current_actor_type() = 'user'
-     AND NOT EXISTS (
-       SELECT 1 FROM app.membership m
-       WHERE m.business_id = NEW.business_id
-       AND m.user_id = app.current_actor_id() AND m.status = 'active'
-       AND (m.role = 'owner' OR m.can_manage_team)
-     )
-  THEN
-    RAISE EXCEPTION 'FORBIDDEN: only management can reassign records' USING ERRCODE = '42501';
+  IF app.current_actor_type() IS DISTINCT FROM 'user' THEN
+    RETURN NEW;
+  END IF;
+  SELECT EXISTS (
+    SELECT 1 FROM app.membership m
+    WHERE m.business_id = NEW.business_id
+      AND m.user_id = app.current_actor_id()
+      AND m.status = 'active'
+      AND (m.role = 'owner' OR m.can_manage_team)
+  ) INTO is_manager;
+  IF (
+    TG_OP = 'INSERT'
+    AND NEW.assigned_user_id IS NOT NULL
+    AND NEW.assigned_user_id IS DISTINCT FROM app.current_actor_id()
+    AND NOT is_manager
+  ) OR (
+    TG_OP = 'UPDATE'
+    AND NEW.assigned_user_id IS DISTINCT FROM OLD.assigned_user_id
+    AND NOT is_manager
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN: only management can assign other users' USING ERRCODE = '42501';
+  END IF;
+  IF NEW.assigned_user_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM app.membership m
+    WHERE m.business_id = NEW.business_id
+      AND m.user_id = NEW.assigned_user_id
+      AND m.status = 'active' AND m.role IN ('owner','staff')
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN: assignee must be an active advisor or owner' USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
 END
 $$;
 --> statement-breakpoint
-CREATE TRIGGER customer_assignment_guard BEFORE UPDATE OF assigned_user_id
+CREATE TRIGGER customer_assignment_guard BEFORE INSERT OR UPDATE OF assigned_user_id
   ON app.customer FOR EACH ROW EXECUTE FUNCTION app.assignment_change_guard();
 --> statement-breakpoint
-CREATE TRIGGER task_assignment_guard BEFORE UPDATE OF assigned_user_id
+CREATE TRIGGER task_assignment_guard BEFORE INSERT OR UPDATE OF assigned_user_id
   ON app.task FOR EACH ROW EXECUTE FUNCTION app.assignment_change_guard();
