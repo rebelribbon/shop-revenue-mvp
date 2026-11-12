@@ -113,8 +113,8 @@ export function RoCheckinEditor({
       <fieldset className="hydration-fields" disabled={!ready || pending}>
         <h2>New repair order</h2>
         <p className="muted">
-          The RO number is assigned automatically when you save. Estimate pricing
-          comes after the inspection.
+          The RO number is assigned automatically when you save. Estimate
+          pricing comes after the inspection.
         </p>
         <div className="ro-check-in">
           <strong>Customer</strong>
