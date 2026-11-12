@@ -571,7 +571,9 @@ export default async function JobsPage({
             ? isAutomotive(type)
               ? "Edit RO"
               : "Edit job"
-            : labels.newJob
+            : auto
+              ? "New RO"
+              : labels.newJob
           : isAutomotive(type)
             ? "Repair orders"
             : labels.jobs}
