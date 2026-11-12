@@ -579,7 +579,11 @@ export default async function JobsPage({
             : labels.jobs}
       </h1>
 
-      {editing && selected && auto && !data.inspection?.complete && !data.workflows.get(selected.id)?.latest ? (
+      {editing &&
+      selected &&
+      auto &&
+      !data.inspection?.complete &&
+      !data.workflows.get(selected.id)?.latest ? (
         <section className="card">
           <h2>Inspection required first</h2>
           <p>
@@ -881,7 +885,10 @@ export default async function JobsPage({
                   </div>
                 )}
                 {auto && (
-                  <section className="ro-stage-panel" aria-label="Current RO stage">
+                  <section
+                    className="ro-stage-panel"
+                    aria-label="Current RO stage"
+                  >
                     <p className="muted">
                       {awaitingInspection
                         ? "CURRENT STAGE · CHECK-IN & INSPECTION"
@@ -928,7 +935,10 @@ export default async function JobsPage({
                                     : "Use the Work section below to review the current authorization and next action."}
                     </p>
                     {!awaitingInspection && !flow?.latest && (
-                      <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>
+                      <Link
+                        className="btn primary"
+                        href={`/app/jobs?edit=${selected.id}`}
+                      >
                         Build estimate
                       </Link>
                     )}
@@ -1027,8 +1037,8 @@ export default async function JobsPage({
                 )}
                 {!awaitingInspection && (
                   <p className="muted">
-                    Review the technician&apos;s findings, build the estimate, then
-                    send the customer their approval link.
+                    Review the technician&apos;s findings, build the estimate,
+                    then send the customer their approval link.
                   </p>
                 )}
                 {data.headsUp.map((n, i) => (
@@ -1068,7 +1078,10 @@ export default async function JobsPage({
                       "nobody yet"}
                   </p>
                 ) : (
-                  <div className="tech-pick ro-assignment" key={data.assignee ?? "none"}>
+                  <div
+                    className="tech-pick ro-assignment"
+                    key={data.assignee ?? "none"}
+                  >
                     <ActionForm
                       action={assignJobAction}
                       hidden={{ jobId: selected.id }}
