@@ -86,7 +86,9 @@ async function shop(label: string) {
     }),
   );
   // The advisor can only price work for a customer assigned to them.
-  await owner((tx) => assignCustomer(tx, meta(), {customerId: c.id, userId: t.staff!.userId}));
+  await owner((tx) =>
+    assignCustomer(tx, meta(), { customerId: c.id, userId: t.staff!.userId }),
+  );
   const f = { t, owner, advisor, tech, techEmail, techId: joined.userId, job };
   const inbox = async (run: typeof owner) =>
     (await run((tx) => listMyJobHandoffs(tx))).map((h) => h.stage);

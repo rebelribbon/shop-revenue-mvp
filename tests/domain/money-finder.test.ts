@@ -496,7 +496,12 @@ describe("Money Finder live list rules", () => {
   it("records manual contact once per state identity, validates methods, and never marks money recovered", async () => {
     const f = await fixture();
     await estimate(f, 3, 30, []);
-    await run(f, (tx) => assignCustomer(tx, meta(), {customerId: f.customerId, userId: f.staff!.userId}));
+    await run(f, (tx) =>
+      assignCustomer(tx, meta(), {
+        customerId: f.customerId,
+        userId: f.staff!.userId,
+      }),
+    );
     await withTenant(f.businessId, f.staff!.actor, (tx) =>
       updateRecovery(tx, meta(), {
         category: "declined",

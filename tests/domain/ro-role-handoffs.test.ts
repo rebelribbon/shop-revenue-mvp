@@ -118,7 +118,9 @@ describe("RO recipient-specific handoff security", () => {
     expect((await techRun((tx) => listMyJobHandoffs(tx)))[0].stage).toBe(
       "inspect_vehicle",
     );
-    expect((await ownerRun((tx) => listMyJobHandoffs(tx))).map(t => t.stage)).toEqual(["inspect_vehicle"]);
+    expect(
+      (await ownerRun((tx) => listMyJobHandoffs(tx))).map((t) => t.stage),
+    ).toEqual(["inspect_vehicle"]);
     await techRun((tx) =>
       saveInspection(tx, meta(), {
         jobId: job.id,
@@ -136,7 +138,9 @@ describe("RO recipient-specific handoff security", () => {
     expect(
       tasks.map((t) => ({ stage: t.stage, recipient: t.recipientUserId })),
     ).toEqual([{ stage: "build_estimate", recipient: tenant.staff!.userId }]);
-    expect((await ownerRun((tx) => listMyJobHandoffs(tx))).map(t => t.stage)).toEqual(["build_estimate"]);
+    expect(
+      (await ownerRun((tx) => listMyJobHandoffs(tx))).map((t) => t.stage),
+    ).toEqual(["build_estimate"]);
     // Changing the advisor reassigns the open Build Estimate task.
     await ownerRun((tx) =>
       assignAdvisor(tx, meta(), {

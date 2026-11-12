@@ -280,7 +280,12 @@ describe("durable revenue attribution", () => {
         method: "in_person",
       }),
     );
-    await run(f, tx => assignCustomer(tx, meta(), {customerId: f.customerId, userId: f.staff!.userId}));
+    await run(f, (tx) =>
+      assignCustomer(tx, meta(), {
+        customerId: f.customerId,
+        userId: f.staff!.userId,
+      }),
+    );
     const result = await withTenant(f.businessId, f.staff!.actor, (tx) =>
       updateRecovery(tx, meta(), {
         category: "declined",

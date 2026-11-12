@@ -149,9 +149,14 @@ describe("RO handoff email pings", () => {
     );
     await submitInspection(f);
     // Ordinary advisors cannot change assignments; only management can.
-    await expect(f.advisor((tx) =>
-      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.owner.userId }),
-    )).rejects.toThrow(/management/);
+    await expect(
+      f.advisor((tx) =>
+        assignAdvisor(tx, meta(), {
+          jobId: f.job.id,
+          userId: f.t.owner.userId,
+        }),
+      ),
+    ).rejects.toThrow(/management/);
     // A manager can transfer to another advisor, and that person is pinged.
     await f.owner((tx) =>
       assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.owner.userId }),

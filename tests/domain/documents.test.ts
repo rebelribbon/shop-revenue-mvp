@@ -100,7 +100,9 @@ it("owner builds a template; a job sends it; the customer fills, signs and gets 
     ),
   ).rejects.toThrow();
   const tpl = await run((tx) => saveTemplate(tx, meta(), template));
-  await run((tx) => assignCustomer(tx, meta(), {customerId: c.id, userId: t.staff!.userId}));
+  await run((tx) =>
+    assignCustomer(tx, meta(), { customerId: c.id, userId: t.staff!.userId }),
+  );
   const sent = await withTenant(t.businessId, t.staff!.actor, (tx) =>
     sendDocument(tx, meta(), { jobId: job.id, templateId: tpl.id }),
   );
