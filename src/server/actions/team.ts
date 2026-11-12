@@ -12,6 +12,7 @@ import {
   inviteStaff,
   removeStaff,
   resendInvite,
+  changeTeamAccess,
   type InviteDelivery,
 } from "@/domain/membership";
 import { normalizeEmail, normalizePhone } from "@/lib/normalize";
@@ -70,13 +71,12 @@ const inviteInput = z.object({
   name: z.string().min(1).max(100),
   email: z.string().max(254).optional().or(z.literal("")),
   phone: z.string().max(40).optional().or(z.literal("")),
-  role: z.enum(["staff", "technician"]).optional(),
+  role: z.enum(["staff", "technician", "manager"]).optional(),
 });
 
 export const inviteStaffAction = defineShopAction({
   name: "inviteStaff",
   input: inviteInput,
-  ownerOnly: true,
   run: ({ tx, meta }, input) =>
     inviteStaff(tx, meta, {
       name: input.name,
@@ -91,7 +91,6 @@ export const inviteStaffAction = defineShopAction({
 export const resendInviteAction = defineShopAction({
   name: "resendInvite",
   input: z.object({ membershipId: z.uuid() }),
-  ownerOnly: true,
   run: ({ tx, meta }, input) => resendInvite(tx, meta, input.membershipId),
   persist: delivered,
   afterCommit: (d, session, meta) => sendAndRecord(d, session, meta),
@@ -102,9 +101,17 @@ export const removeStaffAction = defineShopAction({
   // Removing someone's access is always allowed.
   allowWhenUnpaid: true,
   input: z.object({ membershipId: z.uuid() }),
-  ownerOnly: true,
   run: async ({ tx, meta }, input) => {
     await removeStaff(tx, meta, input.membershipId);
     return { removed: input.membershipId, message: "Removed." };
   },
+});
+
+export const changeTeamAccessAction = defineShopAction({
+  name: "changeTeamAccess",
+  input: z.object({
+    membershipId: z.uuid(),
+    role: z.enum(["advisor", "manager", "technician"]),
+  }),
+  run: ({ tx, meta }, input) => changeTeamAccess(tx, meta, input),
 });
