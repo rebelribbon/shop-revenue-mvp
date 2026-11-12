@@ -199,8 +199,9 @@ test("routes an assigned inspection from the technician to its advisor without e
     expect(
       (await readTasks(advisor)).some((task) => task.jobId === jobId),
     ).toBe(true);
+    // Owners supervise both technician and advisor queues.
     expect((await readTasks(page)).some((task) => task.jobId === jobId)).toBe(
-      false,
+      true,
     );
     await advisor.goto("/app/tasks");
     const task = advisor
