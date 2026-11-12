@@ -618,6 +618,9 @@ export default async function JobsPage({
             <RoCheckinEditor
               key={[customerId, vehicleId, sourceAppointmentId].join(":")}
               options={data.options}
+              advisors={data.advisors}
+              canManage={data.canManageTeam}
+              currentUserId={s.actor.id ?? ""}
               initial={initial}
               attachMediaId={
                 data.fromMedia && data.fromMedia.customerId === customerId
