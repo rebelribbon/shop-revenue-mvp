@@ -164,20 +164,22 @@ export default async function TasksPage(props: {
               required
               defaultValue={addLocalDays(data.today, 1)}
             />
-            {management && (
+            {management ? (
               <>
-                <label htmlFor="task-assignee">Assign to advisor</label>
-                <select
-                  id="task-assignee"
-                  name="assignedUserId"
-                  defaultValue={s.userId ?? ""}
-                >
+                <label htmlFor="task-assignee">Assigned service advisor</label>
+                <select id="task-assignee" name="assignedUserId" defaultValue="" required>
+                  <option value="" disabled>Choose an advisor</option>
                   {advisors.map((advisor) => (
                     <option key={advisor.userId} value={advisor.userId}>
                       {advisor.name}
                     </option>
                   ))}
                 </select>
+              </>
+            ) : (
+              <>
+                <p className="muted">This task is assigned to you.</p>
+                <input type="hidden" name="assignedUserId" value={s.actor.id ?? ""} />
               </>
             )}
             <label htmlFor="task-customer">Customer (optional)</label>
