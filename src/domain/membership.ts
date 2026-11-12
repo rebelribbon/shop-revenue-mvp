@@ -107,7 +107,7 @@ export async function listTeam(tx: TenantTx) {
 }
 
 // Mirrors the cap in app.membership_guard (db/migrations/0050).
-export const MAX_TEAM_SEATS = 10;
+export const MAX_TEAM_SEATS = 15;
 
 export type InviteDelivery = {
   membershipId: string;
@@ -389,7 +389,7 @@ export async function changeTeamAccess(
   await assertManager(tx);
   const [before] = await tx.select().from(membership)
     .where(and(eq(membership.businessId, tx.businessId), eq(membership.id, input.membershipId)));
-  if (!before || before.status !== "active") throw notFound("That active team member");
+  if (!before || before.status !== "active" || !before.userId) throw notFound("That active team member");
   if (before.role === "owner" || before.userId === tx.actor.id)
     throw forbidden("Owner access and your own role cannot be changed.");
   const role = input.role === "technician" ? "technician" : "staff";
@@ -399,13 +399,15 @@ export async function changeTeamAccess(
   // Moving between technician and advisor must not leave assigned work visible
   // under the wrong role. Reassign their open work before changing the role.
   if (before.role !== role) {
-    const { jobAssignment, task } = await import("@/db/schema");
+    const { jobAssignment, task, customer } = await import("@/db/schema");
     const assignedJobs = await tx.select({ id: jobAssignment.jobId }).from(jobAssignment)
       .where(and(eq(jobAssignment.businessId, tx.businessId), eq(jobAssignment.userId, before.userId)));
     const assignedTasks = await tx.select({ id: task.id }).from(task)
       .where(and(eq(task.businessId, tx.businessId), eq(task.assignedUserId, before.userId), sql`${task.doneAt} IS NULL`));
-    if (assignedJobs.length || assignedTasks.length)
-      throw new AppError("CONFLICT", "Reassign this employee's active ROs and tasks before changing their role.");
+    const assignedCustomers = await tx.select({id:customer.id}).from(customer)
+      .where(and(eq(customer.businessId,tx.businessId),eq(customer.assignedUserId,before.userId)));
+    if (assignedJobs.length || assignedTasks.length || assignedCustomers.length)
+      throw new AppError("CONFLICT", "Reassign this employee's customers, active ROs, and tasks before changing their role.");
   }
   await tx.update(membership).set({ role, canManageTeam: canManage }).where(eq(membership.id, before.id));
   await audit(tx, meta, {action: "membership.access_changed", targetType:"membership",targetId:before.id,
