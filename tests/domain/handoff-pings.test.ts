@@ -148,13 +148,20 @@ describe("RO handoff email pings", () => {
       assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
     );
     await submitInspection(f);
-    // The advisor hands the waiting estimate to the owner: the owner is pinged.
-    const moved = await f.advisor((tx) =>
+    // Ordinary advisors cannot change assignments; only management can.
+    await expect(f.advisor((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.owner.userId }),
+    )).rejects.toThrow(/management/);
+    // A manager can transfer to another advisor, and that person is pinged.
+    await f.owner((tx) =>
       assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.owner.userId }),
     );
+    const moved = await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
     expect(moved.handoff).toBe(true);
-    const toOwner = await f.advisor((tx) => prepareHandoffPing(tx, f.job.id));
-    expect(toOwner?.email.to).toBe(f.t.owner.email);
+    const toStaff = await f.owner((tx) => prepareHandoffPing(tx, f.job.id));
+    expect(toStaff?.email.to).toBe(f.t.staff!.email);
     // The owner taking it back themselves gets no email about their own click.
     await f.owner((tx) =>
       assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
