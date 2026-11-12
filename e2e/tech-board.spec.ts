@@ -20,6 +20,7 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill("Tech");
   await page.getByLabel("Last name").fill(`TEST ${info.project.name}`);
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
@@ -28,6 +29,7 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Customer concerns / reason for visit").fill(name);
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Create RO", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Repair order", exact: true }),
