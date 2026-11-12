@@ -69,6 +69,7 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
+import { RoCheckinEditor } from "@/components/ro-checkin-editor";
 import { requireShopSession } from "@/server/views/shop";
 
 const followUpPath = (jobId: string) => `/app/tasks?add=1&jobId=${jobId}`;
@@ -585,41 +586,54 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          <JobEditor
-            commonJobs={data.commonJobs}
-            catalog={data.catalog}
-            canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
-            laborSellRateCents={data.profile?.laborSellRateCents}
-            laborCostRateCents={data.profile?.laborCostRateCents}
-            partsTaxableDefault={data.profile?.partsTaxableDefault}
-            laborTaxableDefault={data.profile?.laborTaxableDefault}
-            businessType={data.profile?.businessType}
-            key={
-              selected?.version ??
-              [
-                customerId,
-                vehicleId,
-                serviceAssetId,
-                sourceRecoveryItemId,
-                sourceContactActivityId,
-                sourceAppointmentId,
-              ].join(":")
-            }
-            options={data.options}
-            recommendations={data.recommendations}
-            initial={initial}
-            today={localDateKey(
-              new Date(),
-              data.profile?.timezone || "America/Chicago",
-            )}
-            defaultRepeats={recurringFirst(type)}
-            attachMediaId={
-              data.fromMedia && data.fromMedia.customerId === customerId
-                ? data.fromMedia.id
-                : undefined
-            }
-          />
-        </>
+          {auto && !selected ? (
+            <RoCheckinEditor
+              key={[customerId, vehicleId, sourceAppointmentId].join(":")}
+              options={data.options}
+              initial={initial}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          ) : (
+            <JobEditor
+              commonJobs={data.commonJobs}
+              catalog={data.catalog}
+              canSaveCommon={s.role === "owner" && s.actor.type !== "support"}
+              laborSellRateCents={data.profile?.laborSellRateCents}
+              laborCostRateCents={data.profile?.laborCostRateCents}
+              partsTaxableDefault={data.profile?.partsTaxableDefault}
+              laborTaxableDefault={data.profile?.laborTaxableDefault}
+              businessType={data.profile?.businessType}
+              key={
+                selected?.version ??
+                [
+                  customerId,
+                  vehicleId,
+                  serviceAssetId,
+                  sourceRecoveryItemId,
+                  sourceContactActivityId,
+                  sourceAppointmentId,
+                ].join(":")
+              }
+              options={data.options}
+              recommendations={data.recommendations}
+              initial={initial}
+              today={localDateKey(
+                new Date(),
+                data.profile?.timezone || "America/Chicago",
+              )}
+              defaultRepeats={recurringFirst(type)}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+  
+          )}        </>
       ) : selected && mode === "customer" ? (
         (() => {
           const input = jobInput.parse(selected.data);
