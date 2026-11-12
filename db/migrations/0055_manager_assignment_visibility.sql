@@ -130,7 +130,15 @@ CREATE POLICY customer_assignment_read ON app.customer
         AND m.user_id = app.current_actor_id() AND m.status = 'active'
         AND (m.role = 'owner' OR m.can_manage_team)
     )
-    OR assigned_user_id = app.current_actor_id()
+    OR (
+      assigned_user_id = app.current_actor_id()
+      AND EXISTS (
+        SELECT 1 FROM app.membership viewer
+        WHERE viewer.business_id = customer.business_id
+          AND viewer.user_id = app.current_actor_id()
+          AND viewer.status = 'active' AND viewer.role = 'staff'
+      )
+    )
     OR EXISTS (
       SELECT 1 FROM app.job_assignment ja
       JOIN app.activity a ON a.business_id = ja.business_id
@@ -153,7 +161,11 @@ CREATE POLICY task_assignment_read ON app.task
   AS RESTRICTIVE FOR SELECT TO app_user
   USING (
     app.current_actor_type() IS DISTINCT FROM 'user'
-    OR assigned_user_id = app.current_actor_id()
+    OR (assigned_user_id = app.current_actor_id() AND EXISTS (
+      SELECT 1 FROM app.membership viewer WHERE viewer.business_id = task.business_id
+        AND viewer.user_id = app.current_actor_id() AND viewer.status = 'active'
+        AND viewer.role = 'staff'
+    ))
     OR EXISTS (
       SELECT 1 FROM app.membership m WHERE m.business_id = task.business_id
       AND m.user_id = app.current_actor_id() AND m.status = 'active'
