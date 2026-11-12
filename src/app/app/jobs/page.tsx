@@ -69,6 +69,7 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
+import { canManageTeam } from "@/domain/membership";
 import { RoCheckinEditor } from "@/components/ro-checkin-editor";
 import { RoStageSummary } from "@/components/ro-stage-summary";
 import { requireShopSession } from "@/server/views/shop";
@@ -299,6 +300,7 @@ export default async function JobsPage({
       clock: await myClock(tx),
       deposit: page.selected ? await jobDeposit(tx, page.selected.id) : null,
       techs: await listTechs(tx),
+      canManageTeam: await canManageTeam(tx),
       advisors: s.role === "technician" ? [] : await listAdvisors(tx),
       advisorId:
         page.selected && s.role !== "technician"
@@ -417,7 +419,7 @@ export default async function JobsPage({
     }).format(c / 100);
   const advisorAssignment =
     selected && s.role !== "technician" && s.actor.type !== "support" ? (
-      <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
+      data.canManageTeam ? <div className="tech-pick" key={data.advisorId ?? "advisor-unset"}>
         <ActionForm
           action={assignAdvisorAction}
           hidden={{ jobId: selected.id }}
@@ -443,7 +445,7 @@ export default async function JobsPage({
           When the inspection is submitted, this advisor receives the Build
           Estimate task.
         </p>
-      </div>
+      </div> : <p className="muted">Assigned advisor: {data.advisors.find(a => a.userId === data.advisorId)?.name ?? "Not assigned"}</p>
     ) : null;
   // Technicians get a dedicated assigned-work workspace. The general RO
   // editor, profit, invoices, estimates, customer administration and
@@ -1024,7 +1026,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {s.actor.type === "support" || false ? (
+                {!data.canManageTeam ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
