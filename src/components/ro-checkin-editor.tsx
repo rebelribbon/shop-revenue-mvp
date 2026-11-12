@@ -151,7 +151,9 @@ export function RoCheckinEditor({
             setMileageIn(event.target.value.replace(/\D/g, ""))
           }
         />
-        <label htmlFor="ro-intake-concerns">Customer concerns / reason for visit</label>
+        <label htmlFor="ro-intake-concerns">
+          Customer concerns / reason for visit
+        </label>
         <textarea
           id="ro-intake-concerns"
           rows={4}
