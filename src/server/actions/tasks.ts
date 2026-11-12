@@ -18,6 +18,7 @@ export const addTaskAction = defineShopAction({
     dueOn: z.iso.date(),
     customerId: z.uuid().or(z.literal("")).optional(),
     jobId: z.uuid().optional(),
+    assignedUserId: z.uuid().or(z.literal("")).optional(),
   }),
   run: ({ tx, meta }, i) =>
     addTask(tx, meta, {
@@ -25,6 +26,7 @@ export const addTaskAction = defineShopAction({
       dueOn: i.dueOn,
       customerId: i.customerId || undefined,
       jobId: i.jobId,
+      assignedUserId: i.assignedUserId || undefined,
     }),
   persist: (r) => ({ ...r, message: "Task added." }),
 });
