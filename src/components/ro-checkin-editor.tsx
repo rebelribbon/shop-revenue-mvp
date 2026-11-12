@@ -69,6 +69,7 @@ export function RoCheckinEditor({
             customerId,
             vehicleId,
             title: summary || "Vehicle inspection / service",
+            inspectionFirst: true,
             concerns: concerns.trim(),
             mileageIn: mileageIn === "" ? null : Number(mileageIn),
             sourceRecoveryItemId: initial?.sourceRecoveryItemId,
