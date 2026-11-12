@@ -588,8 +588,8 @@ export default async function JobsPage({
         <section className="card">
           <h2>Inspection required first</h2>
           <p>
-            The technician must submit the inspection before the advisor
-            builds the estimate. Assign the technician from this RO.
+            The technician must submit the inspection before the advisor builds
+            the estimate. Assign the technician from this RO.
           </p>
           <Link className="btn primary" href={`/app/jobs?job=${selected.id}`}>
             Return to RO
@@ -846,7 +846,9 @@ export default async function JobsPage({
                       />
                     </div>
                     <h2 className="profile-title">
-                      {auto ? "Repair order" : (
+                      {auto ? (
+                        "Repair order"
+                      ) : (
                         <>
                           {input.repeat && "↻ "}
                           {selected.title}
