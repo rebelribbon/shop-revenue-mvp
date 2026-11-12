@@ -43,8 +43,13 @@ export function RoCheckinEditor({
     return (
       <section className="card">
         <h2>Start a repair order from the customer</h2>
-        <p>Open the customer profile, select the vehicle, and choose New RO. The customer will carry into the repair order automatically.</p>
-        <Link className="btn primary" href="/app/customers">Go to customers</Link>
+        <p>
+          Open the customer profile, select the vehicle, and choose New RO. The
+          customer will carry into the repair order automatically.
+        </p>
+        <Link className="btn primary" href="/app/customers">
+          Go to customers
+        </Link>
       </section>
     );
   }
@@ -96,7 +101,9 @@ export function RoCheckinEditor({
           router.push(`/app/jobs?job=${encodeURIComponent(jobId)}&saved=1`);
           router.refresh();
         } catch {
-          setMessage("Could not create the RO. Your check-in details are still here.");
+          setMessage(
+            "Could not create the RO. Your check-in details are still here.",
+          );
         } finally {
           setPending(false);
         }
@@ -104,7 +111,10 @@ export function RoCheckinEditor({
     >
       <fieldset className="hydration-fields" disabled={!ready || pending}>
         <h2>New repair order</h2>
-        <p className="muted">The RO number is assigned automatically when you save. Estimate pricing comes after the inspection.</p>
+        <p className="muted">
+          The RO number is assigned automatically when you save. Estimate pricing
+          comes after the inspection.
+        </p>
         <div className="ro-check-in">
           <strong>Customer</strong>
           <p>{customer.name}</p>
@@ -119,7 +129,9 @@ export function RoCheckinEditor({
           <option value="">Select vehicle</option>
           {availableVehicles.map((vehicle) => (
             <option key={vehicle.id} value={vehicle.id}>
-              {[vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "Vehicle"}
+              {[vehicle.year, vehicle.make, vehicle.model]
+                .filter(Boolean)
+                .join(" ") || "Vehicle"}
             </option>
           ))}
         </select>
@@ -135,7 +147,9 @@ export function RoCheckinEditor({
           autoComplete="off"
           maxLength={7}
           value={mileageIn}
-          onChange={(event) => setMileageIn(event.target.value.replace(/\D/g, ""))}
+          onChange={(event) =>
+            setMileageIn(event.target.value.replace(/\D/g, ""))
+          }
         />
         <label htmlFor="ro-intake-concerns">Customer concerns / reason for visit</label>
         <textarea
@@ -146,8 +160,16 @@ export function RoCheckinEditor({
           placeholder="Describe the customer's request in their own words."
           onChange={(event) => setConcerns(event.target.value)}
         />
-        {message && <p role="alert" className="notice">{message}</p>}
-        <button className="btn primary" type="submit" disabled={!ready || pending || !vehicleId}>
+        {message && (
+          <p role="alert" className="notice">
+            {message}
+          </p>
+        )}
+        <button
+          className="btn primary"
+          type="submit"
+          disabled={!ready || pending || !vehicleId}
+        >
           {pending ? "Creating RO…" : "Create RO"}
         </button>
       </fieldset>
