@@ -294,7 +294,7 @@ export default async function CustomerDetailPage(props: {
                 </select>
                 <p className="muted">
                   Reassigning transfers open customer tasks and immediately
-                  removes the previous advisor's customer access.
+                  removes the previous advisor&apos;s customer access.
                 </p>
               </ActionForm>
             </section>
