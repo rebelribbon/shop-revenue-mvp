@@ -7,6 +7,7 @@ import {
   customer,
   estimateVersion,
   jobAssignment,
+  membership,
   recommendation,
   vehicle,
 } from "@/db/schema";
@@ -34,6 +35,7 @@ export const jobInput = z.object({
   title: z.string().trim().min(1).max(200),
   // Intake-created automotive ROs require an explicit technician inspection.
   inspectionFirst: z.boolean().optional(),
+  advisorUserId: z.uuid().optional(),
   // Recurring work; absent for a one-time job.
   repeat: repeatInput.nullable().optional(),
   // Warranty on this work, in months (shown on the estimate and invoice).
@@ -157,6 +159,22 @@ export async function createJob(tx: TenantTx, input: JobInput) {
           "The declined-work link must belong to this customer and vehicle.",
         );
     }
+  // Only new inspection-first automotive ROs require an advisor at intake.
+  // Preserve legacy/imported service jobs and existing cost revisions.
+  if (data.inspectionFirst && !data.jobId) {
+    if (!data.advisorUserId)
+      throw new AppError("VALIDATION", "Assign a service advisor before creating the RO.");
+    const [advisor] = await tx.select({id:membership.id}).from(membership).where(and(
+      eq(membership.businessId,tx.businessId),
+      eq(membership.userId,data.advisorUserId),
+      eq(membership.status,"active"),
+      sql`${membership.role} IN ('staff','owner')`,
+    ));
+    if (!advisor)
+      throw new AppError("VALIDATION", "Choose an active service advisor or owner.");
+    if (data.advisorUserId !== tx.actor.id && !(await canManageTeam(tx)))
+      throw new AppError("FORBIDDEN", "Only management can assign an RO to another advisor.");
+  }
   const totals = calculateJob(data.parts, data.labor);
   const id = data.jobId ?? crypto.randomUUID();
   // The check-in odometer keeps the vehicle's mileage current (never lowers it).
@@ -214,6 +232,20 @@ export async function createJob(tx: TenantTx, input: JobInput) {
     summary: data.title,
     data: { ...data, totals },
   });
+  if (data.inspectionFirst && !data.jobId && data.advisorUserId) {
+    await recordActivity(tx, {
+      kind: "job.advisor_assigned",
+      subjectType: "job",
+      subjectId: id,
+      summary: "Service advisor assigned at RO check-in",
+      data: { advisorUserId: data.advisorUserId },
+      recordedAtNow: true,
+    });
+    // An RO created through check-in is immediately in the advisor's queue.
+    // Technicians only gain access when management assigns them separately.
+    await tx.update(customer).set({ assignedUserId: data.advisorUserId })
+      .where(and(eq(customer.businessId,tx.businessId),eq(customer.id,data.customerId)));
+  }
   await recordActivity(tx, {
     kind: "job.created",
     subjectType: data.vehicleId ? "vehicle" : "customer",
