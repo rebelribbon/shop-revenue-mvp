@@ -100,8 +100,8 @@ BEGIN
     SELECT count(*) INTO seat_count FROM app.membership
       WHERE business_id = NEW.business_id AND role IN ('staff', 'technician')
         AND status IN ('invited', 'active') AND id <> NEW.id;
-    IF seat_count >= 10 THEN
-      RAISE EXCEPTION 'MEMBERSHIP_LIMIT: a business has at most 10 team logins' USING ERRCODE = '23514';
+    IF seat_count >= 15 THEN
+      RAISE EXCEPTION 'MEMBERSHIP_LIMIT: a business has at most 15 team logins' USING ERRCODE = '23514';
     END IF;
   END IF;
 
@@ -109,8 +109,8 @@ BEGIN
     PERFORM pg_advisory_xact_lock(hashtextextended('app.membership:' || NEW.business_id::text, 0));
     SELECT count(*) INTO active_count FROM app.membership
       WHERE business_id = NEW.business_id AND status = 'active' AND id <> NEW.id;
-    IF active_count >= 11 THEN
-      RAISE EXCEPTION 'MEMBERSHIP_LIMIT: a business has at most 11 active members' USING ERRCODE = '23514';
+    IF active_count >= 16 THEN
+      RAISE EXCEPTION 'MEMBERSHIP_LIMIT: a business has at most 16 active members' USING ERRCODE = '23514';
     END IF;
   END IF;
   RETURN NEW;
@@ -138,6 +138,19 @@ CREATE POLICY customer_assignment_read ON app.customer
           AND viewer.user_id = app.current_actor_id()
           AND viewer.status = 'active' AND viewer.role = 'staff'
       )
+    )
+    OR EXISTS (
+      SELECT 1 FROM app.task assigned
+      WHERE assigned.business_id = customer.business_id
+        AND assigned.customer_id = customer.id
+        AND assigned.assigned_user_id = app.current_actor_id()
+        AND assigned.done_at IS NULL
+        AND EXISTS (
+          SELECT 1 FROM app.membership viewer
+          WHERE viewer.business_id = customer.business_id
+            AND viewer.user_id = app.current_actor_id()
+            AND viewer.status = 'active' AND viewer.role = 'staff'
+        )
     )
     OR EXISTS (
       SELECT 1 FROM app.job_assignment ja
