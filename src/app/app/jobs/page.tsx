@@ -579,7 +579,18 @@ export default async function JobsPage({
             : labels.jobs}
       </h1>
 
-      {editing ? (
+      {editing && selected && auto && !data.inspection?.complete && !data.workflows.get(selected.id)?.latest ? (
+        <section className="card">
+          <h2>Inspection required first</h2>
+          <p>
+            The technician must submit the inspection before the advisor
+            builds the estimate. Assign the technician from this RO.
+          </p>
+          <Link className="btn primary" href={`/app/jobs?job=${selected.id}`}>
+            Return to RO
+          </Link>
+        </section>
+      ) : editing ? (
         <>
           <p>
             <Link
@@ -936,24 +947,24 @@ export default async function JobsPage({
                     className="section-tabs"
                     aria-label="Estimate preparation and customer approval"
                   >
-                  <Link
-                    href={`/app/jobs?edit=${selected.id}`}
-                    aria-current={undefined}
-                  >
-                    Build estimate
-                  </Link>
-                  <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files`}
-                    aria-current={tab === "files" ? "page" : undefined}
-                  >
-                    Preview documents
-                  </Link>
-                  <Link
-                    href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
-                    aria-label="Share customer packet"
-                  >
-                    Share with customer
-                  </Link>
+                    <Link
+                      href={`/app/jobs?edit=${selected.id}`}
+                      aria-current={undefined}
+                    >
+                      Build estimate
+                    </Link>
+                    <Link
+                      href={`/app/jobs?job=${selected.id}&tab=files`}
+                      aria-current={tab === "files" ? "page" : undefined}
+                    >
+                      Preview documents
+                    </Link>
+                    <Link
+                      href={`/app/jobs?job=${selected.id}&tab=files&share=1#share-customer-packet`}
+                      aria-label="Share customer packet"
+                    >
+                      Share with customer
+                    </Link>
                   </nav>
                 )}
                 {!awaitingInspection && (
@@ -992,19 +1003,58 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {awaitingInspection && (
+                {auto && (
                   <section className="ro-stage-panel" aria-label="Current RO stage">
-                    <p className="muted">CURRENT STAGE · CHECK-IN &amp; INSPECTION</p>
+                    <p className="muted">
+                      {awaitingInspection
+                        ? "CURRENT STAGE · CHECK-IN & INSPECTION"
+                        : !flow?.latest
+                          ? "CURRENT STAGE · BUILD ESTIMATE"
+                          : `CURRENT STAGE · ${statusLabels[statusOf(selected.id)]}`}
+                    </p>
                     <h3>
-                      {data.assignee
-                        ? "Waiting on technician inspection"
-                        : "Assign a technician"}
+                      {awaitingInspection
+                        ? data.assignee
+                          ? "Waiting on technician inspection"
+                          : "Assign a technician"
+                        : !flow?.latest
+                          ? "Inspection complete — build estimate"
+                          : flow.stage === "awaiting"
+                            ? "Waiting for customer authorization"
+                            : flow.stage === "ready" || flow.stage === "working"
+                              ? "Technician performs authorized repairs"
+                              : flow.stage === "bill"
+                                ? "Repairs complete — advisor invoices"
+                                : flow.stage === "payment"
+                                  ? "Invoice sent — collect payment"
+                                  : flow.stage === "paid"
+                                    ? "Paid — prepare for pickup"
+                                    : "Review the next service action"}
                     </h3>
                     <p>
-                      {data.assignee
-                        ? "The assigned technician must record the diagnosis and submit the inspection. The service advisor will be notified to build the estimate."
-                        : "Select the technician responsible for inspecting this vehicle. The estimate is prepared after the inspection is submitted."}
+                      {awaitingInspection
+                        ? data.assignee
+                          ? "The technician records the diagnosis and submits the inspection. The advisor is notified when it is ready."
+                          : "Assign a technician to inspect the vehicle. Estimate preparation follows submitted inspection findings."
+                        : !flow?.latest
+                          ? "The inspection is submitted. The assigned advisor reviews the findings, prices parts and labor, and sends the estimate for customer approval."
+                          : flow.stage === "awaiting"
+                            ? "The customer must approve or decline each line and sign before repairs begin."
+                            : flow.stage === "ready" || flow.stage === "working"
+                              ? "Only customer-authorized repairs should be performed. Completion sends the next task to the advisor."
+                              : flow.stage === "bill"
+                                ? "The advisor reviews completed work, issues the invoice, and sends the payment link."
+                                : flow.stage === "payment"
+                                  ? "Confirm payment before vehicle release."
+                                  : flow.stage === "paid"
+                                    ? "Payment is recorded. Complete vehicle pickup and close out the RO."
+                                    : "Use the Work section below to review the current authorization and next action."}
                     </p>
+                    {!awaitingInspection && !flow?.latest && (
+                      <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>
+                        Build estimate
+                      </Link>
+                    )}
                   </section>
                 )}
                 {s.actor.type === "support" || false ? (
@@ -1301,14 +1351,6 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
-                    {!awaitingInspection && data.profit && (
-                      <RecordSection
-                        title="Costs & profit"
-                        description="What each line costs the shop and what it makes. Hidden in the customer view."
-                      >
-                        <RoCosts profit={data.profit} />
-                      </RecordSection>
-                    )}
                     {!awaitingInspection && flow && (
                       <RecordSection
                         title="Work & approval"
@@ -1322,6 +1364,14 @@ export default async function JobsPage({
                           technicianOnly={false}
                           canEditEstimate={!selected.documentOnly}
                         />
+                      </RecordSection>
+                    )}
+                    {!awaitingInspection && data.profit && (
+                      <RecordSection
+                        title="Costs & profit"
+                        description="What each line costs the shop and what it makes. Hidden in the customer view."
+                      >
+                        <RoCosts profit={data.profit} />
                       </RecordSection>
                     )}
                   </>
