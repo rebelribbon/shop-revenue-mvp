@@ -15,8 +15,14 @@ export function RoCheckinEditor({
   options,
   initial,
   attachMediaId,
+  advisors,
+  canManage,
+  currentUserId,
 }: {
   options: JobOptions;
+  advisors: { userId: string; name: string }[];
+  canManage: boolean;
+  currentUserId: string;
   initial?: Partial<JobInput>;
   attachMediaId?: string;
 }) {
@@ -34,6 +40,7 @@ export function RoCheckinEditor({
     initial?.mileageIn == null ? "" : String(initial.mileageIn),
   );
   const [concerns, setConcerns] = useState(initial?.concerns ?? "");
+  const [advisorUserId, setAdvisorUserId] = useState(canManage ? "" : currentUserId);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -60,7 +67,7 @@ export function RoCheckinEditor({
       data-ux-ready={ready}
       onSubmit={async (event) => {
         event.preventDefault();
-        if (!ready || pending || !vehicleId) return;
+        if (!ready || pending || !vehicleId || !advisorUserId) return;
         setPending(true);
         setMessage("");
         try {
@@ -70,6 +77,7 @@ export function RoCheckinEditor({
             vehicleId,
             title: summary || "Vehicle inspection / service",
             inspectionFirst: true,
+            advisorUserId,
             concerns: concerns.trim(),
             mileageIn: mileageIn === "" ? null : Number(mileageIn),
             sourceRecoveryItemId: initial?.sourceRecoveryItemId,
@@ -141,6 +149,26 @@ export function RoCheckinEditor({
             Add another vehicle / scan VIN
           </Link>
         </p>
+        {canManage ? (
+          <>
+            <label htmlFor="ro-intake-advisor">Assigned service advisor</label>
+            <select
+              id="ro-intake-advisor"
+              required
+              value={advisorUserId}
+              onChange={(event) => setAdvisorUserId(event.target.value)}
+            >
+              <option value="">Choose an advisor</option>
+              {advisors.map((advisor) => (
+                <option key={advisor.userId} value={advisor.userId}>
+                  {advisor.name}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <p className="muted">Assigned service advisor: You</p>
+        )}
         <label htmlFor="ro-intake-mileage">Mileage at check-in</label>
         <input
           id="ro-intake-mileage"
@@ -171,7 +199,7 @@ export function RoCheckinEditor({
         <button
           className="btn primary"
           type="submit"
-          disabled={!ready || pending || !vehicleId}
+          disabled={!ready || pending || !vehicleId || !advisorUserId}
         >
           {pending ? "Creating RO…" : "Create RO"}
         </button>
