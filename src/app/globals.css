@@ -5452,3 +5452,52 @@ main.customer-index-page {
   margin: 8px 0;
   white-space: pre-wrap;
 }
+
+/* RO is an operational workflow, not a long quoting form. */
+.ro-stage-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--hover);
+  padding: 16px;
+  margin: 16px 0;
+}
+.ro-stage-panel h3 {
+  margin: 8px 0;
+}
+.record-job-profile .ro-assignment {
+  max-width: 100%;
+}
+.record-job-profile .ro-assignment form,
+.record-job-profile .tech-pick form {
+  max-width: 100%;
+}
+.record-job-profile .ro-assignment [data-ux-primary],
+.record-job-profile .tech-pick [data-ux-primary] {
+  position: static !important;
+  inset: auto !important;
+  width: auto !important;
+  min-width: 0;
+  max-width: 100%;
+  box-shadow: none;
+}
+@media (max-width: 899px) {
+  .record-job-profile .tech-pick form {
+    margin-bottom: 16px;
+  }
+  .record-job-profile .tech-pick button {
+    position: static !important;
+    inset: auto !important;
+    display: block;
+    width: 100%;
+    box-shadow: none;
+  }
+  .record-job-profile .section-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .record-job-profile .section-tabs > a {
+    flex: 0 0 auto;
+  }
+}
