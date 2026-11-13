@@ -5501,3 +5501,130 @@ main.customer-index-page {
     flex: 0 0 auto;
   }
 }
+
+
+/* Mobile inspection: one checkpoint and one next action per screen. */
+.inspection-wizard {
+  width: 100%;
+  min-width: 0;
+}
+.inspection-wizard .inspection-section-header {
+  margin-bottom: 16px;
+}
+.inspection-wizard progress {
+  display: block;
+  height: 10px;
+  accent-color: var(--accent);
+  margin: 8px 0 16px;
+}
+.inspection-wizard .inspection-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.inspection-wizard .inspection-choices label {
+  justify-content: center;
+  min-height: 60px;
+  min-width: 0;
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+.inspection-wizard .inspection-choices input {
+  accent-color: var(--accent);
+}
+.inspection-wizard fieldset textarea,
+.inspection-wizard fieldset input:not([type="radio"]):not([type="checkbox"]) {
+  width: 100%;
+  max-width: 100%;
+}
+.inspection-wizard .inspection-submit-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 24px;
+}
+.inspection-wizard .inspection-group-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  margin: 0;
+}
+.inspection-wizard .inspection-group-nav .primary {
+  flex: 2 1 auto;
+  min-width: 0;
+}
+.inspection-wizard .inspection-group-nav .secondary {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.inspection-wizard .inspection-review details {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+}
+.inspection-wizard .inspection-review summary {
+  cursor: pointer;
+}
+@media (max-width: 480px) {
+  .inspection-wizard .inspection-submit-actions > .secondary {
+    order: 2;
+  }
+}
+
+
+/* Inspection checkpoints are grouped by vehicle system on mobile. */
+.inspection-wizard .inspection-system {
+  display: grid;
+  gap: 14px;
+}
+.inspection-wizard .inspection-point {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+}
+.inspection-wizard .inspection-point fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.inspection-wizard .inspection-point legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
+.inspection-wizard .inspection-choices {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 8px 0 0;
+}
+.inspection-wizard .inspection-choices label {
+  min-width: 0;
+  min-height: 48px;
+  padding: 4px 2px;
+  font-size: 0.84rem;
+  gap: 3px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.inspection-wizard .inspection-choices label input {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+.inspection-wizard .inspection-point-findings {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.inspection-wizard .inspection-point-findings .btn {
+  justify-self: start;
+}
+@media (max-width: 370px) {
+  .inspection-wizard .inspection-choices label {
+    flex-direction: column;
+    font-size: 0.78rem;
+  }
+}

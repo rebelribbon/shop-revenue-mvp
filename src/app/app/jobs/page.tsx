@@ -845,7 +845,7 @@ export default async function JobsPage({
                   Job saved.
                 </p>
               )}
-              {data.profit && (
+              {!auto && data.profit && (
                 <div
                   className="ro-view-switch"
                   aria-label="Repair order display mode"
@@ -999,7 +999,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {!awaitingInspection && (
+                {!auto && !awaitingInspection && (
                   <nav
                     className="section-tabs"
                     aria-label="Estimate preparation and customer approval"
@@ -1024,7 +1024,7 @@ export default async function JobsPage({
                     </Link>
                   </nav>
                 )}
-                {!awaitingInspection && (
+                {!auto && !awaitingInspection && (
                   <p className="muted">
                     Review the technician&apos;s findings, build the estimate,
                     then send the customer their approval link.
@@ -1153,7 +1153,7 @@ export default async function JobsPage({
                     )}
                   </p>
                 )}
-                {!awaitingInspection && s.actor.type !== "support" && (
+                {!auto && !awaitingInspection && s.actor.type !== "support" && (
                   <div className="action-bar" role="group" aria-label="Add">
                     {data.clock?.jobId === selected.id ? (
                       <ActionForm
@@ -1335,9 +1335,10 @@ export default async function JobsPage({
                     </Link>
                   </section>
                 )}
-                <nav className="section-tabs" aria-label="Job sections">
-                  {(
-                    [
+                <nav className="section-tabs" aria-label="RO records">
+                  {(awaitingInspection
+                    ? ([["work", "Next step"], ["history", "History"]] as const)
+                    : [
                       ["work", "Work"],
                       [
                         "inspection",
@@ -1365,6 +1366,17 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
+                    {awaitingInspection && (
+                      <section className="ro-stage-panel" aria-label="Next required action">
+                        <h3>Next: Complete the inspection</h3>
+                        <p>Assign an advisor and technician above. The assigned technician completes the inspection on their own screen. Nothing is ready to price or send yet.</p>
+                        {s.role === "owner" && data.assignee === s.actor.id && (
+                          <Link className="btn primary" href={`/app/jobs?job=${selected.id}&mode=technician`}>
+                            Start technician inspection
+                          </Link>
+                        )}
+                      </section>
+                    )}
                     {!awaitingInspection && flow && (
                       <RecordSection
                         title="Work & approval"
@@ -1380,7 +1392,29 @@ export default async function JobsPage({
                         />
                       </RecordSection>
                     )}
-                    {!awaitingInspection && data.profit && (
+                    {auto &&
+                      data.inspection?.complete &&
+                      !awaitingInspection &&
+                      (input.parts.length > 0 || input.labor.length > 0) &&
+                      input.labor.every((line) => !line.fromInspection ||
+                        (line.sellRateCents > 0 && line.costRateCents !== null)) &&
+                      s.actor.type !== "support" &&
+                      !selected.documentOnly && (
+                        <section className="record-details" id="job-estimate">
+                          <h3>Send estimate for approval</h3>
+                          <p>Confirm the priced work and select the customer recipient. The customer must approve or decline every line.</p>
+                          <EstimatePublisher
+                            taxRateBps={flow?.currentInvoice
+                              ? flow.currentInvoice.snapshot.taxBps
+                              : data.profile?.taxRateBps}
+                            jobId={selected.id}
+                            version={selected.version}
+                            existingVersion={flow?.latest?.estimate.version}
+                            pendingChanges={flow?.changedSinceEstimate}
+                          />
+                        </section>
+                      )}
+                    {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
                         title="Costs & profit"
                         description="What each line costs the shop and what it makes. Hidden in the customer view."
@@ -1550,7 +1584,7 @@ export default async function JobsPage({
                     </section>
                   </>
                 )}
-                {tab === "work" && (
+                {tab === "work" && !auto && (
                   <>
                     <section aria-label="Job costs">
                       <h3>Job-sheet costs &amp; profit</h3>

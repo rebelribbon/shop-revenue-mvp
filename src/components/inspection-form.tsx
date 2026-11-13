@@ -10,22 +10,21 @@ import type {
 import { saveInspectionAction } from "@/server/actions/inspections";
 import { useActionHydration } from "./action-hydration";
 
-// The server continues to store the existing codes; display wording follows
-// the four-condition checklist used on a technician's phone.
-const CHOICES: { status: InspectionStatus; label: string }[] = [
-  { status: "good", label: "Pass" },
-  { status: "watch", label: "Caution" },
-  { status: "fix", label: "Fail" },
-  { status: "na", label: "N/A" },
+const CONDITIONS: { value: InspectionStatus; label: string }[] = [
+  { value: "good", label: "Pass" },
+  { value: "watch", label: "Caution" },
+  { value: "fix", label: "Fail" },
+  { value: "na", label: "N/A" },
 ];
-const labelFor = (status: InspectionStatus) =>
-  CHOICES.find((choice) => choice.status === status)?.label ?? "Not checked";
-const requiresNote = (item: InspectionItem) =>
+const conditionLabel = (status: InspectionStatus) =>
+  CONDITIONS.find((c) => c.value === status)?.label ?? "Unchecked";
+const needsFindings = (item: InspectionItem) =>
   item.status === "watch" || item.status === "fix";
-const pointReady = (item: InspectionItem) =>
+const pointComplete = (item: InspectionItem) =>
   item.status !== "unchecked" &&
-  (!requiresNote(item) || !!item.note.trim()) &&
+  (!needsFindings(item) || !!item.note.trim()) &&
   (item.status !== "fix" || !!item.recommendedWork?.trim());
+const sectionName = (item: InspectionItem) => item.section || "Inspection";
 
 export function InspectionForm({
   jobId,
@@ -42,51 +41,48 @@ export function InspectionForm({
   initialAssessment: InspectionAssessment;
   automotive?: boolean;
 }) {
-  const ready = useActionHydration();
   const router = useRouter();
+  const ready = useActionHydration();
   const [items, setItems] = useState(initial);
   const [assessment, setAssessment] = useState(initialAssessment);
-  // -1 is technician pickup/diagnosis. 0..n-1 are individual inspection
-  // checkpoints; n is the review/submit screen.
+  const sections = [...new Set(initial.map(sectionName))];
+  // One screen per VEHICLE SYSTEM, not one screen per checklist point.
+  // -1: pickup; 0..N-1: system inspection; N: final review.
   const [step, setStep] = useState(() => {
-    if (readOnly || completed) return initial.length;
-    if (
-      !initialAssessment.vehiclePickedUp ||
-      !initialAssessment.bay.trim() ||
-      !initialAssessment.diagnosis.trim()
-    )
+    if (readOnly || completed) return sections.length;
+    if (!initialAssessment.vehiclePickedUp || !initialAssessment.bay.trim())
       return -1;
-    const pending = initial.findIndex((item) => !pointReady(item));
-    return pending === -1 ? initial.length : pending;
+    const nextSection = sections.findIndex((name) =>
+      initial.some((item) => sectionName(item) === name && !pointComplete(item)),
+    );
+    return nextSection === -1 ? sections.length : nextSection;
   });
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-
-  const active = step >= 0 && step < items.length ? items[step] : null;
+  const review = step === sections.length;
+  const pickup = step === -1;
+  const activeSection = sections[step] ?? null;
+  const activeItems = items.filter((item) => sectionName(item) === activeSection);
   const checked = items.filter((item) => item.status !== "unchecked").length;
-  const canAssess =
-    assessment.vehiclePickedUp &&
-    !!assessment.bay.trim() &&
-    !!assessment.diagnosis.trim();
-  const canSubmit = canAssess && items.length > 0 && items.every(pointReady);
-  const total = items.length;
-  const isReview = step === total;
-  const isAssessment = step === -1;
-  const sections = [...new Set(items.map((item) => item.section || "Inspection"))];
-  const locked = readOnly || completed || !ready || pending;
+  const allComplete = items.length > 0 && items.every(pointComplete);
+  const pickupComplete = assessment.vehiclePickedUp && !!assessment.bay.trim();
+  const canSubmit = pickupComplete && !!assessment.diagnosis.trim() && allComplete;
+  const canEdit = !readOnly && !completed;
+  const disabled = !ready || pending || !canEdit;
+  const sectionReady = activeItems.length > 0 && activeItems.every(pointComplete);
 
-  function setItem(key: string, patch: Partial<InspectionItem>) {
-    setItems((all) =>
-      all.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+  function update(key: string, changes: Partial<InspectionItem>) {
+    setItems((current) =>
+      current.map((item) => (item.key === key ? { ...item, ...changes } : item)),
     );
     setMessage("");
   }
 
-  async function save(submit: boolean): Promise<boolean> {
-    if (pending || readOnly || completed || !ready) return false;
+  async function persist(submit: boolean) {
+    if (!canEdit || !ready || pending) return false;
     if (submit && !canSubmit) {
-      setMessage("Complete your diagnosis and all 40 points before submitting.");
+      setMessage("Complete every checklist item and add your diagnosis before submission.");
       return false;
     }
     setPending(true);
@@ -108,299 +104,284 @@ export function InspectionForm({
         return false;
       }
       setRequestId(crypto.randomUUID());
-      setMessage(
-        (result.data as { message?: string })?.message ??
-          (submit ? "Inspection submitted." : "Progress saved."),
-      );
-      // Draft saves must not remount this component and reset the technician's
-      // place in the checklist. Only submission changes the RO's stage.
+      setMessage(submit ? "Inspection submitted to the advisor." : "Progress saved.");
       if (submit) router.refresh();
       return true;
     } catch {
-      setMessage("Could not save. Your entries are still on this screen; retry.");
+      setMessage("Could not save. Your answers remain here. Please retry.");
       return false;
     } finally {
       setPending(false);
     }
   }
 
-  async function goTo(next: number) {
-    if (locked) {
-      if (readOnly || completed) setStep(next);
+  async function next() {
+    if (pickup && !pickupComplete) {
+      setMessage("Confirm pickup and enter the rack or bay.");
       return;
     }
-    if (next > step && isAssessment && !canAssess) {
-      setMessage("Confirm vehicle pickup, record the bay, and enter your diagnosis.");
+    if (activeSection && !sectionReady) {
+      setMessage("Complete each item in this section. Caution and Fail need findings; Fail also needs a repair recommendation.");
       return;
     }
-    if (next > step && active && !pointReady(active)) {
-      setMessage(
-        "Select Pass, Caution, Fail or N/A. Caution and Fail require findings; Fail also needs proposed work.",
-      );
-      return;
-    }
-    // Each handoff to the next screen is persisted, so a technician can stop
-    // and resume hours later or switch devices without losing completed points.
-    if (await save(false)) setStep(next);
+    if (await persist(false)) setStep((current) => current + 1);
   }
 
   return (
-    <div className="inspection" data-ux-ready={ready}>
-      <div className="inspection-section-header">
-        <p>
-          <strong>{automotive ? "40-point vehicle inspection" : "Service inspection"}</strong>
-          {" · "}{checked} of {total} checked
+    <div className="inspection inspection-wizard" data-ux-ready={ready}>
+      <header className="inspection-section-header">
+        <p className="muted">
+          {automotive ? "Vehicle inspection" : "Service inspection"} · {checked} of {items.length} checked
         </p>
-        <progress max={Math.max(total, 1)} value={checked} style={{ width: "100%" }}>
-          {checked} of {total}
-        </progress>
+        <progress
+          value={checked}
+          max={Math.max(items.length, 1)}
+          aria-label="Inspection completion"
+          style={{ width: "100%" }}
+        />
         <h3>
-          {isAssessment
-            ? automotive
-              ? "Step 1 · Pickup and diagnosis"
-              : "Step 1 · Arrival and assessment"
-            : isReview
-              ? "Review inspection"
-              : "Point " + (step + 1) + " of " + total + " · " +
-                (active?.section || "Inspection")}
+          {pickup
+            ? automotive ? "Pick up vehicle" : "Arrive at job"
+            : review
+              ? "Review and submit"
+              : activeSection}
         </h3>
-      </div>
+        {activeSection && (
+          <p className="muted">
+            System {step + 1} of {sections.length} · {activeItems.filter((item) => item.status !== "unchecked").length}/{activeItems.length} checked
+          </p>
+        )}
+      </header>
 
-      {isAssessment && (
-        <fieldset disabled={locked}>
-          <legend>{automotive ? "Vehicle pickup" : "Service arrival"}</legend>
+      {pickup && (
+        <fieldset disabled={disabled}>
+          <p>Start here. The inspection and diagnosis are completed at the vehicle.</p>
           <label>
             <input
               type="checkbox"
               checked={assessment.vehiclePickedUp}
-              onChange={(event) =>
-                setAssessment((current) => ({
-                  ...current,
-                  vehiclePickedUp: event.target.checked,
-                }))
+              onChange={(e) =>
+                setAssessment((a) => ({ ...a, vehiclePickedUp: e.target.checked }))
               }
             />
-            {automotive
-              ? "I have picked up the vehicle for diagnosis"
-              : "I have arrived at the service location"}
+            {automotive ? "I have the vehicle" : "I am at the job"}
           </label>
-          <label htmlFor={"inspection-bay-" + jobId}>
-            {automotive ? "Bay / rack" : "Work area"}
+          <label htmlFor={`inspection-bay-${jobId}`}>
+            {automotive ? "Rack / bay" : "Work area"}
           </label>
           <input
-            id={"inspection-bay-" + jobId}
+            id={`inspection-bay-${jobId}`}
+            required
             maxLength={120}
-            required
+            placeholder={automotive ? "Bay 2" : "Work area"}
             value={assessment.bay}
-            placeholder={automotive ? "Rack 2" : "Work area"}
-            onChange={(event) =>
-              setAssessment((current) => ({ ...current, bay: event.target.value }))
-            }
-          />
-          <label htmlFor={"inspection-diagnosis-" + jobId}>Technician diagnosis</label>
-          <textarea
-            id={"inspection-diagnosis-" + jobId}
-            rows={4}
-            maxLength={4000}
-            required
-            value={assessment.diagnosis}
-            placeholder="Describe the concern, symptoms, tests and initial findings."
-            onChange={(event) =>
-              setAssessment((current) => ({
-                ...current,
-                diagnosis: event.target.value,
-              }))
-            }
+            onChange={(e) => setAssessment((a) => ({ ...a, bay: e.target.value }))}
           />
         </fieldset>
       )}
 
-      {active && (
-        <section className={"inspection-item is-" + active.status}>
-          <fieldset disabled={locked}>
-            <legend><strong>{active.label}</strong></legend>
-            {active.hint && <p className="muted">{active.hint}</p>}
-            <div className="inspection-choices" aria-label={"Condition: " + active.label}>
-              {CHOICES.map((choice) => (
-                <label key={choice.status} className={"choice-" + choice.status}>
-                  <input
-                    type="radio"
-                    name={"insp-" + active.key}
-                    checked={active.status === choice.status}
-                    onChange={() =>
-                      setItem(active.key, {
-                        status: choice.status,
-                        recommendedWork:
-                          choice.status === "fix" || choice.status === "watch"
-                            ? active.recommendedWork
-                            : "",
-                      })
-                    }
-                  />
-                  {choice.label}
-                </label>
-              ))}
-            </div>
-            {requiresNote(active) && (
-              <>
-                <label htmlFor={"insp-note-" + active.key}>Technician findings (required)</label>
-                <textarea
-                  id={"insp-note-" + active.key}
-                  rows={3}
-                  maxLength={1000}
-                  required
-                  value={active.note}
-                  placeholder="What is worn, damaged, leaking, or outside specification?"
-                  onChange={(event) => setItem(active.key, { note: event.target.value })}
-                />
-                <label htmlFor={"insp-repair-" + active.key}>
-                  Recommended repair {active.status === "watch" ? "(optional)" : "(required)"}
-                </label>
-                <input
-                  id={"insp-repair-" + active.key}
-                  maxLength={200}
-                  required={active.status === "fix"}
-                  value={active.recommendedWork ?? ""}
-                  placeholder="Example: Replace front brake pads and rotors"
-                  onChange={(event) =>
-                    setItem(active.key, { recommendedWork: event.target.value })
-                  }
-                />
-              </>
-            )}
-            {(active.key === "tire_pressure" || active.key === "tire_tread") &&
-              active.status !== "na" && (
-                <div className="inspection-readings">
-                  <strong>
-                    {active.key === "tire_pressure"
-                      ? "Tire pressure (PSI)"
-                      : "Tread depth (32nds)"}
-                  </strong>
-                  {(["lf", "rf", "lr", "rr", "spare"] as const).map((position) => (
-                    <label key={position}>
-                      {position.toUpperCase()}
+      {activeSection && (
+        <section aria-label={activeSection} className="inspection-system">
+          <p className="muted">Mark each item. Add details only when something needs attention.</p>
+          {activeItems.map((item) => (
+            <div key={item.key} className={`inspection-point is-${item.status}`}>
+              <fieldset disabled={disabled}>
+                <legend><strong>{item.label}</strong></legend>
+                {item.hint && <p className="muted">{item.hint}</p>}
+                <div className="inspection-choices" aria-label={`Condition for ${item.label}`}>
+                  {CONDITIONS.map((condition) => (
+                    <label key={condition.value} className={`choice-${condition.value}`}>
                       <input
-                        type="number"
-                        min="0"
-                        inputMode="decimal"
-                        value={active.measurements?.[position] ?? ""}
-                        onChange={(event) =>
-                          setItem(active.key, {
-                            measurements: {
-                              ...active.measurements,
-                              [position]: event.target.value,
-                            },
+                        type="radio"
+                        name={`insp-${item.key}`}
+                        checked={item.status === condition.value}
+                        onChange={() =>
+                          update(item.key, {
+                            status: condition.value,
+                            note: condition.value === "good" || condition.value === "na"
+                              ? "" : item.note,
+                            recommendedWork:
+                              condition.value === "good" || condition.value === "na"
+                                ? "" : item.recommendedWork,
                           })
                         }
                       />
+                      {condition.label}
                     </label>
                   ))}
                 </div>
-              )}
-            <p className="muted">
-              {active.addedToJob ? "Already included in the estimate." :
-                "Photos and videos can be added in Technician media on this RO."}
-            </p>
-          </fieldset>
+                {needsFindings(item) && (
+                  <div className="inspection-point-findings">
+                    <label htmlFor={`insp-note-${item.key}`}>What did you find? *</label>
+                    <textarea
+                      id={`insp-note-${item.key}`}
+                      rows={2}
+                      maxLength={1000}
+                      required
+                      placeholder="Describe the condition or measurement"
+                      value={item.note}
+                      onChange={(e) => update(item.key, { note: e.target.value })}
+                    />
+                    <label htmlFor={`insp-repair-${item.key}`}>
+                      Recommended work {item.status === "fix" ? "*" : "(optional)"}
+                    </label>
+                    <input
+                      id={`insp-repair-${item.key}`}
+                      required={item.status === "fix"}
+                      maxLength={200}
+                      placeholder="Example: Replace front pads"
+                      value={item.recommendedWork ?? ""}
+                      onChange={(e) =>
+                        update(item.key, { recommendedWork: e.target.value })
+                      }
+                    />
+                    <a className="btn secondary" href="#technician-media">
+                      Add photo / video
+                    </a>
+                  </div>
+                )}
+                {(item.key === "tire_pressure" || item.key === "tire_tread") &&
+                  item.status !== "na" && item.status !== "unchecked" && (
+                    <div className="inspection-readings">
+                      <p><strong>{item.key === "tire_pressure" ? "PSI" : "Tread depth (32nds)"}</strong></p>
+                      {(["lf", "rf", "lr", "rr", "spare"] as const).map((position) => (
+                        <label key={position}>
+                          {position.toUpperCase()}
+                          <input
+                            type="number"
+                            min="0"
+                            inputMode="decimal"
+                            value={item.measurements?.[position] ?? ""}
+                            onChange={(e) =>
+                              update(item.key, {
+                                measurements: {
+                                  ...item.measurements,
+                                  [position]: e.target.value,
+                                },
+                              })
+                            }
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  )}
+              </fieldset>
+            </div>
+          ))}
         </section>
       )}
 
-      {isReview && (
-        <section className="inspection-review" aria-label="Inspection review">
+      {review && (
+        <section className="inspection-review" aria-label="Review inspection">
           <p>
             <strong>Pass:</strong> {items.filter((i) => i.status === "good").length}
             {" · "}<strong>Caution:</strong> {items.filter((i) => i.status === "watch").length}
             {" · "}<strong>Fail:</strong> {items.filter((i) => i.status === "fix").length}
             {" · "}<strong>N/A:</strong> {items.filter((i) => i.status === "na").length}
           </p>
-          <p className="muted">
-            {assessment.diagnosis || "Technician diagnosis is not yet recorded."}
-          </p>
-          {sections.map((section) => (
-            <details key={section}>
-              <summary>{section}</summary>
-              <ul className="inspection-list">
-                {items.map((item, index) =>
-                  (item.section || "Inspection") === section ? (
-                    <li key={item.key}>
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        onClick={() => setStep(index)}
-                        disabled={pending}
-                      >
-                        {index + 1}. {item.label} — {labelFor(item.status)}
-                      </button>
-                      {item.note && <p className="muted">{item.note}</p>}
-                      {item.recommendedWork && (
-                        <p className="muted">Recommended: {item.recommendedWork}</p>
-                      )}
-                    </li>
-                  ) : null,
+          <label htmlFor={`inspection-diagnosis-${jobId}`}>Technician diagnosis</label>
+          {canEdit ? (
+            <textarea
+              id={`inspection-diagnosis-${jobId}`}
+              rows={4}
+              required
+              maxLength={4000}
+              placeholder="Concern, tests completed, findings and conclusion"
+              value={assessment.diagnosis}
+              onChange={(e) =>
+                setAssessment((a) => ({ ...a, diagnosis: e.target.value }))
+              }
+              disabled={!ready || pending}
+            />
+          ) : (
+            <p>{assessment.diagnosis || "No diagnosis recorded."}</p>
+          )}
+          {sections.map((name, index) => {
+            const group = items.filter((item) => sectionName(item) === name);
+            const flagged = group.filter(needsFindings);
+            return (
+              <details key={name}>
+                <summary>
+                  {name} · {group.filter(pointComplete).length}/{group.length} complete
+                </summary>
+                {group.map((item) => (
+                  <p key={item.key}>
+                    <strong>{item.label}</strong>: {conditionLabel(item.status)}
+                    {item.note ? ` — ${item.note}` : ""}
+                    {item.recommendedWork ? ` · ${item.recommendedWork}` : ""}
+                  </p>
+                ))}
+                {canEdit && (
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => setStep(index)}
+                    disabled={pending}
+                  >
+                    Edit {name}
+                  </button>
                 )}
-              </ul>
-            </details>
-          ))}
-          {!canSubmit && !completed && (
-            <p className="notice" role="alert">
-              Finish any unchecked or incomplete points before submitting.
+                {flagged.length > 0 && <p className="muted">{flagged.length} item(s) flagged</p>}
+              </details>
+            );
+          })}
+          {!canSubmit && canEdit && (
+            <p role="alert" className="notice">
+              Finish unchecked items, required findings, and the technician diagnosis.
             </p>
           )}
         </section>
       )}
 
-      {!completed && !readOnly && (
-        <div className="inspection-submit-actions">
+      {canEdit && (
+        <footer className="inspection-submit-actions">
+          <nav className="inspection-group-nav" aria-label="Inspection steps">
+            {step > -1 && (
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => setStep((current) => current - 1)}
+                disabled={!ready || pending}
+              >
+                Back
+              </button>
+            )}
+            {review ? (
+              <button
+                className="btn primary"
+                type="button"
+                disabled={!ready || pending || !canSubmit}
+                onClick={() => void persist(true)}
+              >
+                Submit inspection to advisor
+              </button>
+            ) : (
+              <button
+                className="btn primary"
+                type="button"
+                disabled={!ready || pending || (pickup ? !pickupComplete : !sectionReady)}
+                onClick={() => void next()}
+              >
+                {pickup
+                  ? "Start inspection"
+                  : step === sections.length - 1
+                    ? "Review inspection"
+                    : "Save and continue"}
+              </button>
+            )}
+          </nav>
           <button
             type="button"
             className="btn secondary"
             disabled={!ready || pending}
-            onClick={() => void save(false)}
+            onClick={() => void persist(false)}
           >
-            Save progress
+            Save and finish later
           </button>
-          <nav className="inspection-group-nav" aria-label="Inspection steps">
-            {step > -1 && (
-              <button
-                type="button"
-                className="btn secondary"
-                disabled={!ready || pending}
-                onClick={() => void goTo(step - 1)}
-              >
-                Previous
-              </button>
-            )}
-            {!isReview ? (
-              <button
-                type="button"
-                className="btn primary"
-                disabled={!ready || pending || (isAssessment ? !canAssess : !active || !pointReady(active))}
-                onClick={() => void goTo(step + 1)}
-              >
-                {active && step === total - 1
-                  ? "Review inspection"
-                  : "Save and next"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn primary"
-                disabled={!ready || pending || !canSubmit}
-                onClick={() => void save(true)}
-              >
-                Submit inspection · Notify advisor
-              </button>
-            )}
-          </nav>
-        </div>
-      )}
-      {(readOnly || completed) && active && (
-        <button type="button" className="btn secondary" onClick={() => setStep(total)}>
-          Back to inspection summary
-        </button>
+        </footer>
       )}
       {completed && <p className="notice ok">Inspection submitted to the advisor.</p>}
-      <p role="status">{pending ? "Saving…" : message}</p>
+      <p role="status">{pending ? "Saving progress…" : message}</p>
     </div>
   );
 }
