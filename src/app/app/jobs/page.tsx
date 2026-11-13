@@ -658,6 +658,7 @@ export default async function JobsPage({
               }
               options={data.options}
               recommendations={data.recommendations}
+              inspectionPricingOnly={auto && !!selected && !!data.inspection?.complete}
               initial={estimateInitial}
               today={localDateKey(
                 new Date(),
