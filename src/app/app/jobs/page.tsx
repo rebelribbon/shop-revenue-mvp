@@ -516,7 +516,7 @@ export default async function JobsPage({
               </p>
               {data.inspection && (
                 <InspectionForm
-                  key={JSON.stringify(data.inspection.items)}
+                  key={selected.id}
                   jobId={selected.id}
                   customerId={assignedInput!.customerId}
                   vehicleId={assignedInput!.vehicleId ?? null}
@@ -1523,7 +1523,7 @@ export default async function JobsPage({
                       )}
                     </p>
                     <InspectionForm
-                      key={JSON.stringify(data.inspection.items)}
+                      key={selected.id}
                       jobId={selected.id}
                       customerId={input.customerId}
                       vehicleId={input.vehicleId ?? null}
