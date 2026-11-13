@@ -102,39 +102,104 @@ export function EstimateSignature({
     else setLimitWarning("");
   };
 
+  // Link parts to the labor description of the same quoted repair. Each
+  // underlying line keeps an independent, explicit decision for authorization.
+  const repairGroups = (lines: EstimateSnapshot["lines"]) => {
+    const groups = new Map<string, EstimateSnapshot["lines"]>();
+    for (const line of lines) {
+      const parent = line.kind === "part"
+        ? lines.find((other) =>
+            other.kind === "labor" &&
+            line.description.startsWith(other.description.slice(0, 130) + " · "),
+          )
+        : undefined;
+      const id = parent?.id ?? line.id;
+      groups.set(id, [...(groups.get(id) ?? []), line]);
+    }
+    return [...groups.entries()].map(([id, grouped]) => ({
+      id,
+      lines: grouped,
+      label: grouped.find((line) => line.kind === "labor")?.description
+        ?? grouped[0].description,
+      total: grouped.reduce((total, line) => total + line.totalCents, 0),
+    }));
+  };
   const decide = (lines: EstimateSnapshot["lines"]) =>
-    lines.map((l) => (
-      <fieldset key={l.id} className="estimate-decision">
-        <legend>
-          {l.description}{" "}
-          <strong className="estimate-decision-price">
-            {money(l.totalCents)}
-          </strong>
-        </legend>
-        <label>
-          <input
-            type="radio"
-            name={`decision-${l.id}`}
-            value="approve"
-            required
-            checked={choices[l.id] === "approve"}
-            onChange={() => setChoices({ ...choices, [l.id]: "approve" })}
-          />
-          Approve {l.description}
-        </label>
-        <label>
-          <input
-            type="radio"
-            name={`decision-${l.id}`}
-            value="decline"
-            required
-            checked={choices[l.id] === "decline"}
-            onChange={() => setChoices({ ...choices, [l.id]: "decline" })}
-          />
-          Decline {l.description}
-        </label>
-      </fieldset>
-    ));
+    repairGroups(lines).map((group) => {
+      const sameChoice = (value: "approve" | "decline") =>
+        group.lines.every((line) => choices[line.id] === value);
+      const applyToRepair = (value: "approve" | "decline") =>
+        setChoices((previous) => ({
+          ...previous,
+          ...Object.fromEntries(group.lines.map((line) => [line.id, value])),
+        }));
+      return (
+        <section key={group.id} className="estimate-repair-decision">
+          <h3>{group.label}</h3>
+          <p><strong>{money(group.total)}</strong> total for this repair</p>
+          <ul className="estimate-repair-breakdown">
+            {group.lines.map((line) => (
+              <li key={line.id}>
+                {line.kind === "part" ? "Part" : "Labor"}: {line.description}
+                {" · "}{money(line.totalCents)}
+                {choices[line.id] && (
+                  <strong> · {choices[line.id] === "approve" ? "Approved" : "Declined"}</strong>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="estimate-repair-actions">
+            <button
+              type="button"
+              className={sameChoice("approve") ? "btn primary" : "btn secondary"}
+              aria-pressed={sameChoice("approve")}
+              onClick={() => applyToRepair("approve")}
+            >
+              Approve this repair
+            </button>
+            <button
+              type="button"
+              className={sameChoice("decline") ? "btn primary" : "btn secondary"}
+              aria-pressed={sameChoice("decline")}
+              onClick={() => applyToRepair("decline")}
+            >
+              Decline this repair
+            </button>
+          </div>
+          <details>
+            <summary>Choose individual parts or labor instead</summary>
+            {group.lines.map((l) => (
+              <fieldset key={l.id} className="estimate-decision">
+                <legend>
+                  {l.description}{" "}
+                  <strong className="estimate-decision-price">{money(l.totalCents)}</strong>
+                </legend>
+                <label>
+                  <input
+                    type="radio"
+                    name={`decision-${l.id}`}
+                    value="approve"
+                    checked={choices[l.id] === "approve"}
+                    onChange={() => setChoices((prev) => ({ ...prev, [l.id]: "approve" }))}
+                  />
+                  Approve {l.description}
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name={`decision-${l.id}`}
+                    value="decline"
+                    checked={choices[l.id] === "decline"}
+                    onChange={() => setChoices((prev) => ({ ...prev, [l.id]: "decline" }))}
+                  />
+                  Decline {l.description}
+                </label>
+              </fieldset>
+            ))}
+          </details>
+        </section>
+      );
+    });
   const decided = (lines: EstimateSnapshot["lines"]) =>
     lines.every((l) => choices[l.id] !== undefined);
   const stepDone =
