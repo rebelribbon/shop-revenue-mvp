@@ -1409,7 +1409,7 @@ export default async function JobsPage({
                         {flow?.latest && !flow.changedSinceEstimate ? (
                           <p className="notice ok" role="status">
                             Estimate version {flow.latest.estimate.version} is saved in Documents.
-                            {flow.latest.authorization ? " Customer response received." : " Awaiting customer approval."}
+                            {flow.latest.authorization ? " Customer response received." : " Preview and send the prepared document, or check for the customer response."}
                           </p>
                         ) : (
                           <p className="notice" role="status">
