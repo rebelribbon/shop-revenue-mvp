@@ -69,6 +69,7 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
+import { RoEstimateBuilder } from "@/components/ro-estimate-builder";
 import { canManageTeam } from "@/domain/membership";
 import { RoCheckinEditor } from "@/components/ro-checkin-editor";
 import { RoStageSummary } from "@/components/ro-stage-summary";
@@ -613,6 +614,14 @@ export default async function JobsPage({
                   : undefined
               }
             />
+          ) : auto && selected && data.inspection?.complete && estimateInitial ? (
+            <RoEstimateBuilder
+              key={selected.version}
+              initial={jobInput.parse(estimateInitial)}
+              laborRateCents={data.profile?.laborSellRateCents}
+              laborCostCents={data.profile?.laborCostRateCents}
+              partsTaxable={data.profile?.partsTaxableDefault}
+            />
           ) : (
             <JobEditor
               commonJobs={data.commonJobs}
@@ -780,7 +789,7 @@ export default async function JobsPage({
             tab =
               requestedTab === "notes" || requestedTab === "timeline"
                 ? "history"
-                : ["inspection", "photos", "files", "history"].includes(
+                : ["inspection", "photos", "estimate", "files", "history"].includes(
                       requestedTab ?? "",
                     )
                   ? requestedTab!
@@ -1321,7 +1330,8 @@ export default async function JobsPage({
                   {(awaitingInspection
                     ? ([["work", "Next step"], ["history", "History"]] as const)
                     : [
-                      ["work", "Work"],
+                      ["work", "Overview"],
+                      ...(auto ? ([["estimate", "Estimate"]] as const) : []),
                       [
                         "inspection",
                         `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
@@ -1332,7 +1342,7 @@ export default async function JobsPage({
                       ],
                       [
                         "files",
-                        `Docs${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
+                        `Documents${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
                       ],
                       ["history", "History"],
                     ] as const
@@ -1374,28 +1384,6 @@ export default async function JobsPage({
                         />
                       </RecordSection>
                     )}
-                    {auto &&
-                      data.inspection?.complete &&
-                      !awaitingInspection &&
-                      (input.parts.length > 0 || input.labor.length > 0) &&
-                      input.labor.every((line) => !line.fromInspection ||
-                        (line.sellRateCents > 0 && line.costRateCents !== null)) &&
-                      s.actor.type !== "support" &&
-                      !selected.documentOnly && (
-                        <section className="record-details" id="job-estimate">
-                          <h3>Send estimate for approval</h3>
-                          <p>Confirm the priced work and select the customer recipient. The customer must approve or decline every line.</p>
-                          <EstimatePublisher
-                            taxRateBps={flow?.currentInvoice
-                              ? flow.currentInvoice.snapshot.taxBps
-                              : data.profile?.taxRateBps}
-                            jobId={selected.id}
-                            version={selected.version}
-                            existingVersion={flow?.latest?.estimate.version}
-                            pendingChanges={flow?.changedSinceEstimate}
-                          />
-                        </section>
-                      )}
                     {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
                         title="Costs & profit"
