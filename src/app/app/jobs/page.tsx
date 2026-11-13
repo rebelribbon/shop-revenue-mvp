@@ -510,33 +510,17 @@ export default async function JobsPage({
                   )}
                 </div>
               )}
-              {data.clock?.jobId === selected.id ? (
-                <ActionForm
-                  action={stopClockAction}
-                  submitLabel={`■ Stop clock · ${clockText(data.clock.startedAt)}`}
-                  variant="secondary"
-                />
-              ) : (
-                <ActionForm
-                  action={startClockAction}
-                  hidden={{ jobId: selected.id }}
-                  submitLabel={
-                    data.clock ? "▶ Switch clock to this job" : "▶ Start clock"
-                  }
-                  variant="secondary"
-                />
-              )}
-              <a className="btn secondary" href="#technician-media">
-                + Photo / video
-              </a>
-              <p>
-                Record your diagnosis, complete the 40-point inspection and
-                submit it to your advisor.
+              <p className="muted">
+                Inspect each system, add an evidence photo only when you find a
+                problem, then record a brief summary and submit to your advisor.
               </p>
               {data.inspection && (
                 <InspectionForm
                   key={JSON.stringify(data.inspection.items)}
                   jobId={selected.id}
+                  customerId={assignedInput!.customerId}
+                  vehicleId={assignedInput!.vehicleId ?? null}
+                  serviceAssetId={assignedInput!.serviceAssetId ?? null}
                   initial={data.inspection.items}
                   initialAssessment={data.inspection.assessment}
                   automotive={auto}
@@ -547,28 +531,7 @@ export default async function JobsPage({
                 />
               )}
             </section>
-            {assignedInput?.customerId && (
-              <section className="card" id="technician-media">
-                <h2>Technician media</h2>
-                <p>
-                  Upload photos and videos of findings. Media stays private
-                  until the service advisor approves sharing.
-                </p>
-                <MediaUploader
-                  customerId={assignedInput.customerId}
-                  jobId={selected.id}
-                  vehicleId={assignedInput.vehicleId ?? null}
-                  serviceAssetId={assignedInput.serviceAssetId ?? null}
-                  defaultTag="issue"
-                />
-                <MediaGallery
-                  items={data.jobMedia}
-                  readOnly
-                  canPublish={false}
-                  timeZone={data.profile?.timezone ?? "America/Chicago"}
-                />
-              </section>
-            )}
+
           </>
         ) : (
           <>
@@ -998,6 +961,25 @@ export default async function JobsPage({
                       />
                     )}
                   </div>
+                )}
+                {auto && awaitingInspection && !data.assignee && (
+                  <details className="ro-intake-photos">
+                    <summary>Check-in photos — document existing body damage (optional)</summary>
+                    <p className="muted">
+                      Take exterior photos before handing the vehicle to the
+                      technician. These stay in this RO and are not sent to the customer.
+                    </p>
+                    <MediaUploader
+                      purpose="intake"
+                      customerId={input.customerId}
+                      jobId={selected.id}
+                      vehicleId={input.vehicleId ?? null}
+                      serviceAssetId={input.serviceAssetId ?? null}
+                    />
+                    <p className="muted">
+                      {data.jobMedia.filter((m) => m.tag === "before").length} check-in photo(s) recorded.
+                    </p>
+                  </details>
                 )}
                 {!auto && !awaitingInspection && (
                   <nav
