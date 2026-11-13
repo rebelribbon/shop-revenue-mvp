@@ -1336,8 +1336,9 @@ export default async function JobsPage({
                   </section>
                 )}
                 <nav className="section-tabs" aria-label="RO records">
-                  {(
-                    [
+                  {(awaitingInspection
+                    ? ([["work", "Next step"], ["history", "History"]] as const)
+                    : [
                       ["work", "Work"],
                       [
                         "inspection",
@@ -1393,13 +1394,35 @@ export default async function JobsPage({
                     )}
                     {auto && !awaitingInspection && data.inspection?.complete && !flow?.latest && (
                       <section className="ro-stage-panel" aria-label="Ready to price inspection findings">
-                        <h3>Next: Advisor builds the estimate</h3>
-                        <p>The technician submitted the inspection. Review the findings, add parts and labor prices, then prepare the estimate for customer approval.</p>
+                        <h3>Next: Price the technician's findings</h3>
+                        <p>The inspection is complete. The advisor adds the parts, labor and selling prices before sending anything to the customer.</p>
                         <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>
-                          Price inspection findings
+                          Build customer estimate
                         </Link>
                       </section>
                     )}
+                    {auto &&
+                      data.inspection?.complete &&
+                      !awaitingInspection &&
+                      (input.parts.length > 0 || input.labor.length > 0) &&
+                      input.labor.every((line) => !line.fromInspection ||
+                        (line.sellRateCents > 0 && line.costRateCents !== null)) &&
+                      s.actor.type !== "support" &&
+                      !selected.documentOnly && (
+                        <section className="record-details" id="job-estimate">
+                          <h3>Send estimate for approval</h3>
+                          <p>Confirm the priced work and select the customer recipient. The customer must approve or decline every line.</p>
+                          <EstimatePublisher
+                            taxRateBps={flow?.currentInvoice
+                              ? flow.currentInvoice.snapshot.taxBps
+                              : data.profile?.taxRateBps}
+                            jobId={selected.id}
+                            version={selected.version}
+                            existingVersion={flow?.latest?.estimate.version}
+                            pendingChanges={flow?.changedSinceEstimate}
+                          />
+                        </section>
+                      )}
                     {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
                         title="Costs & profit"
