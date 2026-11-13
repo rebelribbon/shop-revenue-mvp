@@ -61,9 +61,9 @@ import {
   assignAdvisorAction,
 } from "@/server/actions/assignments";
 import { getInspection } from "@/domain/inspections";
+import { withInspectionRecommendations } from "@/lib/inspection-estimate";
 import { InspectionForm } from "@/components/inspection-form";
 import { RoCosts } from "@/components/ro-costs";
-import { addInspectionToJobAction } from "@/server/actions/inspections";
 import { startClockAction, stopClockAction } from "@/server/actions/job-profit";
 import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
@@ -412,6 +412,13 @@ export default async function JobsPage({
           labor: [],
         }
       : undefined;
+  // Populate pricing lines only in the advisor’s estimate draft, after the
+  // technician has submitted a complete inspection. Earlier RO stages stay
+  // untouched and no quote is priced or published on the technician’s behalf.
+  const estimateInitial =
+    selected && initial && auto && data.inspection?.complete
+      ? withInspectionRecommendations(initial, data.inspection.items)
+      : initial;
   const money = (c: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -651,7 +658,7 @@ export default async function JobsPage({
               }
               options={data.options}
               recommendations={data.recommendations}
-              initial={initial}
+              initial={estimateInitial}
               today={localDateKey(
                 new Date(),
                 data.profile?.timezone || "America/Chicago",
@@ -1461,13 +1468,13 @@ export default async function JobsPage({
                   <section aria-label="Inspection">
                     <p className="inspection-summary">
                       <span className="insp-count is-good">
-                        {data.inspection.counts.good} satisfactory
+                        {data.inspection.counts.good} pass
                       </span>
                       <span className="insp-count is-watch">
-                        {data.inspection.counts.watch} service soon
+                        {data.inspection.counts.watch} caution
                       </span>
                       <span className="insp-count is-fix">
-                        {data.inspection.counts.fix} service now
+                        {data.inspection.counts.fix} fail
                       </span>
                       {data.inspection.counts.unchecked > 0 && (
                         <span className="muted">
@@ -1475,24 +1482,13 @@ export default async function JobsPage({
                         </span>
                       )}
                     </p>
-                    {data.inspection.pending.length > 0 &&
-                      s.actor.type !== "support" && (
-                        <ActionForm
-                          action={addInspectionToJobAction}
-                          hidden={{ jobId: selected.id }}
-                          submitLabel={`Add ${data.inspection.pending.length} recommended item${data.inspection.pending.length === 1 ? "" : "s"} to the estimate`}
-                          variant="secondary"
-                        />
-                      )}
                     <InspectionForm
                       key={JSON.stringify(data.inspection.items)}
                       jobId={selected.id}
                       initial={data.inspection.items}
                       initialAssessment={data.inspection.assessment}
                       automotive={auto}
-                      readOnly={
-                        s.actor.type === "support" || data.inspection.complete
-                      }
+                      readOnly
                       completed={data.inspection.complete}
                     />
                   </section>
