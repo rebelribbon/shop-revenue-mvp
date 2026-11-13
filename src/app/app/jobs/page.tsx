@@ -798,6 +798,12 @@ export default async function JobsPage({
           // Existing published ROs retain their document access.
           const awaitingInspection =
             auto && !data.inspection?.complete && !flow?.latest;
+          const pricingReady =
+            (input.parts.length > 0 || input.labor.length > 0) &&
+            input.parts.every((part) => part.description.trim() && part.quantity > 0 &&
+              part.unitCostCents !== null) &&
+            input.labor.every((line) => line.description.trim() &&
+              (!line.fromInspection || (line.sellRateCents > 0 && line.costRateCents !== null)));
           return (
             <>
               <p>
@@ -814,7 +820,9 @@ export default async function JobsPage({
               )}
               {saved === "1" && (
                 <p role="status" className="notice ok">
-                  Job saved.
+                  {auto && data.inspection?.complete
+                    ? "Estimate pricing saved. Review the customer preview under Estimate."
+                    : "Repair order saved."}
                 </p>
               )}
               {!auto && data.profit && (
@@ -1453,8 +1461,11 @@ export default async function JobsPage({
                             All RO documents ({data.cabinet.length})
                           </Link>
                         </div>
+                        {!pricingReady && (
+                          <p className="notice">Pricing is incomplete. Open Edit parts and labor to finish the costs and selling prices before preparing a customer document.</p>
+                        )}
                         {s.actor.type !== "support" && !selected.documentOnly &&
-                          (input.parts.length > 0 || input.labor.length > 0) &&
+                          pricingReady &&
                           (!flow?.latest || flow.changedSinceEstimate) && (
                             <section className="record-details">
                               <h4>Prepare customer estimate</h4>
