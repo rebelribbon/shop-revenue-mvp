@@ -6,8 +6,8 @@ type Stage = JobWorkflow["stage"];
 const descriptions: Partial<Record<Stage, { title: string; detail: string }>> =
   {
     awaiting: {
-      title: "Waiting for customer authorization",
-      detail: "The customer reviews each line and signs before repairs begin.",
+      title: "Estimate prepared — review and share",
+      detail: "Open Documents to preview exactly what is saved, choose how to share it, and track the customer’s approval before starting repairs.",
     },
     ready: {
       title: "Authorized work ready",
@@ -39,6 +39,7 @@ export function RoStageSummary({
   stage,
   statusLabel,
   editHref,
+  documentsHref,
 }: {
   inspectionComplete: boolean;
   hasEstimate: boolean;
@@ -46,6 +47,7 @@ export function RoStageSummary({
   stage?: Stage;
   statusLabel: string;
   editHref: string;
+  documentsHref: string;
 }) {
   const waiting = !inspectionComplete && !hasEstimate;
   const title = waiting
@@ -79,6 +81,11 @@ export function RoStageSummary({
       {!waiting && !hasEstimate && (
         <Link className="btn primary" href={editHref}>
           Build estimate
+        </Link>
+      )}
+      {hasEstimate && (
+        <Link className="btn secondary" href={documentsHref}>
+          View estimate &amp; documents
         </Link>
       )}
     </section>

@@ -83,8 +83,9 @@ export function EstimatePublisher({
             setPath(data.path ?? "");
             setPublishedId((result.data as { id: string }).id);
             setShare((result.data as { share?: typeof share }).share);
-            setMessage("Estimate prepared. Choose a recipient to send it.");
+            setMessage("Estimate saved in RO Documents.");
             setRequestId(crypto.randomUUID());
+            router.push(`/app/jobs?job=${encodeURIComponent(jobId)}&tab=files&share=1#file-cabinet`);
             router.refresh();
           } else setMessage(result.error.message);
         } catch {

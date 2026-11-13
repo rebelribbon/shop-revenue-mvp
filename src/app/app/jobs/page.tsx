@@ -69,6 +69,7 @@ import { withTenant } from "@/db/tenant";
 import { listAppointmentChoices } from "@/domain/appointments";
 import { getJob, listJobs } from "@/domain/jobs";
 import { JobEditor } from "@/components/job-editor";
+import { RoEstimateBuilder } from "@/components/ro-estimate-builder";
 import { canManageTeam } from "@/domain/membership";
 import { RoCheckinEditor } from "@/components/ro-checkin-editor";
 import { RoStageSummary } from "@/components/ro-stage-summary";
@@ -613,6 +614,14 @@ export default async function JobsPage({
                   : undefined
               }
             />
+          ) : auto && selected && data.inspection?.complete && estimateInitial ? (
+            <RoEstimateBuilder
+              key={selected.version}
+              initial={jobInput.parse(estimateInitial)}
+              laborRateCents={data.profile?.laborSellRateCents}
+              laborCostCents={data.profile?.laborCostRateCents}
+              partsTaxable={data.profile?.partsTaxableDefault}
+            />
           ) : (
             <JobEditor
               commonJobs={data.commonJobs}
@@ -780,7 +789,7 @@ export default async function JobsPage({
             tab =
               requestedTab === "notes" || requestedTab === "timeline"
                 ? "history"
-                : ["inspection", "photos", "files", "history"].includes(
+                : ["inspection", "photos", "estimate", "files", "history"].includes(
                       requestedTab ?? "",
                     )
                   ? requestedTab!
@@ -789,6 +798,12 @@ export default async function JobsPage({
           // Existing published ROs retain their document access.
           const awaitingInspection =
             auto && !data.inspection?.complete && !flow?.latest;
+          const pricingReady =
+            (input.parts.length > 0 || input.labor.length > 0) &&
+            input.parts.every((part) => part.description.trim() && part.quantity > 0 &&
+              part.unitCostCents !== null) &&
+            input.labor.every((line) => line.description.trim() &&
+              (!line.fromInspection || (line.sellRateCents > 0 && line.costRateCents !== null)));
           return (
             <>
               <p>
@@ -805,7 +820,9 @@ export default async function JobsPage({
               )}
               {saved === "1" && (
                 <p role="status" className="notice ok">
-                  Job saved.
+                  {auto && data.inspection?.complete
+                    ? "Estimate pricing saved. Review the customer preview under Estimate."
+                    : "Repair order saved."}
                 </p>
               )}
               {!auto && data.profit && (
@@ -894,6 +911,7 @@ export default async function JobsPage({
                     stage={flow?.stage}
                     statusLabel={statusLabels[statusOf(selected.id)]}
                     editHref={`/app/jobs?edit=${selected.id}`}
+                    documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
                   />
                 )}
                 {data.presentPath && (
@@ -1059,7 +1077,7 @@ export default async function JobsPage({
                       submitLabel={data.assignee ? "Change technician" : "Assign technician"}
                       variant="secondary"
                     >
-                      <label htmlFor="job-tech">Tech on this job</label>
+                      <label htmlFor="job-tech">Technician for this RO (all repairs)</label>
                       <select
                         id="job-tech"
                         name="userId"
@@ -1321,7 +1339,8 @@ export default async function JobsPage({
                   {(awaitingInspection
                     ? ([["work", "Next step"], ["history", "History"]] as const)
                     : [
-                      ["work", "Work"],
+                      ["work", "Overview"],
+                      ...(auto ? ([["estimate", "Estimate"]] as const) : []),
                       [
                         "inspection",
                         `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
@@ -1332,7 +1351,7 @@ export default async function JobsPage({
                       ],
                       [
                         "files",
-                        `Docs${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
+                        `Documents${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
                       ],
                       ["history", "History"],
                     ] as const
@@ -1374,28 +1393,6 @@ export default async function JobsPage({
                         />
                       </RecordSection>
                     )}
-                    {auto &&
-                      data.inspection?.complete &&
-                      !awaitingInspection &&
-                      (input.parts.length > 0 || input.labor.length > 0) &&
-                      input.labor.every((line) => !line.fromInspection ||
-                        (line.sellRateCents > 0 && line.costRateCents !== null)) &&
-                      s.actor.type !== "support" &&
-                      !selected.documentOnly && (
-                        <section className="record-details" id="job-estimate">
-                          <h3>Send estimate for approval</h3>
-                          <p>Confirm the priced work and select the customer recipient. The customer must approve or decline every line.</p>
-                          <EstimatePublisher
-                            taxRateBps={flow?.currentInvoice
-                              ? flow.currentInvoice.snapshot.taxBps
-                              : data.profile?.taxRateBps}
-                            jobId={selected.id}
-                            version={selected.version}
-                            existingVersion={flow?.latest?.estimate.version}
-                            pendingChanges={flow?.changedSinceEstimate}
-                          />
-                        </section>
-                      )}
                     {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
                         title="Costs & profit"
@@ -1405,6 +1402,93 @@ export default async function JobsPage({
                       </RecordSection>
                     )}
                   </>
+                )}
+                {tab === "estimate" && auto && (
+                  <section className="ro-estimate-workspace" id="job-estimate" aria-label="Estimate and customer preview">
+                    <p className="muted">STEP 2 OF 3 · CUSTOMER ESTIMATE</p>
+                    <h3>Review the estimate</h3>
+                    {!data.inspection?.complete ? (
+                      <>
+                        <p>The technician must submit the inspection before an estimate can be prepared.</p>
+                        <Link className="btn secondary" href={`/app/jobs?job=${selected.id}`}>Return to RO</Link>
+                      </>
+                    ) : (
+                      <>
+                        {flow?.latest && !flow.changedSinceEstimate ? (
+                          <p className="notice ok" role="status">
+                            Estimate version {flow.latest.estimate.version} is saved in Documents.
+                            {flow.latest.authorization ? " Customer response received." : " Preview and send the prepared document, or check for the customer response."}
+                          </p>
+                        ) : (
+                          <p className="notice" role="status">
+                            {flow?.latest
+                              ? "Changes to the RO need a revised estimate before they can be sent."
+                              : "Draft pricing — not yet prepared or sent to the customer."}
+                          </p>
+                        )}
+                        <section className="ro-estimate-preview" aria-label="Customer-facing estimate preview">
+                          <p className="muted">PREVIEW · RO #{selected.id.slice(0, 8).toUpperCase()}</p>
+                          <h4>{selected.title}</h4>
+                          <p>{customerName}{input.mileageIn != null
+                            ? ` · ${input.mileageIn.toLocaleString("en-US")} miles`
+                            : ""}</p>
+                          {input.concerns && <p><strong>Customer concern:</strong> {input.concerns}</p>}
+                          <div className="table-wrap"><table>
+                            <thead><tr><th>Work / item</th><th>Customer price</th></tr></thead>
+                            <tbody>
+                              {input.parts.map((p, i) => (
+                                <tr key={`part-${i}`}>
+                                  <td>{p.description} · Qty {p.quantity}</td>
+                                  <td>{money(Math.round(p.quantity * p.unitPriceCents))}</td>
+                                </tr>
+                              ))}
+                              {input.labor.map((l, i) => (
+                                <tr key={`labor-${i}`}>
+                                  <td>{l.description} · {(l.estimatedHoursHundredths / 100).toFixed(2)} labor hours</td>
+                                  <td>{money(Math.round(l.estimatedHoursHundredths * l.sellRateCents / 100))}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table></div>
+                          <p><strong>Subtotal before tax: {money(t.subtotalCents)}</strong></p>
+                          <p className="muted">The final customer document also includes the completed inspection, advisor-approved media, taxes, and Approve / Decline choices for every line.</p>
+                        </section>
+                        <div className="money-actions">
+                          <Link className="btn secondary" href={`/app/jobs?edit=${selected.id}`}>
+                            Edit parts and labor
+                          </Link>
+                          <Link className="btn secondary" href={`/app/jobs?job=${selected.id}&tab=files`}>
+                            All RO documents ({data.cabinet.length})
+                          </Link>
+                        </div>
+                        {!pricingReady && (
+                          <p className="notice">Pricing is incomplete. Open Edit parts and labor to finish the costs and selling prices before preparing a customer document.</p>
+                        )}
+                        {s.actor.type !== "support" && !selected.documentOnly &&
+                          pricingReady &&
+                          (!flow?.latest || flow.changedSinceEstimate) && (
+                            <section className="record-details">
+                              <h4>Prepare customer estimate</h4>
+                              <p>Preparing saves a fixed customer document, then opens Documents for preview and sending. No message is sent automatically.</p>
+                              <EstimatePublisher
+                                taxRateBps={flow?.currentInvoice
+                                  ? flow.currentInvoice.snapshot.taxBps
+                                  : data.profile?.taxRateBps}
+                                jobId={selected.id}
+                                version={selected.version}
+                                existingVersion={flow?.latest?.estimate.version}
+                                pendingChanges={flow?.changedSinceEstimate}
+                              />
+                            </section>
+                          )}
+                        {flow?.latest && !flow.changedSinceEstimate && (
+                          <Link className="btn primary" href={`/app/jobs?job=${selected.id}&tab=files&share=1`}>
+                            Preview and share saved estimate
+                          </Link>
+                        )}
+                      </>
+                    )}
+                  </section>
                 )}
                 {tab === "photos" && (
                   <>
@@ -1446,13 +1530,19 @@ export default async function JobsPage({
                       id="share-customer-packet"
                     >
                       <div>
-                        <h3>Docs</h3>
+                        <p className="muted">STEP 3 OF 3 · CUSTOMER DOCUMENTS</p>
+                        <h3>Estimate &amp; Documents</h3>
                         {!flow?.latest?.estimate && (
                           <p className="muted">
-                            Prepare an estimate in Job Setup before sharing.
+                            No customer estimate is prepared yet. Build and review it first.
                           </p>
                         )}
                       </div>
+                      {auto && data.inspection?.complete && (
+                        <Link className="btn secondary" href={`/app/jobs?job=${selected.id}&tab=estimate`}>
+                          {flow?.latest ? "Review estimate" : "Build customer estimate"}
+                        </Link>
+                      )}
                       {s.actor.type !== "support" && (
                         <details className="docs-add-menu">
                           <summary className="btn secondary">
