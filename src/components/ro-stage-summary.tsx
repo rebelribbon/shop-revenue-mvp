@@ -39,6 +39,7 @@ export function RoStageSummary({
   stage,
   statusLabel,
   editHref,
+  documentsHref,
 }: {
   inspectionComplete: boolean;
   hasEstimate: boolean;
@@ -46,6 +47,7 @@ export function RoStageSummary({
   stage?: Stage;
   statusLabel: string;
   editHref: string;
+  documentsHref: string;
 }) {
   const waiting = !inspectionComplete && !hasEstimate;
   const title = waiting
@@ -79,6 +81,11 @@ export function RoStageSummary({
       {!waiting && !hasEstimate && (
         <Link className="btn primary" href={editHref}>
           Build estimate
+        </Link>
+      )}
+      {hasEstimate && (
+        <Link className="btn secondary" href={documentsHref}>
+          View estimate &amp; documents
         </Link>
       )}
     </section>
