@@ -138,10 +138,25 @@ export async function freezeEstimate(
     )
     .orderBy(desc(estimateVersion.version))
     .limit(1);
-  if (prior && !input.supplementReason.trim())
+  // Preparing an unsent/unsigned estimate is a draft operation, not a
+  // customer-approved change order. A revision reason is necessary only
+  // when altering previously authorized work or adding to an invoice.
+  const [priorAuthorization] = prior
+    ? await tx
+        .select({ id: estimateAuthorization.id })
+        .from(estimateAuthorization)
+        .where(
+          and(
+            eq(estimateAuthorization.businessId, tx.businessId),
+            eq(estimateAuthorization.versionId, prior.id),
+          ),
+        )
+        .limit(1)
+    : [];
+  if ((priorAuthorization || issued) && !input.supplementReason.trim())
     throw new AppError(
       "VALIDATION",
-      "Explain the change for this new version or supplement.",
+      "Explain changes to work previously authorized or invoiced.",
     );
   if (prior)
     await tx
