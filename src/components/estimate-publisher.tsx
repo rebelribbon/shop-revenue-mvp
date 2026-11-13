@@ -12,14 +12,12 @@ export function EstimatePublisher({
   jobId,
   version,
   existingVersion,
-  requiresChangeReason = false,
   taxRateBps = 0,
   pendingChanges = false,
 }: {
   jobId: string;
   version: string;
   existingVersion?: number;
-  requiresChangeReason?: boolean;
   taxRateBps?: number;
   // The job changed since the latest estimate: show the resend form open.
   pendingChanges?: boolean;
@@ -98,7 +96,7 @@ export function EstimatePublisher({
       }}
     >
       <fieldset className="hydration-fields" disabled={!ready}>
-        <h4>{requiresChangeReason ? "Prepare revised estimate" : "Prepare customer estimate"}</h4>
+        <h4>Prepare customer estimate</h4>
         <p>
           Review the work and prices. This saves a fixed estimate in the job and
           opens the recipient and delivery options; it does not send anything
@@ -137,18 +135,7 @@ export function EstimatePublisher({
           </label>
           <p className="muted">Changes need the customer’s approval again.</p>
         </details>{" "}
-        {requiresChangeReason && (
-          <label>
-            What changed from the customer's previously authorized or invoiced work?
-            <textarea
-              required
-              name="supplementReason"
-              maxLength={2000}
-              rows={2}
-              placeholder="Describe the additional or corrected work"
-            />
-          </label>
-        )}
+
         <button
           className="btn secondary"
           data-page-primary={!existingVersion ? "true" : undefined}
