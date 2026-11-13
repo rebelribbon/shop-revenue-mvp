@@ -173,18 +173,19 @@ export async function assignJob(
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const tech = await requireTech(tx, input.userId);
   const before = (await jobAssignees(tx, [input.jobId])).get(input.jobId);
-  if ((before ?? null) === input.userId)
-    return { jobId: input.jobId, tech: tech?.name ?? null, handoff: false };
-  // The RO advisor may select the FIRST technician. Once assigned, managers
-  // exclusively control reassignment and removal (including role changes).
-  if (!(await canManageTeam(tx))) {
+  const manager = await canManageTeam(tx);
+  // An ordinary advisor may assign only their own RO, and only once.
+  // Authorization happens before the idempotent no-op return as well.
+  if (!manager) {
     const advisorId = await assignedAdvisorForJob(tx, input.jobId);
-    if (before || !input.userId || advisorId !== tx.actor.id)
+    if (advisorId !== tx.actor.id || (before ?? null) !== null || !input.userId)
       throw new AppError(
         "FORBIDDEN",
         "Only management may change an assigned technician. The RO advisor may choose the first technician.",
       );
   }
+  if ((before ?? null) === input.userId)
+    return { jobId: input.jobId, tech: tech?.name ?? null, handoff: false };
   await tx
     .insert(jobAssignment)
     .values({
