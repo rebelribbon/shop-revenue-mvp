@@ -962,7 +962,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {auto && awaitingInspection && !data.assignee && (
+                {auto && awaitingInspection && !data.inspection?.assessment.vehiclePickedUp && (
                   <details className="ro-intake-photos">
                     <summary>Check-in photos — document existing body damage (optional)</summary>
                     <p className="muted">
