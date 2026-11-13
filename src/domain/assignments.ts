@@ -12,7 +12,7 @@ import {
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
-import { assertManager } from "./membership";
+import { assertManager, canManageTeam } from "./membership";
 import { loadJobWorkflows } from "./job-workflow";
 import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
@@ -167,13 +167,23 @@ export async function assignJob(
   meta: RequestMeta,
   input: { jobId: string; userId: string | null },
 ) {
-  await assertCanAssign(tx);
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
   );
   if (!(await getJob(tx, input.jobId))) throw notFound("That job");
   const tech = await requireTech(tx, input.userId);
   const before = (await jobAssignees(tx, [input.jobId])).get(input.jobId);
+  const manager = await canManageTeam(tx);
+  // An ordinary advisor may assign only their own RO, and only once.
+  // Authorization happens before the idempotent no-op return as well.
+  if (!manager) {
+    const advisorId = await assignedAdvisorForJob(tx, input.jobId);
+    if (advisorId !== tx.actor.id || (before ?? null) !== null || !input.userId)
+      throw new AppError(
+        "FORBIDDEN",
+        "Only management may change an assigned technician. The RO advisor may choose the first technician.",
+      );
+  }
   if ((before ?? null) === input.userId)
     return { jobId: input.jobId, tech: tech?.name ?? null, handoff: false };
   await tx

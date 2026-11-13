@@ -49,6 +49,7 @@ export function JobEditor({
   today,
   defaultRepeats = false,
   attachMediaId,
+  inspectionPricingOnly = false,
 }: {
   options: JobOptions;
   initial?: JobInput;
@@ -70,6 +71,7 @@ export function JobEditor({
   today: string;
   defaultRepeats?: boolean;
   attachMediaId?: string;
+  inspectionPricingOnly?: boolean;
 }) {
   const ready = useActionHydration();
   const router = useRouter();
@@ -115,7 +117,7 @@ export function JobEditor({
             }
           : null,
     ),
-    [showCosts, setShowCosts] = useState(false);
+    [showCosts, setShowCosts] = useState(inspectionPricingOnly);
   const auto =
     !!initial?.vehicleId ||
     (!initial?.serviceAssetId && isAutomotive(businessType));
@@ -132,7 +134,17 @@ export function JobEditor({
   } catch {
     /* An unfinished numeric edit must not crash the page. */
   }
-  const valid = !!totals && parts.every((p) => p.quantity > 0);
+  const unpricedInspectionWork =
+    inspectionPricingOnly && labor.some((line) =>
+      line.fromInspection &&
+      (line.estimatedHoursHundredths <= 0 ||
+        line.sellRateCents <= 0 ||
+        line.costRateCents === null),
+    );
+  const valid =
+    !!totals &&
+    parts.every((p) => p.quantity > 0) &&
+    !unpricedInspectionWork;
   const clearLinks = () => {
     setParts((ps) => ps.map((p) => ({ ...p, recommendationId: undefined })));
     setLabor((ls) => ls.map((l) => ({ ...l, recommendationId: undefined })));
@@ -221,7 +233,7 @@ export function JobEditor({
                 clientRequestId: crypto.randomUUID(),
               });
             router.push(
-              `/app/jobs?job=${encodeURIComponent((r.data as { id: string }).id)}&saved=1`,
+              `/app/jobs?job=${encodeURIComponent((r.data as { id: string }).id)}&saved=1${inspectionPricingOnly ? "#job-estimate" : ""}`,
             );
             router.refresh();
           } else setMessage(r.error.message);
@@ -233,13 +245,23 @@ export function JobEditor({
       }}
     >
       <fieldset className="hydration-fields" disabled={!ready}>
-        <h2>Job details</h2>
+        <h2>{inspectionPricingOnly ? "Price technician recommendations" : "Job details"}</h2>
+        {inspectionPricingOnly && (
+          <p className="muted">
+            The completed inspection has populated recommended work below.
+            Add needed parts, set labor time, enter selling prices and internal
+            costs, then save. The customer receives nothing until you publish
+            and share the estimate.
+          </p>
+        )}
         {attachMediaId && (
           <p className="notice" role="note">
             📷 The issue photo will be attached to this job and shown to the
             customer on the estimate.
           </p>
         )}
+        {!inspectionPricingOnly ? (
+          <>
         {commonJobs.length > 0 && (
           <section>
             <label htmlFor="common-job">Start from a common job</label>
@@ -399,6 +421,21 @@ export function JobEditor({
           perVisitCents={totals?.subtotalCents ?? 0}
           profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
         />
+          </>
+        ) : (
+          <div className="ro-check-in" aria-label="Repair order from intake">
+            <strong>Repair order: {title}</strong>
+            <p>{options.customers.find((c) => c.id === customerId)?.name ?? "Customer"}</p>
+            <p>
+              {options.vehicles
+                .filter((vehicle) => vehicle.id === vehicleId)
+                .map((vehicle) => [vehicle.year, vehicle.make, vehicle.model]
+                  .filter(Boolean).join(" "))
+                .join("")}
+            </p>
+            {concerns && <p><strong>Customer concerns:</strong> {concerns}</p>}
+          </div>
+        )}
         <h3>{auto ? "Parts" : "Materials"}</h3>
         {catalog.length > 0 && (
           <datalist id="part-catalog">
@@ -702,7 +739,7 @@ export function JobEditor({
             Check negative or unusually large amounts before saving.
           </p>
         )}
-        {canSaveCommon && (
+        {canSaveCommon && !inspectionPricingOnly && (
           <details>
             <summary>Save as a common job</summary>
             <p>
@@ -740,15 +777,23 @@ export function JobEditor({
             </button>
           </details>
         )}
+        {unpricedInspectionWork && (
+          <p className="notice" role="alert">
+            Complete labor hours, selling rate and internal cost for each
+            inspection recommendation before saving the estimate pricing.
+          </p>
+        )}
         <button
           className="btn primary"
           disabled={pending || !valid || (!parts.length && !labor.length)}
         >
           {pending
             ? "Saving…"
-            : repeat
-              ? "Save repeating job"
-              : "Save job sheet"}
+            : inspectionPricingOnly
+              ? "Save estimate pricing"
+              : repeat
+                ? "Save repeating job"
+                : "Save job sheet"}
         </button>
         <p role="status">{message}</p>
       </fieldset>

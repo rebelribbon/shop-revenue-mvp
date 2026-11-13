@@ -183,7 +183,7 @@ export async function saveInspection(
   ) {
     throw new AppError(
       "VALIDATION",
-      "Service Soon requires findings; Service Now requires findings and recommended work.",
+      "Caution requires findings; Fail requires findings and recommended work.",
     );
   }
   await tx
