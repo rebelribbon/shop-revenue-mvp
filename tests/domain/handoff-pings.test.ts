@@ -90,6 +90,26 @@ async function submitInspection(f: Awaited<ReturnType<typeof shop>>) {
 }
 
 describe("RO handoff email pings", () => {
+  it("allows the RO advisor to choose the initial technician, but only management can change assignments", async () => {
+    const f = await shop();
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
+    const assigned = await f.advisor((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
+    );
+    expect(assigned.handoff).toBe(true);
+    await expect(
+      f.advisor((tx) =>
+        assignJob(tx, meta(), { jobId: f.job.id, userId: null }),
+      ),
+    ).rejects.toThrow(/Only management/);
+    const cleared = await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: null }),
+    );
+    expect(cleared.tech).toBeNull();
+  });
+
   it("emails the technician on assignment and the advisor when the inspection is submitted", async () => {
     const f = await shop();
     await f.owner((tx) =>
