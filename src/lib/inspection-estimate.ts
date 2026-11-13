@@ -12,6 +12,9 @@ export function withInspectionRecommendations(
   initial: JobInput,
   items: InspectionItem[],
 ): JobInput {
+  // The initial import happens once. Reopening an already-priced RO must not
+  // recreate a zero-dollar line if the advisor rewrote its description.
+  if (initial.labor.some((line) => line.fromInspection)) return initial;
   const existing = new Set(
     initial.labor.map((line) => line.description.trim().toLocaleLowerCase()),
   );
