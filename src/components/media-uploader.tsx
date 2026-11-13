@@ -76,9 +76,9 @@ export function MediaUploader({
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const specialized = purpose !== "general";
+  const [tag, setTag] = useState<Tag>(defaultTag);
   const effectiveTag: Tag =
     purpose === "intake" ? "before" : purpose === "finding" ? "issue" : purpose === "walkaround" ? "quote" : tag;
-  const [tag, setTag] = useState<Tag>(defaultTag);
   const [caption, setCaption] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
