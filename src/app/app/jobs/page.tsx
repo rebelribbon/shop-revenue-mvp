@@ -1518,13 +1518,19 @@ export default async function JobsPage({
                       id="share-customer-packet"
                     >
                       <div>
-                        <h3>Docs</h3>
+                        <p className="muted">STEP 3 OF 3 · CUSTOMER DOCUMENTS</p>
+                        <h3>Estimate &amp; Documents</h3>
                         {!flow?.latest?.estimate && (
                           <p className="muted">
-                            Prepare an estimate in Job Setup before sharing.
+                            No customer estimate is prepared yet. Build and review it first.
                           </p>
                         )}
                       </div>
+                      {auto && data.inspection?.complete && (
+                        <Link className="btn secondary" href={`/app/jobs?job=${selected.id}&tab=estimate`}>
+                          {flow?.latest ? "Review estimate" : "Build customer estimate"}
+                        </Link>
+                      )}
                       {s.actor.type !== "support" && (
                         <details className="docs-add-menu">
                           <summary className="btn secondary">
