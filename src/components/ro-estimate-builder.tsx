@@ -91,6 +91,7 @@ export function RoEstimateBuilder({
   const ready = useActionHydration();
   const router = useRouter();
   const [repairs, setRepairs] = useState<Repair[]>(() => fromJob(initial));
+  const [activeIndex, setActiveIndex] = useState(0);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -151,15 +152,19 @@ export function RoEstimateBuilder({
       <header>
         <p className="muted">STEP 1 OF 3 · ADVISOR PRICING</p>
         <h2>Build the estimate</h2>
-        <p>One RO, one assigned technician. Price each repair below with its own parts and labor. The customer sees none of this until you prepare and send an estimate.</p>
+        <p>One RO, one assigned technician. Price each repair with parts and labor, then review the completed estimate before sending.</p>
+        <p className="muted">Repair {Math.min(activeIndex + 1, Math.max(repairs.length, 1))} of {repairs.length || 1}</p>
       </header>
 
-      {repairs.map((repair, index) => (
+      {repairs.map((repair, index) => index !== activeIndex ? null : (
         <section key={repair.id} className="ro-estimate-repair" aria-label={`Repair ${index + 1}`}>
           <div className="ro-estimate-repair-head">
             <h3>Repair {index + 1}</h3>
             <button type="button" className="btn secondary"
-              onClick={() => setRepairs((current) => current.filter((r) => r.id !== repair.id))}
+              onClick={() => {
+                setRepairs((current) => current.filter((r) => r.id !== repair.id));
+                setActiveIndex((current) => Math.max(0, current - (index === repairs.length - 1 ? 1 : 0)));
+              }}
               disabled={!ready || pending}>Remove</button>
           </div>
           <label>
@@ -262,10 +267,24 @@ export function RoEstimateBuilder({
         </section>
       ))}
 
-      <button type="button" className="btn secondary" disabled={!ready || pending}
-        onClick={() => setRepairs((current) => [
-          ...current, newRepair(current.length + 1, laborRateCents, laborCostCents),
-        ])}>+ Add another repair</button>
+      <div className="ro-estimate-repair-nav">
+        {activeIndex > 0 && (
+          <button type="button" className="btn secondary" disabled={!ready || pending}
+            onClick={() => setActiveIndex((i) => i - 1)}>Previous repair</button>
+        )}
+        {activeIndex < repairs.length - 1 && (
+          <button type="button" className="btn primary" disabled={!ready || pending}
+            onClick={() => setActiveIndex((i) => i + 1)}>Next repair</button>
+        )}
+        <button type="button" className="btn secondary" disabled={!ready || pending}
+          onClick={() => {
+            setRepairs((current) => [
+              ...current, newRepair(current.length + 1, laborRateCents, laborCostCents),
+            ]);
+            setActiveIndex(repairs.length);
+          }}>+ Add another repair</button>
+      </div>
+      {activeIndex === repairs.length - 1 && (
       <section className="ro-estimate-save">
         <p>Customer subtotal (before tax): <strong>{dollars(total)}</strong></p>
         <p className="muted">Save the pricing, then review the customer-facing estimate and documents before sending.</p>
@@ -280,6 +299,7 @@ export function RoEstimateBuilder({
         <p role="status">{message}</p>
         <Link className="btn secondary" href={`/app/jobs?job=${initial.jobId}`}>Back to RO</Link>
       </section>
+      )}
     </section>
   );
 }
