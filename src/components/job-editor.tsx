@@ -233,7 +233,7 @@ export function JobEditor({
                 clientRequestId: crypto.randomUUID(),
               });
             router.push(
-              `/app/jobs?job=${encodeURIComponent((r.data as { id: string }).id)}&saved=1`,
+              `/app/jobs?job=${encodeURIComponent((r.data as { id: string }).id)}&saved=1${inspectionPricingOnly ? "#job-estimate" : ""}`,
             );
             router.refresh();
           } else setMessage(r.error.message);
