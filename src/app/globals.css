@@ -5690,3 +5690,95 @@ main.customer-index-page {
 
 /* Keep the current system below the fixed mobile toolbar after Next/Back. */
 .inspection-wizard .inspection-section-header { scroll-margin-top: 140px; }
+
+/* Advisor: one RO, multiple repair pricing cards, then preview and documents. */
+.ro-estimate-builder {
+  display: grid;
+  gap: 16px;
+  max-width: 820px;
+}
+.ro-estimate-builder h2, .ro-estimate-builder h3, .ro-estimate-workspace h3 {
+  margin-block: 0 8px;
+}
+.ro-estimate-repair {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.ro-estimate-repair-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.ro-estimate-repair-head .btn {
+  flex: none;
+}
+.ro-estimate-line {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 0;
+}
+.ro-estimate-line legend {
+  font-weight: 650;
+  padding-inline: 6px;
+}
+.ro-estimate-repair label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.ro-estimate-repair input {
+  width: 100%;
+  min-width: 0;
+}
+.ro-estimate-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.ro-estimate-part {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.ro-estimate-part:last-of-type { margin-bottom: 16px; }
+.ro-estimate-total {
+  font-weight: 600;
+  margin: 0;
+}
+.ro-estimate-save, .ro-estimate-preview {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+}
+.ro-estimate-save {
+  display: grid;
+  gap: 12px;
+}
+.ro-estimate-workspace {
+  max-width: 840px;
+  display: grid;
+  gap: 16px;
+}
+.ro-estimate-preview .table-wrap {
+  margin-block: 12px;
+}
+.ro-estimate-preview table {
+  width: 100%;
+}
+.ro-estimate-preview td:last-child,
+.ro-estimate-preview th:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+@media(max-width: 640px) {
+  .ro-estimate-repair { padding: 12px; }
+  .ro-estimate-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ro-estimate-numbers label:last-child { grid-column: 1 / -1; }
+  .ro-estimate-save, .ro-estimate-preview { padding: 12px; }
+  .section-tabs { overflow-x: auto; white-space: nowrap; }
+}
