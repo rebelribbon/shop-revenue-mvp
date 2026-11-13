@@ -256,9 +256,9 @@ export type InspectionResults = Partial<
   Record<InspectionPointId, InspectionItem>
 >;
 export const inspectionLabels: Record<InspectionResult, string> = {
-  satisfactory: "Satisfactory",
-  service_soon: "Service Soon",
-  service_now: "Service Now",
+  satisfactory: "Pass",
+  service_soon: "Caution",
+  service_now: "Fail",
   na: "N/A",
 };
 export function inspectReady(results: InspectionResults) {
