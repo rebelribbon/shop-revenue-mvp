@@ -25,7 +25,8 @@ import {
 
 export type Tech = { userId: string; name: string };
 
-// Only active technician accounts may be assigned technician work.
+// Active technicians and owners may be assigned technician work. The owner
+// keeps their owner account and may also be the advisor on the same RO.
 export async function listTechs(tx: TenantTx): Promise<Tech[]> {
   const rows = await tx
     .select({
@@ -40,7 +41,7 @@ export async function listTechs(tx: TenantTx): Promise<Tech[]> {
       and(
         eq(membership.businessId, tx.businessId),
         eq(membership.status, "active"),
-        eq(membership.role, "technician"),
+        inArray(membership.role, ["technician", "owner"]),
         isNotNull(membership.userId),
       ),
     )

@@ -90,6 +90,41 @@ async function submitInspection(f: Awaited<ReturnType<typeof shop>>) {
 }
 
 describe("RO handoff email pings", () => {
+  it("lets a one-person shop use the owner as both service advisor and technician", async () => {
+    const f = await shop();
+    const ownerId = f.t.owner.userId;
+    const available = await f.owner(async (tx) => {
+      const { listTechs, listAdvisors } = await import("@/domain/assignments");
+      return { techs: await listTechs(tx), advisors: await listAdvisors(tx) };
+    });
+    expect(available.techs.some((person) => person.userId === ownerId)).toBe(true);
+    expect(available.advisors.some((person) => person.userId === ownerId)).toBe(true);
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: ownerId }),
+    );
+    const assigned = await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: ownerId }),
+    );
+    expect(assigned.handoff).toBe(true);
+    const draft = await f.owner((tx) => getInspection(tx, f.job.id));
+    const submitted = await f.owner((tx) =>
+      saveInspection(tx, meta(), {
+        jobId: f.job.id,
+        submit: true,
+        assessment: {
+          diagnosis: "One-person shop diagnosis",
+          bay: "Rack 1",
+          vehiclePickedUp: true,
+        },
+        items: draft.items.map((point) => ({ ...point, status: "good" as const })),
+      }),
+    );
+    expect(submitted.complete).toBe(true);
+    expect(submitted.advisorNotified).toBe(true);
+    const handoff = await f.owner((tx) => prepareHandoffPing(tx, f.job.id));
+    expect(handoff?.stage).toBe("build_estimate");
+  });
+
   it("allows the RO advisor to choose the initial technician, but only management can change assignments", async () => {
     const f = await shop();
     await f.owner((tx) =>

@@ -57,7 +57,7 @@ export default async function TeamPage() {
     return { text: "Invited", warn: false };
   };
   const roleLabel = (role: string) => {
-    if (role === "owner") return "Owner";
+    if (role === "owner") return "Owner · Advisor · Technician";
     if (role === "technician") return "Technician";
     return "Service advisor";
   };
@@ -69,6 +69,11 @@ export default async function TeamPage() {
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Team</h1>
+      <p className="muted">
+        One login can cover more than one responsibility. Your owner login
+        includes management, service advisor and technician access. Assign
+        yourself in both RO dropdowns to test the complete workflow.
+      </p>
       <div className="card table-wrap">
         <table>
           <thead>

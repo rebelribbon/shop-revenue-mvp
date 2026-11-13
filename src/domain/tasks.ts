@@ -80,6 +80,8 @@ const HANDOFF_TEXT: Record<
 };
 
 function handoffTask(h: JobHandoff, today: string): TaskRow {
+  const technicianStep = h.stage === "inspect_vehicle" || h.stage === "perform_work";
+  const roHref = `/app/jobs?job=${h.jobId}${technicianStep ? "&mode=technician" : ""}`;
   return {
     key: `handoff:${h.jobId}:${h.stage}`,
     source: "work",
@@ -93,11 +95,11 @@ function handoffTask(h: JobHandoff, today: string): TaskRow {
     amountCents: null,
     phone: null,
     email: null,
-    href: `/app/jobs?job=${h.jobId}`,
+    href: roHref,
     action: {
       kind: "work",
       label: HANDOFF_TEXT[h.stage].action,
-      href: `/app/jobs?job=${h.jobId}`,
+      href: roHref,
     },
     dueOn: today,
     overdueDays: 0,
