@@ -424,6 +424,10 @@ export default async function JobsPage({
       style: "currency",
       currency: "USD",
     }).format(c / 100);
+  const canChooseInitialTech =
+    s.actor.type === "user" &&
+    !data.assignee &&
+    data.advisorId === s.actor.id;
   const advisorAssignment =
     selected && s.role !== "technician" && s.actor.type !== "support" ? (
       data.canManageTeam ? (
@@ -1045,7 +1049,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {!data.canManageTeam ? (
+                {!data.canManageTeam && !canChooseInitialTech ? (
                   <p className="muted">
                     Tech:{" "}
                     {data.techs.find((t) => t.userId === data.assignee)?.name ??
@@ -1059,7 +1063,7 @@ export default async function JobsPage({
                     <ActionForm
                       action={assignJobAction}
                       hidden={{ jobId: selected.id }}
-                      submitLabel="Save tech"
+                      submitLabel={data.assignee ? "Change technician" : "Assign technician"}
                       variant="secondary"
                     >
                       <label htmlFor="job-tech">Tech on this job</label>
