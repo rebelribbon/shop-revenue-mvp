@@ -394,6 +394,11 @@ export function InspectionForm({
           </nav>
         </div>
       )}
+      {(readOnly || completed) && active && (
+        <button type="button" className="btn secondary" onClick={() => setStep(total)}>
+          Back to inspection summary
+        </button>
+      )}
       {completed && <p className="notice ok">Inspection submitted to the advisor.</p>}
       <p role="status">{pending ? "Saving…" : message}</p>
     </div>
