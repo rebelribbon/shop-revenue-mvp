@@ -23,6 +23,7 @@ import { newToken, hashToken, isWellFormedToken } from "@/lib/tokens";
 import { AppError, notFound } from "@/lib/errors";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { estimateTotals } from "@/lib/estimate-tax";
+import { automaticEstimateChanges } from "@/lib/estimate-changes";
 import { repeatSummary } from "@/lib/service-plans";
 import { estimatePhotos } from "./job-media";
 import { completeAdvisorHandoff } from "./job-handoffs";
@@ -85,11 +86,6 @@ export async function freezeEstimate(
       ),
     );
   const issued = issuedInvoices[0];
-  if (issued && !input.supplementReason.trim())
-    throw new AppError(
-      "VALIDATION",
-      "This job already has an invoice. Explain the additional work in the change reason to publish a supplement estimate.",
-    );
   const data = jobInput.parse(job.data);
   const c = await getCustomerWithVehicles(tx, data.customerId);
   const v = data.vehicleId
@@ -138,26 +134,6 @@ export async function freezeEstimate(
     )
     .orderBy(desc(estimateVersion.version))
     .limit(1);
-  // Preparing an unsent/unsigned estimate is a draft operation, not a
-  // customer-approved change order. A revision reason is necessary only
-  // when altering previously authorized work or adding to an invoice.
-  const [priorAuthorization] = prior
-    ? await tx
-        .select({ id: estimateAuthorization.id })
-        .from(estimateAuthorization)
-        .where(
-          and(
-            eq(estimateAuthorization.businessId, tx.businessId),
-            eq(estimateAuthorization.versionId, prior.id),
-          ),
-        )
-        .limit(1)
-    : [];
-  if ((priorAuthorization || issued) && !input.supplementReason.trim())
-    throw new AppError(
-      "VALIDATION",
-      "Explain changes to work previously authorized or invoiced.",
-    );
   if (prior)
     await tx
       .update(recommendation)
@@ -290,6 +266,11 @@ export async function freezeEstimate(
       bodySha256: policy.bodySha256,
     },
   };
+  // Preserve a human-readable, automatic comparison between immutable
+  // versions instead of requiring the advisor to explain the revision.
+  // Existing invoice restrictions still apply above, and signed versions
+  // retain their authorization evidence.
+  const changeSummary = automaticEstimateChanges(prior?.snapshot ?? null, snapshot);
   // Superseding a version revokes its link but never removes its signature evidence.
   await tx
     .update(estimateVersion)
@@ -315,7 +296,7 @@ export async function freezeEstimate(
       vehicleId: data.vehicleId ?? null,
       serviceAssetId: data.serviceAssetId ?? null,
       snapshot,
-      supplementReason: input.supplementReason || null,
+      supplementReason: changeSummary,
       tokenHash: token.hash,
       shareTokenCiphertext: sealShareToken(token.token),
       expiresAt: new Date(Date.now() + 30 * 86400000),
