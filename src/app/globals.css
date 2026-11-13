@@ -5628,3 +5628,62 @@ main.customer-index-page {
     font-size: 0.78rem;
   }
 }
+
+/* The mobile technician flow should read like a compact checklist, not cards. */
+.inspection-wizard .inspection-system {
+  gap: 4px;
+}
+.inspection-wizard .inspection-point {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 10px 0 12px;
+  background: transparent;
+}
+.inspection-wizard .inspection-point legend {
+  margin: 0;
+  line-height: 1.3;
+}
+.inspection-wizard .inspection-point fieldset > .muted {
+  margin: 2px 0 6px;
+  font-size: 0.85rem;
+}
+.inspection-wizard .inspection-choices {
+  margin: 6px 0 0;
+  gap: 6px;
+}
+.inspection-wizard .inspection-choices label {
+  min-height: 44px;
+}
+.inspection-wizard .inspection-evidence {
+  margin: 10px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.inspection-wizard .inspection-evidence summary {
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+.inspection-wizard .inspection-summary-video {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+.media-uploader-compact .btn {
+  min-height: 44px;
+}
+.media-uploader-compact .muted {
+  font-size: 0.83rem;
+  margin: 5px 0;
+}
+.ro-intake-photos {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-block: 14px;
+}
+.ro-intake-photos summary {
+  cursor: pointer;
+  font-weight: 600;
+}

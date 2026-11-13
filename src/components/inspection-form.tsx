@@ -9,6 +9,7 @@ import type {
 } from "@/lib/inspection-templates";
 import { saveInspectionAction } from "@/server/actions/inspections";
 import { useActionHydration } from "./action-hydration";
+import { MediaUploader } from "./media-uploader";
 
 const CONDITIONS: { value: InspectionStatus; label: string }[] = [
   { value: "good", label: "Pass" },
@@ -28,6 +29,9 @@ const sectionName = (item: InspectionItem) => item.section || "Inspection";
 
 export function InspectionForm({
   jobId,
+  customerId,
+  vehicleId,
+  serviceAssetId,
   initial,
   readOnly,
   completed = false,
@@ -35,6 +39,9 @@ export function InspectionForm({
   automotive = true,
 }: {
   jobId: string;
+  customerId: string;
+  vehicleId?: string | null;
+  serviceAssetId?: string | null;
   initial: InspectionItem[];
   readOnly: boolean;
   completed?: boolean;
@@ -235,9 +242,18 @@ export function InspectionForm({
                         update(item.key, { recommendedWork: e.target.value })
                       }
                     />
-                    <a className="btn secondary" href="#technician-media">
-                      Add photo / video
-                    </a>
+                    <details className="inspection-evidence">
+                      <summary>Found an issue — add a photo? (optional)</summary>
+                      <MediaUploader
+                        purpose="finding"
+                        customerId={customerId}
+                        jobId={jobId}
+                        vehicleId={vehicleId}
+                        serviceAssetId={serviceAssetId}
+                        inspectionItemKey={item.key}
+                        inspectionItemLabel={item.label}
+                      />
+                    </details>
                   </div>
                 )}
                 {(item.key === "tire_pressure" || item.key === "tire_tread") &&
@@ -325,6 +341,23 @@ export function InspectionForm({
               </details>
             );
           })}
+          <section className="inspection-summary-video">
+            <h4>One-minute technician video (optional)</h4>
+            <p className="muted">
+              Introduce yourself, briefly explain what passed and the items
+              needing attention, and direct questions to the service advisor.
+              The advisor reviews the video before it is shared.
+            </p>
+            {canEdit && (
+              <MediaUploader
+                purpose="walkaround"
+                customerId={customerId}
+                jobId={jobId}
+                vehicleId={vehicleId}
+                serviceAssetId={serviceAssetId}
+              />
+            )}
+          </section>
           {!canSubmit && canEdit && (
             <p role="alert" className="notice">
               Finish unchecked items, required findings, and the technician diagnosis.
