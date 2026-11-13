@@ -129,9 +129,15 @@ export default async function JobsPage({
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
   const canFollowUp = s.actor.type === "user" && s.role !== "technician";
-  // Technicians see only the jobs they're on.
+  // Owners can wear both hats without creating a second login. Technician
+  // mode is explicitly selected and restricted to ROs assigned to that owner.
+  const ownerAsTechnician =
+    s.role === "owner" && s.actor.type === "user" && mode === "technician";
+  const technicianWorkspace = s.role === "technician" || ownerAsTechnician;
+  // Technicians see only the jobs they're on; the same rule applies to an
+  // owner intentionally viewing the technician workspace.
   const techOnly =
-    s.role === "technician" && s.actor.type === "user"
+    technicianWorkspace && s.actor.type === "user"
       ? (s.actor.id ?? undefined)
       : undefined;
   const data = await withTenant(s.businessId, s.actor, async (tx) => {
@@ -469,17 +475,22 @@ export default async function JobsPage({
   // Technicians get a dedicated assigned-work workspace. The general RO
   // editor, profit, invoices, estimates, customer administration and
   // advisor-only actions are never rendered for technician sessions.
-  if (s.role === "technician") {
+  if (technicianWorkspace) {
     const assignedInput = selected ? jobInput.parse(selected.data) : null;
     return (
       <HydratedMain id="main-content" tabIndex={-1}>
-        <h1>My assigned repair orders</h1>
+        <h1>My technician work</h1>
         <p className="muted">
-          Only work assigned to your account appears here.
+          Only technician work assigned to your account appears here.
         </p>
+        {ownerAsTechnician && (
+          <Link className="btn secondary" href={selected ? `/app/jobs?job=${selected.id}` : "/app/jobs"}>
+            Return to advisor / owner view
+          </Link>
+        )}
         {selected ? (
           <>
-            <Link href="/app/jobs">← My assigned ROs</Link>
+            <Link href={ownerAsTechnician ? "/app/jobs?mode=technician" : "/app/jobs"}>← My assigned ROs</Link>
             <section className="card">
               <h2>{assignedInput?.title || "Repair order"}</h2>
               {(assignedInput?.concerns ||
@@ -570,7 +581,7 @@ export default async function JobsPage({
               <ul className="row-list card">
                 {data.jobs.map((j) => (
                   <li key={j.id}>
-                    <Link href={`/app/jobs?job=${j.id}`}>
+                    <Link href={ownerAsTechnician ? `/app/jobs?job=${j.id}&mode=technician` : `/app/jobs?job=${j.id}`}>
                       <strong>
                         {(j.data as { title?: string }).title || "Repair order"}
                       </strong>
@@ -1085,6 +1096,14 @@ export default async function JobsPage({
                   </div>
                 )}
                 {advisorAssignment}
+                {s.role === "owner" && data.assignee === s.actor.id && (
+                  <Link
+                    className="btn secondary"
+                    href={`/app/jobs?job=${selected.id}&mode=technician`}
+                  >
+                    Work this RO as technician
+                  </Link>
+                )}
                 {flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
