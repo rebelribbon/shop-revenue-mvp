@@ -12,7 +12,7 @@ import {
 } from "@/db/schema";
 import type { TenantTx } from "@/db/tenant";
 import { AppError, notFound } from "@/lib/errors";
-import { assertManager } from "./membership";
+import { assertManager, canManageTeam } from "./membership";
 import { loadJobWorkflows } from "./job-workflow";
 import { getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
@@ -167,7 +167,6 @@ export async function assignJob(
   meta: RequestMeta,
   input: { jobId: string; userId: string | null },
 ) {
-  await assertCanAssign(tx);
   await tx.execute(
     sql`select pg_advisory_xact_lock(hashtextextended(${input.jobId},0))`,
   );
@@ -176,6 +175,16 @@ export async function assignJob(
   const before = (await jobAssignees(tx, [input.jobId])).get(input.jobId);
   if ((before ?? null) === input.userId)
     return { jobId: input.jobId, tech: tech?.name ?? null, handoff: false };
+  // The RO advisor may select the FIRST technician. Once assigned, managers
+  // exclusively control reassignment and removal (including role changes).
+  if (!(await canManageTeam(tx))) {
+    const advisorId = await assignedAdvisorForJob(tx, input.jobId);
+    if (before || !input.userId || advisorId !== tx.actor.id)
+      throw new AppError(
+        "FORBIDDEN",
+        "Only management may change an assigned technician. The RO advisor may choose the first technician.",
+      );
+  }
   await tx
     .insert(jobAssignment)
     .values({
