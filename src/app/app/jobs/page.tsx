@@ -903,6 +903,7 @@ export default async function JobsPage({
                     stage={flow?.stage}
                     statusLabel={statusLabels[statusOf(selected.id)]}
                     editHref={`/app/jobs?edit=${selected.id}`}
+                    documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
                   />
                 )}
                 {data.presentPath && (
@@ -1068,7 +1069,7 @@ export default async function JobsPage({
                       submitLabel={data.assignee ? "Change technician" : "Assign technician"}
                       variant="secondary"
                     >
-                      <label htmlFor="job-tech">Tech on this job</label>
+                      <label htmlFor="job-tech">Technician for this RO (all repairs)</label>
                       <select
                         id="job-tech"
                         name="userId"
