@@ -1477,6 +1477,7 @@ export default async function JobsPage({
                                 jobId={selected.id}
                                 version={selected.version}
                                 existingVersion={flow?.latest?.estimate.version}
+                                requiresChangeReason={!!flow?.latest?.authorization || !!flow?.currentInvoice}
                                 pendingChanges={flow?.changedSinceEstimate}
                               />
                             </section>
