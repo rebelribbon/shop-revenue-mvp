@@ -39,6 +39,8 @@ const finish = defineShopAction({
     appointmentId: z.uuid().optional(),
     tag: z.enum(MEDIA_TAGS),
     caption: z.string().max(500).optional(),
+    mediaPurpose: z.enum(["general", "intake", "finding", "walkaround"]).optional(),
+    inspectionItemKey: z.string().max(60).optional(),
     showCustomer: z.boolean().optional(),
   }),
   run: ({ tx, meta }, i) => finishMediaUpload(tx, meta, i),
