@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type {
   InspectionItem,
   InspectionStatus,
@@ -49,6 +49,7 @@ export function InspectionForm({
   automotive?: boolean;
 }) {
   const router = useRouter();
+  const headingRef = useRef<HTMLElement>(null);
   const ready = useActionHydration();
   const [items, setItems] = useState(initial);
   const [assessment, setAssessment] = useState(initialAssessment);
@@ -122,6 +123,10 @@ export function InspectionForm({
     }
   }
 
+  function scrollToCurrentStep() {
+    headingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function next() {
     if (pickup && !pickupComplete) {
       setMessage("Confirm pickup and enter the rack or bay.");
@@ -131,12 +136,17 @@ export function InspectionForm({
       setMessage("Complete each item in this section. Caution and Fail need findings; Fail also needs a repair recommendation.");
       return;
     }
-    if (await persist(false)) setStep((current) => current + 1);
+    if (await persist(false)) {
+      setStep((current) => current + 1);
+      // The next system renders above the fixed mobile action bar. Without
+      // moving the viewport, it looks like the button did nothing.
+      scrollToCurrentStep();
+    }
   }
 
   return (
     <div className="inspection inspection-wizard" data-ux-ready={ready}>
-      <header className="inspection-section-header">
+      <header ref={headingRef} className="inspection-section-header">
         <p className="muted">
           {automotive ? "Vehicle inspection" : "Service inspection"} · {checked} of {items.length} checked
         </p>
@@ -331,7 +341,10 @@ export function InspectionForm({
                   <button
                     type="button"
                     className="btn secondary"
-                    onClick={() => setStep(index)}
+                    onClick={() => {
+                      setStep(index);
+                      scrollToCurrentStep();
+                    }}
                     disabled={pending}
                   >
                     Edit {name}
@@ -373,7 +386,10 @@ export function InspectionForm({
               <button
                 className="btn secondary"
                 type="button"
-                onClick={() => setStep((current) => current - 1)}
+                onClick={() => {
+                  setStep((current) => current - 1);
+                  scrollToCurrentStep();
+                }}
                 disabled={!ready || pending}
               >
                 Back
@@ -407,9 +423,11 @@ export function InspectionForm({
             type="button"
             className="btn secondary"
             disabled={!ready || pending}
-            onClick={() => void persist(false)}
+            onClick={async () => {
+              if (await persist(false)) router.push("/app/tasks");
+            }}
           >
-            Save and finish later
+            Save and exit
           </button>
         </footer>
       )}
