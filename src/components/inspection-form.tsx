@@ -52,8 +52,7 @@ export function InspectionForm({
     if (readOnly || completed) return initial.length;
     if (
       !initialAssessment.vehiclePickedUp ||
-      !initialAssessment.bay.trim() ||
-      !initialAssessment.diagnosis.trim()
+      !initialAssessment.bay.trim()
     )
       return -1;
     const pending = initial.findIndex((item) => !pointReady(item));
@@ -65,15 +64,23 @@ export function InspectionForm({
 
   const active = step >= 0 && step < items.length ? items[step] : null;
   const checked = items.filter((item) => item.status !== "unchecked").length;
-  const canAssess =
-    assessment.vehiclePickedUp &&
-    !!assessment.bay.trim() &&
-    !!assessment.diagnosis.trim();
-  const canSubmit = canAssess && items.length > 0 && items.every(pointReady);
+  const canAssess = assessment.vehiclePickedUp && !!assessment.bay.trim();
+  const diagnosisReady = !!assessment.diagnosis.trim();
+  const canSubmit =
+    canAssess && diagnosisReady && items.length > 0 && items.every(pointReady);
   const total = items.length;
   const isReview = step === total;
   const isAssessment = step === -1;
   const sections = [...new Set(items.map((item) => item.section || "Inspection"))];
+  const sectionOf = (item: InspectionItem) => item.section || "Inspection";
+  const sectionProgress = active
+    ? items.filter((item) => sectionOf(item) === sectionOf(active)).filter(
+        (item) => item.status !== "unchecked",
+      ).length
+    : 0;
+  const sectionTotal = active
+    ? items.filter((item) => sectionOf(item) === sectionOf(active)).length
+    : 0;
   const locked = readOnly || completed || !ready || pending;
 
   function setItem(key: string, patch: Partial<InspectionItem>) {
@@ -86,7 +93,7 @@ export function InspectionForm({
   async function save(submit: boolean): Promise<boolean> {
     if (pending || readOnly || completed || !ready) return false;
     if (submit && !canSubmit) {
-      setMessage("Complete your diagnosis and all 40 points before submitting.");
+      setMessage("Finish all checkpoints and enter your diagnosis before submitting.");
       return false;
     }
     setPending(true);
@@ -130,7 +137,7 @@ export function InspectionForm({
       return;
     }
     if (next > step && isAssessment && !canAssess) {
-      setMessage("Confirm vehicle pickup, record the bay, and enter your diagnosis.");
+      setMessage("Confirm pickup and choose a bay or rack to begin.");
       return;
     }
     if (next > step && active && !pointReady(active)) {
@@ -145,11 +152,10 @@ export function InspectionForm({
   }
 
   return (
-    <div className="inspection" data-ux-ready={ready}>
+    <div className="inspection inspection-wizard" data-ux-ready={ready}>
       <div className="inspection-section-header">
-        <p>
-          <strong>{automotive ? "40-point vehicle inspection" : "Service inspection"}</strong>
-          {" · "}{checked} of {total} checked
+        <p className="muted">
+          {automotive ? "Vehicle inspection" : "Service inspection"} · {checked}/{total} complete
         </p>
         <progress max={Math.max(total, 1)} value={checked} style={{ width: "100%" }}>
           {checked} of {total}
@@ -157,18 +163,23 @@ export function InspectionForm({
         <h3>
           {isAssessment
             ? automotive
-              ? "Step 1 · Pickup and diagnosis"
-              : "Step 1 · Arrival and assessment"
+              ? "Start inspection"
+              : "Start assessment"
             : isReview
-              ? "Review inspection"
-              : "Point " + (step + 1) + " of " + total + " · " +
-                (active?.section || "Inspection")}
+              ? "Finish and submit"
+              : (active?.section || "Inspection")}
         </h3>
+        {active && (
+          <p className="muted">
+            Checkpoint {step + 1} of {total} · {sectionProgress} of {sectionTotal} in this section
+          </p>
+        )}
       </div>
 
       {isAssessment && (
         <fieldset disabled={locked}>
-          <legend>{automotive ? "Vehicle pickup" : "Service arrival"}</legend>
+          <legend>{automotive ? "1. Pick up the vehicle" : "1. Begin service"}</legend>
+          <p>Confirm where you are working. You can record your diagnosis after inspecting the vehicle.</p>
           <label>
             <input
               type="checkbox"
@@ -197,21 +208,7 @@ export function InspectionForm({
               setAssessment((current) => ({ ...current, bay: event.target.value }))
             }
           />
-          <label htmlFor={"inspection-diagnosis-" + jobId}>Technician diagnosis</label>
-          <textarea
-            id={"inspection-diagnosis-" + jobId}
-            rows={4}
-            maxLength={4000}
-            required
-            value={assessment.diagnosis}
-            placeholder="Describe the concern, symptoms, tests and initial findings."
-            onChange={(event) =>
-              setAssessment((current) => ({
-                ...current,
-                diagnosis: event.target.value,
-              }))
-            }
-          />
+
         </fieldset>
       )}
 
@@ -219,6 +216,7 @@ export function InspectionForm({
         <section className={"inspection-item is-" + active.status}>
           <fieldset disabled={locked}>
             <legend><strong>{active.label}</strong></legend>
+            <p className="muted">Select the condition of this item.</p>
             {active.hint && <p className="muted">{active.hint}</p>}
             <div className="inspection-choices" aria-label={"Condition: " + active.label}>
               {CHOICES.map((choice) => (
@@ -297,10 +295,11 @@ export function InspectionForm({
                   ))}
                 </div>
               )}
-            <p className="muted">
-              {active.addedToJob ? "Already included in the estimate." :
-                "Photos and videos can be added in Technician media on this RO."}
-            </p>
+            {(active.status === "watch" || active.status === "fix") && (
+              <a className="btn secondary" href={`/app/jobs?job=${jobId}&mode=technician#technician-media`}>
+                Add photo or video of this finding
+              </a>
+            )}
           </fieldset>
         </section>
       )}
@@ -313,9 +312,28 @@ export function InspectionForm({
             {" · "}<strong>Fail:</strong> {items.filter((i) => i.status === "fix").length}
             {" · "}<strong>N/A:</strong> {items.filter((i) => i.status === "na").length}
           </p>
-          <p className="muted">
-            {assessment.diagnosis || "Technician diagnosis is not yet recorded."}
-          </p>
+          <label htmlFor={`inspection-diagnosis-${jobId}`}>
+            <strong>Technician diagnosis</strong> (required before submission)
+          </label>
+          {readOnly || completed ? (
+            <p>{assessment.diagnosis || "No diagnosis recorded."}</p>
+          ) : (
+            <textarea
+              id={`inspection-diagnosis-${jobId}`}
+              rows={4}
+              maxLength={4000}
+              required
+              value={assessment.diagnosis}
+              placeholder="Describe the customer's concern, tests, and findings."
+              onChange={(event) =>
+                setAssessment((current) => ({
+                  ...current,
+                  diagnosis: event.target.value,
+                }))
+              }
+            />
+          )}
+          <p className="muted">Review the flagged items and submit to the assigned advisor.</p>
           {sections.map((section) => (
             <details key={section}>
               <summary>{section}</summary>
@@ -343,7 +361,7 @@ export function InspectionForm({
           ))}
           {!canSubmit && !completed && (
             <p className="notice" role="alert">
-              Finish any unchecked or incomplete points before submitting.
+              Complete any unfinished checkpoints and enter a diagnosis before submitting.
             </p>
           )}
         </section>
@@ -377,9 +395,11 @@ export function InspectionForm({
                 disabled={!ready || pending || (isAssessment ? !canAssess : !active || !pointReady(active))}
                 onClick={() => void goTo(step + 1)}
               >
-                {active && step === total - 1
-                  ? "Review inspection"
-                  : "Save and next"}
+                {isAssessment
+                  ? "Begin 40-point inspection"
+                  : active && step === total - 1
+                    ? "Review and submit"
+                    : "Save · Next checkpoint"}
               </button>
             ) : (
               <button
@@ -388,7 +408,7 @@ export function InspectionForm({
                 disabled={!ready || pending || !canSubmit}
                 onClick={() => void save(true)}
               >
-                Submit inspection · Notify advisor
+                Submit to service advisor
               </button>
             )}
           </nav>
