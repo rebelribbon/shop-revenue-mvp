@@ -6,8 +6,8 @@ type Stage = JobWorkflow["stage"];
 const descriptions: Partial<Record<Stage, { title: string; detail: string }>> =
   {
     awaiting: {
-      title: "Waiting for customer authorization",
-      detail: "The customer reviews each line and signs before repairs begin.",
+      title: "Estimate prepared — review and share",
+      detail: "Open Documents to preview exactly what is saved, choose how to share it, and track the customer’s approval before starting repairs.",
     },
     ready: {
       title: "Authorized work ready",
