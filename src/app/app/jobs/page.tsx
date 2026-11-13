@@ -1394,7 +1394,7 @@ export default async function JobsPage({
                     )}
                     {auto && !awaitingInspection && data.inspection?.complete && !flow?.latest && (
                       <section className="ro-stage-panel" aria-label="Ready to price inspection findings">
-                        <h3>Next: Price the technician's findings</h3>
+                        <h3>Next: Price the technician&apos;s findings</h3>
                         <p>The inspection is complete. The advisor adds the parts, labor and selling prices before sending anything to the customer.</p>
                         <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>
                           Build customer estimate
