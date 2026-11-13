@@ -5687,3 +5687,6 @@ main.customer-index-page {
   cursor: pointer;
   font-weight: 600;
 }
+
+/* Keep the current system below the fixed mobile toolbar after Next/Back. */
+.inspection-wizard .inspection-section-header { scroll-margin-top: 140px; }
