@@ -27,7 +27,12 @@ export function FileCabinet({
   autoOpenShare?: boolean;
   timeZone: string;
 }) {
-  const estimate = items.find((item) => item.estimateShareId);
+  // Never let the shop send an older frozen version while its RO has newer
+  // unsent priced work. Finalize the current draft first.
+  const hasNewerDraft = items.some((item) => item.status === "Draft — not sent");
+  const estimate = hasNewerDraft
+    ? undefined
+    : items.find((item) => item.estimateShareId);
   const [view, setView] = useState<View>("all");
   const [activeId, setActiveId] = useState<string>(
     estimate?.id ?? items[0]?.id ?? "",
@@ -233,8 +238,8 @@ export function FileCabinet({
           </div>
           {docs.length === 0 && (
             <div className="docs-empty">
-              No documents here yet. Prepare an estimate or add an agreement
-              from the job&apos;s Docs section.
+              No documents here yet. Save parts and labor to see the customer
+              estimate draft here.
             </div>
           )}
           {docs.map((item) => {
@@ -443,8 +448,8 @@ export function FileCabinet({
             <div className="docs-preview-placeholder">
               <h4>No documents yet</h4>
               <p>
-                Prepare the estimate from the Job Setup view and it will appear
-                here automatically.
+                Save parts and labor on this RO to create the customer estimate
+                draft. It will appear here automatically.
               </p>
             </div>
           )}
