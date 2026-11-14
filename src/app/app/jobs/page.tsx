@@ -9,6 +9,10 @@ import { jobReference } from "@/lib/job-reference";
 import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
+import { RoDocumentPrepare } from "@/components/ro-document-prepare";
+import type { CabinetItem } from "@/domain/documents";
+import { estimateTotals } from "@/lib/estimate-tax";
+import { legalPolicy } from "@/db/schema";
 import { jobCabinet, listTemplates } from "@/domain/documents";
 import { getDocumentShare } from "@/domain/document-sharing";
 import { AppError } from "@/lib/errors";
@@ -269,6 +273,15 @@ export default async function JobsPage({
     return {
       ...page,
       cabinet,
+      authorizationPolicyReady: page.selected
+        ? (await tx.select({ id: legalPolicy.id })
+            .from(legalPolicy)
+            .where(and(
+              eq(legalPolicy.jurisdictionCode, (await getBusinessProfile(tx)).jurisdictionCode),
+              eq(legalPolicy.kind, "estimate_authorization"),
+              eq(legalPolicy.status, "approved"),
+            )).limit(1)).length > 0
+        : false,
       contact,
       estimateDraftPath,
       presentPath,
@@ -789,6 +802,8 @@ export default async function JobsPage({
             tab =
               requestedTab === "notes" || requestedTab === "timeline"
                 ? "history"
+                : auto && requestedTab === "estimate"
+                  ? "files"
                 : ["inspection", "photos", "estimate", "files", "history"].includes(
                       requestedTab ?? "",
                     )
@@ -804,6 +819,50 @@ export default async function JobsPage({
               part.unitCostCents !== null) &&
             input.labor.every((line) => line.description.trim() &&
               (!line.fromInspection || (line.sellRateCents > 0 && line.costRateCents !== null)));
+          const needsEstimateDraft =
+            auto && !!data.inspection?.complete &&
+            (!flow?.latest || flow.changedSinceEstimate);
+          const taxRateForDocuments =
+            flow?.currentInvoice?.snapshot.taxBps ?? data.profile?.taxRateBps ?? 0;
+          const draftLines = [
+            ...input.parts.map((part, i) => ({
+              id: `part-${i}`, kind: "part" as const,
+              description: part.description, quantity: part.quantity,
+              unitPriceCents: part.unitPriceCents,
+              totalCents: Math.round(part.quantity * part.unitPriceCents),
+              taxable: part.taxable ?? data.profile?.partsTaxableDefault ?? true,
+            })),
+            ...input.labor.map((line, i) => ({
+              id: `labor-${i}`, kind: "labor" as const,
+              description: line.description,
+              quantity: line.estimatedHoursHundredths / 100,
+              unitPriceCents: line.sellRateCents,
+              totalCents: Math.round(line.estimatedHoursHundredths * line.sellRateCents / 100),
+              taxable: line.taxable ?? data.profile?.laborTaxableDefault ?? true,
+            })),
+          ];
+          const draftTotals = estimateTotals(draftLines, taxRateForDocuments);
+          const documentItems: CabinetItem[] =
+            needsEstimateDraft && draftLines.length
+              ? [{
+                  id: `ro-estimate-draft-${selected.id}`,
+                  group: "Created for this job",
+                  title: "Customer estimate · Draft",
+                  detail: "Not sent · Review before finalizing",
+                  at: selected.createdAt,
+                  status: "Draft — not sent",
+                  href: null,
+                  preview: {
+                    type: "estimate",
+                    customerName,
+                    shopName,
+                    subject: selected.title,
+                    totalCents: draftTotals.totalCents,
+                    taxCents: draftTotals.taxCents,
+                    lines: draftLines,
+                  },
+                }, ...data.cabinet]
+              : data.cabinet;
           return (
             <>
               <p>
@@ -1340,7 +1399,6 @@ export default async function JobsPage({
                     ? ([["work", "Next step"], ["history", "History"]] as const)
                     : [
                       ["work", "Overview"],
-                      ...(auto ? ([["estimate", "Estimate"]] as const) : []),
                       [
                         "inspection",
                         `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
@@ -1403,93 +1461,6 @@ export default async function JobsPage({
                     )}
                   </>
                 )}
-                {tab === "estimate" && auto && (
-                  <section className="ro-estimate-workspace" id="job-estimate" aria-label="Estimate and customer preview">
-                    <p className="muted">STEP 2 OF 3 · CUSTOMER ESTIMATE</p>
-                    <h3>Review the estimate</h3>
-                    {!data.inspection?.complete ? (
-                      <>
-                        <p>The technician must submit the inspection before an estimate can be prepared.</p>
-                        <Link className="btn secondary" href={`/app/jobs?job=${selected.id}`}>Return to RO</Link>
-                      </>
-                    ) : (
-                      <>
-                        {flow?.latest && !flow.changedSinceEstimate ? (
-                          <p className="notice ok" role="status">
-                            Estimate version {flow.latest.estimate.version} is saved in Documents.
-                            {flow.latest.authorization ? " Customer response received." : " Preview and send the prepared document, or check for the customer response."}
-                          </p>
-                        ) : (
-                          <p className="notice" role="status">
-                            {flow?.latest
-                              ? "Changes to the RO need a revised estimate before they can be sent."
-                              : "Draft pricing — not yet prepared or sent to the customer."}
-                          </p>
-                        )}
-                        <section className="ro-estimate-preview" aria-label="Customer-facing estimate preview">
-                          <p className="muted">PREVIEW · RO #{selected.id.slice(0, 8).toUpperCase()}</p>
-                          <h4>{selected.title}</h4>
-                          <p>{customerName}{input.mileageIn != null
-                            ? ` · ${input.mileageIn.toLocaleString("en-US")} miles`
-                            : ""}</p>
-                          {input.concerns && <p><strong>Customer concern:</strong> {input.concerns}</p>}
-                          <div className="table-wrap"><table>
-                            <thead><tr><th>Work / item</th><th>Customer price</th></tr></thead>
-                            <tbody>
-                              {input.parts.map((p, i) => (
-                                <tr key={`part-${i}`}>
-                                  <td>{p.description} · Qty {p.quantity}</td>
-                                  <td>{money(Math.round(p.quantity * p.unitPriceCents))}</td>
-                                </tr>
-                              ))}
-                              {input.labor.map((l, i) => (
-                                <tr key={`labor-${i}`}>
-                                  <td>{l.description} · {(l.estimatedHoursHundredths / 100).toFixed(2)} labor hours</td>
-                                  <td>{money(Math.round(l.estimatedHoursHundredths * l.sellRateCents / 100))}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table></div>
-                          <p><strong>Subtotal before tax: {money(t.subtotalCents)}</strong></p>
-                          <p className="muted">The final customer document also includes the completed inspection, advisor-approved media, taxes, and Approve / Decline choices for every line.</p>
-                        </section>
-                        <div className="money-actions">
-                          <Link className="btn secondary" href={`/app/jobs?edit=${selected.id}`}>
-                            Edit parts and labor
-                          </Link>
-                          <Link className="btn secondary" href={`/app/jobs?job=${selected.id}&tab=files`}>
-                            All RO documents ({data.cabinet.length})
-                          </Link>
-                        </div>
-                        {!pricingReady && (
-                          <p className="notice">Pricing is incomplete. Open Edit parts and labor to finish the costs and selling prices before preparing a customer document.</p>
-                        )}
-                        {s.actor.type !== "support" && !selected.documentOnly &&
-                          pricingReady &&
-                          (!flow?.latest || flow.changedSinceEstimate) && (
-                            <section className="record-details">
-                              <h4>Prepare customer estimate</h4>
-                              <p>Preparing saves a fixed customer document, then opens Documents for preview and sending. No message is sent automatically.</p>
-                              <EstimatePublisher
-                                taxRateBps={flow?.currentInvoice
-                                  ? flow.currentInvoice.snapshot.taxBps
-                                  : data.profile?.taxRateBps}
-                                jobId={selected.id}
-                                version={selected.version}
-                                existingVersion={flow?.latest?.estimate.version}
-                                pendingChanges={flow?.changedSinceEstimate}
-                              />
-                            </section>
-                          )}
-                        {flow?.latest && !flow.changedSinceEstimate && (
-                          <Link className="btn primary" href={`/app/jobs?job=${selected.id}&tab=files&share=1`}>
-                            Preview and share saved estimate
-                          </Link>
-                        )}
-                      </>
-                    )}
-                  </section>
-                )}
                 {tab === "photos" && (
                   <>
                     <section aria-label="Photos and videos" id="job-photos">
@@ -1530,17 +1501,19 @@ export default async function JobsPage({
                       id="share-customer-packet"
                     >
                       <div>
-                        <p className="muted">STEP 3 OF 3 · CUSTOMER DOCUMENTS</p>
+                        <p className="muted">CUSTOMER DOCUMENTS</p>
                         <h3>Estimate &amp; Documents</h3>
                         {!flow?.latest?.estimate && (
                           <p className="muted">
-                            No customer estimate is prepared yet. Build and review it first.
+                            {needsEstimateDraft
+                              ? "Your priced work is available as a draft below. Review it and finalize it here."
+                              : "Finish parts and labor pricing to generate a draft estimate."}
                           </p>
                         )}
                       </div>
                       {auto && data.inspection?.complete && (
-                        <Link className="btn secondary" href={`/app/jobs?job=${selected.id}&tab=estimate`}>
-                          {flow?.latest ? "Review estimate" : "Build customer estimate"}
+                        <Link className="btn secondary" href={`/app/jobs?edit=${selected.id}`}>
+                          Edit parts and labor
                         </Link>
                       )}
                       {s.actor.type !== "support" && (
@@ -1576,8 +1549,18 @@ export default async function JobsPage({
                         </details>
                       )}
                     </section>
+                    {needsEstimateDraft && draftLines.length > 0 &&
+                      s.actor.type !== "support" && !selected.documentOnly && (
+                        <RoDocumentPrepare
+                          jobId={selected.id}
+                          version={selected.version}
+                          taxRateBps={taxRateForDocuments}
+                          readyToPrepare={pricingReady}
+                          policyConfigured={data.authorizationPolicyReady}
+                        />
+                      )}
                     <FileCabinet
-                      items={data.cabinet}
+                      items={documentItems}
                       autoOpenShare={share === "1"}
                       customerPhone={
                         data.contact && !data.contact.textOff
