@@ -138,7 +138,7 @@ export function RoEstimateBuilder({
         return;
       }
       setRequestId(crypto.randomUUID());
-      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=estimate&saved=1#job-estimate`);
+      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=files&saved=1#file-cabinet`);
       router.refresh();
     } catch {
       setMessage("Could not save the estimate. Your entries are still here.");
@@ -294,7 +294,7 @@ export function RoEstimateBuilder({
         <button type="button" className="btn primary"
           disabled={!ready || pending || !valid}
           onClick={() => void save()}>
-          {pending ? "Saving…" : "Save and preview estimate"}
+          {pending ? "Saving…" : "Save parts & labor → Documents"}
         </button>
         <p role="status">{message}</p>
         <Link className="btn secondary" href={`/app/jobs?job=${initial.jobId}`}>Back to RO</Link>
