@@ -13,6 +13,7 @@ test("walks a shop owner from customer creation through customer authorization a
   await test.step("1 customer", async () => {
     await signInWithPassword(page, "owner.b@shop-b.test");
     await page.goto("/app/customers/new");
+    await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
     await page.getByLabel("First name", { exact: true }).fill(name);
     await page.getByLabel("Email", { exact: true }).fill(email);
     await page.getByLabel("Mobile number", { exact: true }).fill(`+1210555${String(stamp).slice(-4)}`);
