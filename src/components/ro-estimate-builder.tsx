@@ -264,7 +264,7 @@ export function RoEstimateBuilder({
                   taxable: partsTaxable,
                 }],
               }))}>+ Add part to this repair</button>
-            {!repair.parts.length && <p className="muted">No parts needed? Labor-only work is allowed.</p>}
+            {!repair.parts.length && <p className="muted">No parts entered for this repair. Add replacement parts when they are included in the customer price.</p>}
           </fieldset>
           <p className="ro-estimate-total">Repair subtotal: <strong>{dollars(
             Math.round(repair.labor.estimatedHoursHundredths * repair.labor.sellRateCents / 100) +
