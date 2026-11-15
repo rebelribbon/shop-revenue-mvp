@@ -6555,3 +6555,26 @@ main.customer-index-page {
   .ro-estimate-part .muted, .ro-estimate-line .muted { font-size: .78rem; }
   .ro-estimate-repair input { min-height: 42px; font-size: 16px; }
 }
+
+
+.ro-internal-cost {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.ro-internal-cost > summary {
+  min-height: 38px;
+  padding: 8px 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .82rem;
+  list-style: none;
+}
+.ro-internal-cost > summary::after { content: " ▾"; }
+.ro-internal-cost[open] > summary::after { content: " ▴"; }
+.ro-internal-cost > label { margin: 6px 0 4px; max-width: 260px; }
+@media (max-width:700px) {
+  .ro-estimate-numbers label:last-child { grid-column: auto; }
+  .ro-internal-cost > label input { width: 100%; }
+  .ro-estimate-repair { gap: 6px; }
+  .ro-estimate-part { margin-bottom: 6px; }
+}
