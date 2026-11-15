@@ -1504,6 +1504,28 @@ export default async function JobsPage({
                   <>
                     {auto && !!data.inspection?.complete && (needsEstimateDraft || !!flow?.latest) && (
                       <section id="customer-proposal-review" className="ro-inline-proposal" aria-label="Review, finalize and send customer documents">
+                        {s.actor.type !== "support" && (
+                          <details className="ro-inline-attach-agreement">
+                            <summary>+ Add supporting agreement</summary>
+                            {data.templates.length ? (
+                              <ActionForm
+                                action={sendDocumentAction}
+                                hidden={{ jobId: selected.id }}
+                                submitLabel="Add to packet"
+                                variant="secondary"
+                              >
+                                <label htmlFor="ro-proposal-agreement">Agreement</label>
+                                <select id="ro-proposal-agreement" name="templateId" required>
+                                  {data.templates.map((template) => (
+                                    <option key={template.id} value={template.id}>{template.name}</option>
+                                  ))}
+                                </select>
+                              </ActionForm>
+                            ) : (
+                              <p className="muted">No agreement templates are configured. <Link href="/app/settings/documents">Manage templates</Link></p>
+                            )}
+                          </details>
+                        )}
                         {needsEstimateDraft ? (
                           <>
                             <div className="ro-inline-proposal-heading">
