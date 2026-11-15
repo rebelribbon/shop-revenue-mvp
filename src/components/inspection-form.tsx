@@ -53,7 +53,7 @@ export function InspectionForm({
   const ready = useActionHydration();
   const [items, setItems] = useState(initial);
   const [assessment, setAssessment] = useState(initialAssessment);
-  const [reviewSection, setReviewSection] = useState(() => sectionName(initial[0] ?? { section: "Inspection" } as InspectionItem));
+  const [reviewSection, setReviewSection] = useState(() => initial[0] ? sectionName(initial[0]) : "");
   const sections = [...new Set(initial.map(sectionName))];
   // One screen per VEHICLE SYSTEM, not one screen per checklist point.
   // -1: pickup; 0..N-1: system inspection; N: final review.
