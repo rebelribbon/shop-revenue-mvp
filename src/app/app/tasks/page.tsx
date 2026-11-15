@@ -68,7 +68,12 @@ export default async function TasksPage(props: {
       ]),
     );
   if (jobId && !context) notFound();
-  const rows = view === "due" ? data.due : data.later;
+  const rows = view === "due"
+    ? [...data.due].sort((a, b) =>
+        Number(b.source === "work") - Number(a.source === "work"),
+      )
+    : data.later;
+  const actionable = rows.filter((task) => task.source === "work").length;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <header className="task-heading">
@@ -210,6 +215,19 @@ export default async function TasksPage(props: {
           <Link className="panel-close" href="/app/tasks">
             Close
           </Link>
+        </section>
+      )}
+      {view === "due" && rows.length > 0 && (
+        <section className="task-focus" aria-label="Today's work">
+          <p className="muted">YOUR WORK QUEUE</p>
+          <h2>{actionable
+            ? `${actionable} repair order handoff${actionable === 1 ? "" : "s"} ready`
+            : "Today's follow-ups"}</h2>
+          <p className="muted">
+            {actionable
+              ? "Assigned repair orders come first. Open the task, complete the next stage, and hand the RO to the next person."
+              : "Start with the next customer who needs a response. Every completed task stays in the RO or customer history."}
+          </p>
         </section>
       )}
       {rows.length === 0 ? (
@@ -449,6 +467,10 @@ function TaskItem({
               {action.label}
             </TaskActionLink>
           )}
+          {(related || canLogCall || canUpdate) && (
+            <details className="task-more-actions">
+              <summary>More options</summary>
+              <div className="task-more-content">
           {related && (
             <Link className="btn secondary" href={related}>
               {relatedLabel}
@@ -518,6 +540,9 @@ function TaskItem({
               submitLabel="Not needed"
               variant="secondary"
             />
+          )}
+              </div>
+            </details>
           )}
         </div>
       )}
