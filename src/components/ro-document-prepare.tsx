@@ -51,7 +51,7 @@ export function RoDocumentPrepare({
     }
   }
   return (
-    <section className="ro-documents-prepare proposal-preparation" data-ux-ready={hydrated} aria-label="Finalize customer proposal">
+    <section id="proposal-finalize" className="ro-documents-prepare proposal-preparation" data-ux-ready={hydrated} aria-label="Finalize customer proposal">
       <RoProposalProgress stage="review" />
       <div className="proposal-preparation-head">
         <div>
