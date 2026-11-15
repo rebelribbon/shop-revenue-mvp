@@ -40,4 +40,36 @@ export function automaticEstimateChanges(
         );
       if (before.totalCents !== line.totalCents)
         details.push(
-          `line tot¶»§q«^
+          `line total ${money(before.totalCents)} → ${money(line.totalCents)}`,
+        );
+      if (before.taxable !== line.taxable)
+        details.push("tax treatment updated");
+      changes.push(`Updated ${line.description}: ${details.join(", ")}`);
+    }
+  }
+  for (const old of oldLines) {
+    if (!old.used) changes.push(`Removed ${old.line.kind}: ${old.line.description}`);
+  }
+  if (prior.taxBps !== current.taxBps)
+    changes.push(`Sales tax ${prior.taxBps / 100}% → ${current.taxBps / 100}%`);
+  if (prior.terms !== current.terms)
+    changes.push("Customer terms updated");
+  if (prior.totalCents !== current.totalCents)
+    changes.push(`Estimate total ${money(prior.totalCents)} → ${money(current.totalCents)}`);
+  if (
+    JSON.stringify(prior.inspection ?? null) !==
+    JSON.stringify(current.inspection ?? null)
+  ) changes.push("Inspection results updated");
+  if (
+    JSON.stringify(prior.photos ?? []) !==
+    JSON.stringify(current.photos ?? [])
+  ) changes.push("Shared inspection media updated");
+
+  // A new version can be required simply to reissue an expired or revoked
+  // link, with otherwise identical content.
+  return changes.length
+    ? changes.join("; ").slice(0, 2000)
+    : "Customer estimate reissued with no changes to priced work";
+}
+
+const money = (cents: number) => "$" + (cents / 100).toFixed(2);
