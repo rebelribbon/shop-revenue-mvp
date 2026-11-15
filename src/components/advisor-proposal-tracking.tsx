@@ -6,6 +6,7 @@ import type { EstimateSnapshot } from "@/db/schema/m3";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { EstimateDocument, formatMoney } from "./estimate-document";
 import { DocumentShare } from "./document-share";
+import { RoProposalProgress } from "./ro-proposal-progress";
 
 type Event = {
   id: string;
@@ -92,6 +93,7 @@ export function AdvisorProposalTracking({
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   return (
     <section className="proposal-tracker" aria-label="Customer proposal tracking">
+      <RoProposalProgress stage={submitted || signed ? "track" : "send"} />
       <header className="proposal-tracker-heading">
         <div>
           <p className="muted proposal-eyebrow">CUSTOMER PROPOSAL · VERSION {version}</p>
