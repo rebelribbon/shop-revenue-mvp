@@ -41,7 +41,7 @@ export function RoDocumentPrepare({
         return;
       }
       setRequestId(crypto.randomUUID());
-      router.replace(`/app/jobs?job=${encodeURIComponent(jobId)}&tab=files#file-cabinet`);
+      router.replace(`/app/jobs?job=${encodeURIComponent(jobId)}&tab=proposal&share=1`);
       router.refresh();
     } catch {
       setError("Could not prepare the estimate. Your priced work has been saved; try again.");
@@ -50,24 +50,31 @@ export function RoDocumentPrepare({
     }
   }
   return (
-    <section className="ro-documents-prepare" data-ux-ready={hydrated}>
-      <h4>Customer estimate — Draft</h4>
-      <p>Review the customer preview below. Only prepare and send when every part and labor price is correct.</p>
-      {!policyConfigured && (
-        <p className="notice" role="alert">
-          Customer approval cannot be sent yet: the platform has no approved estimate-authorization agreement for this shop&apos;s jurisdiction. A platform administrator must configure and approve one. The draft remains visible below, and no message has been sent.
-        </p>
+    <section className="ro-documents-prepare proposal-preparation" data-ux-ready={hydrated} aria-label="Finalize customer proposal">
+      <div className="proposal-preparation-head">
+        <div>
+          <p className="muted">STEP 2 OF 4 · REVIEW &amp; FINALIZE</p>
+          <h3>Ready to send to the customer?</h3>
+          <p>Confirm repair prices, then finalize the customer authorization. Sending is the next screen.</p>
+        </div>
+      </div>
+      {!readyToPrepare && (
+        <p className="notice" role="alert">Parts and labor still need valid prices and costs. Return to pricing to finish before finalizing.</p>
       )}
-      {!readyToPrepare && <p className="notice">Complete the parts and labor pricing before preparing an estimate.</p>}
+      {!policyConfigured && (
+        <div className="notice" role="alert">
+          <strong>Sending is blocked by platform setup.</strong>
+          <p>No approved authorization agreement exists for this jurisdiction. An authorized platform administrator must review and approve the agreement in <strong>Admin → Legal policies</strong> before any customer can sign. The draft and pricing are saved; the customer has not been sent anything.</p>
+        </div>
+      )}
       <button
         type="button"
         className="btn primary"
         disabled={!hydrated || pending || !readyToPrepare || !policyConfigured}
         onClick={() => void prepare()}
       >
-        {pending ? "Preparing…" : "Finalize estimate for customer"}
+        {pending ? "Finalizing…" : "Finalize & continue to send"}
       </button>
-      <p className="muted">Finalizing stores a fixed version in Documents. You choose the customer recipient and send it from this screen.</p>
       {error && <p className="notice" role="alert">{error}</p>}
     </section>
   );
