@@ -11,15 +11,11 @@ export const dynamic = "force-dynamic";
 // An invalid, revoked or expired token creates no event and reveals no details.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
-  const parsed = z
-    .object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) })
-    .safeParse(body);
+  const parsed = z.object({ token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).safeParse(body);
   if (parsed.success) {
     try {
       await runInContext(null, { type: "customer", id: null }, async (tx) => {
-        await tx.execute(
-          sql`select app.record_estimate_open(${hashToken(parsed.data.token)})`,
-        );
+        await tx.execute(sql`select app.record_estimate_open(${hashToken(parsed.data.token)})`);
       });
     } catch {
       // Analytics must never prevent the customer from viewing or signing.
