@@ -150,6 +150,8 @@ export default async function ReportsPage({
           </Link>
         ))}
       </div>
+      <details className="report-date-filter">
+        <summary>Custom date range</summary>
       <form method="get" className="card">
         <input type="hidden" name="report" value={key} />
         <label htmlFor="report-from">From</label>
@@ -168,8 +170,9 @@ export default async function ReportsPage({
           defaultValue={range.to}
           required
         />
-        <button className="btn secondary">Show these dates</button>
+        <button className="btn secondary">Apply dates</button>
       </form>
+      </details>
       <section className="card">
         <h2>
           {info.title}: {nice(range.from)} – {nice(range.to)}
