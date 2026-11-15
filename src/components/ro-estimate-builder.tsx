@@ -139,7 +139,7 @@ export function RoEstimateBuilder({
         return;
       }
       setRequestId(crypto.randomUUID());
-      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=files&saved=1#file-cabinet`);
+      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=files&saved=1#proposal-finalize`);
       router.refresh();
     } catch {
       setMessage("Could not save the estimate. Your entries are still here.");
