@@ -55,7 +55,7 @@ export function RoDocumentPrepare({
       <p>Review the customer preview below. Only prepare and send when every part and labor price is correct.</p>
       {!policyConfigured && (
         <p className="notice" role="alert">
-          Customer approval cannot be sent yet: the platform has no approved estimate-authorization agreement for this shop's jurisdiction. A platform administrator must configure and approve one. The draft remains visible below, and no message has been sent.
+          Customer approval cannot be sent yet: the platform has no approved estimate-authorization agreement for this shop&apos;s jurisdiction. A platform administrator must configure and approve one. The draft remains visible below, and no message has been sent.
         </p>
       )}
       {!readyToPrepare && <p className="notice">Complete the parts and labor pricing before preparing an estimate.</p>}
