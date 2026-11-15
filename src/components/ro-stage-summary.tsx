@@ -20,7 +20,7 @@ const descriptions: Partial<
 > = {
   awaiting: {
     title: "Review customer approval",
-    detail: "The proposal is saved. Use Documents to preview it, send it, and see the customer's approval or decline.",
+    detail: "The customer packet is ready on this RO. Review the documents, send the proposal, and track the response below.",
     step: "approval",
   },
   declined: {
@@ -102,9 +102,9 @@ export function RoStageSummary({
     : waiting
       ? "The technician records findings and evidence. The advisor will be notified once the inspection is submitted."
       : !hasEstimate
-        ? "Build parts and labor for each repair, then review the customer-facing proposal in Documents."
+        ? "Build parts and labor, then review and send the proposal directly on the RO Overview."
         : descriptions[stage ?? "draft"]?.detail ??
-          "Open Documents to review the estimate and the customer response.";
+          "Review the customer proposal and response below on this RO.";
   const nextHref = waiting && !technicianAssigned
     ? null
     : waiting
