@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { freezeEstimateAction } from "@/server/actions/estimates";
 import { useActionHydration } from "./action-hydration";
+import { RoProposalProgress } from "./ro-proposal-progress";
 
 export function RoDocumentPrepare({
   jobId,
@@ -51,6 +52,7 @@ export function RoDocumentPrepare({
   }
   return (
     <section className="ro-documents-prepare proposal-preparation" data-ux-ready={hydrated} aria-label="Finalize customer proposal">
+      <RoProposalProgress stage="review" />
       <div className="proposal-preparation-head">
         <div>
           <p className="muted">STEP 2 OF 4 · REVIEW &amp; FINALIZE</p>
