@@ -1052,6 +1052,8 @@ export default async function JobsPage({
                   <RoStageSummary
                     inspectionComplete={!!data.inspection?.complete}
                     hasEstimate={!!flow?.latest}
+                    hasPricedDraft={needsEstimateDraft && pricingReady}
+                    reviewHref={`/app/jobs?job=${selected.id}#customer-proposal-review`}
                     technicianAssigned={!!data.assignee}
                     stage={flow?.stage}
                     statusLabel={statusLabels[statusOf(selected.id)]}
