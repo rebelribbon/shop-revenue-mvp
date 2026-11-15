@@ -5940,3 +5940,52 @@ main.customer-index-page {
   .task-more-content { display: grid; grid-template-columns: 1fr; width: 100%; }
   .task-more-content .btn { width: 100%; }
 }
+
+
+/* Appointments and Reports: compact first, advanced details on demand. */
+.schedule-focus {
+  display: grid;
+  gap: 4px;
+  margin-block: 14px;
+}
+.schedule-focus > * { margin: 0; }
+.schedule-focus h2 { font-size: 1.18rem; }
+.schedule-day {
+  padding: 12px 14px;
+  margin-bottom: 9px;
+}
+.schedule-day > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  min-height: 40px;
+  list-style: none;
+}
+.schedule-day > summary::after {
+  content: "▾";
+  color: var(--muted);
+}
+.schedule-day[open] > summary::after { content: "▴"; }
+.schedule-day > summary + * { margin-top: 10px; }
+.schedule-day > summary > .muted {
+  margin-left: auto;
+  font-size: .83rem;
+}
+.schedule-date-filter, .report-date-filter {
+  margin-block: 12px;
+}
+.schedule-date-filter > summary, .report-date-filter > summary {
+  cursor: pointer;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  font-weight: 550;
+}
+.schedule-date-filter > form, .report-date-filter > form { margin-top: 8px; }
+@media (max-width: 480px) {
+  .schedule-day > summary { font-size: .94rem; }
+  .schedule-day .appointment-row { padding-block: 9px; }
+}
