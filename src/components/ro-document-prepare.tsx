@@ -65,8 +65,9 @@ export function RoDocumentPrepare({
       )}
       {!policyConfigured && (
         <div className="notice" role="alert">
-          <strong>Sending is blocked by platform setup.</strong>
-          <p>No approved authorization agreement exists for this jurisdiction. An authorized platform administrator must review and approve the agreement in <strong>Admin → Legal policies</strong> before any customer can sign. The draft and pricing are saved; the customer has not been sent anything.</p>
+          <strong>Customer authorization setup required</strong>
+          <p>An approved agreement is missing for this jurisdiction. A platform administrator must approve it before estimates can be sent for signature. Your priced draft is saved; no email was sent.</p>
+          <a href="/admin/policies" className="ro-edit-pricing-link">Open platform legal policies (admin access)</a>
         </div>
       )}
       <button
