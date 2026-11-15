@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { JobInput } from "@/domain/jobs";
 import { createJobAction } from "@/server/actions/jobs";
 import { useActionHydration } from "./action-hydration";
+import { RoProposalProgress } from "./ro-proposal-progress";
 
 type Part = JobInput["parts"][number];
 type Labor = JobInput["labor"][number];
@@ -149,6 +150,7 @@ export function RoEstimateBuilder({
 
   return (
     <section className="ro-estimate-builder" data-ux-ready={ready}>
+      <RoProposalProgress stage="price" />
       <header className="ro-pricing-compact-header">
         <div>
           <p className="muted">PARTS &amp; LABOR · {Math.min(activeIndex + 1, Math.max(repairs.length, 1))} OF {repairs.length || 1}</p>
