@@ -147,7 +147,7 @@ export function AdvisorProposalTracking({
       {signed && (
         <div className="proposal-signed-next">
           <strong>Customer authorization received.</strong>
-          <p>Only approved repairs may be released to the assigned technician. Continue on the RO's Overview.</p>
+          <p>Only approved repairs may be released to the assigned technician. Continue on the RO&apos;s Overview.</p>
           <Link className="btn primary" href={`/app/jobs?job=${jobId}#ro-workflow`}>Review approved work</Link>
         </div>
       )}
