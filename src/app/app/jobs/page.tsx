@@ -1719,7 +1719,7 @@ export default async function JobsPage({
                     documents={
                       <FileCabinet
                         items={documentItems}
-                        autoOpenShare={share === "1"}
+                        archiveOnly
                         customerPhone={data.contact && !data.contact.textOff
                           ? data.contact.phone : null}
                         customerEmail={data.contact && !data.contact.emailOff
@@ -1730,7 +1730,24 @@ export default async function JobsPage({
                     }
                   />
                 )}
-                {tab === "files" && (
+                {tab === "files" && (auto ? (
+                  <section className="ro-archive-view" aria-label="RO document archive">
+                    <div className="ro-archive-return">
+                      <strong>Documents &amp; signed copies</strong>
+                      <Link href={`/app/jobs?job=${selected.id}#customer-proposal-review`}>
+                        Return to proposal review &amp; send
+                      </Link>
+                    </div>
+                    <FileCabinet
+                      items={documentItems}
+                      archiveOnly
+                      customerPhone={null}
+                      customerEmail={null}
+                      readOnly={s.actor.type === "support"}
+                      timeZone={data.profile?.timezone || "America/Chicago"}
+                    />
+                  </section>
+                ) : (
                   <>
                     {!needsEstimateDraft && <section
                       className="docs-prep-toolbar"
@@ -1840,7 +1857,7 @@ export default async function JobsPage({
                     />
                     )}
                   </>
-                )}
+                ))}
                 {tab === "inspection" && data.inspection && (
                   <section aria-label="Inspection">
                     {auto && data.jobMedia.length > 0 && (
