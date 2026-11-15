@@ -63,6 +63,8 @@ const descriptions: Partial<
 export function RoStageSummary({
   inspectionComplete,
   hasEstimate,
+  hasPricedDraft = false,
+  reviewHref,
   technicianAssigned,
   stage,
   statusLabel,
@@ -74,6 +76,8 @@ export function RoStageSummary({
 }: {
   inspectionComplete: boolean;
   hasEstimate: boolean;
+  hasPricedDraft?: boolean;
+  reviewHref?: string;
   technicianAssigned: boolean;
   stage?: Stage;
   statusLabel: string;
@@ -95,14 +99,16 @@ export function RoStageSummary({
     : waiting
       ? "Waiting for technician inspection"
       : !hasEstimate
-        ? "Price the inspection recommendations"
+        ? hasPricedDraft ? "Review customer packet" : "Price the inspection recommendations"
         : descriptions[stage ?? "draft"]?.title ?? "Review the next service step";
   const detail = waiting && !technicianAssigned
     ? "Select one technician for the entire RO. The technician receives the inspection task."
     : waiting
       ? "The technician records findings and evidence. The advisor will be notified once the inspection is submitted."
       : !hasEstimate
-        ? "Build parts and labor, then review and send the proposal directly on the RO Overview."
+        ? hasPricedDraft
+          ? "Pricing is saved. Review the documents and finalize the packet below."
+          : "Build parts and labor, then review and send the proposal directly on the RO Overview."
         : descriptions[stage ?? "draft"]?.detail ??
           "Review the customer proposal and response below on this RO.";
   const nextHref = waiting && !technicianAssigned
@@ -110,7 +116,7 @@ export function RoStageSummary({
     : waiting
       ? technicianHref
       : !hasEstimate
-        ? editHref
+        ? (hasPricedDraft ? reviewHref ?? editHref : editHref)
         : ["awaiting", "declined", "draft"].includes(stage ?? "draft")
           ? (proposalHref ?? documentsHref)
           : ["ready", "working", "bill", "payment", "attention"].includes(stage ?? "")
@@ -119,7 +125,7 @@ export function RoStageSummary({
   const nextLabel = waiting
     ? "Open technician inspection"
     : !hasEstimate
-      ? "Price parts & labor"
+      ? (hasPricedDraft ? "Review & finalize packet" : "Price parts & labor")
       : ["ready", "working"].includes(stage ?? "")
         ? "Review approved work"
         : stage === "bill"
