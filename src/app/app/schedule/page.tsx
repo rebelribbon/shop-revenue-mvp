@@ -101,6 +101,14 @@ export default async function VisitsPage({
           >
             + Appointment
           </Link>
+          <section className="schedule-focus" aria-label="Appointment overview">
+            <p className="muted">YOUR APPOINTMENT QUEUE</p>
+            <h2>{data.visits.rows.filter((visit) =>
+              localDateKey(visit.startsAt, data.visits.timezone) === data.today &&
+              visit.status === "scheduled",
+            ).length} appointments remaining today</h2>
+            <p className="muted">Open a day to see customers, start the RO, or mark a visit complete.</p>
+          </section>
           <div className="money-actions">
             <Link href={`/app/schedule?week=${addLocalDays(data.start, -7)}`}>
               Previous week
@@ -110,6 +118,8 @@ export default async function VisitsPage({
               Next week
             </Link>
           </div>
+          <details className="schedule-date-filter">
+            <summary>Jump to another date</summary>
           <form method="get" className="card">
             <label htmlFor="visit-week">Go to a date</label>
             <input
@@ -121,20 +131,29 @@ export default async function VisitsPage({
             />
             <button className="btn secondary">Show week</button>
           </form>
+          </details>
           <p className="muted">
             {dateLabel(data.start)} – {dateLabel(addLocalDays(data.start, 6))} ·{" "}
             {data.visits.timezone}
           </p>
           {Array.from({ length: 7 }, (_, i) => addLocalDays(data.start, i)).map(
             (day) => (
-              <section className="card" key={day}>
-                <h2>
-                  {day === data.today
-                    ? "Today"
-                    : day === addLocalDays(data.today, 1)
-                      ? "Tomorrow"
-                      : dateLabel(day)}
-                </h2>
+              <details className="card schedule-day" key={day}
+                open={day === data.today || day === data.anchor}>
+                <summary>
+                  <strong>
+                    {day === data.today
+                      ? "Today"
+                      : day === addLocalDays(data.today, 1)
+                        ? "Tomorrow"
+                        : dateLabel(day)}
+                  </strong>
+                  <span className="muted">
+                    {data.visits.rows.filter(
+                      (visit) => localDateKey(visit.startsAt, data.visits.timezone) === day,
+                    ).length} appointment(s)
+                  </span>
+                </summary>
                 {!data.visits.rows.some(
                   (a) => localDateKey(a.startsAt, data.visits.timezone) === day,
                 ) && <p className="muted">No appointments.</p>}
@@ -324,7 +343,7 @@ export default async function VisitsPage({
                         )}
                     </article>
                   ))}
-              </section>
+              </details>
             ),
           )}
         </>
