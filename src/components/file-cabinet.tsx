@@ -18,6 +18,7 @@ export function FileCabinet({
   demoMode = false,
   autoOpenShare = false,
   embeddedReview = false,
+  archiveOnly = false,
   timeZone,
 }: {
   items: CabinetItem[];
@@ -27,6 +28,7 @@ export function FileCabinet({
   demoMode?: boolean;
   autoOpenShare?: boolean;
   embeddedReview?: boolean;
+  archiveOnly?: boolean;
   timeZone: string;
 }) {
   // Never let the shop send an older frozen version while its RO has newer
@@ -143,7 +145,7 @@ export function FileCabinet({
           >
             Open preview
           </button>
-          {(!readOnly || demoMode) && (
+          {!archiveOnly && (!readOnly || demoMode) && (
             <button
               type="button"
               className="btn primary"
@@ -158,7 +160,7 @@ export function FileCabinet({
         </div>
       </header>}
 
-      {!embeddedReview && shareOpen && (estimate?.estimateShareId || demoMode) && (
+      {!embeddedReview && !archiveOnly && shareOpen && (estimate?.estimateShareId || demoMode) && (
         <section
           id="docs-share-panel"
           className="docs-share-panel"
@@ -263,7 +265,7 @@ export function FileCabinet({
                 role="listitem"
               >
                 <div className="docs-row-first">
-                  {selectable && !readOnly && !embeddedReview ? (
+                  {selectable && !readOnly && !embeddedReview && !archiveOnly ? (
                     <input
                       type="checkbox"
                       aria-label={`Include ${item.title} in packet`}
