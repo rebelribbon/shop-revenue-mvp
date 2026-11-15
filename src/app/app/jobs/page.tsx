@@ -920,7 +920,7 @@ export default async function JobsPage({
                 </div>
               )}
               <article className="card job-profile record-job-profile">
-                <CustomerContactActions
+                {!auto && <CustomerContactActions
                   target={{ customerId: input.customerId, jobId: selected.id }}
                   phone={data.contact?.phone}
                   email={data.contact?.email}
@@ -930,7 +930,7 @@ export default async function JobsPage({
                   emailAllowed={
                     !data.contact?.emailOff && !data.contact?.doNotContact
                   }
-                />
+                />}
                 <header className="profile-head">
                   <div>
                     <div className="identifier-with-copy">
@@ -998,7 +998,7 @@ export default async function JobsPage({
                       : undefined}
                   />
                 )}
-                {data.presentPath && (
+                {!auto && data.presentPath && (
                   <p className="ro-present">
                     <a
                       className="btn primary"
@@ -1015,7 +1015,7 @@ export default async function JobsPage({
                     </span>
                   </p>
                 )}
-                {canFollowUp && (
+                {canFollowUp && !auto && (
                   <div className="job-follow-up-shortcuts">
                     <LogContactButton
                       target={{
@@ -1063,6 +1063,33 @@ export default async function JobsPage({
                       />
                     )}
                   </div>
+                )}
+                {auto && flow?.latest && (
+                  <Link
+                    className="ro-proposal-shortcut"
+                    href={`/app/jobs?job=${selected.id}&tab=proposal`}
+                    aria-label="Open customer proposal tracking"
+                  >
+                    <span>
+                      <strong>Customer proposal</strong>
+                      <small>
+                        {flow.latest.authorization
+                          ? "Signed authorization received"
+                          : data.proposalEvents.some((event) =>
+                              (event.data as Record<string, unknown>).versionId === flow.latest?.estimate.id &&
+                              event.kind === "estimate.customer_opened")
+                            ? "Customer opened proposal"
+                            : data.proposalEvents.some((event) =>
+                                (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id &&
+                                event.kind === "document.email_submitted")
+                              ? "Email submitted · awaiting customer"
+                              : "Prepared · not sent"}
+                      </small>
+                    </span>
+                    <span className="ro-proposal-shortcut-total">
+                      {money(flow.latest.estimate.snapshot.totalCents)} <span aria-hidden="true">→</span>
+                    </span>
+                  </Link>
                 )}
                 {auto && awaitingInspection && !data.inspection?.assessment.vehiclePickedUp && (
                   <details className="ro-intake-photos">
@@ -1188,7 +1215,7 @@ export default async function JobsPage({
                     Work this RO as technician
                   </Link>
                 )}
-                {flow && (!awaitingInspection || flow.latest) && (
+                {!auto && flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
                       <strong>
@@ -1510,6 +1537,46 @@ export default async function JobsPage({
                       />
                     </section>
                   </>
+                )}
+                {tab === "proposal" && auto && flow?.latest && (
+                  <AdvisorProposalTracking
+                    jobId={selected.id}
+                    version={flow.latest.estimate.version}
+                    snapshot={flow.latest.estimate.snapshot}
+                    authorization={flow.latest.authorization
+                      ? {
+                          signerName: flow.latest.authorization.signerName,
+                          approvedLineIds: flow.latest.authorization.approvedLineIds,
+                          createdAt: flow.latest.authorization.createdAt.toISOString(),
+                        }
+                      : null}
+                    events={data.proposalEvents
+                      .filter((event) => {
+                        const entry = event.data as Record<string, unknown>;
+                        return entry.documentId === flow.latest!.estimate.id ||
+                          entry.versionId === flow.latest!.estimate.id;
+                      })
+                      .map((event) => ({
+                        id: event.id,
+                        kind: event.kind as "document.email_submitted" | "estimate.customer_opened",
+                        at: event.at.toISOString(),
+                        description: event.summary,
+                      }))}
+                    customerPath={data.presentPath}
+                    timeZone={data.profile?.timezone || "America/Chicago"}
+                    documents={
+                      <FileCabinet
+                        items={documentItems}
+                        autoOpenShare={share === "1"}
+                        customerPhone={data.contact && !data.contact.textOff
+                          ? data.contact.phone : null}
+                        customerEmail={data.contact && !data.contact.emailOff
+                          ? data.contact.email : null}
+                        readOnly={s.actor.type === "support"}
+                        timeZone={data.profile?.timezone || "America/Chicago"}
+                      />
+                    }
+                  />
                 )}
                 {tab === "files" && (
                   <>
