@@ -39,42 +39,12 @@ const finish = defineShopAction({
     appointmentId: z.uuid().optional(),
     tag: z.enum(MEDIA_TAGS),
     caption: z.string().max(500).optional(),
-    mediaPurpose: z.enum(["general", "intake", "finding", "walkaround"]).optional(),
+    mediaPurpose: z
+      .enum(["general", "intake", "finding", "walkaround"])
+      .optional(),
     inspectionItemKey: z.string().max(60).optional(),
     showCustomer: z.boolean().optional(),
   }),
   run: ({ tx, meta }, i) => finishMediaUpload(tx, meta, i),
 });
-export async function finishMediaUploadAction(input: unknown) {
-  const r = await finish(input);
-  if (r.ok) revalidatePath("/app", "layout");
-  return r;
-}
-
-export const updateMediaAction = defineShopAction({
-  name: "updateMedia",
-  technicianAccess: requireAssignedMedia,
-  input: z.object({
-    mediaId: z.uuid(),
-    tag: z.enum(MEDIA_TAGS).optional(),
-    caption: z.string().max(500).optional(),
-    showCustomer: z.enum(["true", "false"]).optional(),
-    jobId: z.uuid().optional(),
-    remove: z.enum(["true"]).optional(),
-  }),
-  run: ({ tx, meta }, i) =>
-    updateMedia(
-      tx,
-      {
-        mediaId: i.mediaId,
-        tag: i.tag,
-        caption: i.caption,
-        showCustomer:
-          i.showCustomer === undefined ? undefined : i.showCustomer === "true",
-        jobId: i.jobId,
-        remove: i.remove === "true",
-      },
-      meta,
-    ),
-  persist: () => ({ message: "Saved." }),
-});
+export async function finishMediaU¶»§q«^
