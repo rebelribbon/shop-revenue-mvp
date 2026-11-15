@@ -149,17 +149,18 @@ export function RoEstimateBuilder({
 
   return (
     <section className="ro-estimate-builder" data-ux-ready={ready}>
-      <header>
-        <p className="muted">STEP 1 OF 3 · ADVISOR PRICING</p>
-        <h2>Build the estimate</h2>
-        <p>One RO, one assigned technician. Price each repair with parts and labor, then review the completed estimate before sending.</p>
-        <p className="muted">Repair {Math.min(activeIndex + 1, Math.max(repairs.length, 1))} of {repairs.length || 1}</p>
+      <header className="ro-pricing-compact-header">
+        <div>
+          <p className="muted">PARTS &amp; LABOR · {Math.min(activeIndex + 1, Math.max(repairs.length, 1))} OF {repairs.length || 1}</p>
+          <h2>Price recommended repairs</h2>
+        </div>
+        <strong>{dollars(total)}</strong>
       </header>
 
       {repairs.map((repair, index) => index !== activeIndex ? null : (
         <section key={repair.id} className="ro-estimate-repair" aria-label={`Repair ${index + 1}`}>
           <div className="ro-estimate-repair-head">
-            <h3>Repair {index + 1}</h3>
+            <h3>{repair.name || `New repair ${index + 1}`}</h3>
             <button type="button" className="btn secondary"
               onClick={() => {
                 setRepairs((current) => current.filter((r) => r.id !== repair.id));
@@ -167,12 +168,15 @@ export function RoEstimateBuilder({
               }}
               disabled={!ready || pending}>Remove</button>
           </div>
-          <label>
-            Recommended service
-            <input required maxLength={130} value={repair.name}
-              onChange={(e) => change(repair.id, (r) => ({ ...r, name: e.target.value }))}
-              placeholder="Example: Replace leaking upper radiator hose" />
-          </label>
+          <details className="ro-pricing-description" open={!repair.name.trim()}>
+            <summary>{repair.name.trim() ? "Edit repair description" : "Describe repair"}</summary>
+            <label>
+              Repair description
+              <input required maxLength={130} value={repair.name}
+                onChange={(e) => change(repair.id, (r) => ({ ...r, name: e.target.value }))}
+                placeholder="Example: Replace leaking upper radiator hose" />
+            </label>
+          </details>
 
           <fieldset className="ro-estimate-line">
             <legend>Labor</legend>
@@ -287,14 +291,14 @@ export function RoEstimateBuilder({
       {activeIndex === repairs.length - 1 && (
       <section className="ro-estimate-save">
         <p>Customer subtotal (before tax): <strong>{dollars(total)}</strong></p>
-        <p className="muted">Save the pricing, then review the customer-facing estimate and documents before sending.</p>
+        <p className="muted">Review the customer proposal in Documents after saving.</p>
         {!valid && (
           <p className="notice" role="note">Enter each repair name and its prices. For recommended repairs, a labor rate and internal cost are required. Every added part also needs a cost and selling price.</p>
         )}
         <button type="button" className="btn primary"
           disabled={!ready || pending || !valid}
           onClick={() => void save()}>
-          {pending ? "Saving…" : "Save parts & labor → Documents"}
+          {pending ? "Saving…" : "Save & review proposal"}
         </button>
         <p role="status">{message}</p>
         <Link className="btn secondary" href={`/app/jobs?job=${initial.jobId}`}>Back to RO</Link>

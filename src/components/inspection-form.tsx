@@ -144,6 +144,79 @@ export function InspectionForm({
     }
   }
 
+  // A completed inspection is a report, not an editable 40-point wizard.
+  // Advisors see the findings first and can expand the complete record on demand.
+  if (readOnly && completed) {
+    const flagged = items.filter(needsFindings);
+    const passed = items.filter((item) => item.status === "good").length;
+    const caution = items.filter((item) => item.status === "watch").length;
+    const failed = items.filter((item) => item.status === "fix").length;
+    return (
+      <section className="inspection-result" aria-label="Completed inspection report">
+        <div className="inspection-result-summary">
+          <div>
+            <p className="muted">INSPECTION COMPLETE · {items.length} ITEMS</p>
+            <h3>{flagged.length} findings need attention</h3>
+          </div>
+          <div className="inspection-result-counts">
+            <span className="is-pass">{passed} pass</span>
+            <span className="is-caution">{caution} caution</span>
+            <span className="is-fail">{failed} fail</span>
+          </div>
+        </div>
+        {assessment.diagnosis.trim() && (
+          <div className="inspection-result-diagnosis">
+            <strong>Technician diagnosis</strong>
+            <p>{assessment.diagnosis}</p>
+          </div>
+        )}
+        <div className="inspection-result-findings">
+          <h4>Recommendations &amp; findings</h4>
+          {flagged.length === 0 && <p className="muted">No caution or failed items recorded.</p>}
+          {flagged.map((item) => (
+            <article key={item.key} className="inspection-result-finding">
+              <div className="inspection-result-finding-head">
+                <strong>{item.label}</strong>
+                <span className={item.status === "fix" ? "is-fail" : "is-caution"}>
+                  {conditionLabel(item.status)}
+                </span>
+              </div>
+              {item.note && <p>{item.note}</p>}
+              {item.recommendedWork && (
+                <p><strong>Recommended:</strong> {item.recommendedWork}</p>
+              )}
+              {item.measurements && Object.keys(item.measurements).length > 0 && (
+                <p className="muted">Measurements: {Object.entries(item.measurements)
+                  .filter((entry) => entry[1] !== "")
+                  .map(([position, value]) => `${position.toUpperCase()} ${value}`)
+                  .join(" · ")}</p>
+              )}
+            </article>
+          ))}
+        </div>
+        <details className="inspection-result-full">
+          <summary>View full {items.length}-point inspection</summary>
+          {sections.map((name) => {
+            const group = items.filter((item) => sectionName(item) === name);
+            return (
+              <details key={name} className="inspection-result-section">
+                <summary>{name} <span className="muted">· {group.length} items</span></summary>
+                <ul>
+                  {group.map((item) => (
+                    <li key={item.key}>
+                      <span>{item.label}</span>
+                      <strong>{conditionLabel(item.status)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            );
+          })}
+        </details>
+      </section>
+    );
+  }
+
   return (
     <div className="inspection inspection-wizard" data-ux-ready={ready}>
       <header ref={headingRef} className="inspection-section-header">
