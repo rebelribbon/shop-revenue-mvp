@@ -80,22 +80,20 @@ export function RoStageSummary({
   technicianHref?: string;
 }) {
   const waiting = !inspectionComplete && !hasEstimate;
-  const current: Step = !technicianAssigned
-    ? "intake"
-    : waiting
-      ? "inspection"
-      : !hasEstimate
-        ? "proposal"
-        : descriptions[stage ?? "draft"]?.step ?? "approval";
+  const current: Step = waiting
+    ? technicianAssigned ? "inspection" : "intake"
+    : !hasEstimate
+      ? "proposal"
+      : descriptions[stage ?? "draft"]?.step ?? "approval";
   const active = stages.findIndex((s) => s.id === current);
-  const title = !technicianAssigned
+  const title = waiting && !technicianAssigned
     ? "Assign a technician"
     : waiting
       ? "Waiting for technician inspection"
       : !hasEstimate
         ? "Price the inspection recommendations"
         : descriptions[stage ?? "draft"]?.title ?? "Review the next service step";
-  const detail = !technicianAssigned
+  const detail = waiting && !technicianAssigned
     ? "Select one technician for the entire RO. The technician receives the inspection task."
     : waiting
       ? "The technician records findings and evidence. The advisor will be notified once the inspection is submitted."
@@ -103,7 +101,7 @@ export function RoStageSummary({
         ? "Build parts and labor for each repair, then review the customer-facing proposal in Documents."
         : descriptions[stage ?? "draft"]?.detail ??
           "Open Documents to review the estimate and the customer response.";
-  const nextHref = !technicianAssigned
+  const nextHref = waiting && !technicianAssigned
     ? null
     : waiting
       ? technicianHref
