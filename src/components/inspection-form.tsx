@@ -53,6 +53,7 @@ export function InspectionForm({
   const ready = useActionHydration();
   const [items, setItems] = useState(initial);
   const [assessment, setAssessment] = useState(initialAssessment);
+  const [reviewSection, setReviewSection] = useState(() => sectionName(initial[0] ?? { section: "Inspection" } as InspectionItem));
   const sections = [...new Set(initial.map(sectionName))];
   // One screen per VEHICLE SYSTEM, not one screen per checklist point.
   // -1: pickup; 0..N-1: system inspection; N: final review.
@@ -196,22 +197,24 @@ export function InspectionForm({
         </div>
         <details className="inspection-result-full">
           <summary>View full {items.length}-point inspection</summary>
-          {sections.map((name) => {
-            const group = items.filter((item) => sectionName(item) === name);
-            return (
-              <details key={name} className="inspection-result-section">
-                <summary>{name} <span className="muted">· {group.length} items</span></summary>
-                <ul>
-                  {group.map((item) => (
-                    <li key={item.key}>
-                      <span>{item.label}</span>
-                      <strong>{conditionLabel(item.status)}</strong>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            );
-          })}
+          <label className="inspection-result-section-picker">
+            Vehicle system
+            <select value={reviewSection} onChange={(event) => setReviewSection(event.target.value)}>
+              {sections.map((name) => (
+                <option key={name} value={name}>
+                  {name} · {items.filter((item) => sectionName(item) === name).length} items
+                </option>
+              ))}
+            </select>
+          </label>
+          <ul className="inspection-result-section-items">
+            {items.filter((item) => sectionName(item) === reviewSection).map((item) => (
+              <li key={item.key}>
+                <span>{item.label}</span>
+                <strong>{conditionLabel(item.status)}</strong>
+              </li>
+            ))}
+          </ul>
         </details>
       </section>
     );
