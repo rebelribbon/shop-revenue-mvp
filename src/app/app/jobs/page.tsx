@@ -260,8 +260,7 @@ export default async function JobsPage({
     if (
       s.role !== "technician" &&
       s.actor.type === "user" &&
-      latestFlow &&
-      !latestFlow.authorization
+      latestFlow
     ) {
       try {
         presentPath = (
@@ -1171,6 +1170,19 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
+                <details className="ro-team-assignment" open={!data.assignee || !data.advisorId}>
+                  <summary>
+                    <span>
+                      <strong>Assigned team</strong>
+                      <small>Advisor: {data.advisors.find((person) =>
+                        person.userId === data.advisorId)?.name ?? "Not assigned"}
+                        {" · "}Tech: {data.techs.find((person) =>
+                          person.userId === data.assignee)?.name ?? "Not assigned"}
+                      </small>
+                    </span>
+                    <span className="ro-team-manage">Manage</span>
+                  </summary>
+                  <div className="ro-team-controls">
                 {!data.canManageTeam && !canChooseInitialTech ? (
                   <p className="muted">
                     Tech:{" "}
@@ -1215,6 +1227,8 @@ export default async function JobsPage({
                     Work this RO as technician
                   </Link>
                 )}
+                  </div>
+                </details>
                 {!auto && flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
