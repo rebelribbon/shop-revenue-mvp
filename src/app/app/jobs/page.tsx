@@ -1705,7 +1705,7 @@ export default async function JobsPage({
                         View inspection photos & videos ({data.jobMedia.length})
                       </Link>
                     )}
-                    <p className="inspection-summary">
+                    {!auto && <p className="inspection-summary">
                       <span className="insp-count is-good">
                         {data.inspection.counts.good} pass
                       </span>
@@ -1720,7 +1720,7 @@ export default async function JobsPage({
                           {data.inspection.counts.unchecked} not checked
                         </span>
                       )}
-                    </p>
+                    </p>}
                     <InspectionForm
                       key={selected.id}
                       jobId={selected.id}
