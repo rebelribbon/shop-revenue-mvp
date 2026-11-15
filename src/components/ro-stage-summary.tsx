@@ -69,6 +69,7 @@ export function RoStageSummary({
   editHref,
   documentsHref,
   proposalHref,
+  workflowHref,
   technicianHref,
 }: {
   inspectionComplete: boolean;
@@ -79,6 +80,7 @@ export function RoStageSummary({
   editHref: string;
   documentsHref: string;
   proposalHref?: string;
+  workflowHref?: string;
   technicianHref?: string;
 }) {
   const waiting = !inspectionComplete && !hasEstimate;
@@ -111,12 +113,20 @@ export function RoStageSummary({
         ? editHref
         : ["awaiting", "declined", "draft"].includes(stage ?? "draft")
           ? (proposalHref ?? documentsHref)
-          : null;
+          : ["ready", "working", "bill", "payment", "attention"].includes(stage ?? "")
+            ? workflowHref
+            : null;
   const nextLabel = waiting
     ? "Open technician inspection"
     : !hasEstimate
       ? "Price parts & labor"
-      : "Review customer proposal";
+      : ["ready", "working"].includes(stage ?? "")
+        ? "Review approved work"
+        : stage === "bill"
+          ? "Prepare invoice"
+          : ["payment", "attention"].includes(stage ?? "")
+            ? "Review payment"
+            : "Review customer proposal";
 
   return (
     <section className="ro-stage-panel ro-guided-stage" aria-label="Repair order progress">
