@@ -198,7 +198,7 @@ export function RoEstimateBuilder({
                   }))} />
               </label>
             </div>
-            <details className="ro-internal-cost" defaultOpen={repair.labor.costRateCents === null}>
+            <details className="ro-internal-cost">
               <summary>Internal labor cost: {repair.labor.costRateCents === null ? "Required" : dollars(repair.labor.costRateCents) + "/hr"} · Edit</summary>
               <label>Shop cost / hr ($)
                 <input type="number" min="0" max="100000" step=".01" inputMode="decimal"
@@ -242,7 +242,7 @@ export function RoEstimateBuilder({
                       }))} />
                   </label>
                 </div>
-                <details className="ro-internal-cost" defaultOpen={part.unitCostCents === null}>
+                <details className="ro-internal-cost">
                   <summary>Internal part cost: {part.unitCostCents === null ? "Required" : dollars(part.unitCostCents)} · Edit</summary>
                   <label>Shop unit cost ($)
                     <input type="number" min="0" max="100000" step=".01" inputMode="decimal"
