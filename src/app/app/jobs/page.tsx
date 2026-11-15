@@ -1683,7 +1683,10 @@ export default async function JobsPage({
                           policyConfigured={data.authorizationPolicyReady}
                         />
                       )}
-                    <FileCabinet
+                    {needsEstimateDraft ? (
+                      <details className="ro-documents-archive">
+                        <summary>Preview estimate draft &amp; saved documents ({documentItems.length})</summary>
+                        <FileCabinet
                       items={documentItems}
                       autoOpenShare={share === "1"}
                       customerPhone={
@@ -1699,6 +1702,25 @@ export default async function JobsPage({
                       readOnly={s.actor.type === "support" || false}
                       timeZone={data.profile?.timezone || "America/Chicago"}
                     />
+                      </details>
+                    ) : (
+                      <FileCabinet
+                      items={documentItems}
+                      autoOpenShare={share === "1"}
+                      customerPhone={
+                        data.contact && !data.contact.textOff
+                          ? data.contact.phone
+                          : null
+                      }
+                      customerEmail={
+                        data.contact && !data.contact.emailOff
+                          ? data.contact.email
+                          : null
+                      }
+                      readOnly={s.actor.type === "support" || false}
+                      timeZone={data.profile?.timezone || "America/Chicago"}
+                    />
+                    )}
                   </>
                 )}
                 {tab === "inspection" && data.inspection && (
