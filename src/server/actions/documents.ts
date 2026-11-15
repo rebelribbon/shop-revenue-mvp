@@ -62,9 +62,9 @@ const send = defineShopAction({
   run: ({ tx, meta }, i) => sendDocument(tx, meta, i),
   persist: (r) => ({
     id: r.id,
-    redirectTo: `/app/jobs?job=${r.jobId}&tab=files#file-cabinet`,
+    redirectTo: `/app/jobs?job=${r.jobId}#customer-proposal-review`,
     message:
-      "Document prepared and filed. Choose a recipient in the file cabinet to send the signing link.",
+      "Document added to the RO. Review the customer packet below before sending.",
   }),
 });
 export async function sendDocumentAction(input: unknown) {
