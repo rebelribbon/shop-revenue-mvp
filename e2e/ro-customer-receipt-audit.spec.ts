@@ -57,17 +57,23 @@ test("walks a shop owner from customer creation through customer authorization a
       await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
       await tech.getByRole("button", { name: "Start inspection", exact: true }).click();
       for (let section=0; section<9; section++) {
-        const radios = await tech.getByRole("radio", { name: "Pass", exact: true }).all();
+        const radios = await tech.locator(".inspection-system label.choice-good input[type=radio]").all();
+        expect(radios.length).toBeGreaterThan(0);
         for (const radio of radios) await radio.check();
         if (section === 0) {
           await tech.getByRole("radio", { name: "Fail", exact: true }).first().check();
           await tech.locator(".inspection-point-findings textarea").first().fill("Windshield cracked across the driver's field of view");
           await tech.locator(".inspection-point-findings input").first().fill("Replace windshield");
         }
-        if (section < 8)
-          await tech.getByRole("button", { name: "Save and continue", exact: true }).click();
-        else
-          await tech.getByRole("button", { name: "Review inspection", exact: true }).click();
+        if (section < 8) {
+          const next = tech.getByRole("button", { name: "Save and continue", exact: true });
+          await expect(next, `Section ${section+1}: check for uncompleted inspection items`).toBeEnabled({ timeout: 5_000 });
+          await next.click();
+        } else {
+          const next = tech.getByRole("button", { name: "Review inspection", exact: true });
+          await expect(next).toBeEnabled({ timeout: 5_000 });
+          await next.click();
+        }
       }
       await tech.getByLabel("Technician diagnosis", { exact: true }).fill("Cracked windshield needs replacement; other inspection items passed");
       await tech.getByRole("button", { name: "Submit inspection to advisor", exact: true }).click();
