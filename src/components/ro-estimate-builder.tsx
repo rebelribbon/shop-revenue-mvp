@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { JobInput } from "@/domain/jobs";
 import { createJobAction } from "@/server/actions/jobs";
 import { useActionHydration } from "./action-hydration";
+import { RoProposalProgress } from "./ro-proposal-progress";
 
 type Part = JobInput["parts"][number];
 type Labor = JobInput["labor"][number];
@@ -138,7 +139,7 @@ export function RoEstimateBuilder({
         return;
       }
       setRequestId(crypto.randomUUID());
-      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=files&saved=1#file-cabinet`);
+      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=files&saved=1#proposal-finalize`);
       router.refresh();
     } catch {
       setMessage("Could not save the estimate. Your entries are still here.");
@@ -149,6 +150,7 @@ export function RoEstimateBuilder({
 
   return (
     <section className="ro-estimate-builder" data-ux-ready={ready}>
+      <RoProposalProgress stage="price" />
       <header className="ro-pricing-compact-header">
         <div>
           <p className="muted">PARTS &amp; LABOR · {Math.min(activeIndex + 1, Math.max(repairs.length, 1))} OF {repairs.length || 1}</p>
@@ -195,6 +197,9 @@ export function RoEstimateBuilder({
                     ...r, labor: { ...r.labor, sellRateCents: cents(e.target.value) },
                   }))} />
               </label>
+            </div>
+            <details className="ro-internal-cost">
+              <summary>Internal labor cost: {repair.labor.costRateCents === null ? "Required" : dollars(repair.labor.costRateCents) + "/hr"} · Edit</summary>
               <label>Shop cost / hr ($)
                 <input type="number" min="0" max="100000" step=".01" inputMode="decimal"
                   value={amount(repair.labor.costRateCents)}
@@ -203,7 +208,7 @@ export function RoEstimateBuilder({
                       costRateCents: e.target.value === "" ? null : cents(e.target.value) },
                   }))} placeholder="Required" />
               </label>
-            </div>
+            </details>
           </fieldset>
 
           <fieldset className="ro-estimate-line">
@@ -236,6 +241,9 @@ export function RoEstimateBuilder({
                           ? { ...p, unitPriceCents: cents(e.target.value) } : p),
                       }))} />
                   </label>
+                </div>
+                <details className="ro-internal-cost">
+                  <summary>Internal part cost: {part.unitCostCents === null ? "Required" : dollars(part.unitCostCents)} · Edit</summary>
                   <label>Shop unit cost ($)
                     <input type="number" min="0" max="100000" step=".01" inputMode="decimal"
                       value={amount(part.unitCostCents)}
@@ -245,7 +253,7 @@ export function RoEstimateBuilder({
                           ? { ...p, unitCostCents: e.target.value === "" ? null : cents(e.target.value) } : p),
                       }))} />
                   </label>
-                </div>
+                </details>
                 <button className="btn secondary" type="button" disabled={!ready || pending}
                   onClick={() => change(repair.id, (r) => ({
                     ...r, parts: r.parts.filter((_, i) => i !== partIndex),
@@ -262,7 +270,7 @@ export function RoEstimateBuilder({
                   taxable: partsTaxable,
                 }],
               }))}>+ Add part to this repair</button>
-            {!repair.parts.length && <p className="muted">No parts needed? Labor-only work is allowed.</p>}
+            {!repair.parts.length && <p className="muted">No parts entered for this repair. Add replacement parts when they are included in the customer price.</p>}
           </fieldset>
           <p className="ro-estimate-total">Repair subtotal: <strong>{dollars(
             Math.round(repair.labor.estimatedHoursHundredths * repair.labor.sellRateCents / 100) +

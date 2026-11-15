@@ -1577,6 +1577,9 @@ export default async function JobsPage({
                 {tab === "proposal" && auto && flow?.latest && (
                   <AdvisorProposalTracking
                     jobId={selected.id}
+                    estimateId={flow.latest.estimate.id}
+                    shareRequested={share === "1"}
+                    canShare={s.actor.type === "user"}
                     version={flow.latest.estimate.version}
                     snapshot={flow.latest.estimate.snapshot}
                     authorization={flow.latest.authorization
@@ -1616,7 +1619,7 @@ export default async function JobsPage({
                 )}
                 {tab === "files" && (
                   <>
-                    <section
+                    {!needsEstimateDraft && <section
                       className="docs-prep-toolbar"
                       aria-label="Documents setup"
                       id="share-customer-packet"
@@ -1669,7 +1672,12 @@ export default async function JobsPage({
                           )}
                         </details>
                       )}
-                    </section>
+                    </section>}
+                    {needsEstimateDraft && data.inspection?.complete && (
+                      <Link className="ro-edit-pricing-link" href={`/app/jobs?edit=${selected.id}`}>
+                        Edit parts &amp; labor
+                      </Link>
+                    )}
                     {needsEstimateDraft && draftLines.length > 0 &&
                       s.actor.type !== "support" && !selected.documentOnly && (
                         <RoDocumentPrepare
@@ -1680,7 +1688,10 @@ export default async function JobsPage({
                           policyConfigured={data.authorizationPolicyReady}
                         />
                       )}
-                    <FileCabinet
+                    {needsEstimateDraft ? (
+                      <details className="ro-documents-archive">
+                        <summary>Preview estimate draft &amp; saved documents ({documentItems.length})</summary>
+                        <FileCabinet
                       items={documentItems}
                       autoOpenShare={share === "1"}
                       customerPhone={
@@ -1696,6 +1707,25 @@ export default async function JobsPage({
                       readOnly={s.actor.type === "support" || false}
                       timeZone={data.profile?.timezone || "America/Chicago"}
                     />
+                      </details>
+                    ) : (
+                      <FileCabinet
+                      items={documentItems}
+                      autoOpenShare={share === "1"}
+                      customerPhone={
+                        data.contact && !data.contact.textOff
+                          ? data.contact.phone
+                          : null
+                      }
+                      customerEmail={
+                        data.contact && !data.contact.emailOff
+                          ? data.contact.email
+                          : null
+                      }
+                      readOnly={s.actor.type === "support" || false}
+                      timeZone={data.profile?.timezone || "America/Chicago"}
+                    />
+                    )}
                   </>
                 )}
                 {tab === "inspection" && data.inspection && (

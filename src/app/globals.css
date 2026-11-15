@@ -6426,3 +6426,155 @@ main.customer-index-page {
   .docs-preview-compact .btn { min-height: 40px; }
   .docs-doc-select small { font-size: .76rem; }
 }
+
+
+/* Four-state estimate → customer authorization workflow, not a form maze. */
+.ro-proposal-progress {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 8px 0;
+}
+.ro-proposal-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: .81rem;
+}
+.ro-proposal-progress-header > span { color: var(--muted); font-size: .76rem; }
+.ro-proposal-progress ol {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 5px;
+}
+.ro-proposal-progress li { min-width: 0; display: grid; gap: 4px; }
+.ro-proposal-progress li > span {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.ro-proposal-progress li > span.is-complete { background: #299570; }
+.ro-proposal-progress li > span.is-current { background: #d1a751; }
+.ro-proposal-progress li small { font-size: .72rem; color: var(--muted); text-align: center; }
+.ro-proposal-progress li[aria-current="step"] small { color: var(--text); font-weight: 700; }
+.ro-proposal-progress > p { font-size: .8rem; margin: 0; }
+.proposal-preparation {
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.proposal-preparation-head { display: grid; gap: 5px; }
+.proposal-preparation-head p { margin: 0; }
+.proposal-preparation-head .muted { font-size: .72rem; }
+.proposal-preparation-head h3 { font-size: 1.1rem; margin: 0; }
+.proposal-preparation-head p:last-child { font-size: .86rem; color: var(--muted); }
+.proposal-preparation > .btn { width: 100%; min-height: 46px; }
+.proposal-preparation .notice p { margin: 7px 0 0; }
+.ro-edit-pricing-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: .84rem;
+  padding: 7px 0;
+  min-height: 38px;
+}
+.ro-documents-archive {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+}
+.ro-documents-archive > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: .86rem;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 10px;
+}
+.ro-documents-archive > summary::after { content: "  ▾"; color: var(--muted); }
+.ro-documents-archive[open] > summary::after { content: "  ▴"; }
+.ro-documents-archive .docs-workspace { border: 0; border-top: 1px solid var(--line); border-radius: 0; margin: 0; }
+.proposal-send-stage {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #418d72;
+  border-radius: 12px;
+  padding: 12px;
+}
+.proposal-send-stage-head { display: grid; gap: 7px; }
+.proposal-send-stage-head > div { display: grid; gap: 3px; }
+.proposal-send-stage-head p { margin: 0; font-size: .85rem; }
+.proposal-send-stage-head p.muted { font-size: .72rem; }
+.proposal-send-stage-head h3 { margin: 0; font-size: 1.1rem; }
+.proposal-send-stage-head > button { width: 100%; min-height: 44px; }
+.proposal-send-stage .document-sharing > section { display: grid; gap: 10px; }
+.proposal-send-stage .document-sharing h4,
+.proposal-send-stage .document-sharing p { margin: 0; }
+.proposal-send-stage .money-actions { gap: 7px; }
+.proposal-send-stage .money-actions .btn { min-height: 44px; }
+.proposal-signed-next {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #418d72;
+  border-radius: 12px;
+}
+.proposal-signed-next p { margin: 0; color: var(--muted); font-size: .88rem; }
+.proposal-signed-next .btn { justify-self: start; }
+@media(max-width: 700px) {
+  .proposal-tracker { gap: 10px; }
+  .proposal-tracker-heading { gap: 4px; }
+  .proposal-tracker-summary { gap: 6px; }
+  .proposal-tracker-metrics { gap: 4px; }
+  .proposal-send-stage { padding: 10px; }
+  .proposal-send-stage .money-actions { display: grid; grid-template-columns: 1fr; }
+  .proposal-send-stage .money-actions .btn { width: 100%; }
+  .ro-proposal-progress { margin-bottom: 0; }
+  .proposal-preparation { padding: 10px; }
+}
+
+
+/* Select one inspection system; no stack of 40 checklist rows on a phone. */
+.inspection-result-section-picker { display: grid; gap: 6px; font-size: .85rem; padding: 10px 0; }
+.inspection-result-section-picker select { width: 100%; min-height: 44px; }
+.inspection-result-section-items { list-style: none; padding: 0; margin: 0; }
+.inspection-result-section-items li { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding: 9px 0; font-size: .85rem; }
+.inspection-result-section-items li strong { flex: 0 0 auto; }
+.docs-preview-head-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
+.docs-preview-head-actions .btn { min-height: 40px; padding: 7px 11px; font-size: .83rem; }
+@media (max-width:700px) {
+  .docs-preview-pane { scroll-margin-top: 88px; }
+  .docs-preview-head { align-items: start; }
+  .docs-preview-head-actions { gap: 7px; }
+  .ro-estimate-part .muted, .ro-estimate-line .muted { font-size: .78rem; }
+  .ro-estimate-repair input { min-height: 42px; font-size: 16px; }
+}
+
+
+.ro-internal-cost {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.ro-internal-cost > summary {
+  min-height: 38px;
+  padding: 8px 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: .82rem;
+  list-style: none;
+}
+.ro-internal-cost > summary::after { content: " ▾"; }
+.ro-internal-cost[open] > summary::after { content: " ▴"; }
+.ro-internal-cost > label { margin: 6px 0 4px; max-width: 260px; }
+@media (max-width:700px) {
+  .ro-estimate-numbers label:last-child { grid-column: auto; }
+  .ro-internal-cost > label input { width: 100%; }
+  .ro-estimate-repair { gap: 6px; }
+  .ro-estimate-part { margin-bottom: 6px; }
+}

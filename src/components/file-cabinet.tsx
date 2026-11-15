@@ -39,6 +39,7 @@ export function FileCabinet({
   );
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [shareOpen, setShareOpen] = useState(autoOpenShare);
+  const [showPreview, setShowPreview] = useState(false);
   const [estimatePreview, setEstimatePreview] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState("");
   const active = items.find((item) => item.id === activeId) ?? items[0];
@@ -79,6 +80,15 @@ export function FileCabinet({
       day: "numeric",
       year: "numeric",
     });
+
+  useEffect(() => {
+    if (showPreview) {
+      document.querySelector(".docs-preview-pane")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [showPreview, activeId]);
 
   useEffect(() => {
     if (!active?.estimateShareId) return;
@@ -123,9 +133,7 @@ export function FileCabinet({
             disabled={!previewPath && !active?.preview}
             onClick={() => {
               if (active?.preview) {
-                document
-                  .querySelector(".docs-preview-pane")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                setShowPreview(true);
               } else if (previewPath) {
                 window.open(previewPath, "_blank", "noopener,noreferrer");
               }
@@ -274,7 +282,10 @@ export function FileCabinet({
                   <button
                     type="button"
                     className="docs-doc-select"
-                    onClick={() => setActiveId(item.id)}
+                    onClick={() => {
+                      setActiveId(item.id);
+                      setShowPreview(true);
+                    }}
                     aria-current={active?.id === item.id ? "true" : undefined}
                   >
                     <strong>{item.title}</strong>
@@ -293,7 +304,7 @@ export function FileCabinet({
           })}
         </div>
 
-        <aside className="docs-preview-pane" aria-label="Document preview">
+        {showPreview && <aside className="docs-preview-pane" aria-label="Document preview">
           {active ? (
             <>
               <div className="docs-preview-head">
@@ -301,11 +312,16 @@ export function FileCabinet({
                   <strong>{active.title}</strong>
                   <small>{active.status || "Filed"}</small>
                 </div>
-                {previewPath && (
-                  <a href={previewPath} target="_blank" rel="noreferrer">
-                    Full preview
-                  </a>
-                )}
+                <div className="docs-preview-head-actions">
+                  {previewPath && (
+                    <a href={previewPath} target="_blank" rel="noreferrer">
+                      Open original
+                    </a>
+                  )}
+                  <button type="button" className="btn secondary" onClick={() => setShowPreview(false)}>
+                    Close
+                  </button>
+                </div>
               </div>
               {active.preview ? (
                 <article
@@ -448,7 +464,7 @@ export function FileCabinet({
               </p>
             </div>
           )}
-        </aside>
+        </aside>}
       </div>
 
     </section>
