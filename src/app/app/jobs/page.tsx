@@ -1690,7 +1690,8 @@ export default async function JobsPage({
                   <AdvisorProposalTracking
                     jobId={selected.id}
                     estimateId={flow.latest.estimate.id}
-                    shareRequested={share === "1"}
+                    shareRequested={false}
+                    trackingOnly
                     canShare={s.actor.type === "user"}
                     version={flow.latest.estimate.version}
                     snapshot={flow.latest.estimate.snapshot}
