@@ -17,6 +17,8 @@ export function FileCabinet({
   readOnly,
   demoMode = false,
   autoOpenShare = false,
+  embeddedReview = false,
+  archiveOnly = false,
   timeZone,
 }: {
   items: CabinetItem[];
@@ -25,6 +27,8 @@ export function FileCabinet({
   readOnly: boolean;
   demoMode?: boolean;
   autoOpenShare?: boolean;
+  embeddedReview?: boolean;
+  archiveOnly?: boolean;
   timeZone: string;
 }) {
   // Never let the shop send an older frozen version while its RO has newer
@@ -39,7 +43,7 @@ export function FileCabinet({
   );
   const [checkedIds, setCheckedIds] = useState<string[]>([]);
   const [shareOpen, setShareOpen] = useState(autoOpenShare);
-  const [showPreview, setShowPreview] = useState(false);
+  const [showPreview, setShowPreview] = useState(embeddedReview);
   const [estimatePreview, setEstimatePreview] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState("");
   const active = items.find((item) => item.id === activeId) ?? items[0];
@@ -82,13 +86,13 @@ export function FileCabinet({
     });
 
   useEffect(() => {
-    if (showPreview) {
+    if (showPreview && !embeddedReview) {
       document.querySelector(".docs-preview-pane")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     }
-  }, [showPreview, activeId]);
+  }, [showPreview, activeId, embeddedReview]);
 
   useEffect(() => {
     if (!active?.estimateShareId) return;
@@ -115,11 +119,11 @@ export function FileCabinet({
 
   return (
     <section
-      className="docs-workspace"
+      className={`docs-workspace ${embeddedReview ? "docs-inline-review" : ""}`}
       id="file-cabinet"
       aria-label="Documents and customer packet"
     >
-      <header className="docs-toolbar">
+      {!embeddedReview && <header className="docs-toolbar">
         <div>
           <h3>
             Documents <span className="docs-counter">{items.length}</span>
@@ -141,7 +145,7 @@ export function FileCabinet({
           >
             Open preview
           </button>
-          {(!readOnly || demoMode) && (
+          {!archiveOnly && (!readOnly || demoMode) && (
             <button
               type="button"
               className="btn primary"
@@ -154,9 +158,9 @@ export function FileCabinet({
             </button>
           )}
         </div>
-      </header>
+      </header>}
 
-      {shareOpen && (estimate?.estimateShareId || demoMode) && (
+      {!embeddedReview && !archiveOnly && shareOpen && (estimate?.estimateShareId || demoMode) && (
         <section
           id="docs-share-panel"
           className="docs-share-panel"
@@ -209,7 +213,7 @@ export function FileCabinet({
         </section>
       )}
 
-      <div className="docs-tabs" role="group" aria-label="Document types">
+      {!embeddedReview && <div className="docs-tabs" role="group" aria-label="Document types">
         <button
           type="button"
           className={view === "all" ? "is-active" : ""}
@@ -233,7 +237,7 @@ export function FileCabinet({
           Uploaded (
           {items.filter((item) => item.group === "Added files").length})
         </button>
-      </div>
+      </div>}
 
       <div className="docs-split">
         <div className="docs-list" role="list" aria-label="Documents">
@@ -261,7 +265,7 @@ export function FileCabinet({
                 role="listitem"
               >
                 <div className="docs-row-first">
-                  {selectable && !readOnly ? (
+                  {selectable && !readOnly && !embeddedReview && !archiveOnly ? (
                     <input
                       type="checkbox"
                       aria-label={`Include ${item.title} in packet`}

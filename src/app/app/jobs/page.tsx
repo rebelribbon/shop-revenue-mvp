@@ -9,6 +9,8 @@ import { jobReference } from "@/lib/job-reference";
 import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
+import { DocumentShare } from "@/components/document-share";
+import { RoProposalProgress } from "@/components/ro-proposal-progress";
 import { AdvisorProposalTracking } from "@/components/advisor-proposal-tracking";
 import { RoDocumentPrepare } from "@/components/ro-document-prepare";
 import type { CabinetItem } from "@/domain/documents";
@@ -901,7 +903,7 @@ export default async function JobsPage({
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   {auto && data.inspection?.complete
-                    ? "Pricing saved. Review the proposal in Documents."
+                    ? "Pricing saved. Review and send the proposal below."
                     : "Repair order saved."}
                 </p>
               )}
@@ -1050,12 +1052,14 @@ export default async function JobsPage({
                   <RoStageSummary
                     inspectionComplete={!!data.inspection?.complete}
                     hasEstimate={!!flow?.latest}
+                    hasPricedDraft={needsEstimateDraft && pricingReady}
+                    reviewHref={`/app/jobs?job=${selected.id}#customer-proposal-review`}
                     technicianAssigned={!!data.assignee}
                     stage={flow?.stage}
                     statusLabel={statusLabels[statusOf(selected.id)]}
                     editHref={`/app/jobs?edit=${selected.id}`}
                     documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
-                    proposalHref={flow?.latest ? `/app/jobs?job=${selected.id}&tab=proposal` : undefined}
+                    proposalHref={flow?.latest ? `/app/jobs?job=${selected.id}#customer-proposal-review` : undefined}
                     workflowHref={`/app/jobs?job=${selected.id}#ro-workflow`}
                     technicianHref={s.role === "owner" && data.assignee === s.actor.id
                       ? `/app/jobs?job=${selected.id}&mode=technician`
@@ -1480,7 +1484,7 @@ export default async function JobsPage({
                         ? ([["photos", `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`]] as const)
                         : []),
                       ...(auto && flow?.latest
-                        ? ([["proposal", "Customer proposal"]] as const)
+                        ? ([["proposal", "Proposal history"]] as const)
                         : []),
                       [
                         "files",
@@ -1500,6 +1504,122 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
+                    {auto && !!data.inspection?.complete && (needsEstimateDraft || !!flow?.latest) && (
+                      <section id="customer-proposal-review" className="ro-inline-proposal" aria-label="Review, finalize and send customer documents">
+                        {s.actor.type !== "support" && (
+                          <details className="ro-inline-attach-agreement">
+                            <summary>+ Add supporting agreement</summary>
+                            {data.templates.length ? (
+                              <ActionForm
+                                action={sendDocumentAction}
+                                hidden={{ jobId: selected.id }}
+                                submitLabel="Add to packet"
+                                variant="secondary"
+                              >
+                                <label htmlFor="ro-proposal-agreement">Agreement</label>
+                                <select id="ro-proposal-agreement" name="templateId" required>
+                                  {data.templates.map((template) => (
+                                    <option key={template.id} value={template.id}>{template.name}</option>
+                                  ))}
+                                </select>
+                              </ActionForm>
+                            ) : (
+                              <p className="muted">No agreement templates are configured. <Link href="/app/settings/documents">Manage templates</Link></p>
+                            )}
+                          </details>
+                        )}
+                        {needsEstimateDraft ? (
+                          <>
+                            <div className="ro-inline-proposal-heading">
+                              <p className="muted">RO OVERVIEW · CUSTOMER PACKET</p>
+                              <h3>Review before sending</h3>
+                              <p>Review the estimate and supporting documents here. Nothing is sent until you finalize and choose Send.</p>
+                            </div>
+                            <FileCabinet
+                              items={documentItems}
+                              embeddedReview
+                              customerPhone={null}
+                              customerEmail={null}
+                              readOnly={s.actor.type === "support"}
+                              timeZone={data.profile?.timezone || "America/Chicago"}
+                            />
+                            {draftLines.length > 0 && s.actor.type !== "support" && !selected.documentOnly ? (
+                              <RoDocumentPrepare
+                                jobId={selected.id}
+                                version={selected.version}
+                                taxRateBps={taxRateForDocuments}
+                                readyToPrepare={pricingReady}
+                                policyConfigured={data.authorizationPolicyReady}
+                              />
+                            ) : (
+                              <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>Finish parts &amp; labor</Link>
+                            )}
+                            <Link className="ro-edit-pricing-link" href={`/app/jobs?edit=${selected.id}`}>Edit parts &amp; labor</Link>
+                          </>
+                        ) : flow?.latest ? (
+                          <>
+                            <div className="ro-inline-proposal-heading">
+                              <RoProposalProgress stage={flow.latest.authorization || data.proposalEvents.some(
+                                (event) => event.kind === "document.email_submitted" &&
+                                  (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id,
+                              ) ? "track" : "send"} />
+                              <h3>{flow.latest.authorization ? "Customer authorization received" : "Review and send the customer packet"}</h3>
+                              <p>{flow.latest.authorization
+                                ? "Signed approval is saved to this RO. Release only approved repairs."
+                                : "Review the frozen estimate and supporting documents below, confirm the recipient, and send directly from here."}</p>
+                            </div>
+                            <FileCabinet
+                              items={documentItems}
+                              embeddedReview
+                              customerPhone={null}
+                              customerEmail={null}
+                              readOnly={s.actor.type === "support"}
+                              timeZone={data.profile?.timezone || "America/Chicago"}
+                            />
+                            {flow.latest.estimate.snapshot.authorizationPolicy && (
+                              <details className="ro-inline-authorization">
+                                <summary>Review customer authorization wording</summary>
+                                <div className="ro-authorization-copy">
+                                  {flow.latest.estimate.snapshot.authorizationPolicy.body}
+                                </div>
+                              </details>
+                            )}
+                            {!flow.latest.authorization && s.actor.type === "user" && (
+                              <div className="ro-inline-proposal-send" aria-label="Send customer packet">
+                                <h4>Send to customer</h4>
+                                <p className="muted">The customer will review the inspection, approve or decline repairs, and sign on their secure page.</p>
+                                <DocumentShare
+                                  id={flow.latest.estimate.id}
+                                  kind="estimate"
+                                  autoOpen
+                                />
+                              </div>
+                            )}
+                            <div className="ro-inline-proposal-status" role="status">
+                              <strong>Customer response</strong>
+                              {flow.latest.authorization ? (
+                                <p>Signed by {flow.latest.authorization.signerName}. Review the authorized work in the RO workflow below.</p>
+                              ) : data.proposalEvents.some(
+                                  (event) => event.kind === "estimate.customer_opened" &&
+                                    (event.data as Record<string, unknown>).versionId === flow.latest?.estimate.id,
+                                ) ? (
+                                <p>Customer opened the secure proposal. Awaiting a signed authorization.</p>
+                              ) : data.proposalEvents.some(
+                                  (event) => event.kind === "document.email_submitted" &&
+                                    (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id,
+                                ) ? (
+                                <p>Email submitted to the provider. Delivery is not confirmed; customer has not opened the proposal yet.</p>
+                              ) : (
+                                <p>Not sent yet. Use the recipient form above to send this packet.</p>
+                              )}
+                              <Link className="ro-edit-pricing-link" href={`/app/jobs?job=${selected.id}&tab=proposal`}>
+                                View full customer activity &amp; decisions
+                              </Link>
+                            </div>
+                          </>
+                        ) : null}
+                      </section>
+                    )}
 
                     {!awaitingInspection && flow && (
                       auto ? (
@@ -1578,7 +1698,8 @@ export default async function JobsPage({
                   <AdvisorProposalTracking
                     jobId={selected.id}
                     estimateId={flow.latest.estimate.id}
-                    shareRequested={share === "1"}
+                    shareRequested={false}
+                    trackingOnly
                     canShare={s.actor.type === "user"}
                     version={flow.latest.estimate.version}
                     snapshot={flow.latest.estimate.snapshot}
@@ -1606,7 +1727,7 @@ export default async function JobsPage({
                     documents={
                       <FileCabinet
                         items={documentItems}
-                        autoOpenShare={share === "1"}
+                        archiveOnly
                         customerPhone={data.contact && !data.contact.textOff
                           ? data.contact.phone : null}
                         customerEmail={data.contact && !data.contact.emailOff
@@ -1617,7 +1738,24 @@ export default async function JobsPage({
                     }
                   />
                 )}
-                {tab === "files" && (
+                {tab === "files" && (auto ? (
+                  <section className="ro-archive-view" aria-label="RO document archive">
+                    <div className="ro-archive-return">
+                      <strong>Documents &amp; signed copies</strong>
+                      <Link href={`/app/jobs?job=${selected.id}#customer-proposal-review`}>
+                        Return to proposal review &amp; send
+                      </Link>
+                    </div>
+                    <FileCabinet
+                      items={documentItems}
+                      archiveOnly
+                      customerPhone={null}
+                      customerEmail={null}
+                      readOnly={s.actor.type === "support"}
+                      timeZone={data.profile?.timezone || "America/Chicago"}
+                    />
+                  </section>
+                ) : (
                   <>
                     {!needsEstimateDraft && <section
                       className="docs-prep-toolbar"
@@ -1727,7 +1865,7 @@ export default async function JobsPage({
                     />
                     )}
                   </>
-                )}
+                ))}
                 {tab === "inspection" && data.inspection && (
                   <section aria-label="Inspection">
                     {auto && data.jobMedia.length > 0 && (
