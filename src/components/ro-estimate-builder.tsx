@@ -197,6 +197,9 @@ export function RoEstimateBuilder({
                     ...r, labor: { ...r.labor, sellRateCents: cents(e.target.value) },
                   }))} />
               </label>
+            </div>
+            <details className="ro-internal-cost" defaultOpen={repair.labor.costRateCents === null}>
+              <summary>Internal labor cost: {repair.labor.costRateCents === null ? "Required" : dollars(repair.labor.costRateCents) + "/hr"} · Edit</summary>
               <label>Shop cost / hr ($)
                 <input type="number" min="0" max="100000" step=".01" inputMode="decimal"
                   value={amount(repair.labor.costRateCents)}
@@ -205,7 +208,7 @@ export function RoEstimateBuilder({
                       costRateCents: e.target.value === "" ? null : cents(e.target.value) },
                   }))} placeholder="Required" />
               </label>
-            </div>
+            </details>
           </fieldset>
 
           <fieldset className="ro-estimate-line">
