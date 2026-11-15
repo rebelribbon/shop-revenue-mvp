@@ -84,13 +84,13 @@ export function FileCabinet({
     });
 
   useEffect(() => {
-    if (showPreview) {
+    if (showPreview && !embeddedReview) {
       document.querySelector(".docs-preview-pane")?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     }
-  }, [showPreview, activeId]);
+  }, [showPreview, activeId, embeddedReview]);
 
   useEffect(() => {
     if (!active?.estimateShareId) return;
