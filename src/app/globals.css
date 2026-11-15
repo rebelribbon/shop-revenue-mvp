@@ -6538,3 +6538,20 @@ main.customer-index-page {
   .ro-proposal-progress { margin-bottom: 0; }
   .proposal-preparation { padding: 10px; }
 }
+
+
+/* Select one inspection system; no stack of 40 checklist rows on a phone. */
+.inspection-result-section-picker { display: grid; gap: 6px; font-size: .85rem; padding: 10px 0; }
+.inspection-result-section-picker select { width: 100%; min-height: 44px; }
+.inspection-result-section-items { list-style: none; padding: 0; margin: 0; }
+.inspection-result-section-items li { display: flex; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding: 9px 0; font-size: .85rem; }
+.inspection-result-section-items li strong { flex: 0 0 auto; }
+.docs-preview-head-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; }
+.docs-preview-head-actions .btn { min-height: 40px; padding: 7px 11px; font-size: .83rem; }
+@media (max-width:700px) {
+  .docs-preview-pane { scroll-margin-top: 88px; }
+  .docs-preview-head { align-items: start; }
+  .docs-preview-head-actions { gap: 7px; }
+  .ro-estimate-part .muted, .ro-estimate-line .muted { font-size: .78rem; }
+  .ro-estimate-repair input { min-height: 42px; font-size: 16px; }
+}
