@@ -6578,3 +6578,107 @@ main.customer-index-page {
   .ro-estimate-repair { gap: 6px; }
   .ro-estimate-part { margin-bottom: 6px; }
 }
+
+
+/* The RO Overview owns the full estimate-review-send handoff. */
+.ro-inline-proposal {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  scroll-margin-top: 95px;
+  margin: 8px 0 14px;
+}
+.ro-inline-proposal-heading {
+  display: grid;
+  gap: 4px;
+}
+.ro-inline-proposal-heading h3 { margin: 0; font-size: 1.15rem; }
+.ro-inline-proposal-heading p { margin: 0; font-size: .86rem; line-height: 1.4; }
+.ro-inline-proposal-heading > p.muted { font-size: .72rem; }
+.ro-inline-proposal .docs-inline-review {
+  display: grid;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+.ro-inline-proposal .docs-inline-review .docs-split {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  min-width: 0;
+  gap: 0;
+}
+.ro-inline-proposal .docs-inline-review .docs-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--line);
+}
+.ro-inline-proposal .docs-inline-review .docs-list-heading { display: none; }
+.ro-inline-proposal .docs-inline-review .docs-preview-pane {
+  min-width: 0;
+  border: 0;
+  scroll-margin-top: 100px;
+}
+.ro-inline-proposal .docs-inline-review .docs-paper {
+  margin: 0;
+  padding: 12px;
+}
+.ro-inline-proposal .docs-inline-review .docs-paper-heading {
+  margin-bottom: 8px;
+}
+.ro-inline-proposal .docs-inline-review .docs-paper-lines { width: 100%; }
+.ro-inline-proposal .docs-inline-review .docs-preview-head { padding: 10px 12px; }
+.ro-inline-attach-agreement,
+.ro-inline-authorization {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0;
+}
+.ro-inline-attach-agreement > summary,
+.ro-inline-authorization > summary {
+  min-height: 44px;
+  padding: 11px 12px;
+  font-size: .85rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.ro-inline-attach-agreement > summary::after,
+.ro-inline-authorization > summary::after { content: " ▾"; }
+.ro-inline-attach-agreement[open] > summary::after,
+.ro-inline-authorization[open] > summary::after { content: " ▴"; }
+.ro-inline-attach-agreement > form,
+.ro-inline-attach-agreement > p,
+.ro-authorization-copy { padding: 12px; }
+.ro-authorization-copy { white-space: pre-wrap; font-size: .88rem; line-height: 1.5; max-height: 320px; overflow-y: auto; }
+.ro-inline-proposal-send {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #418d72;
+  border-radius: 12px;
+  padding: 12px;
+}
+.ro-inline-proposal-send h4 { margin: 0; font-size: 1rem; }
+.ro-inline-proposal-send > p { margin: 0; font-size: .84rem; }
+.ro-inline-proposal-send .document-sharing > section { display: grid; gap: 10px; }
+.ro-inline-proposal-send .document-sharing h4 { margin: 0; }
+.ro-inline-proposal-send .document-sharing .money-actions { gap: 8px; }
+.ro-inline-proposal-status {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+.ro-inline-proposal-status p { margin: 0; font-size: .88rem; }
+.ro-archive-return { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0 14px; }
+.ro-archive-return > a { font-size: .85rem; }
+@media(max-width:700px) {
+  .ro-inline-proposal { gap: 9px; }
+  .ro-inline-proposal .docs-inline-review .docs-list { max-height: 170px; }
+  .ro-inline-proposal .docs-inline-review .docs-paper { padding: 10px; }
+  .ro-inline-proposal-send { padding: 10px; }
+  .ro-inline-proposal-send .money-actions { display: grid; grid-template-columns: 1fr; }
+  .ro-inline-proposal-send .money-actions .btn { width: 100%; min-height: 44px; }
+}
