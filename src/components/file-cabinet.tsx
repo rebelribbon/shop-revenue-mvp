@@ -114,10 +114,7 @@ export function FileCabinet({
           <h3>
             Documents <span className="docs-counter">{items.length}</span>
           </h3>
-          <p className="muted">
-            Select a document to preview. Tick agreements to include in the
-            customer packet.
-          </p>
+          <p className="muted">Your RO documents and signed copies.</p>
         </div>
         <div className="docs-toolbar-actions">
           <button
@@ -396,15 +393,13 @@ export function FileCabinet({
                   </div>
                 </article>
               ) : (
-                <div className="docs-preview-placeholder">
-                  <span className="docs-preview-glyph" aria-hidden="true">
-                    ▤
-                  </span>
-                  <h4>{active.title}</h4>
-                  <p>
+                <div className="docs-preview-compact">
+                  <p className="muted">
                     {previewError && active.estimateShareId
                       ? previewError
-                      : "Use Full preview to view this attachment or signed copy."}
+                      : previewPath
+                        ? "Original document available to view."
+                        : "This file has no online preview."}
                   </p>
                   {previewPath && (
                     <a
@@ -413,7 +408,7 @@ export function FileCabinet({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Open document
+                      View original document
                     </a>
                   )}
                 </div>
@@ -455,10 +450,7 @@ export function FileCabinet({
           )}
         </aside>
       </div>
-      <p className="docs-footnote">
-        Shop pricing and document content are fixed before sharing. Customer
-        signatures and signed copies stay attached to this job.
-      </p>
+
     </section>
   );
 }
