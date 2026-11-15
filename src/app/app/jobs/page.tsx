@@ -9,6 +9,7 @@ import { jobReference } from "@/lib/job-reference";
 import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
+import { AdvisorProposalTracking } from "@/components/advisor-proposal-tracking";
 import { RoDocumentPrepare } from "@/components/ro-document-prepare";
 import type { CabinetItem } from "@/domain/documents";
 import { estimateTotals } from "@/lib/estimate-tax";
@@ -47,8 +48,8 @@ import {
 import { localDateKey } from "@/lib/timezone";
 import { notFound } from "next/navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
-import { and, eq } from "drizzle-orm";
-import { appointment, estimateVersion, recommendation } from "@/db/schema";
+import { and, eq, desc, inArray, sql } from "drizzle-orm";
+import { activity, appointment, estimateVersion, recommendation } from "@/db/schema";
 import { EstimatePublisher } from "@/components/estimate-publisher";
 import Link from "next/link";
 import { calculateJob } from "@/domain/job-costing";
@@ -259,8 +260,7 @@ export default async function JobsPage({
     if (
       s.role !== "technician" &&
       s.actor.type === "user" &&
-      latestFlow &&
-      !latestFlow.authorization
+      latestFlow
     ) {
       try {
         presentPath = (
@@ -273,6 +273,27 @@ export default async function JobsPage({
     return {
       ...page,
       cabinet,
+      proposalEvents: page.selected && s.role !== "technician" && !ownerAsTechnician
+        ? await tx
+            .select({
+              id: activity.id,
+              kind: activity.kind,
+              data: activity.data,
+              summary: activity.summary,
+              at: activity.occurredAt,
+            })
+            .from(activity)
+            .where(and(
+              eq(activity.businessId, tx.businessId),
+              inArray(activity.kind, [
+                "document.email_submitted",
+                "estimate.customer_opened",
+              ]),
+              sql`${activity.data}->>'jobId' = ${page.selected.id}`,
+            ))
+            .orderBy(desc(activity.occurredAt))
+            .limit(100)
+        : [],
       authorizationPolicyReady: page.selected
         ? (await tx.select({ id: legalPolicy.id })
             .from(legalPolicy)
@@ -804,7 +825,7 @@ export default async function JobsPage({
                 ? "history"
                 : auto && requestedTab === "estimate"
                   ? "files"
-                : ["inspection", "photos", "estimate", "files", "history"].includes(
+                : ["inspection", "photos", "proposal", "estimate", "files", "history"].includes(
                       requestedTab ?? "",
                     )
                   ? requestedTab!
@@ -898,7 +919,7 @@ export default async function JobsPage({
                 </div>
               )}
               <article className="card job-profile record-job-profile">
-                <CustomerContactActions
+                {!auto && <CustomerContactActions
                   target={{ customerId: input.customerId, jobId: selected.id }}
                   phone={data.contact?.phone}
                   email={data.contact?.email}
@@ -908,7 +929,7 @@ export default async function JobsPage({
                   emailAllowed={
                     !data.contact?.emailOff && !data.contact?.doNotContact
                   }
-                />
+                />}
                 <header className="profile-head">
                   <div>
                     <div className="identifier-with-copy">
@@ -976,7 +997,7 @@ export default async function JobsPage({
                       : undefined}
                   />
                 )}
-                {data.presentPath && (
+                {!auto && data.presentPath && (
                   <p className="ro-present">
                     <a
                       className="btn primary"
@@ -993,7 +1014,7 @@ export default async function JobsPage({
                     </span>
                   </p>
                 )}
-                {canFollowUp && (
+                {canFollowUp && !auto && (
                   <div className="job-follow-up-shortcuts">
                     <LogContactButton
                       target={{
@@ -1041,6 +1062,33 @@ export default async function JobsPage({
                       />
                     )}
                   </div>
+                )}
+                {auto && flow?.latest && (
+                  <Link
+                    className="ro-proposal-shortcut"
+                    href={`/app/jobs?job=${selected.id}&tab=proposal`}
+                    aria-label="Open customer proposal tracking"
+                  >
+                    <span>
+                      <strong>Customer proposal</strong>
+                      <small>
+                        {flow.latest.authorization
+                          ? "Signed authorization received"
+                          : data.proposalEvents.some((event) =>
+                              (event.data as Record<string, unknown>).versionId === flow.latest?.estimate.id &&
+                              event.kind === "estimate.customer_opened")
+                            ? "Customer opened proposal"
+                            : data.proposalEvents.some((event) =>
+                                (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id &&
+                                event.kind === "document.email_submitted")
+                              ? "Email submitted · awaiting customer"
+                              : "Prepared · not sent"}
+                      </small>
+                    </span>
+                    <span className="ro-proposal-shortcut-total">
+                      {money(flow.latest.estimate.snapshot.totalCents)} <span aria-hidden="true">→</span>
+                    </span>
+                  </Link>
                 )}
                 {auto && awaitingInspection && !data.inspection?.assessment.vehiclePickedUp && (
                   <details className="ro-intake-photos">
@@ -1122,6 +1170,19 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
+                <details className="ro-team-assignment" open={!data.assignee || !data.advisorId}>
+                  <summary>
+                    <span>
+                      <strong>Assigned team</strong>
+                      <small>Advisor: {data.advisors.find((person) =>
+                        person.userId === data.advisorId)?.name ?? "Not assigned"}
+                        {" · "}Tech: {data.techs.find((person) =>
+                          person.userId === data.assignee)?.name ?? "Not assigned"}
+                      </small>
+                    </span>
+                    <span className="ro-team-manage">Manage</span>
+                  </summary>
+                  <div className="ro-team-controls">
                 {!data.canManageTeam && !canChooseInitialTech ? (
                   <p className="muted">
                     Tech:{" "}
@@ -1166,7 +1227,9 @@ export default async function JobsPage({
                     Work this RO as technician
                   </Link>
                 )}
-                {flow && (!awaitingInspection || flow.latest) && (
+                  </div>
+                </details>
+                {!auto && flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
                       <strong>
@@ -1410,6 +1473,9 @@ export default async function JobsPage({
                         "photos",
                         `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`,
                       ],
+                      ...(auto && flow?.latest
+                        ? ([["proposal", "Customer proposal"]] as const)
+                        : []),
                       [
                         "files",
                         `Documents${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
@@ -1485,6 +1551,46 @@ export default async function JobsPage({
                       />
                     </section>
                   </>
+                )}
+                {tab === "proposal" && auto && flow?.latest && (
+                  <AdvisorProposalTracking
+                    jobId={selected.id}
+                    version={flow.latest.estimate.version}
+                    snapshot={flow.latest.estimate.snapshot}
+                    authorization={flow.latest.authorization
+                      ? {
+                          signerName: flow.latest.authorization.signerName,
+                          approvedLineIds: flow.latest.authorization.approvedLineIds,
+                          createdAt: flow.latest.authorization.createdAt.toISOString(),
+                        }
+                      : null}
+                    events={data.proposalEvents
+                      .filter((event) => {
+                        const entry = event.data as Record<string, unknown>;
+                        return entry.documentId === flow.latest!.estimate.id ||
+                          entry.versionId === flow.latest!.estimate.id;
+                      })
+                      .map((event) => ({
+                        id: event.id,
+                        kind: event.kind as "document.email_submitted" | "estimate.customer_opened",
+                        at: event.at.toISOString(),
+                        description: event.summary,
+                      }))}
+                    customerPath={data.presentPath}
+                    timeZone={data.profile?.timezone || "America/Chicago"}
+                    documents={
+                      <FileCabinet
+                        items={documentItems}
+                        autoOpenShare={share === "1"}
+                        customerPhone={data.contact && !data.contact.textOff
+                          ? data.contact.phone : null}
+                        customerEmail={data.contact && !data.contact.emailOff
+                          ? data.contact.email : null}
+                        readOnly={s.actor.type === "support"}
+                        timeZone={data.profile?.timezone || "America/Chicago"}
+                      />
+                    }
+                  />
                 )}
                 {tab === "files" && (
                   <>
