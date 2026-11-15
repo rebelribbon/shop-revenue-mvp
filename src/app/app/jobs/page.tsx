@@ -9,6 +9,7 @@ import { jobReference } from "@/lib/job-reference";
 import { JOB_FILE_CATEGORIES } from "@/domain/documents";
 import { sendDocumentAction } from "@/server/actions/documents";
 import { FileCabinet } from "@/components/file-cabinet";
+import { AdvisorProposalTracking } from "@/components/advisor-proposal-tracking";
 import { RoDocumentPrepare } from "@/components/ro-document-prepare";
 import type { CabinetItem } from "@/domain/documents";
 import { estimateTotals } from "@/lib/estimate-tax";
@@ -47,8 +48,8 @@ import {
 import { localDateKey } from "@/lib/timezone";
 import { notFound } from "next/navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
-import { and, eq } from "drizzle-orm";
-import { appointment, estimateVersion, recommendation } from "@/db/schema";
+import { and, eq, desc, inArray, sql } from "drizzle-orm";
+import { activity, appointment, estimateVersion, recommendation } from "@/db/schema";
 import { EstimatePublisher } from "@/components/estimate-publisher";
 import Link from "next/link";
 import { calculateJob } from "@/domain/job-costing";
@@ -273,6 +274,27 @@ export default async function JobsPage({
     return {
       ...page,
       cabinet,
+      proposalEvents: page.selected && s.role !== "technician" && !ownerAsTechnician
+        ? await tx
+            .select({
+              id: activity.id,
+              kind: activity.kind,
+              data: activity.data,
+              summary: activity.summary,
+              at: activity.occurredAt,
+            })
+            .from(activity)
+            .where(and(
+              eq(activity.businessId, tx.businessId),
+              inArray(activity.kind, [
+                "document.email_submitted",
+                "estimate.customer_opened",
+              ]),
+              sql`${activity.data}->>'jobId' = ${page.selected.id}`,
+            ))
+            .orderBy(desc(activity.occurredAt))
+            .limit(100)
+        : [],
       authorizationPolicyReady: page.selected
         ? (await tx.select({ id: legalPolicy.id })
             .from(legalPolicy)
@@ -804,7 +826,7 @@ export default async function JobsPage({
                 ? "history"
                 : auto && requestedTab === "estimate"
                   ? "files"
-                : ["inspection", "photos", "estimate", "files", "history"].includes(
+                : ["inspection", "photos", "proposal", "estimate", "files", "history"].includes(
                       requestedTab ?? "",
                     )
                   ? requestedTab!
@@ -1410,6 +1432,9 @@ export default async function JobsPage({
                         "photos",
                         `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`,
                       ],
+                      ...(auto && flow?.latest
+                        ? ([["proposal", "Customer proposal"]] as const)
+                        : []),
                       [
                         "files",
                         `Documents${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
