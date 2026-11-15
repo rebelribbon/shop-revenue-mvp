@@ -1619,7 +1619,7 @@ export default async function JobsPage({
                 )}
                 {tab === "files" && (
                   <>
-                    <section
+                    {!needsEstimateDraft && <section
                       className="docs-prep-toolbar"
                       aria-label="Documents setup"
                       id="share-customer-packet"
@@ -1672,7 +1672,12 @@ export default async function JobsPage({
                           )}
                         </details>
                       )}
-                    </section>
+                    </section>}
+                    {needsEstimateDraft && data.inspection?.complete && (
+                      <Link className="ro-edit-pricing-link" href={`/app/jobs?edit=${selected.id}`}>
+                        Edit parts &amp; labor
+                      </Link>
+                    )}
                     {needsEstimateDraft && draftLines.length > 0 &&
                       s.actor.type !== "support" && !selected.documentOnly && (
                         <RoDocumentPrepare
