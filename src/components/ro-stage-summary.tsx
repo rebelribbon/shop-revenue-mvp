@@ -3,34 +3,62 @@ import type { JobWorkflow } from "@/domain/job-workflow";
 
 type Stage = JobWorkflow["stage"];
 
-const descriptions: Partial<Record<Stage, { title: string; detail: string }>> =
-  {
-    awaiting: {
-      title: "Estimate prepared — review and share",
-      detail: "Open Documents to preview exactly what is saved, choose how to share it, and track the customer’s approval before starting repairs.",
-    },
-    ready: {
-      title: "Authorized work ready",
-      detail: "The assigned technician receives the approved repair work.",
-    },
-    working: {
-      title: "Technician performing authorized repairs",
-      detail: "Completion sends a task to the service advisor to invoice.",
-    },
-    bill: {
-      title: "Repairs complete — advisor invoices",
-      detail:
-        "Review finished work, issue the invoice, and send the payment link.",
-    },
-    payment: {
-      title: "Invoice sent — collect payment",
-      detail: "Confirm payment before vehicle release.",
-    },
-    paid: {
-      title: "Paid — prepare for pickup",
-      detail: "Payment is recorded. Finish the vehicle pickup and RO closeout.",
-    },
-  };
+type Step = "intake" | "inspection" | "proposal" | "approval" | "repair" | "invoice" | "payment";
+
+const stages: { id: Step; label: string }[] = [
+  { id: "intake", label: "Intake" },
+  { id: "inspection", label: "Inspect" },
+  { id: "proposal", label: "Proposal" },
+  { id: "approval", label: "Approve" },
+  { id: "repair", label: "Repair" },
+  { id: "invoice", label: "Invoice" },
+  { id: "payment", label: "Payment" },
+];
+
+const descriptions: Partial<
+  Record<Stage, { title: string; detail: string; step: Step }>
+> = {
+  awaiting: {
+    title: "Review customer approval",
+    detail: "The proposal is saved. Use Documents to preview it, send it, and see the customer's approval or decline.",
+    step: "approval",
+  },
+  declined: {
+    title: "Review declined recommendations",
+    detail: "Keep the declined work in the RO history. Review any approved work before proceeding.",
+    step: "approval",
+  },
+  ready: {
+    title: "Approved work is ready",
+    detail: "Only customer-authorized work can be released to the assigned technician.",
+    step: "repair",
+  },
+  working: {
+    title: "Repairs in progress",
+    detail: "The technician completes approved work and hands the RO back to the service advisor.",
+    step: "repair",
+  },
+  bill: {
+    title: "Prepare the final invoice",
+    detail: "Review completed work, create the invoice, and send it to the customer for payment.",
+    step: "invoice",
+  },
+  payment: {
+    title: "Collect payment",
+    detail: "Open the payment record, confirm payment, and prepare the vehicle for release.",
+    step: "payment",
+  },
+  paid: {
+    title: "Paid — ready for pickup",
+    detail: "Payment has been recorded. Finish the vehicle pickup and close out the RO.",
+    step: "payment",
+  },
+  attention: {
+    title: "Payment needs review",
+    detail: "Resolve the payment status before closing this repair order.",
+    step: "payment",
+  },
+};
 
 export function RoStageSummary({
   inspectionComplete,
@@ -40,6 +68,7 @@ export function RoStageSummary({
   statusLabel,
   editHref,
   documentsHref,
+  technicianHref,
 }: {
   inspectionComplete: boolean;
   hasEstimate: boolean;
@@ -48,46 +77,77 @@ export function RoStageSummary({
   statusLabel: string;
   editHref: string;
   documentsHref: string;
+  technicianHref?: string;
 }) {
   const waiting = !inspectionComplete && !hasEstimate;
-  const title = waiting
-    ? technicianAssigned
-      ? "Waiting on technician inspection"
-      : "Assign a technician"
+  const current: Step = waiting
+    ? technicianAssigned ? "inspection" : "intake"
     : !hasEstimate
-      ? "Inspection complete — build estimate"
-      : (descriptions[stage ?? "draft"]?.title ??
-        "Review the next service action");
-  const detail = waiting
-    ? technicianAssigned
-      ? "The technician records the diagnosis and submits the inspection. The advisor is notified when it is ready."
-      : "Assign a technician to inspect the vehicle. Estimate preparation follows submitted inspection findings."
+      ? "proposal"
+      : descriptions[stage ?? "draft"]?.step ?? "approval";
+  const active = stages.findIndex((s) => s.id === current);
+  const title = waiting && !technicianAssigned
+    ? "Assign a technician"
+    : waiting
+      ? "Waiting for technician inspection"
+      : !hasEstimate
+        ? "Price the inspection recommendations"
+        : descriptions[stage ?? "draft"]?.title ?? "Review the next service step";
+  const detail = waiting && !technicianAssigned
+    ? "Select one technician for the entire RO. The technician receives the inspection task."
+    : waiting
+      ? "The technician records findings and evidence. The advisor will be notified once the inspection is submitted."
+      : !hasEstimate
+        ? "Build parts and labor for each repair, then review the customer-facing proposal in Documents."
+        : descriptions[stage ?? "draft"]?.detail ??
+          "Open Documents to review the estimate and the customer response.";
+  const nextHref = waiting && !technicianAssigned
+    ? null
+    : waiting
+      ? technicianHref
+      : !hasEstimate
+        ? editHref
+        : ["awaiting", "declined", "draft"].includes(stage ?? "draft")
+          ? documentsHref
+          : null;
+  const nextLabel = waiting
+    ? "Open technician inspection"
     : !hasEstimate
-      ? "The advisor reviews submitted findings, prices parts and labor, and sends the estimate for customer approval."
-      : (descriptions[stage ?? "draft"]?.detail ??
-        "Review current authorization and the next action in the Work section.");
+      ? "Price parts & labor"
+      : "Open proposal & documents";
 
   return (
-    <section className="ro-stage-panel" aria-label="Current RO stage">
-      <p className="muted">
-        {waiting
-          ? "CURRENT STAGE · CHECK-IN & INSPECTION"
-          : !hasEstimate
-            ? "CURRENT STAGE · BUILD ESTIMATE"
-            : `CURRENT STAGE · ${statusLabel}`}
-      </p>
-      <h3>{title}</h3>
-      <p>{detail}</p>
-      {!waiting && !hasEstimate && (
-        <Link className="btn primary" href={editHref}>
-          Build estimate
-        </Link>
-      )}
-      {hasEstimate && (
-        <Link className="btn secondary" href={documentsHref}>
-          View estimate &amp; documents
-        </Link>
-      )}
+    <section className="ro-stage-panel ro-guided-stage" aria-label="Repair order progress">
+      <p className="muted ro-stage-eyebrow">REPAIR ORDER · {statusLabel}</p>
+      <ol className="ro-progress" aria-label="Service progress">
+        {stages.map((step, index) => (
+          <li
+            key={step.id}
+            className={index === active ? "is-current" : index < active ? "is-complete" : ""}
+            aria-current={index === active ? "step" : undefined}
+          >
+            <span className="ro-progress-dot" aria-hidden="true">
+              {index < active ? "✓" : index + 1}
+            </span>
+            <span>{step.label}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="ro-stage-next">
+        <p className="muted">WHAT HAPPENS NEXT</p>
+        <h3>{title}</h3>
+        <p>{detail}</p>
+        {nextHref && (
+          <Link className="btn primary" href={nextHref}>
+            {nextLabel}
+          </Link>
+        )}
+        {hasEstimate && nextHref !== documentsHref && (
+          <Link className="ro-secondary-link" href={documentsHref}>
+            View customer documents
+          </Link>
+        )}
+      </div>
     </section>
   );
 }

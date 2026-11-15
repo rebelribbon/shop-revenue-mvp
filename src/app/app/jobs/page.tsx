@@ -971,6 +971,9 @@ export default async function JobsPage({
                     statusLabel={statusLabels[statusOf(selected.id)]}
                     editHref={`/app/jobs?edit=${selected.id}`}
                     documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
+                    technicianHref={s.role === "owner" && data.assignee === s.actor.id
+                      ? `/app/jobs?job=${selected.id}&mode=technician`
+                      : undefined}
                   />
                 )}
                 {data.presentPath && (
@@ -1425,17 +1428,7 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
-                    {awaitingInspection && (
-                      <section className="ro-stage-panel" aria-label="Next required action">
-                        <h3>Next: Complete the inspection</h3>
-                        <p>Assign an advisor and technician above. The assigned technician completes the inspection on their own screen. Nothing is ready to price or send yet.</p>
-                        {s.role === "owner" && data.assignee === s.actor.id && (
-                          <Link className="btn primary" href={`/app/jobs?job=${selected.id}&mode=technician`}>
-                            Start technician inspection
-                          </Link>
-                        )}
-                      </section>
-                    )}
+
                     {!awaitingInspection && flow && (
                       <RecordSection
                         title="Work & approval"
