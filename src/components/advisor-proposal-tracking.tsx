@@ -34,6 +34,7 @@ export function AdvisorProposalTracking({
   estimateId,
   shareRequested = false,
   canShare = true,
+  trackingOnly = false,
   version,
   snapshot,
   authorization,
@@ -46,6 +47,7 @@ export function AdvisorProposalTracking({
   estimateId: string;
   shareRequested?: boolean;
   canShare?: boolean;
+  trackingOnly?: boolean;
   version: number;
   snapshot: EstimateSnapshot;
   authorization: Auth;
@@ -127,7 +129,7 @@ export function AdvisorProposalTracking({
         </p>
       </div>
 
-      {!signed && canShare && (
+      {!signed && canShare && !trackingOnly && (
         <section className="proposal-send-stage" id="proposal-send" aria-label="Send customer proposal">
           <div className="proposal-send-stage-head">
             <div>
@@ -220,7 +222,12 @@ export function AdvisorProposalTracking({
               ))}
             </ol>
           ) : <p className="muted">No customer delivery, opening, or authorization events recorded for this version yet.</p>}
-          {!signed && canShare && (
+          {!signed && canShare && trackingOnly && (
+            <Link className="btn secondary" href={`/app/jobs?job=${jobId}#customer-proposal-review`}>
+              {submitted ? "Return to RO to resend" : "Review and send from RO"}
+            </Link>
+          )}
+          {!signed && canShare && !trackingOnly && (
             <button type="button" className="btn secondary" onClick={() => { setSendOpen(true); document.getElementById("proposal-send")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
               {submitted ? "Resend proposal" : "Send customer proposal"}
             </button>
