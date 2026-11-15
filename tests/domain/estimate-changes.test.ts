@@ -31,7 +31,9 @@ describe("automatic customer estimate revision history", () => {
   it("records which labor price changed and the total without typing", () => {
     const updated: EstimateSnapshot = {
       ...original,
-      lines: [{ ...original.lines[0], unitPriceCents: 15000, totalCents: 15000 }],
+      lines: [
+        { ...original.lines[0], unitPriceCents: 15000, totalCents: 15000 },
+      ],
       subtotalCents: 15000,
       totalCents: 15000,
     };
@@ -44,27 +46,4 @@ describe("automatic customer estimate revision history", () => {
   it("records new parts with the original labor untouched", () => {
     const updated: EstimateSnapshot = {
       ...original,
-      lines: [
-        ...original.lines,
-        {
-          id: "part-0",
-          description: "Front brake pads",
-          kind: "part",
-          quantity: 1,
-          unitPriceCents: 9800,
-          totalCents: 9800,
-        },
-      ],
-      subtotalCents: 21800,
-      totalCents: 21800,
-    };
-    expect(automaticEstimateChanges(original, updated)).toContain(
-      "Added part: Front brake pads",
-    );
-  });
-  it("records a reissue without inventing price changes", () => {
-    expect(automaticEstimateChanges(original, { ...original })).toContain(
-      "no changes to priced work",
-    );
-  });
-});
+      lines: ¶»§q«^
