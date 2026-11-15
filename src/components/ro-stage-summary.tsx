@@ -68,6 +68,7 @@ export function RoStageSummary({
   statusLabel,
   editHref,
   documentsHref,
+  proposalHref,
   technicianHref,
 }: {
   inspectionComplete: boolean;
@@ -77,6 +78,7 @@ export function RoStageSummary({
   statusLabel: string;
   editHref: string;
   documentsHref: string;
+  proposalHref?: string;
   technicianHref?: string;
 }) {
   const waiting = !inspectionComplete && !hasEstimate;
@@ -108,17 +110,17 @@ export function RoStageSummary({
       : !hasEstimate
         ? editHref
         : ["awaiting", "declined", "draft"].includes(stage ?? "draft")
-          ? documentsHref
+          ? (proposalHref ?? documentsHref)
           : null;
   const nextLabel = waiting
     ? "Open technician inspection"
     : !hasEstimate
       ? "Price parts & labor"
-      : "Open proposal & documents";
+      : "Review customer proposal";
 
   return (
     <section className="ro-stage-panel ro-guided-stage" aria-label="Repair order progress">
-      <p className="muted ro-stage-eyebrow">REPAIR ORDER · {statusLabel}</p>
+      <p className="muted ro-stage-eyebrow">CURRENT STEP · {active + 1} OF {stages.length}</p>
       <ol className="ro-progress" aria-label="Service progress">
         {stages.map((step, index) => (
           <li
@@ -134,18 +136,15 @@ export function RoStageSummary({
         ))}
       </ol>
       <div className="ro-stage-next">
-        <p className="muted">WHAT HAPPENS NEXT</p>
         <h3>{title}</h3>
-        <p>{detail}</p>
+        <p className="ro-stage-description">{detail}</p>
         {nextHref && (
           <Link className="btn primary" href={nextHref}>
             {nextLabel}
           </Link>
         )}
-        {hasEstimate && nextHref !== documentsHref && (
-          <Link className="ro-secondary-link" href={documentsHref}>
-            View customer documents
-          </Link>
+        {hasEstimate && !nextHref && stage === "paid" && (
+          <span className="muted ro-stage-complete">Service workflow complete</span>
         )}
       </div>
     </section>
