@@ -38,4 +38,211 @@ async function shop() {
   const techEmail = `tech-${randomUUID()}@shop.example.test`;
   const inv = await owner((tx) =>
     inviteStaff(tx, meta(), {
-      name:¶»§q«^
+      name: "Tess Tech",
+      email: techEmail,
+      role: "technician",
+    }),
+  );
+  const authSubject = randomUUID();
+  const joined = await acceptInvite(meta(), inv.token, {
+    authSubject,
+    email: techEmail,
+    phoneE164: null,
+    displayName: "Tess Tech",
+  });
+  const tech = as({ type: "user", id: joined.userId, authSubject });
+  const c = await owner((tx) =>
+    createCustomer(tx, meta(), {
+      firstName: "Private",
+      lastName: "Customer TEST",
+      phoneE164: "+15125550199",
+    }),
+  );
+  const v = await owner((tx) =>
+    createVehicle(tx, meta(), { customerId: c.id, make: "Ford" }),
+  );
+  const job = await owner((tx) =>
+    createJob(tx, {
+      customerId: c.id,
+      vehicleId: v.id,
+      title: "Brake noise",
+      parts: [],
+      labor: [],
+    }),
+  );
+  return { t, owner, advisor, tech, techEmail, techId: joined.userId, job };
+}
+
+async function submitInspection(f: Awaited<ReturnType<typeof shop>>) {
+  const inspection = await f.tech((tx) => getInspection(tx, f.job.id));
+  return f.tech((tx) =>
+    saveInspection(tx, meta(), {
+      jobId: f.job.id,
+      submit: true,
+      assessment: {
+        diagnosis: "Pads worn",
+        bay: "Bay 1",
+        vehiclePickedUp: true,
+      },
+      items: inspection.items.map((i) => ({ ...i, status: "good" as const })),
+    }),
+  );
+}
+
+describe("RO handoff email pings", () => {
+  it("lets a one-person shop use the owner as both service advisor and technician", async () => {
+    const f = await shop();
+    const ownerId = f.t.owner.userId;
+    const available = await f.owner(async (tx) => {
+      const { listTechs, listAdvisors } = await import("@/domain/assignments");
+      return { techs: await listTechs(tx), advisors: await listAdvisors(tx) };
+    });
+    expect(available.techs.some((person) => person.userId === ownerId)).toBe(true);
+    expect(available.advisors.some((person) => person.userId === ownerId)).toBe(true);
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: ownerId }),
+    );
+    const assigned = await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: ownerId }),
+    );
+    expect(assigned.handoff).toBe(true);
+    const draft = await f.owner((tx) => getInspection(tx, f.job.id));
+    const submitted = await f.owner((tx) =>
+      saveInspection(tx, meta(), {
+        jobId: f.job.id,
+        submit: true,
+        assessment: {
+          diagnosis: "One-person shop diagnosis",
+          bay: "Rack 1",
+          vehiclePickedUp: true,
+        },
+        items: draft.items.map((point) => ({ ...point, status: "good" as const })),
+      }),
+    );
+    expect(submitted.complete).toBe(true);
+    expect(submitted.advisorNotified).toBe(true);
+    const handoff = await f.owner((tx) => prepareHandoffPing(tx, f.job.id));
+    expect(handoff?.stage).toBe("build_estimate");
+  });
+
+  it("allows the RO advisor to choose the initial technician, but only management can change assignments", async () => {
+    const f = await shop();
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
+    const assigned = await f.advisor((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
+    );
+    expect(assigned.handoff).toBe(true);
+    await expect(
+      f.advisor((tx) =>
+        assignJob(tx, meta(), { jobId: f.job.id, userId: null }),
+      ),
+    ).rejects.toThrow(/Only management/);
+    const cleared = await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: null }),
+    );
+    expect(cleared.tech).toBeNull();
+  });
+
+  it("emails the technician on assignment and the advisor when the inspection is submitted", async () => {
+    const f = await shop();
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
+    const assigned = await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
+    );
+    expect(assigned.handoff).toBe(true);
+
+    const toTech = await f.owner((tx) => prepareHandoffPing(tx, f.job.id));
+    expect(toTech?.stage).toBe("inspect_vehicle");
+    expect(toTech?.email.to).toBe(f.techEmail);
+    expect(toTech?.email.subject).toMatch(
+      /^Assigned to you: RO-[0-9A-F]+ · Brake noise$/,
+    );
+    expect(toTech?.email.text).toContain("Hi Tess,");
+    expect(toTech?.email.text).toContain("Ping Staff put you on RO-");
+    expect(toTech?.email.text).toContain(
+      `Open it: http://localhost:3000/app/jobs?job=${f.job.id}`,
+    );
+    // No customer details in a team email.
+    expect(toTech?.email.text).not.toMatch(/Private|Customer TEST|5550199/);
+    expect(await sendHandoffPing(toTech)).toBe(true);
+    expect(mail.sent.filter((m) => m.to === f.techEmail)).toHaveLength(1);
+
+    // Assigning the same tech again hands nothing off.
+    expect(
+      (
+        await f.owner((tx) =>
+          assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
+        )
+      ).handoff,
+    ).toBe(false);
+
+    const submitted = await submitInspection(f);
+    expect(submitted.advisorNotified).toBe(true);
+    const toAdvisor = await f.tech((tx) => prepareHandoffPing(tx, f.job.id));
+    expect(toAdvisor?.stage).toBe("build_estimate");
+    expect(toAdvisor?.email.to).toBe(f.t.staff!.email);
+    expect(toAdvisor?.email.subject).toMatch(
+      /^Inspection done, build the estimate: RO-[0-9A-F]+ · Brake noise$/,
+    );
+    expect(toAdvisor?.email.text).toContain(
+      "Tess Tech finished the inspection on RO-",
+    );
+    expect(toAdvisor?.email.text).toContain("The estimate is waiting on you");
+  });
+
+  it("pings a newly assigned advisor about a waiting estimate, but never the person who did it", async () => {
+    const f = await shop();
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
+    await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
+    );
+    await submitInspection(f);
+    // Ordinary advisors cannot change assignments; only management can.
+    await expect(
+      f.advisor((tx) =>
+        assignAdvisor(tx, meta(), {
+          jobId: f.job.id,
+          userId: f.t.owner.userId,
+        }),
+      ),
+    ).rejects.toThrow(/management/);
+    // A manager can transfer to another advisor, and that person is pinged.
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.owner.userId }),
+    );
+    const moved = await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
+    expect(moved.handoff).toBe(true);
+    const toStaff = await f.owner((tx) => prepareHandoffPing(tx, f.job.id));
+    expect(toStaff?.email.to).toBe(f.t.staff!.email);
+    // The owner taking it back themselves gets no email about their own click.
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.staff!.userId }),
+    );
+    await f.owner((tx) =>
+      assignAdvisor(tx, meta(), { jobId: f.job.id, userId: f.t.owner.userId }),
+    );
+    expect(await f.owner((tx) => prepareHandoffPing(tx, f.job.id))).toBeNull();
+  });
+
+  it("stays quiet when the owner turns handoff emails off; only the owner can", async () => {
+    const f = await shop();
+    expect(await f.owner((tx) => handoffPingsOn(tx))).toBe(true);
+    await expect(
+      f.advisor((tx) => setHandoffPings(tx, meta(), false)),
+    ).rejects.toThrow();
+    await f.owner((tx) => setHandoffPings(tx, meta(), false));
+    await f.owner((tx) =>
+      assignJob(tx, meta(), { jobId: f.job.id, userId: f.techId }),
+    );
+    expect(await f.owner((tx) => prepareHandoffPing(tx, f.job.id))).toBeNull();
+    expect(await sendHandoffPing(null)).toBe(false);
+  });
+});
