@@ -901,7 +901,7 @@ export default async function JobsPage({
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   {auto && data.inspection?.complete
-                    ? "Estimate pricing saved. Review the customer preview under Estimate."
+                    ? "Pricing saved. Review the proposal in Documents."
                     : "Repair order saved."}
                 </p>
               )}
@@ -918,7 +918,7 @@ export default async function JobsPage({
                   </Link>
                 </div>
               )}
-              <article className="card job-profile record-job-profile">
+              <article className={`card job-profile record-job-profile ${auto ? "ro-mobile-focus" : ""}`}>
                 {!auto && <CustomerContactActions
                   target={{ customerId: input.customerId, jobId: selected.id }}
                   phone={data.contact?.phone}
@@ -943,6 +943,8 @@ export default async function JobsPage({
                     </div>
                     <h2 className="profile-title">
                       {auto ? (
+                        flow?.latest?.estimate.snapshot.vehicleLabel ||
+                        selected.title ||
                         "Repair order"
                       ) : (
                         <>
@@ -952,14 +954,15 @@ export default async function JobsPage({
                       )}
                     </h2>
                     <p className="muted">
-                      {[
-                        flow?.latest?.estimate.snapshot.serviceLabel ||
-                          flow?.latest?.estimate.snapshot.vehicleLabel,
-                        input.repeat &&
-                          `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || customerName}
+                      {auto
+                        ? [customerName, input.mileageIn != null
+                          ? `${input.mileageIn.toLocaleString("en-US")} mi` : ""]
+                          .filter(Boolean).join(" · ")
+                        : [flow?.latest?.estimate.snapshot.serviceLabel ||
+                            flow?.latest?.estimate.snapshot.vehicleLabel,
+                            input.repeat &&
+                              `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`]
+                          .filter(Boolean).join(" · ") || customerName}
                     </p>
                   </div>
                   {flow && (
@@ -969,7 +972,8 @@ export default async function JobsPage({
                   )}
                 </header>
                 {(input.concerns || input.mileageIn != null) && (
-                  <div className="ro-check-in" aria-label="Check-in">
+                  <details className="ro-check-in ro-check-in-collapsible">
+                    <summary>Check-in details{input.mileageIn != null ? ` · ${input.mileageIn.toLocaleString("en-US")} mi` : ""}</summary>
                     {input.mileageIn != null && (
                       <p>
                         <strong>Miles in:</strong>{" "}
@@ -981,8 +985,67 @@ export default async function JobsPage({
                         <strong>Customer concerns:</strong> {input.concerns}
                       </p>
                     )}
+                  </details>
+                )}
+                <details className="ro-team-assignment" open={!data.assignee || !data.advisorId}>
+                  <summary>
+                    <span>
+                      <strong>Assigned team</strong>
+                      <small>Advisor: {data.advisors.find((person) =>
+                        person.userId === data.advisorId)?.name ?? "Not assigned"}
+                        {" · "}Tech: {data.techs.find((person) =>
+                          person.userId === data.assignee)?.name ?? "Not assigned"}
+                      </small>
+                    </span>
+                    <span className="ro-team-manage">Manage</span>
+                  </summary>
+                  <div className="ro-team-controls">
+                {!data.canManageTeam && !canChooseInitialTech ? (
+                  <p className="muted">
+                    Tech:{" "}
+                    {data.techs.find((t) => t.userId === data.assignee)?.name ??
+                      "nobody yet"}
+                  </p>
+                ) : (
+                  <div
+                    className="tech-pick ro-assignment"
+                    key={data.assignee ?? "none"}
+                  >
+                    <ActionForm
+                      action={assignJobAction}
+                      hidden={{ jobId: selected.id }}
+                      submitLabel={data.assignee ? "Change technician" : "Assign technician"}
+                      variant="secondary"
+                    >
+                      <label htmlFor="job-tech">Technician for this RO (all repairs)</label>
+                      <select
+                        id="job-tech"
+                        name="userId"
+                        defaultValue={data.assignee ?? ""}
+                      >
+                        <option value="">Nobody yet</option>
+                        {data.techs.map((t) => (
+                          <option key={t.userId} value={t.userId}>
+                            {t.userId === s.actor.id
+                              ? `${t.name} (me)`
+                              : t.name}
+                          </option>
+                        ))}
+                      </select>
+                    </ActionForm>
                   </div>
                 )}
+                {advisorAssignment}
+                {s.role === "owner" && data.assignee === s.actor.id && (
+                  <Link
+                    className="btn secondary"
+                    href={`/app/jobs?job=${selected.id}&mode=technician`}
+                  >
+                    Work this RO as technician
+                  </Link>
+                )}
+                  </div>
+                </details>
                 {auto && (
                   <RoStageSummary
                     inspectionComplete={!!data.inspection?.complete}
@@ -992,6 +1055,8 @@ export default async function JobsPage({
                     statusLabel={statusLabels[statusOf(selected.id)]}
                     editHref={`/app/jobs?edit=${selected.id}`}
                     documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
+                    proposalHref={flow?.latest ? `/app/jobs?job=${selected.id}&tab=proposal` : undefined}
+                    workflowHref={`/app/jobs?job=${selected.id}#ro-workflow`}
                     technicianHref={s.role === "owner" && data.assignee === s.actor.id
                       ? `/app/jobs?job=${selected.id}&mode=technician`
                       : undefined}
@@ -1063,7 +1128,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {auto && flow?.latest && (
+                {auto && flow?.latest && tab !== "work" && tab !== "proposal" && (
                   <Link
                     className="ro-proposal-shortcut"
                     href={`/app/jobs?job=${selected.id}&tab=proposal`}
@@ -1170,65 +1235,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                <details className="ro-team-assignment" open={!data.assignee || !data.advisorId}>
-                  <summary>
-                    <span>
-                      <strong>Assigned team</strong>
-                      <small>Advisor: {data.advisors.find((person) =>
-                        person.userId === data.advisorId)?.name ?? "Not assigned"}
-                        {" · "}Tech: {data.techs.find((person) =>
-                          person.userId === data.assignee)?.name ?? "Not assigned"}
-                      </small>
-                    </span>
-                    <span className="ro-team-manage">Manage</span>
-                  </summary>
-                  <div className="ro-team-controls">
-                {!data.canManageTeam && !canChooseInitialTech ? (
-                  <p className="muted">
-                    Tech:{" "}
-                    {data.techs.find((t) => t.userId === data.assignee)?.name ??
-                      "nobody yet"}
-                  </p>
-                ) : (
-                  <div
-                    className="tech-pick ro-assignment"
-                    key={data.assignee ?? "none"}
-                  >
-                    <ActionForm
-                      action={assignJobAction}
-                      hidden={{ jobId: selected.id }}
-                      submitLabel={data.assignee ? "Change technician" : "Assign technician"}
-                      variant="secondary"
-                    >
-                      <label htmlFor="job-tech">Technician for this RO (all repairs)</label>
-                      <select
-                        id="job-tech"
-                        name="userId"
-                        defaultValue={data.assignee ?? ""}
-                      >
-                        <option value="">Nobody yet</option>
-                        {data.techs.map((t) => (
-                          <option key={t.userId} value={t.userId}>
-                            {t.userId === s.actor.id
-                              ? `${t.name} (me)`
-                              : t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </ActionForm>
-                  </div>
-                )}
-                {advisorAssignment}
-                {s.role === "owner" && data.assignee === s.actor.id && (
-                  <Link
-                    className="btn secondary"
-                    href={`/app/jobs?job=${selected.id}&mode=technician`}
-                  >
-                    Work this RO as technician
-                  </Link>
-                )}
-                  </div>
-                </details>
+
                 {!auto && flow && (!awaitingInspection || flow.latest) && (
                   <p className="stat-strip" aria-label="Job money">
                     <span>
@@ -1469,10 +1476,9 @@ export default async function JobsPage({
                         "inspection",
                         `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
                       ],
-                      [
-                        "photos",
-                        `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`,
-                      ],
+                      ...(!auto
+                        ? ([["photos", `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`]] as const)
+                        : []),
                       ...(auto && flow?.latest
                         ? ([["proposal", "Customer proposal"]] as const)
                         : []),
@@ -1496,19 +1502,35 @@ export default async function JobsPage({
                   <>
 
                     {!awaitingInspection && flow && (
-                      <RecordSection
-                        title="Work & approval"
-                        description="Customer authorization, the next step and progress on this job."
-                      >
-                        <JobWorkflow
+                      auto ? (
+                        <details className="ro-work-controls" open={["ready", "working", "bill", "payment", "attention"].includes(flow.stage)}>
+                          <summary>Work controls &amp; authorization details</summary>
+                          <div id="ro-workflow">
+                            <JobWorkflow
                           flow={flow}
                           jobId={selected.id}
                           timezone={data.profile?.timezone || "America/Chicago"}
                           readOnly={s.actor.type === "support"}
                           technicianOnly={false}
                           canEditEstimate={!selected.documentOnly}
-                        />
-                      </RecordSection>
+                            />
+                          </div>
+                        </details>
+                      ) : (
+                        <RecordSection
+                          title="Work & approval"
+                          description="Customer authorization, the next step and progress on this job."
+                        >
+                          <JobWorkflow
+                            flow={flow}
+                            jobId={selected.id}
+                            timezone={data.profile?.timezone || "America/Chicago"}
+                            readOnly={s.actor.type === "support"}
+                            technicianOnly={false}
+                            canEditEstimate={!selected.documentOnly}
+                          />
+                        </RecordSection>
+                      )
                     )}
                     {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
@@ -1678,6 +1700,11 @@ export default async function JobsPage({
                 )}
                 {tab === "inspection" && data.inspection && (
                   <section aria-label="Inspection">
+                    {auto && data.jobMedia.length > 0 && (
+                      <Link className="ro-inspection-media-link" href={`/app/jobs?job=${selected.id}&tab=photos`}>
+                        View inspection photos & videos ({data.jobMedia.length})
+                      </Link>
+                    )}
                     <p className="inspection-summary">
                       <span className="insp-count is-good">
                         {data.inspection.counts.good} pass
