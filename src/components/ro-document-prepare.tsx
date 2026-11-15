@@ -41,14 +41,34 @@ export function RoDocumentPrepare({
         return;
       }
       setRequestId(crypto.randomUUID());
-      router.replace(
-        `/app/jobs?job=${encodeURIComponent(jobId)}&tab=files#file-cabinet`,
-      );
+      router.replace(`/app/jobs?job=${encodeURIComponent(jobId)}&tab=files#file-cabinet`);
       router.refresh();
     } catch {
-      setError(
-        "Could not prepare the estimate. Your priced work has been saved; try again.",
-      );
+      setError("Could not prepare the estimate. Your priced work has been saved; try again.");
     } finally {
       setPending(false);
-    ¶»§q«^
+    }
+  }
+  return (
+    <section className="ro-documents-prepare" data-ux-ready={hydrated}>
+      <h4>Customer estimate — Draft</h4>
+      <p>Review the customer preview below. Only prepare and send when every part and labor price is correct.</p>
+      {!policyConfigured && (
+        <p className="notice" role="alert">
+          Customer approval cannot be sent yet: the platform has no approved estimate-authorization agreement for this shop&apos;s jurisdiction. A platform administrator must configure and approve one. The draft remains visible below, and no message has been sent.
+        </p>
+      )}
+      {!readyToPrepare && <p className="notice">Complete the parts and labor pricing before preparing an estimate.</p>}
+      <button
+        type="button"
+        className="btn primary"
+        disabled={!hydrated || pending || !readyToPrepare || !policyConfigured}
+        onClick={() => void prepare()}
+      >
+        {pending ? "Preparing…" : "Finalize estimate for customer"}
+      </button>
+      <p className="muted">Finalizing stores a fixed version in Documents. You choose the customer recipient and send it from this screen.</p>
+      {error && <p className="notice" role="alert">{error}</p>}
+    </section>
+  );
+}
