@@ -241,6 +241,9 @@ export function RoEstimateBuilder({
                           ? { ...p, unitPriceCents: cents(e.target.value) } : p),
                       }))} />
                   </label>
+                </div>
+                <details className="ro-internal-cost" defaultOpen={part.unitCostCents === null}>
+                  <summary>Internal part cost: {part.unitCostCents === null ? "Required" : dollars(part.unitCostCents)} · Edit</summary>
                   <label>Shop unit cost ($)
                     <input type="number" min="0" max="100000" step=".01" inputMode="decimal"
                       value={amount(part.unitCostCents)}
@@ -250,7 +253,7 @@ export function RoEstimateBuilder({
                           ? { ...p, unitCostCents: e.target.value === "" ? null : cents(e.target.value) } : p),
                       }))} />
                   </label>
-                </div>
+                </details>
                 <button className="btn secondary" type="button" disabled={!ready || pending}
                   onClick={() => change(repair.id, (r) => ({
                     ...r, parts: r.parts.filter((_, i) => i !== partIndex),
