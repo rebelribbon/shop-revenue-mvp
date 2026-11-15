@@ -1,4 +1,5 @@
 import { HydratedMain } from "@/components/hydrated-main";
+import { ProposalOpenTracker } from "@/components/proposal-open-tracker";
 import { PrintDocument } from "@/components/invoice-controls";
 import { notFound } from "next/navigation";
 import { readPublicEstimate } from "@/domain/estimates";
@@ -29,6 +30,7 @@ export default async function PublicEstimatePage({
   if (stepped)
     return (
       <HydratedMain id="main-content" tabIndex={-1}>
+        <ProposalOpenTracker token={token} />
         <h1>Estimate · Version {e.version}</h1>
         <p className="estimate-heading">
           <strong>{e.snapshot.shopName}</strong> · {e.snapshot.customerName}
@@ -65,6 +67,7 @@ export default async function PublicEstimatePage({
     );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
+        <ProposalOpenTracker token={token} />
       <h1>Estimate · Version {e.version}</h1>
       <PrintDocument label="Print estimate / Save PDF" />
       {e.supplementReason && (
