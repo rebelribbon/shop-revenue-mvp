@@ -139,7 +139,7 @@ export function RoEstimateBuilder({
         return;
       }
       setRequestId(crypto.randomUUID());
-      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&tab=files&saved=1#proposal-finalize`);
+      router.push(`/app/jobs?job=${encodeURIComponent(initial.jobId)}&saved=1#customer-proposal-review`);
       router.refresh();
     } catch {
       setMessage("Could not save the estimate. Your entries are still here.");
@@ -299,7 +299,7 @@ export function RoEstimateBuilder({
       {activeIndex === repairs.length - 1 && (
       <section className="ro-estimate-save">
         <p>Customer subtotal (before tax): <strong>{dollars(total)}</strong></p>
-        <p className="muted">Review the customer proposal in Documents after saving.</p>
+        <p className="muted">Review and finalize the customer packet directly on the RO Overview.</p>
         {!valid && (
           <p className="notice" role="note">Enter each repair name and its prices. For recommended repairs, a labor rate and internal cost are required. Every added part also needs a cost and selling price.</p>
         )}
