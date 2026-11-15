@@ -1056,7 +1056,7 @@ export default async function JobsPage({
                     editHref={`/app/jobs?edit=${selected.id}`}
                     documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
                     proposalHref={flow?.latest ? `/app/jobs?job=${selected.id}&tab=proposal` : undefined}
-                    workflowHref="#ro-workflow"
+                    workflowHref={`/app/jobs?job=${selected.id}#ro-workflow`}
                     technicianHref={s.role === "owner" && data.assignee === s.actor.id
                       ? `/app/jobs?job=${selected.id}&mode=technician`
                       : undefined}
