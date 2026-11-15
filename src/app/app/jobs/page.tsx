@@ -943,6 +943,8 @@ export default async function JobsPage({
                     </div>
                     <h2 className="profile-title">
                       {auto ? (
+                        flow?.latest?.estimate.snapshot.vehicleLabel ||
+                        selected.title ||
                         "Repair order"
                       ) : (
                         <>
@@ -952,14 +954,15 @@ export default async function JobsPage({
                       )}
                     </h2>
                     <p className="muted">
-                      {[
-                        flow?.latest?.estimate.snapshot.serviceLabel ||
-                          flow?.latest?.estimate.snapshot.vehicleLabel,
-                        input.repeat &&
-                          `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || customerName}
+                      {auto
+                        ? [customerName, input.mileageIn != null
+                          ? `${input.mileageIn.toLocaleString("en-US")} mi` : ""]
+                          .filter(Boolean).join(" · ")
+                        : [flow?.latest?.estimate.snapshot.serviceLabel ||
+                            flow?.latest?.estimate.snapshot.vehicleLabel,
+                            input.repeat &&
+                              `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`]
+                          .filter(Boolean).join(" · ") || customerName}
                     </p>
                   </div>
                   {flow && (
@@ -1498,19 +1501,35 @@ export default async function JobsPage({
                   <>
 
                     {!awaitingInspection && flow && (
-                      <RecordSection
-                        title="Work & approval"
-                        description="Customer authorization, the next step and progress on this job."
-                      >
-                        <JobWorkflow
+                      auto ? (
+                        <details className="ro-work-controls" open={["ready", "working", "bill", "payment", "attention"].includes(flow.stage)}>
+                          <summary>Work controls &amp; authorization details</summary>
+                          <div id="ro-workflow">
+                            <JobWorkflow
                           flow={flow}
                           jobId={selected.id}
                           timezone={data.profile?.timezone || "America/Chicago"}
                           readOnly={s.actor.type === "support"}
                           technicianOnly={false}
                           canEditEstimate={!selected.documentOnly}
-                        />
-                      </RecordSection>
+                            />
+                          </div>
+                        </details>
+                      ) : (
+                        <RecordSection
+                          title="Work & approval"
+                          description="Customer authorization, the next step and progress on this job."
+                        >
+                          <JobWorkflow
+                            flow={flow}
+                            jobId={selected.id}
+                            timezone={data.profile?.timezone || "America/Chicago"}
+                            readOnly={s.actor.type === "support"}
+                            technicianOnly={false}
+                            canEditEstimate={!selected.documentOnly}
+                          />
+                        </RecordSection>
+                      )
                     )}
                     {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
