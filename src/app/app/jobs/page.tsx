@@ -1577,6 +1577,9 @@ export default async function JobsPage({
                 {tab === "proposal" && auto && flow?.latest && (
                   <AdvisorProposalTracking
                     jobId={selected.id}
+                    estimateId={flow.latest.estimate.id}
+                    shareRequested={share === "1"}
+                    canShare={s.actor.type === "user"}
                     version={flow.latest.estimate.version}
                     snapshot={flow.latest.estimate.snapshot}
                     authorization={flow.latest.authorization
