@@ -1,5 +1,6 @@
 "use client";
 import { useActionHydration } from "./action-hydration";
+import { useRouter } from "next/navigation";
 import { rotateEstimateLinkAction } from "@/server/actions/estimates";
 import { rotateInvoiceLinkAction } from "@/server/actions/invoices";
 import { useEffect, useState } from "react";
@@ -33,6 +34,7 @@ export function DocumentShare({
   selectedDocumentIds?: string[];
 }) {
   const ready = useActionHydration();
+  const router = useRouter();
   const [data, setData] = useState<ShareData | null>(initial ?? null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
@@ -287,6 +289,7 @@ export function DocumentShare({
                           : [],
                     });
                     setMessage(r.message);
+                    if (r.ok) router.refresh();
                   } catch {
                     setMessage(
                       "Email could not be submitted. Use Open email app or Copy link instead.",
