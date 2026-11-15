@@ -62,7 +62,7 @@ test("walks a shop owner from customer creation through customer authorization a
         if (section === 0) {
           await tech.getByRole("radio", { name: "Fail", exact: true }).first().check();
           await tech.locator(".inspection-point-findings textarea").first().fill("Windshield cracked across the driver's field of view");
-          await tech.locator(".inspection-point-findings input[type=text]").first().fill("Replace windshield");
+          await tech.locator(".inspection-point-findings input").first().fill("Replace windshield");
         }
         if (section < 8)
           await tech.getByRole("button", { name: "Save and continue", exact: true }).click();
