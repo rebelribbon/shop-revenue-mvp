@@ -1576,6 +1576,12 @@ export default async function JobsPage({
                               readOnly={s.actor.type === "support"}
                               timeZone={data.profile?.timezone || "America/Chicago"}
                             />
+                            <details className="ro-inline-authorization">
+                              <summary>Review customer authorization wording</summary>
+                              <div className="ro-authorization-copy">
+                                {flow.latest.estimate.snapshot.authorizationPolicy.body}
+                              </div>
+                            </details>
                             {!flow.latest.authorization && s.actor.type === "user" && (
                               <div className="ro-inline-proposal-send" aria-label="Send customer packet">
                                 <h4>Send to customer</h4>
