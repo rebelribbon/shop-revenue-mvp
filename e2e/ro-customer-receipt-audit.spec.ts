@@ -53,16 +53,25 @@ test("walks a shop owner from customer creation through customer authorization a
       const tech = await context.newPage();
       await signInWithPassword(tech, "tech.b@shop-b.test");
       await tech.goto(`/app/jobs?job=${jobId}`);
-      await tech.getByLabel("I have picked up the vehicle for assessment", { exact: true }).check();
-      await tech.getByLabel("Technician diagnosis", { exact: true }).fill("Rear tire tread low; recommend replacement");
-      await tech.getByRole("button", { name: "Save progress", exact: true }).click();
+      await tech.getByLabel("I have the vehicle", { exact: true }).check();
+      await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
+      await tech.getByRole("button", { name: "Start inspection", exact: true }).click();
       for (let section=0; section<9; section++) {
-        const radios = await tech.getByRole("radio", { name: "Satisfactory", exact: true }).all();
+        const radios = await tech.getByRole("radio", { name: "Pass", exact: true }).all();
         for (const radio of radios) await radio.check();
-        if (section<8) await tech.getByRole("button", { name: "Next category →", exact: true }).click();
+        if (section === 0) {
+          await tech.getByRole("radio", { name: "Fail", exact: true }).first().check();
+          await tech.locator(".inspection-point-findings textarea").first().fill("Windshield cracked across the driver's field of view");
+          await tech.locator(".inspection-point-findings input[type=text]").first().fill("Replace windshield");
+        }
+        if (section < 8)
+          await tech.getByRole("button", { name: "Save and continue", exact: true }).click();
+        else
+          await tech.getByRole("button", { name: "Review inspection", exact: true }).click();
       }
-      await tech.getByRole("button", { name: "Submit inspection → Notify advisor" }).click();
-      await expect(tech.getByText("Inspection submitted.", { exact: true })).toBeVisible();
+      await tech.getByLabel("Technician diagnosis", { exact: true }).fill("Cracked windshield needs replacement; other inspection items passed");
+      await tech.getByRole("button", { name: "Submit inspection to advisor", exact: true }).click();
+      await expect(tech.getByText("Inspection submitted to the advisor.", { exact: true })).toBeVisible();
       await tech.screenshot({ path: `test-results/audit-inspection-${info.project.name}.png`, fullPage: true });
       console.log("AUDIT STAGE: inspection submitted");
     } finally { await context.close(); }
