@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { EstimateSnapshot } from "@/db/schema/m3";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { EstimateDocument, formatMoney } from "./estimate-document";
+import { DocumentShare } from "./document-share";
 
 type Event = {
   id: string;
@@ -29,6 +30,9 @@ const dateTime = (value: string, timeZone: string) =>
 
 export function AdvisorProposalTracking({
   jobId,
+  estimateId,
+  shareRequested = false,
+  canShare = true,
   version,
   snapshot,
   authorization,
@@ -38,6 +42,9 @@ export function AdvisorProposalTracking({
   timeZone,
 }: {
   jobId: string;
+  estimateId: string;
+  shareRequested?: boolean;
+  canShare?: boolean;
   version: number;
   snapshot: EstimateSnapshot;
   authorization: Auth;
@@ -48,6 +55,7 @@ export function AdvisorProposalTracking({
 }) {
   const [tab, setTab] = useState<"activity" | "decisions" | "documents">("activity");
   const [preview, setPreview] = useState(false);
+  const [sendOpen, setSendOpen] = useState(shareRequested || !events.some((e) => e.kind === "document.email_submitted"));
   const opened = events.find((e) => e.kind === "estimate.customer_opened");
   const submitted = events.find((e) => e.kind === "document.email_submitted");
   const signed = Boolean(authorization);
@@ -117,14 +125,39 @@ export function AdvisorProposalTracking({
         </p>
       </div>
 
+      {!signed && canShare && (
+        <section className="proposal-send-stage" id="proposal-send" aria-label="Send customer proposal">
+          <div className="proposal-send-stage-head">
+            <div>
+              <p className="muted">{submitted ? "STEP 3 OF 4 · SHARED" : "STEP 3 OF 4 · SEND"}</p>
+              <h3>{submitted ? "Customer response pending" : "Send proposal for approval"}</h3>
+              <p>{submitted
+                ? "The proposal email was submitted. You can send it again, preview the customer page, or check activity below."
+                : "Confirm the recipient and send the secure inspection and authorization link. We will track when the page is opened and signed."}</p>
+            </div>
+            <button type="button" className="btn secondary" onClick={() => setSendOpen((open) => !open)} aria-expanded={sendOpen}>
+              {sendOpen ? "Hide sending" : submitted ? "Resend / share" : "Send proposal"}
+            </button>
+          </div>
+          {sendOpen && <DocumentShare id={estimateId} kind="estimate" autoOpen />}
+        </section>
+      )}
+      {signed && (
+        <div className="proposal-signed-next">
+          <strong>Customer authorization received.</strong>
+          <p>Only approved repairs may be released to the assigned technician. Continue on the RO's Overview.</p>
+          <Link className="btn primary" href={`/app/jobs?job=${jobId}#ro-workflow`}>Review approved work</Link>
+        </div>
+      )}
+
       <div className="proposal-tracker-actions">
         <button
           type="button"
-          className="btn primary"
+          className="btn secondary"
           onClick={() => setPreview((current) => !current)}
           aria-expanded={preview}
         >
-          {preview ? "Hide customer preview" : "View as customer"}
+          {preview ? "Hide customer preview" : "Preview estimate"}
         </button>
         {customerPath && (
           <a
@@ -185,10 +218,10 @@ export function AdvisorProposalTracking({
               ))}
             </ol>
           ) : <p className="muted">No customer delivery, opening, or authorization events recorded for this version yet.</p>}
-          {!signed && (
-            <Link className="btn secondary" href={`/app/jobs?job=${jobId}&tab=files&share=1`}>
-              {submitted ? "Resend / share proposal" : "Send customer proposal"}
-            </Link>
+          {!signed && canShare && (
+            <button type="button" className="btn secondary" onClick={() => { setSendOpen(true); document.getElementById("proposal-send")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+              {submitted ? "Resend proposal" : "Send customer proposal"}
+            </button>
           )}
         </section>
       )}
