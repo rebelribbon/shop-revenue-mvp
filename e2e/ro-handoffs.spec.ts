@@ -175,7 +175,10 @@ test("routes an assigned inspection from the technician to its advisor without e
       const group = tech.locator(".inspection-system");
       const points = group.locator(".inspection-point");
       const count = await points.count();
-      expect(count, `No checklist points in section ${section + 1}`).toBeGreaterThan(0);
+      expect(
+        count,
+        `No checklist points in section ${section + 1}`,
+      ).toBeGreaterThan(0);
       inspected += count;
       for (let i = 0; i < count; i++) {
         await points
