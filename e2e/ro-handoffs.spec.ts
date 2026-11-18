@@ -171,8 +171,18 @@ test("routes an assigned inspection from the technician to its advisor without e
 
     let reachedReview = false;
     let inspected = 0;
+    let previousSystem = "";
     for (let section = 0; section < 16; section++) {
       const group = tech.locator(".inspection-system");
+      // Advancing saves to the database before showing the next vehicle system.
+      // Wait for the new system rather than racing the pending save.
+      await expect(group).toBeVisible({ timeout: 20000 });
+      if (previousSystem) {
+        await expect(group).not.toHaveAttribute("aria-label", previousSystem, {
+          timeout: 20000,
+        });
+      }
+      previousSystem = (await group.getAttribute("aria-label")) ?? "";
       const points = group.locator(".inspection-point");
       const count = await points.count();
       expect(
