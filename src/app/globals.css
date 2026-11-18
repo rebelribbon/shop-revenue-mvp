@@ -5960,7 +5960,7 @@ main.customer-index-page {
   justify-content: space-between;
   gap: 16px;
   cursor: pointer;
-  min-height: 40px;
+  min-height: 48px;
   list-style: none;
 }
 .schedule-day > summary::after {
@@ -5978,7 +5978,7 @@ main.customer-index-page {
 }
 .schedule-date-filter > summary, .report-date-filter > summary {
   cursor: pointer;
-  min-height: 42px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   color: var(--muted);
