@@ -67,7 +67,6 @@ export function RoStageSummary({
   reviewHref,
   technicianAssigned,
   stage,
-  statusLabel,
   editHref,
   documentsHref,
   proposalHref,
@@ -80,7 +79,6 @@ export function RoStageSummary({
   reviewHref?: string;
   technicianAssigned: boolean;
   stage?: Stage;
-  statusLabel: string;
   editHref: string;
   documentsHref: string;
   proposalHref?: string;
