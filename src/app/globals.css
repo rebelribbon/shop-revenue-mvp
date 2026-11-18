@@ -6682,3 +6682,15 @@ main.customer-index-page {
   .ro-inline-proposal-send .money-actions { display: grid; grid-template-columns: 1fr; }
   .ro-inline-proposal-send .money-actions .btn { width: 100%; min-height: 44px; }
 }
+
+/* Technician completed an inspection: keep the return action inside the RO,
+   rather than floating across the report or behind mobile navigation. */
+.technician-complete-action[data-ux-primary] {
+  position: static;
+  inset: auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 16px 0 0 !important;
+  box-shadow: none;
+}
