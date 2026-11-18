@@ -31,17 +31,23 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await page.getByLabel("Customer concerns / reason for visit").fill(name);
   await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Create RO", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Repair order", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Copy RO number")).toBeVisible();
   const jobUrl = page.url();
 
   // Give it to the staff tech.
-  const pick = page.getByLabel("Tech on this job");
-  await pick.selectOption({ label: "Tech B" });
-  await page.getByRole("button", { name: "Save tech", exact: true }).click();
+  const team = page.locator("details.ro-team-assignment");
+  if (!(await team.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await team.locator("summary").click();
+  await team
+    .getByLabel("Technician for this RO (all repairs)")
+    .selectOption({ label: "Tech B" });
+  await page.getByRole("button", { name: "Assign technician", exact: true }).click();
+  await page.reload();
+  const updatedTeam = page.locator("details.ro-team-assignment");
+  if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await updatedTeam.locator("summary").click();
   await expect(
-    page.getByLabel("Tech on this job").locator("option:checked"),
+    updatedTeam.getByLabel("Technician for this RO (all repairs)").locator("option:checked"),
   ).toHaveText("Tech B");
   await auditUX(page, true);
 
@@ -53,12 +59,12 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await signInWithPassword(tech, "tech.b@shop-b.test");
   await tech.goto(jobUrl);
   await expect(tech.getByRole("heading", { name, exact: true })).toBeVisible();
-  const start = tech.getByRole("button", { name: /Start clock|Switch clock/ });
-  await start.click();
-  await expect(tech.getByRole("button", { name: /Stop clock/ })).toBeVisible();
-  await tech.getByRole("button", { name: /Stop clock/ }).click();
-  await expect(tech.getByRole("button", { name: /Start clock/ })).toBeVisible();
-  await auditUX(tech, true);
+  await expect(tech.getByText(/Vehicle inspection/)).toBeVisible();
+  await expect(
+    tech.getByRole("button", { name: /Send estimate|Create invoice|Assign technician/ }),
+  ).toHaveCount(0);
+  await tech.goto("/app/tasks");
+  await expect(tech.getByRole("heading", { name: /Tasks/i })).toBeVisible();
   await techCtx.close();
 
   // The owner's board, filtered to nobody, no longer shows it…
