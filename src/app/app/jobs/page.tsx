@@ -589,6 +589,19 @@ export default async function JobsPage({
                 />
               )}
             </section>
+            {data.inspection?.complete && (
+              <Link
+                className="btn primary"
+                data-ux-primary="true"
+                href={
+                  ownerAsTechnician
+                    ? "/app/jobs?mode=technician"
+                    : "/app/tasks"
+                }
+              >
+                Return to my assigned work
+              </Link>
+            )}
           </>
         ) : (
           <>
