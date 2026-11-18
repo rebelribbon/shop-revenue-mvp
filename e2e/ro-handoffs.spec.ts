@@ -49,7 +49,7 @@ test("routes an assigned inspection from the technician to its advisor without e
   await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Create RO", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Repair order", exact: true }),
+    page.getByLabel("Copy RO number"),
   ).toBeVisible();
   const jobId = new URL(page.url()).searchParams.get("job")!;
   expect(jobId).toMatch(/^[0-9a-f-]{36}$/);
@@ -214,7 +214,7 @@ test("routes an assigned inspection from the technician to its advisor without e
       .getByRole("link", { name: "Build estimate", exact: true })
       .click();
     await expect(
-      advisor.getByRole("heading", { name: "Repair order", exact: true }),
+      advisor.getByLabel("Copy RO number"),
     ).toBeVisible();
     await tech.reload();
     await expect(
