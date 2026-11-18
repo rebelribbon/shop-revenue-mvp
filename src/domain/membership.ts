@@ -56,9 +56,7 @@ export async function canManageTeam(tx: TenantTx): Promise<boolean> {
 
 export async function assertManager(tx: TenantTx) {
   if (!(await canManageTeam(tx)))
-    throw forbidden(
-      "Only management can manage team access and assignments.",
-    );
+    throw forbidden("Only management can manage team access and assignments.");
 }
 
 export const INVITE_DELIVERY_ACTION = "membership.invite_delivery";

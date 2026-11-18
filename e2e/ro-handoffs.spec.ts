@@ -79,7 +79,9 @@ test("routes an assigned inspection from the technician to its advisor without e
         response.request().method() === "POST" &&
         response.url().includes("/app/jobs"),
     ),
-    page.getByRole("button", { name: "Assign technician", exact: true }).click(),
+    page
+      .getByRole("button", { name: "Assign technician", exact: true })
+      .click(),
   ]);
   await page.reload();
   const updatedTeam = page.locator("details.ro-team-assignment");

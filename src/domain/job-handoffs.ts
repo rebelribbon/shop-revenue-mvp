@@ -452,7 +452,10 @@ export async function notifyAdvisorWorkCompleted(
 }
 
 /** Close the technician's work task when authorized repairs are already invoiced. */
-export async function completeTechnicianWorkHandoff(tx: TenantTx, jobId: string) {
+export async function completeTechnicianWorkHandoff(
+  tx: TenantTx,
+  jobId: string,
+) {
   const data = await latestHandoff(tx, jobId);
   if (data?.stage !== "perform_work") return;
   await recordActivity(tx, {
