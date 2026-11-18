@@ -4,6 +4,10 @@ Design Partner MVP. The frozen build spec is [`docs/build-spec-v1.1.pdf`](docs/b
 
 Stack (spec D1/D2): one Next.js App Router app (TypeScript), one Graphile Worker process, one PostgreSQL database (Supabase, used as plain Postgres through Drizzle). The browser never queries the database.
 
+## Automotive Repair — approved standalone UX baseline
+
+The product owner's approved Automotive-only CRM experience is preserved independently at [`public/automotive/index.html`](public/automotive/index.html). It can be opened directly as a standalone HTML file and is available at `/automotive/index.html` only when served from a build containing the prototype. The [Automotive baseline contract](docs/automotive/README.md) documents accepted navigation, vehicle/RO history, employee-specific workflow tasks, customer approvals and the conditions for production integration. **It is not the production implementation**; payment, identity, signatures, delivery and permissions are simulated in the design prototype. Home Services remains separate and unchanged.
+
 ## Local development
 
 Requires Docker, Node 24, pnpm (version pinned in `package.json`), and the Supabase CLI 2.121+.
