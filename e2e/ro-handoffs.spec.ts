@@ -170,22 +170,39 @@ test("routes an assigned inspection from the technician to its advisor without e
     await tech.getByRole("button", { name: "Start inspection" }).click();
 
     let reachedReview = false;
+    let inspected = 0;
     for (let section = 0; section < 16; section++) {
-      for (const pass of await tech
-        .getByRole("radio", { name: "Pass", exact: true })
-        .all())
-        await pass.check();
+      const group = tech.locator(".inspection-system");
+      const points = group.locator(".inspection-point");
+      const count = await points.count();
+      expect(count, `No checklist points in section ${section + 1}`).toBeGreaterThan(0);
+      inspected += count;
+      for (let i = 0; i < count; i++) {
+        await points
+          .nth(i)
+          .getByRole("radio", { name: "Pass", exact: true })
+          .check();
+      }
       const reviewButton = tech.getByRole("button", {
         name: "Review inspection",
         exact: true,
       });
       if (await reviewButton.isVisible()) {
+        await expect(reviewButton).toBeEnabled({ timeout: 7000 });
         await reviewButton.click();
         reachedReview = true;
         break;
       }
-      await tech.getByRole("button", { name: "Save and continue" }).click();
+      const nextButton = tech.getByRole("button", {
+        name: "Save and continue",
+      });
+      await expect(
+        nextButton,
+        `Inspection section ${section + 1} (${await group.getAttribute("aria-label")}) must be complete`,
+      ).toBeEnabled({ timeout: 7000 });
+      await nextButton.click();
     }
+    expect(inspected).toBe(40);
     expect(reachedReview).toBe(true);
     await expect(
       tech.getByText("40 of 40 checked", { exact: false }),
