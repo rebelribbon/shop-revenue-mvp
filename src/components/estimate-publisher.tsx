@@ -13,13 +13,11 @@ export function EstimatePublisher({
   version,
   existingVersion,
   taxRateBps = 0,
-  pendingChanges = false,
 }: {
   jobId: string;
   version: string;
   existingVersion?: number;
   taxRateBps?: number;
-  // The job changed since the latest estimate: show the resend form open.
   pendingChanges?: boolean;
 }) {
   const [message, setMessage] = useState("");
