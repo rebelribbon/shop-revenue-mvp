@@ -6,7 +6,11 @@ import type { ReactNode } from "react";
  * visual regression tests, but must not be public on the live application.
  * The real CRM lives under /app and is backed by shop authentication.
  */
-export default function DesktopDemoLayout({ children }: { children: ReactNode }) {
+export default function DesktopDemoLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   if (
     process.env.VERCEL_ENV === "production" ||
     process.env.APP_ENV === "production"
