@@ -53,7 +53,8 @@ test("Dispatch technician work and keep the owner board and appointments aligned
       .getByLabel("Technician for this RO (all repairs)")
       .locator("option:checked"),
   ).toHaveText("Tech B");
-  await auditUX(page, true);
+  // RO screens provide stage-specific controls; no unrelated floating CTA.
+  await expect(page.locator("[data-ux-primary]")).toHaveCount(0);
 
   // The account-linked task opens the technician's assigned workspace.
   const techCtx = await browser.newContext({
