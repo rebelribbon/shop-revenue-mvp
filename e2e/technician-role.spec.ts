@@ -43,13 +43,17 @@ test("Technicians see only their jobs and no owner pages", async ({
   await team
     .getByLabel("Technician for this RO (all repairs)")
     .selectOption({ label: "Tech B" });
-  await page.getByRole("button", { name: "Assign technician", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Assign technician", exact: true })
+    .click();
   await page.reload();
   const updatedTeam = page.locator("details.ro-team-assignment");
   if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open)))
     await updatedTeam.locator("summary").click();
   await expect(
-    updatedTeam.getByLabel("Technician for this RO (all repairs)").locator("option:checked"),
+    updatedTeam
+      .getByLabel("Technician for this RO (all repairs)")
+      .locator("option:checked"),
   ).toHaveText("Tech B");
 
   const ctx = await browser.newContext({
@@ -64,16 +68,24 @@ test("Technicians see only their jobs and no owner pages", async ({
   await auditUX(tech, true);
   await tech.goto(jobUrls[0]);
   await expect(tech.getByText(/Vehicle inspection/)).toBeVisible();
-  await expect(tech.getByLabel("I have the vehicle", { exact: true })).toBeVisible();
   await expect(
-    tech.getByRole("button", { name: /Assign technician|Create invoice|Send estimate/ }),
+    tech.getByLabel("I have the vehicle", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tech.getByRole("button", {
+      name: /Assign technician|Create invoice|Send estimate/,
+    }),
   ).toHaveCount(0);
   await tech.getByLabel("I have the vehicle", { exact: true }).check();
   await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
-  await tech.getByRole("button", { name: "Save and exit", exact: true }).click();
+  await tech
+    .getByRole("button", { name: "Save and exit", exact: true })
+    .click();
   await expect(tech).toHaveURL(/\/app\/tasks$/);
   await tech.goto(jobUrls[0]);
-  await expect(tech.getByLabel("Rack / bay", { exact: true })).toHaveValue("Bay 2");
+  await expect(tech.getByLabel("Rack / bay", { exact: true })).toHaveValue(
+    "Bay 2",
+  );
   // The other job's page doesn't open for them.
   await tech.goto(jobUrls[1]);
   await expect(

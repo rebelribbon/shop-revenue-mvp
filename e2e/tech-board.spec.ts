@@ -41,13 +41,17 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await team
     .getByLabel("Technician for this RO (all repairs)")
     .selectOption({ label: "Tech B" });
-  await page.getByRole("button", { name: "Assign technician", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Assign technician", exact: true })
+    .click();
   await page.reload();
   const updatedTeam = page.locator("details.ro-team-assignment");
   if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open)))
     await updatedTeam.locator("summary").click();
   await expect(
-    updatedTeam.getByLabel("Technician for this RO (all repairs)").locator("option:checked"),
+    updatedTeam
+      .getByLabel("Technician for this RO (all repairs)")
+      .locator("option:checked"),
   ).toHaveText("Tech B");
   await auditUX(page, true);
 
@@ -61,7 +65,9 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await expect(tech.getByRole("heading", { name, exact: true })).toBeVisible();
   await expect(tech.getByText(/Vehicle inspection/)).toBeVisible();
   await expect(
-    tech.getByRole("button", { name: /Send estimate|Create invoice|Assign technician/ }),
+    tech.getByRole("button", {
+      name: /Send estimate|Create invoice|Assign technician/,
+    }),
   ).toHaveCount(0);
   await tech.goto("/app/tasks");
   await expect(tech.getByRole("heading", { name: /Tasks/i })).toBeVisible();
