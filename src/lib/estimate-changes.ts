@@ -46,22 +46,25 @@ export function automaticEstimateChanges(
     }
   }
   for (const old of oldLines) {
-    if (!old.used) changes.push(`Removed ${old.line.kind}: ${old.line.description}`);
+    if (!old.used)
+      changes.push(`Removed ${old.line.kind}: ${old.line.description}`);
   }
   if (prior.taxBps !== current.taxBps)
     changes.push(`Sales tax ${prior.taxBps / 100}% → ${current.taxBps / 100}%`);
-  if (prior.terms !== current.terms)
-    changes.push("Customer terms updated");
+  if (prior.terms !== current.terms) changes.push("Customer terms updated");
   if (prior.totalCents !== current.totalCents)
-    changes.push(`Estimate total ${money(prior.totalCents)} → ${money(current.totalCents)}`);
+    changes.push(
+      `Estimate total ${money(prior.totalCents)} → ${money(current.totalCents)}`,
+    );
   if (
     JSON.stringify(prior.inspection ?? null) !==
     JSON.stringify(current.inspection ?? null)
-  ) changes.push("Inspection results updated");
+  )
+    changes.push("Inspection results updated");
   if (
-    JSON.stringify(prior.photos ?? []) !==
-    JSON.stringify(current.photos ?? [])
-  ) changes.push("Shared inspection media updated");
+    JSON.stringify(prior.photos ?? []) !== JSON.stringify(current.photos ?? [])
+  )
+    changes.push("Shared inspection media updated");
 
   // A new version can be required simply to reissue an expired or revoked
   // link, with otherwise identical content.

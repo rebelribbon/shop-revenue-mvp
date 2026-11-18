@@ -16,8 +16,14 @@ describe("advisor estimate from submitted vehicle inspection", () => {
     const points = inspectionTemplate("automotive");
     const a = points.map((point, index) => ({
       ...point,
-      status: index === 0 ? "watch" as const : index === 1 ? "fix" as const :
-        index === 2 ? "na" as const : "good" as const,
+      status:
+        index === 0
+          ? ("watch" as const)
+          : index === 1
+            ? ("fix" as const)
+            : index === 2
+              ? ("na" as const)
+              : ("good" as const),
       note: index < 2 ? "Wear documented" : "",
       recommendedWork: index === 1 ? "Replace blades" : "",
     }));
@@ -34,11 +40,16 @@ describe("advisor estimate from submitted vehicle inspection", () => {
 
   it("does not duplicate already saved or previously imported recommendations", () => {
     const [first] = inspectionTemplate("automotive");
-    const item = { ...first, status: "fix" as const, note: "Chipped",
-      recommendedWork: "Replace windshield" };
+    const item = {
+      ...first,
+      status: "fix" as const,
+      note: "Chipped",
+      recommendedWork: "Replace windshield",
+    };
     const once = withInspectionRecommendations(job, [item]);
     expect(withInspectionRecommendations(once, [item]).labor).toHaveLength(1);
-    expect(withInspectionRecommendations(job, [{ ...item, addedToJob: true }]).labor)
-      .toHaveLength(0);
+    expect(
+      withInspectionRecommendations(job, [{ ...item, addedToJob: true }]).labor,
+    ).toHaveLength(0);
   });
 });

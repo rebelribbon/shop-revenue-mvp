@@ -68,11 +68,12 @@ export default async function TasksPage(props: {
       ]),
     );
   if (jobId && !context) notFound();
-  const rows = view === "due"
-    ? [...data.due].sort((a, b) =>
-        Number(b.source === "work") - Number(a.source === "work"),
-      )
-    : data.later;
+  const rows =
+    view === "due"
+      ? [...data.due].sort(
+          (a, b) => Number(b.source === "work") - Number(a.source === "work"),
+        )
+      : data.later;
   const actionable = rows.filter((task) => task.source === "work").length;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -220,9 +221,11 @@ export default async function TasksPage(props: {
       {view === "due" && rows.length > 0 && (
         <section className="task-focus" aria-label="Today's work">
           <p className="muted">YOUR WORK QUEUE</p>
-          <h2>{actionable
-            ? `${actionable} repair order handoff${actionable === 1 ? "" : "s"} ready`
-            : "Today's follow-ups"}</h2>
+          <h2>
+            {actionable
+              ? `${actionable} repair order handoff${actionable === 1 ? "" : "s"} ready`
+              : "Today's follow-ups"}
+          </h2>
           <p className="muted">
             {actionable
               ? "Assigned repair orders come first. Open the task, complete the next stage, and hand the RO to the next person."
@@ -471,76 +474,80 @@ function TaskItem({
             <details className="task-more-actions">
               <summary>More options</summary>
               <div className="task-more-content">
-          {related && (
-            <Link className="btn secondary" href={related}>
-              {relatedLabel}
-            </Link>
-          )}
-          {canLogCall && (
-            <>
-              <ActionForm
-                action={updateOutcome}
-                hidden={reached}
-                submitLabel="Reached"
-                successText="Call recorded."
-              />
-              {(["left_message", "no_answer"] as const).map((outcome) => (
-                <ActionForm
-                  key={outcome}
-                  action={updateOutcome}
-                  hidden={retryCall(outcome)}
-                  submitLabel={`${outcomeLabels[outcome]} · try tomorrow`}
-                  successText="Call recorded. Follow up tomorrow."
-                />
-              ))}
-            </>
-          )}
-          {canUpdate && !canLogCall && t.source === "manual" && (
-            <>
-              <ActionForm
-                action={updateTaskAction}
-                hidden={{ id: t.subjectId, action: "done" }}
-                submitLabel="Done"
-                variant="secondary"
-              />
-              <ActionForm
-                action={updateTaskAction}
-                hidden={{ id: t.subjectId, action: "snooze", days: "1" }}
-                submitLabel="Tomorrow"
-                variant="secondary"
-              />
-            </>
-          )}
-          {canUpdate && !canLogCall && t.source === "rule" && (
-            <>
-              <ActionForm
-                action={updateRecoveryAction}
-                hidden={{
-                  ...rule,
-                  action: "contact",
-                  method: contactMethod,
-                  note: "Task marked done",
-                  deliveryConfirmed: "false",
-                }}
-                submitLabel="Done"
-                variant="secondary"
-              />
-              <ActionForm
-                action={updateRecoveryAction}
-                hidden={{ ...rule, action: "snooze", days: "1" }}
-                submitLabel="Tomorrow"
-                variant="secondary"
-              />
-            </>
-          )}
-          {canUpdate && t.source === "rule" && (
-            <ActionForm
-              action={updateRecoveryAction}
-              hidden={{ ...rule, action: "dismiss", reason: "Not needed" }}
-              submitLabel="Not needed"
-              variant="secondary"
-            />
-          )}
+                {related && (
+                  <Link className="btn secondary" href={related}>
+                    {relatedLabel}
+                  </Link>
+                )}
+                {canLogCall && (
+                  <>
+                    <ActionForm
+                      action={updateOutcome}
+                      hidden={reached}
+                      submitLabel="Reached"
+                      successText="Call recorded."
+                    />
+                    {(["left_message", "no_answer"] as const).map((outcome) => (
+                      <ActionForm
+                        key={outcome}
+                        action={updateOutcome}
+                        hidden={retryCall(outcome)}
+                        submitLabel={`${outcomeLabels[outcome]} · try tomorrow`}
+                        successText="Call recorded. Follow up tomorrow."
+                      />
+                    ))}
+                  </>
+                )}
+                {canUpdate && !canLogCall && t.source === "manual" && (
+                  <>
+                    <ActionForm
+                      action={updateTaskAction}
+                      hidden={{ id: t.subjectId, action: "done" }}
+                      submitLabel="Done"
+                      variant="secondary"
+                    />
+                    <ActionForm
+                      action={updateTaskAction}
+                      hidden={{ id: t.subjectId, action: "snooze", days: "1" }}
+                      submitLabel="Tomorrow"
+                      variant="secondary"
+                    />
+                  </>
+                )}
+                {canUpdate && !canLogCall && t.source === "rule" && (
+                  <>
+                    <ActionForm
+                      action={updateRecoveryAction}
+                      hidden={{
+                        ...rule,
+                        action: "contact",
+                        method: contactMethod,
+                        note: "Task marked done",
+                        deliveryConfirmed: "false",
+                      }}
+                      submitLabel="Done"
+                      variant="secondary"
+                    />
+                    <ActionForm
+                      action={updateRecoveryAction}
+                      hidden={{ ...rule, action: "snooze", days: "1" }}
+                      submitLabel="Tomorrow"
+                      variant="secondary"
+                    />
+                  </>
+                )}
+                {canUpdate && t.source === "rule" && (
+                  <ActionForm
+                    action={updateRecoveryAction}
+                    hidden={{
+                      ...rule,
+                      action: "dismiss",
+                      reason: "Not needed",
+                    }}
+                    submitLabel="Not needed"
+                    variant="secondary"
+                  />
+                )}
               </div>
             </details>
           )}

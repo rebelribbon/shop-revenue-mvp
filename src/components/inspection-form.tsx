@@ -53,7 +53,9 @@ export function InspectionForm({
   const ready = useActionHydration();
   const [items, setItems] = useState(initial);
   const [assessment, setAssessment] = useState(initialAssessment);
-  const [reviewSection, setReviewSection] = useState(() => initial[0] ? sectionName(initial[0]) : "");
+  const [reviewSection, setReviewSection] = useState(() =>
+    initial[0] ? sectionName(initial[0]) : "",
+  );
   const sections = [...new Set(initial.map(sectionName))];
   // One screen per VEHICLE SYSTEM, not one screen per checklist point.
   // -1: pickup; 0..N-1: system inspection; N: final review.
@@ -62,7 +64,9 @@ export function InspectionForm({
     if (!initialAssessment.vehiclePickedUp || !initialAssessment.bay.trim())
       return -1;
     const nextSection = sections.findIndex((name) =>
-      initial.some((item) => sectionName(item) === name && !pointComplete(item)),
+      initial.some(
+        (item) => sectionName(item) === name && !pointComplete(item),
+      ),
     );
     return nextSection === -1 ? sections.length : nextSection;
   });
@@ -72,18 +76,24 @@ export function InspectionForm({
   const review = step === sections.length;
   const pickup = step === -1;
   const activeSection = sections[step] ?? null;
-  const activeItems = items.filter((item) => sectionName(item) === activeSection);
+  const activeItems = items.filter(
+    (item) => sectionName(item) === activeSection,
+  );
   const checked = items.filter((item) => item.status !== "unchecked").length;
   const allComplete = items.length > 0 && items.every(pointComplete);
   const pickupComplete = assessment.vehiclePickedUp && !!assessment.bay.trim();
-  const canSubmit = pickupComplete && !!assessment.diagnosis.trim() && allComplete;
+  const canSubmit =
+    pickupComplete && !!assessment.diagnosis.trim() && allComplete;
   const canEdit = !readOnly && !completed;
   const disabled = !ready || pending || !canEdit;
-  const sectionReady = activeItems.length > 0 && activeItems.every(pointComplete);
+  const sectionReady =
+    activeItems.length > 0 && activeItems.every(pointComplete);
 
   function update(key: string, changes: Partial<InspectionItem>) {
     setItems((current) =>
-      current.map((item) => (item.key === key ? { ...item, ...changes } : item)),
+      current.map((item) =>
+        item.key === key ? { ...item, ...changes } : item,
+      ),
     );
     setMessage("");
   }
@@ -91,7 +101,9 @@ export function InspectionForm({
   async function persist(submit: boolean) {
     if (!canEdit || !ready || pending) return false;
     if (submit && !canSubmit) {
-      setMessage("Complete every checklist item and add your diagnosis before submission.");
+      setMessage(
+        "Complete every checklist item and add your diagnosis before submission.",
+      );
       return false;
     }
     setPending(true);
@@ -113,7 +125,9 @@ export function InspectionForm({
         return false;
       }
       setRequestId(crypto.randomUUID());
-      setMessage(submit ? "Inspection submitted to the advisor." : "Progress saved.");
+      setMessage(
+        submit ? "Inspection submitted to the advisor." : "Progress saved.",
+      );
       if (submit) router.refresh();
       return true;
     } catch {
@@ -134,7 +148,9 @@ export function InspectionForm({
       return;
     }
     if (activeSection && !sectionReady) {
-      setMessage("Complete each item in this section. Caution and Fail need findings; Fail also needs a repair recommendation.");
+      setMessage(
+        "Complete each item in this section. Caution and Fail need findings; Fail also needs a repair recommendation.",
+      );
       return;
     }
     if (await persist(false)) {
@@ -153,7 +169,10 @@ export function InspectionForm({
     const caution = items.filter((item) => item.status === "watch").length;
     const failed = items.filter((item) => item.status === "fix").length;
     return (
-      <section className="inspection-result" aria-label="Completed inspection report">
+      <section
+        className="inspection-result"
+        aria-label="Completed inspection report"
+      >
         <div className="inspection-result-summary">
           <div>
             <p className="muted">INSPECTION COMPLETE · {items.length} ITEMS</p>
@@ -173,25 +192,38 @@ export function InspectionForm({
         )}
         <div className="inspection-result-findings">
           <h4>Recommendations &amp; findings</h4>
-          {flagged.length === 0 && <p className="muted">No caution or failed items recorded.</p>}
+          {flagged.length === 0 && (
+            <p className="muted">No caution or failed items recorded.</p>
+          )}
           {flagged.map((item) => (
             <article key={item.key} className="inspection-result-finding">
               <div className="inspection-result-finding-head">
                 <strong>{item.label}</strong>
-                <span className={item.status === "fix" ? "is-fail" : "is-caution"}>
+                <span
+                  className={item.status === "fix" ? "is-fail" : "is-caution"}
+                >
                   {conditionLabel(item.status)}
                 </span>
               </div>
               {item.note && <p>{item.note}</p>}
               {item.recommendedWork && (
-                <p><strong>Recommended:</strong> {item.recommendedWork}</p>
+                <p>
+                  <strong>Recommended:</strong> {item.recommendedWork}
+                </p>
               )}
-              {item.measurements && Object.keys(item.measurements).length > 0 && (
-                <p className="muted">Measurements: {Object.entries(item.measurements)
-                  .filter((entry) => entry[1] !== "")
-                  .map(([position, value]) => `${position.toUpperCase()} ${value}`)
-                  .join(" · ")}</p>
-              )}
+              {item.measurements &&
+                Object.keys(item.measurements).length > 0 && (
+                  <p className="muted">
+                    Measurements:{" "}
+                    {Object.entries(item.measurements)
+                      .filter((entry) => entry[1] !== "")
+                      .map(
+                        ([position, value]) =>
+                          `${position.toUpperCase()} ${value}`,
+                      )
+                      .join(" · ")}
+                  </p>
+                )}
             </article>
           ))}
         </div>
@@ -199,21 +231,28 @@ export function InspectionForm({
           <summary>View full {items.length}-point inspection</summary>
           <label className="inspection-result-section-picker">
             Vehicle system
-            <select value={reviewSection} onChange={(event) => setReviewSection(event.target.value)}>
+            <select
+              value={reviewSection}
+              onChange={(event) => setReviewSection(event.target.value)}
+            >
               {sections.map((name) => (
                 <option key={name} value={name}>
-                  {name} · {items.filter((item) => sectionName(item) === name).length} items
+                  {name} ·{" "}
+                  {items.filter((item) => sectionName(item) === name).length}{" "}
+                  items
                 </option>
               ))}
             </select>
           </label>
           <ul className="inspection-result-section-items">
-            {items.filter((item) => sectionName(item) === reviewSection).map((item) => (
-              <li key={item.key}>
-                <span>{item.label}</span>
-                <strong>{conditionLabel(item.status)}</strong>
-              </li>
-            ))}
+            {items
+              .filter((item) => sectionName(item) === reviewSection)
+              .map((item) => (
+                <li key={item.key}>
+                  <span>{item.label}</span>
+                  <strong>{conditionLabel(item.status)}</strong>
+                </li>
+              ))}
           </ul>
         </details>
       </section>
@@ -224,7 +263,8 @@ export function InspectionForm({
     <div className="inspection inspection-wizard" data-ux-ready={ready}>
       <header ref={headingRef} className="inspection-section-header">
         <p className="muted">
-          {automotive ? "Vehicle inspection" : "Service inspection"} · {checked} of {items.length} checked
+          {automotive ? "Vehicle inspection" : "Service inspection"} · {checked}{" "}
+          of {items.length} checked
         </p>
         <progress
           value={checked}
@@ -234,27 +274,37 @@ export function InspectionForm({
         />
         <h3>
           {pickup
-            ? automotive ? "Pick up vehicle" : "Arrive at job"
+            ? automotive
+              ? "Pick up vehicle"
+              : "Arrive at job"
             : review
               ? "Review and submit"
               : activeSection}
         </h3>
         {activeSection && (
           <p className="muted">
-            System {step + 1} of {sections.length} · {activeItems.filter((item) => item.status !== "unchecked").length}/{activeItems.length} checked
+            System {step + 1} of {sections.length} ·{" "}
+            {activeItems.filter((item) => item.status !== "unchecked").length}/
+            {activeItems.length} checked
           </p>
         )}
       </header>
 
       {pickup && (
         <fieldset disabled={disabled}>
-          <p>Start here. The inspection and diagnosis are completed at the vehicle.</p>
+          <p>
+            Start here. The inspection and diagnosis are completed at the
+            vehicle.
+          </p>
           <label>
             <input
               type="checkbox"
               checked={assessment.vehiclePickedUp}
               onChange={(e) =>
-                setAssessment((a) => ({ ...a, vehiclePickedUp: e.target.checked }))
+                setAssessment((a) => ({
+                  ...a,
+                  vehiclePickedUp: e.target.checked,
+                }))
               }
             />
             {automotive ? "I have the vehicle" : "I am at the job"}
@@ -268,22 +318,37 @@ export function InspectionForm({
             maxLength={120}
             placeholder={automotive ? "Bay 2" : "Work area"}
             value={assessment.bay}
-            onChange={(e) => setAssessment((a) => ({ ...a, bay: e.target.value }))}
+            onChange={(e) =>
+              setAssessment((a) => ({ ...a, bay: e.target.value }))
+            }
           />
         </fieldset>
       )}
 
       {activeSection && (
         <section aria-label={activeSection} className="inspection-system">
-          <p className="muted">Mark each item. Add details only when something needs attention.</p>
+          <p className="muted">
+            Mark each item. Add details only when something needs attention.
+          </p>
           {activeItems.map((item) => (
-            <div key={item.key} className={`inspection-point is-${item.status}`}>
+            <div
+              key={item.key}
+              className={`inspection-point is-${item.status}`}
+            >
               <fieldset disabled={disabled}>
-                <legend><strong>{item.label}</strong></legend>
+                <legend>
+                  <strong>{item.label}</strong>
+                </legend>
                 {item.hint && <p className="muted">{item.hint}</p>}
-                <div className="inspection-choices" aria-label={`Condition for ${item.label}`}>
+                <div
+                  className="inspection-choices"
+                  aria-label={`Condition for ${item.label}`}
+                >
                   {CONDITIONS.map((condition) => (
-                    <label key={condition.value} className={`choice-${condition.value}`}>
+                    <label
+                      key={condition.value}
+                      className={`choice-${condition.value}`}
+                    >
                       <input
                         type="radio"
                         name={`insp-${item.key}`}
@@ -291,11 +356,16 @@ export function InspectionForm({
                         onChange={() =>
                           update(item.key, {
                             status: condition.value,
-                            note: condition.value === "good" || condition.value === "na"
-                              ? "" : item.note,
+                            note:
+                              condition.value === "good" ||
+                              condition.value === "na"
+                                ? ""
+                                : item.note,
                             recommendedWork:
-                              condition.value === "good" || condition.value === "na"
-                                ? "" : item.recommendedWork,
+                              condition.value === "good" ||
+                              condition.value === "na"
+                                ? ""
+                                : item.recommendedWork,
                           })
                         }
                       />
@@ -305,7 +375,9 @@ export function InspectionForm({
                 </div>
                 {needsFindings(item) && (
                   <div className="inspection-point-findings">
-                    <label htmlFor={`insp-note-${item.key}`}>What did you find? *</label>
+                    <label htmlFor={`insp-note-${item.key}`}>
+                      What did you find? *
+                    </label>
                     <textarea
                       id={`insp-note-${item.key}`}
                       rows={2}
@@ -313,10 +385,13 @@ export function InspectionForm({
                       required
                       placeholder="Describe the condition or measurement"
                       value={item.note}
-                      onChange={(e) => update(item.key, { note: e.target.value })}
+                      onChange={(e) =>
+                        update(item.key, { note: e.target.value })
+                      }
                     />
                     <label htmlFor={`insp-repair-${item.key}`}>
-                      Recommended work {item.status === "fix" ? "*" : "(optional)"}
+                      Recommended work{" "}
+                      {item.status === "fix" ? "*" : "(optional)"}
                     </label>
                     <input
                       id={`insp-repair-${item.key}`}
@@ -329,7 +404,9 @@ export function InspectionForm({
                       }
                     />
                     <details className="inspection-evidence">
-                      <summary>Found an issue — add a photo? (optional)</summary>
+                      <summary>
+                        Found an issue — add a photo? (optional)
+                      </summary>
                       <MediaUploader
                         purpose="finding"
                         customerId={customerId}
@@ -343,28 +420,37 @@ export function InspectionForm({
                   </div>
                 )}
                 {(item.key === "tire_pressure" || item.key === "tire_tread") &&
-                  item.status !== "na" && item.status !== "unchecked" && (
+                  item.status !== "na" &&
+                  item.status !== "unchecked" && (
                     <div className="inspection-readings">
-                      <p><strong>{item.key === "tire_pressure" ? "PSI" : "Tread depth (32nds)"}</strong></p>
-                      {(["lf", "rf", "lr", "rr", "spare"] as const).map((position) => (
-                        <label key={position}>
-                          {position.toUpperCase()}
-                          <input
-                            type="number"
-                            min="0"
-                            inputMode="decimal"
-                            value={item.measurements?.[position] ?? ""}
-                            onChange={(e) =>
-                              update(item.key, {
-                                measurements: {
-                                  ...item.measurements,
-                                  [position]: e.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </label>
-                      ))}
+                      <p>
+                        <strong>
+                          {item.key === "tire_pressure"
+                            ? "PSI"
+                            : "Tread depth (32nds)"}
+                        </strong>
+                      </p>
+                      {(["lf", "rf", "lr", "rr", "spare"] as const).map(
+                        (position) => (
+                          <label key={position}>
+                            {position.toUpperCase()}
+                            <input
+                              type="number"
+                              min="0"
+                              inputMode="decimal"
+                              value={item.measurements?.[position] ?? ""}
+                              onChange={(e) =>
+                                update(item.key, {
+                                  measurements: {
+                                    ...item.measurements,
+                                    [position]: e.target.value,
+                                  },
+                                })
+                              }
+                            />
+                          </label>
+                        ),
+                      )}
                     </div>
                   )}
               </fieldset>
@@ -376,12 +462,21 @@ export function InspectionForm({
       {review && (
         <section className="inspection-review" aria-label="Review inspection">
           <p>
-            <strong>Pass:</strong> {items.filter((i) => i.status === "good").length}
-            {" · "}<strong>Caution:</strong> {items.filter((i) => i.status === "watch").length}
-            {" · "}<strong>Fail:</strong> {items.filter((i) => i.status === "fix").length}
-            {" · "}<strong>N/A:</strong> {items.filter((i) => i.status === "na").length}
+            <strong>Pass:</strong>{" "}
+            {items.filter((i) => i.status === "good").length}
+            {" · "}
+            <strong>Caution:</strong>{" "}
+            {items.filter((i) => i.status === "watch").length}
+            {" · "}
+            <strong>Fail:</strong>{" "}
+            {items.filter((i) => i.status === "fix").length}
+            {" · "}
+            <strong>N/A:</strong>{" "}
+            {items.filter((i) => i.status === "na").length}
           </p>
-          <label htmlFor={`inspection-diagnosis-${jobId}`}>Technician diagnosis</label>
+          <label htmlFor={`inspection-diagnosis-${jobId}`}>
+            Technician diagnosis
+          </label>
           {canEdit ? (
             <textarea
               id={`inspection-diagnosis-${jobId}`}
@@ -404,7 +499,8 @@ export function InspectionForm({
             return (
               <details key={name}>
                 <summary>
-                  {name} · {group.filter(pointComplete).length}/{group.length} complete
+                  {name} · {group.filter(pointComplete).length}/{group.length}{" "}
+                  complete
                 </summary>
                 {group.map((item) => (
                   <p key={item.key}>
@@ -426,7 +522,9 @@ export function InspectionForm({
                     Edit {name}
                   </button>
                 )}
-                {flagged.length > 0 && <p className="muted">{flagged.length} item(s) flagged</p>}
+                {flagged.length > 0 && (
+                  <p className="muted">{flagged.length} item(s) flagged</p>
+                )}
               </details>
             );
           })}
@@ -449,7 +547,8 @@ export function InspectionForm({
           </section>
           {!canSubmit && canEdit && (
             <p role="alert" className="notice">
-              Finish unchecked items, required findings, and the technician diagnosis.
+              Finish unchecked items, required findings, and the technician
+              diagnosis.
             </p>
           )}
         </section>
@@ -484,7 +583,11 @@ export function InspectionForm({
               <button
                 className="btn primary"
                 type="button"
-                disabled={!ready || pending || (pickup ? !pickupComplete : !sectionReady)}
+                disabled={
+                  !ready ||
+                  pending ||
+                  (pickup ? !pickupComplete : !sectionReady)
+                }
                 onClick={() => void next()}
               >
                 {pickup
@@ -507,7 +610,9 @@ export function InspectionForm({
           </button>
         </footer>
       )}
-      {completed && <p className="notice ok">Inspection submitted to the advisor.</p>}
+      {completed && (
+        <p className="notice ok">Inspection submitted to the advisor.</p>
+      )}
       <p role="status">{pending ? "Saving progress…" : message}</p>
     </div>
   );

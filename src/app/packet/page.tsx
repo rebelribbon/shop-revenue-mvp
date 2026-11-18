@@ -59,7 +59,7 @@ export default async function CustomerPacketPage({
 
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-        <ProposalOpenTracker token={estimateToken} />
+      <ProposalOpenTracker token={estimateToken} />
       <h1>Review and authorize your service</h1>
       <p className="muted">
         {estimate.snapshot.shopName} · {estimate.snapshot.customerName}

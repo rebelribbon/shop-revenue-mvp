@@ -97,8 +97,12 @@ describe("RO handoff email pings", () => {
       const { listTechs, listAdvisors } = await import("@/domain/assignments");
       return { techs: await listTechs(tx), advisors: await listAdvisors(tx) };
     });
-    expect(available.techs.some((person) => person.userId === ownerId)).toBe(true);
-    expect(available.advisors.some((person) => person.userId === ownerId)).toBe(true);
+    expect(available.techs.some((person) => person.userId === ownerId)).toBe(
+      true,
+    );
+    expect(available.advisors.some((person) => person.userId === ownerId)).toBe(
+      true,
+    );
     await f.owner((tx) =>
       assignAdvisor(tx, meta(), { jobId: f.job.id, userId: ownerId }),
     );
@@ -116,7 +120,10 @@ describe("RO handoff email pings", () => {
           bay: "Rack 1",
           vehiclePickedUp: true,
         },
-        items: draft.items.map((point) => ({ ...point, status: "good" as const })),
+        items: draft.items.map((point) => ({
+          ...point,
+          status: "good" as const,
+        })),
       }),
     );
     expect(submitted.complete).toBe(true);

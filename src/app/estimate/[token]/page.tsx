@@ -67,7 +67,7 @@ export default async function PublicEstimatePage({
     );
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
-        <ProposalOpenTracker token={token} />
+      <ProposalOpenTracker token={token} />
       <h1>Estimate · Version {e.version}</h1>
       <PrintDocument label="Print estimate / Save PDF" />
       {e.supplementReason && (

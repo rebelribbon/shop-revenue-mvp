@@ -112,17 +112,31 @@ export async function finishMediaUpload(
   if (input.jobId && (await jobCustomer(tx, input.jobId)) !== input.customerId)
     throw notFound("That job");
   const purpose = input.mediaPurpose ?? "general";
-  if (purpose === "finding" &&
-      (!input.jobId || !input.inspectionItemKey ||
-       !inspectionPoints.some((p) => p.id === input.inspectionItemKey)))
-    throw new AppError("VALIDATION", "Select an inspection checkpoint before adding evidence.");
+  if (
+    purpose === "finding" &&
+    (!input.jobId ||
+      !input.inspectionItemKey ||
+      !inspectionPoints.some((p) => p.id === input.inspectionItemKey))
+  )
+    throw new AppError(
+      "VALIDATION",
+      "Select an inspection checkpoint before adding evidence.",
+    );
   if ((purpose === "intake" || purpose === "walkaround") && !input.jobId)
-    throw new AppError("VALIDATION", "Media must be attached to a repair order.");
+    throw new AppError(
+      "VALIDATION",
+      "Media must be attached to a repair order.",
+    );
   const stored = await statObject(f.storageKey);
   const type = MEDIA_TYPES[f.contentType];
-  if ((purpose === "walkaround" && !type?.video) ||
-      ((purpose === "finding" || purpose === "intake") && type?.video))
-    throw new AppError("VALIDATION", "Choose the correct photo or video type for this step.");
+  if (
+    (purpose === "walkaround" && !type?.video) ||
+    ((purpose === "finding" || purpose === "intake") && type?.video)
+  )
+    throw new AppError(
+      "VALIDATION",
+      "Choose the correct photo or video type for this step.",
+    );
   if (
     !stored ||
     stored.size <= 0 ||
@@ -163,7 +177,9 @@ export async function finishMediaUpload(
       mediaId: row.id,
       ...(row.jobId ? { jobId: row.jobId } : {}),
       purpose,
-      ...(purpose === "finding" ? { inspectionItemKey: input.inspectionItemKey } : {}),
+      ...(purpose === "finding"
+        ? { inspectionItemKey: input.inspectionItemKey }
+        : {}),
     },
   });
   void meta;

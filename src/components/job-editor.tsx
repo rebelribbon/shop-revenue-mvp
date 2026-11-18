@@ -135,16 +135,16 @@ export function JobEditor({
     /* An unfinished numeric edit must not crash the page. */
   }
   const unpricedInspectionWork =
-    inspectionPricingOnly && labor.some((line) =>
-      line.fromInspection &&
-      (line.estimatedHoursHundredths <= 0 ||
-        line.sellRateCents <= 0 ||
-        line.costRateCents === null),
+    inspectionPricingOnly &&
+    labor.some(
+      (line) =>
+        line.fromInspection &&
+        (line.estimatedHoursHundredths <= 0 ||
+          line.sellRateCents <= 0 ||
+          line.costRateCents === null),
     );
   const valid =
-    !!totals &&
-    parts.every((p) => p.quantity > 0) &&
-    !unpricedInspectionWork;
+    !!totals && parts.every((p) => p.quantity > 0) && !unpricedInspectionWork;
   const clearLinks = () => {
     setParts((ps) => ps.map((p) => ({ ...p, recommendationId: undefined })));
     setLabor((ls) => ls.map((l) => ({ ...l, recommendationId: undefined })));
@@ -245,11 +245,15 @@ export function JobEditor({
       }}
     >
       <fieldset className="hydration-fields" disabled={!ready}>
-        <h2>{inspectionPricingOnly ? "Price technician recommendations" : "Job details"}</h2>
+        <h2>
+          {inspectionPricingOnly
+            ? "Price technician recommendations"
+            : "Job details"}
+        </h2>
         {inspectionPricingOnly && (
           <p className="muted">
-            The completed inspection has populated recommended work below.
-            Add needed parts, set labor time, enter selling prices and internal
+            The completed inspection has populated recommended work below. Add
+            needed parts, set labor time, enter selling prices and internal
             costs, then save. The customer receives nothing until you publish
             and share the estimate.
           </p>
@@ -262,178 +266,195 @@ export function JobEditor({
         )}
         {!inspectionPricingOnly ? (
           <>
-        {commonJobs.length > 0 && (
-          <section>
-            <label htmlFor="common-job">Start from a common job</label>
+            {commonJobs.length > 0 && (
+              <section>
+                <label htmlFor="common-job">Start from a common job</label>
+                <select
+                  id="common-job"
+                  value={commonId}
+                  onChange={(e) => setCommonId(e.target.value)}
+                >
+                  <option value="">Choose saved work</option>
+                  {commonJobs.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={!commonId}
+                  onClick={() => {
+                    if (
+                      (parts.length || labor.length) &&
+                      !window.confirm(
+                        `Replace the current ${auto ? "parts" : "materials"} and labor with this common job?`,
+                      )
+                    )
+                      return;
+                    const c = commonJobs.find((c) => c.id === commonId);
+                    if (c) {
+                      setTitle(c.name);
+                      setParts(c.parts.map((p) => ({ ...p })));
+                      setLabor(
+                        c.labor.map((l) => ({
+                          ...l,
+                          actualHoursHundredths: null,
+                        })),
+                      );
+                    }
+                  }}
+                >
+                  Use common job
+                </button>
+              </section>
+            )}
+            <CustomerPicker
+              id="job-customer"
+              fixed={!!initial?.customerId}
+              options={options.customers}
+              value={customerId}
+              onChange={(id) => {
+                clearLinks();
+                setCustomer(id);
+                setVehicle("");
+                setServiceAsset("");
+              }}
+            />
+            <label htmlFor="job-target">
+              {auto ? "Vehicle" : "Property / equipment"}
+            </label>
             <select
-              id="common-job"
-              value={commonId}
-              onChange={(e) => setCommonId(e.target.value)}
-            >
-              <option value="">Choose saved work</option>
-              {commonJobs.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="btn secondary"
-              disabled={!commonId}
-              onClick={() => {
-                if (
-                  (parts.length || labor.length) &&
-                  !window.confirm(
-                    `Replace the current ${auto ? "parts" : "materials"} and labor with this common job?`,
-                  )
-                )
-                  return;
-                const c = commonJobs.find((c) => c.id === commonId);
-                if (c) {
-                  setTitle(c.name);
-                  setParts(c.parts.map((p) => ({ ...p })));
-                  setLabor(
-                    c.labor.map((l) => ({ ...l, actualHoursHundredths: null })),
-                  );
-                }
+              id="job-target"
+              required
+              value={auto ? vehicleId : serviceAssetId}
+              onChange={(e) => {
+                clearLinks();
+                if (auto) setVehicle(e.target.value);
+                else setServiceAsset(e.target.value);
               }}
             >
-              Use common job
-            </button>
-          </section>
-        )}
-        <CustomerPicker
-          id="job-customer"
-          fixed={!!initial?.customerId}
-          options={options.customers}
-          value={customerId}
-          onChange={(id) => {
-            clearLinks();
-            setCustomer(id);
-            setVehicle("");
-            setServiceAsset("");
-          }}
-        />
-        <label htmlFor="job-target">
-          {auto ? "Vehicle" : "Property / equipment"}
-        </label>
-        <select
-          id="job-target"
-          required
-          value={auto ? vehicleId : serviceAssetId}
-          onChange={(e) => {
-            clearLinks();
-            if (auto) setVehicle(e.target.value);
-            else setServiceAsset(e.target.value);
-          }}
-        >
-          <option value="">
-            {auto ? "Choose vehicle" : "Choose property or equipment"}
-          </option>
-          {auto
-            ? options.vehicles
-                .filter((v) => v.customerId === customerId)
-                .map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
-                      "Vehicle"}
-                  </option>
-                ))
-            : options.serviceAssets
-                .filter((a) => a.customerId === customerId)
-                .map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.displayName}
-                  </option>
-                ))}
-        </select>
-        {customerId &&
-          (!(auto
-            ? options.vehicles.some((v) => v.customerId === customerId)
-            : options.serviceAssets.some(
-                (a) => a.customerId === customerId,
-              )) ? (
-            <p>
-              <Link href={`/app/customers/${customerId}?view=assets`}>
-                Add{" "}
-                {auto ? "a vehicle (scan the VIN)" : "a property or equipment"}{" "}
-                for this customer first
-              </Link>
-            </p>
-          ) : auto && !initial?.jobId ? (
-            <p>
-              <Link href={`/app/customers/${customerId}?view=assets`}>
-                New vehicle? Scan the VIN
-              </Link>
-            </p>
-          ) : null)}
-        {auto && (
-          <label>
-            Miles in
-            <input
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={7}
-              value={mileageIn}
-              placeholder="84250"
-              onChange={(e) => setMileageIn(e.target.value.replace(/\D/g, ""))}
+              <option value="">
+                {auto ? "Choose vehicle" : "Choose property or equipment"}
+              </option>
+              {auto
+                ? options.vehicles
+                    .filter((v) => v.customerId === customerId)
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {[v.year, v.make, v.model].filter(Boolean).join(" ") ||
+                          "Vehicle"}
+                      </option>
+                    ))
+                : options.serviceAssets
+                    .filter((a) => a.customerId === customerId)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.displayName}
+                      </option>
+                    ))}
+            </select>
+            {customerId &&
+              (!(auto
+                ? options.vehicles.some((v) => v.customerId === customerId)
+                : options.serviceAssets.some(
+                    (a) => a.customerId === customerId,
+                  )) ? (
+                <p>
+                  <Link href={`/app/customers/${customerId}?view=assets`}>
+                    Add{" "}
+                    {auto
+                      ? "a vehicle (scan the VIN)"
+                      : "a property or equipment"}{" "}
+                    for this customer first
+                  </Link>
+                </p>
+              ) : auto && !initial?.jobId ? (
+                <p>
+                  <Link href={`/app/customers/${customerId}?view=assets`}>
+                    New vehicle? Scan the VIN
+                  </Link>
+                </p>
+              ) : null)}
+            {auto && (
+              <label>
+                Miles in
+                <input
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={7}
+                  value={mileageIn}
+                  placeholder="84250"
+                  onChange={(e) =>
+                    setMileageIn(e.target.value.replace(/\D/g, ""))
+                  }
+                />
+              </label>
+            )}
+            <label>
+              Customer concerns
+              <textarea
+                rows={3}
+                maxLength={2000}
+                value={concerns}
+                placeholder={
+                  auto
+                    ? "Grinding noise from the front when braking. Check engine light on since Monday."
+                    : "What the customer is asking for, in their words."
+                }
+                onChange={(e) => setConcerns(e.target.value)}
+              />
+            </label>
+            <label>
+              Job name
+              <input
+                required
+                maxLength={200}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </label>
+            <label>
+              Warranty in months <span className="muted">(optional)</span>
+              <input
+                inputMode="numeric"
+                maxLength={3}
+                value={warranty}
+                placeholder="12"
+                onChange={(e) => setWarranty(e.target.value.replace(/\D/g, ""))}
+              />
+            </label>
+            <RepeatPicker
+              value={repeat}
+              onChange={setRepeat}
+              today={today}
+              perVisitCents={totals?.subtotalCents ?? 0}
+              profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
             />
-          </label>
-        )}
-        <label>
-          Customer concerns
-          <textarea
-            rows={3}
-            maxLength={2000}
-            value={concerns}
-            placeholder={
-              auto
-                ? "Grinding noise from the front when braking. Check engine light on since Monday."
-                : "What the customer is asking for, in their words."
-            }
-            onChange={(e) => setConcerns(e.target.value)}
-          />
-        </label>
-        <label>
-          Job name
-          <input
-            required
-            maxLength={200}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <label>
-          Warranty in months <span className="muted">(optional)</span>
-          <input
-            inputMode="numeric"
-            maxLength={3}
-            value={warranty}
-            placeholder="12"
-            onChange={(e) => setWarranty(e.target.value.replace(/\D/g, ""))}
-          />
-        </label>
-        <RepeatPicker
-          value={repeat}
-          onChange={setRepeat}
-          today={today}
-          perVisitCents={totals?.subtotalCents ?? 0}
-          profitPerVisitCents={totals?.estimatedGrossProfitCents ?? null}
-        />
           </>
         ) : (
           <div className="ro-check-in" aria-label="Repair order from intake">
             <strong>Repair order: {title}</strong>
-            <p>{options.customers.find((c) => c.id === customerId)?.name ?? "Customer"}</p>
+            <p>
+              {options.customers.find((c) => c.id === customerId)?.name ??
+                "Customer"}
+            </p>
             <p>
               {options.vehicles
                 .filter((vehicle) => vehicle.id === vehicleId)
-                .map((vehicle) => [vehicle.year, vehicle.make, vehicle.model]
-                  .filter(Boolean).join(" "))
+                .map((vehicle) =>
+                  [vehicle.year, vehicle.make, vehicle.model]
+                    .filter(Boolean)
+                    .join(" "),
+                )
                 .join("")}
             </p>
-            {concerns && <p><strong>Customer concerns:</strong> {concerns}</p>}
+            {concerns && (
+              <p>
+                <strong>Customer concerns:</strong> {concerns}
+              </p>
+            )}
           </div>
         )}
         <h3>{auto ? "Parts" : "Materials"}</h3>

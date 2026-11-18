@@ -78,7 +78,13 @@ export function MediaUploader({
   const specialized = purpose !== "general";
   const [tag, setTag] = useState<Tag>(defaultTag);
   const effectiveTag: Tag =
-    purpose === "intake" ? "before" : purpose === "finding" ? "issue" : purpose === "walkaround" ? "quote" : tag;
+    purpose === "intake"
+      ? "before"
+      : purpose === "finding"
+        ? "issue"
+        : purpose === "walkaround"
+          ? "quote"
+          : tag;
   const [caption, setCaption] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
@@ -92,7 +98,10 @@ export function MediaUploader({
           setStatus("Record a short video for the walkaround.");
           continue;
         }
-        if ((purpose === "finding" || purpose === "intake") && !original.type.startsWith("image/")) {
+        if (
+          (purpose === "finding" || purpose === "intake") &&
+          !original.type.startsWith("image/")
+        ) {
           setStatus("Choose a photo for this step.");
           continue;
         }
@@ -141,15 +150,27 @@ export function MediaUploader({
           ...(serviceAssetId ? { serviceAssetId } : {}),
           ...(appointmentId ? { appointmentId } : {}),
           tag: effectiveTag,
-          caption: purpose === "finding"
-            ? `Inspection: ${inspectionItemLabel || inspectionItemKey || "Finding"}${caption.trim() ? ` — ${caption.trim()}` : ""}`.slice(0, 500)
-            : purpose === "intake"
-              ? `Vehicle check-in${caption.trim() ? ` — ${caption.trim()}` : ""}`.slice(0, 500)
-              : purpose === "walkaround"
-                ? `Technician inspection summary video${caption.trim() ? ` — ${caption.trim()}` : ""}`.slice(0, 500)
-                : caption,
+          caption:
+            purpose === "finding"
+              ? `Inspection: ${inspectionItemLabel || inspectionItemKey || "Finding"}${caption.trim() ? ` — ${caption.trim()}` : ""}`.slice(
+                  0,
+                  500,
+                )
+              : purpose === "intake"
+                ? `Vehicle check-in${caption.trim() ? ` — ${caption.trim()}` : ""}`.slice(
+                    0,
+                    500,
+                  )
+                : purpose === "walkaround"
+                  ? `Technician inspection summary video${caption.trim() ? ` — ${caption.trim()}` : ""}`.slice(
+                      0,
+                      500,
+                    )
+                  : caption,
           ...(specialized ? { mediaPurpose: purpose } : {}),
-          ...(purpose === "finding" && inspectionItemKey ? { inspectionItemKey } : {}),
+          ...(purpose === "finding" && inspectionItemKey
+            ? { inspectionItemKey }
+            : {}),
           clientRequestId: crypto.randomUUID(),
         });
         if (!fin.ok) {
@@ -171,7 +192,10 @@ export function MediaUploader({
     }
   };
   return (
-    <div className={`media-uploader${specialized ? " media-uploader-compact" : ""}`} data-ux-ready={ready}>
+    <div
+      className={`media-uploader${specialized ? " media-uploader-compact" : ""}`}
+      data-ux-ready={ready}
+    >
       {!specialized && (
         <fieldset className="chips">
           <legend>What is it?</legend>
@@ -202,10 +226,20 @@ export function MediaUploader({
       <input
         ref={input}
         type="file"
-        accept={purpose === "walkaround" ? "video/*" :
-          purpose === "finding" || purpose === "intake" ? "image/*" : "image/*,video/*"}
-        capture={purpose === "walkaround" || purpose === "finding" || purpose === "intake"
-          ? "environment" : undefined}
+        accept={
+          purpose === "walkaround"
+            ? "video/*"
+            : purpose === "finding" || purpose === "intake"
+              ? "image/*"
+              : "image/*,video/*"
+        }
+        capture={
+          purpose === "walkaround" ||
+          purpose === "finding" ||
+          purpose === "intake"
+            ? "environment"
+            : undefined
+        }
         multiple={purpose === "intake" || purpose === "general"}
         style={{ display: "none" }}
         onChange={(e) => e.target.files?.length && void upload(e.target.files)}
@@ -226,15 +260,19 @@ export function MediaUploader({
                 ? "Record 1-minute technician video"
                 : "Add photo / video"}
       </button>
-      {specialized && <p className="muted">
-        {purpose === "finding"
-          ? "This photo is linked to this inspection finding. Your advisor chooses what the customer sees."
-          : purpose === "intake"
-            ? "Document existing body damage before the vehicle goes to the technician. Photos are private."
-            : "A brief personal summary for the advisor to review before sharing with the customer."}
-      </p>}
+      {specialized && (
+        <p className="muted">
+          {purpose === "finding"
+            ? "This photo is linked to this inspection finding. Your advisor chooses what the customer sees."
+            : purpose === "intake"
+              ? "Document existing body damage before the vehicle goes to the technician. Photos are private."
+              : "A brief personal summary for the advisor to review before sharing with the customer."}
+        </p>
+      )}
       {!specialized && (
-        <p className="muted">Media stays private until the advisor approves sharing.</p>
+        <p className="muted">
+          Media stays private until the advisor approves sharing.
+        </p>
       )}
       <p role="status">{status}</p>
     </div>

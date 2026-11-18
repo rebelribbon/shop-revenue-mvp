@@ -103,11 +103,20 @@ export default async function VisitsPage({
           </Link>
           <section className="schedule-focus" aria-label="Appointment overview">
             <p className="muted">YOUR APPOINTMENT QUEUE</p>
-            <h2>{data.visits.rows.filter((visit) =>
-              localDateKey(visit.startsAt, data.visits.timezone) === data.today &&
-              visit.status === "scheduled",
-            ).length} appointments remaining today</h2>
-            <p className="muted">Open a day to see customers, start the RO, or mark a visit complete.</p>
+            <h2>
+              {
+                data.visits.rows.filter(
+                  (visit) =>
+                    localDateKey(visit.startsAt, data.visits.timezone) ===
+                      data.today && visit.status === "scheduled",
+                ).length
+              }{" "}
+              appointments remaining today
+            </h2>
+            <p className="muted">
+              Open a day to see customers, start the RO, or mark a visit
+              complete.
+            </p>
           </section>
           <div className="money-actions">
             <Link href={`/app/schedule?week=${addLocalDays(data.start, -7)}`}>
@@ -120,17 +129,17 @@ export default async function VisitsPage({
           </div>
           <details className="schedule-date-filter">
             <summary>Jump to another date</summary>
-          <form method="get" className="card">
-            <label htmlFor="visit-week">Go to a date</label>
-            <input
-              id="visit-week"
-              name="week"
-              type="date"
-              defaultValue={data.anchor}
-              required
-            />
-            <button className="btn secondary">Show week</button>
-          </form>
+            <form method="get" className="card">
+              <label htmlFor="visit-week">Go to a date</label>
+              <input
+                id="visit-week"
+                name="week"
+                type="date"
+                defaultValue={data.anchor}
+                required
+              />
+              <button className="btn secondary">Show week</button>
+            </form>
           </details>
           <p className="muted">
             {dateLabel(data.start)} – {dateLabel(addLocalDays(data.start, 6))} ·{" "}
@@ -138,8 +147,11 @@ export default async function VisitsPage({
           </p>
           {Array.from({ length: 7 }, (_, i) => addLocalDays(data.start, i)).map(
             (day) => (
-              <details className="card schedule-day" key={day}
-                open={day === data.today || day === data.anchor}>
+              <details
+                className="card schedule-day"
+                key={day}
+                open={day === data.today || day === data.anchor}
+              >
                 <summary>
                   <strong>
                     {day === data.today
@@ -149,9 +161,14 @@ export default async function VisitsPage({
                         : dateLabel(day)}
                   </strong>
                   <span className="muted">
-                    {data.visits.rows.filter(
-                      (visit) => localDateKey(visit.startsAt, data.visits.timezone) === day,
-                    ).length} appointment(s)
+                    {
+                      data.visits.rows.filter(
+                        (visit) =>
+                          localDateKey(visit.startsAt, data.visits.timezone) ===
+                          day,
+                      ).length
+                    }{" "}
+                    appointment(s)
                   </span>
                 </summary>
                 {!data.visits.rows.some(

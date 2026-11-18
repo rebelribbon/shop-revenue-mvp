@@ -83,7 +83,9 @@ export function EstimatePublisher({
             setShare((result.data as { share?: typeof share }).share);
             setMessage("Estimate saved in RO Documents.");
             setRequestId(crypto.randomUUID());
-            router.push(`/app/jobs?job=${encodeURIComponent(jobId)}&tab=files&share=1#file-cabinet`);
+            router.push(
+              `/app/jobs?job=${encodeURIComponent(jobId)}&tab=files&share=1#file-cabinet`,
+            );
             router.refresh();
           } else setMessage(result.error.message);
         } catch {
@@ -133,7 +135,6 @@ export function EstimatePublisher({
           </label>
           <p className="muted">Changes need the customer’s approval again.</p>
         </details>{" "}
-
         <button
           className="btn secondary"
           data-page-primary={!existingVersion ? "true" : undefined}

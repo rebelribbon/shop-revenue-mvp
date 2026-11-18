@@ -33,7 +33,9 @@ export function FileCabinet({
 }) {
   // Never let the shop send an older frozen version while its RO has newer
   // unsent priced work. Finalize the current draft first.
-  const hasNewerDraft = items.some((item) => item.status === "Draft — not sent");
+  const hasNewerDraft = items.some(
+    (item) => item.status === "Draft — not sent",
+  );
   const estimate = hasNewerDraft
     ? undefined
     : items.find((item) => item.estimateShareId);
@@ -123,121 +125,128 @@ export function FileCabinet({
       id="file-cabinet"
       aria-label="Documents and customer packet"
     >
-      {!embeddedReview && <header className="docs-toolbar">
-        <div>
-          <h3>
-            Documents <span className="docs-counter">{items.length}</span>
-          </h3>
-          <p className="muted">Your RO documents and signed copies.</p>
-        </div>
-        <div className="docs-toolbar-actions">
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={!previewPath && !active?.preview}
-            onClick={() => {
-              if (active?.preview) {
-                setShowPreview(true);
-              } else if (previewPath) {
-                window.open(previewPath, "_blank", "noopener,noreferrer");
-              }
-            }}
-          >
-            Open preview
-          </button>
-          {!archiveOnly && (!readOnly || demoMode) && (
-            <button
-              type="button"
-              className="btn primary"
-              disabled={!estimate?.estimateShareId && !demoMode}
-              onClick={() => setShareOpen((open) => !open)}
-              aria-expanded={shareOpen}
-              aria-controls="docs-share-panel"
-            >
-              {shareOpen ? "Close share" : "Share packet"}
-            </button>
-          )}
-        </div>
-      </header>}
-
-      {!embeddedReview && !archiveOnly && shareOpen && (estimate?.estimateShareId || demoMode) && (
-        <section
-          id="docs-share-panel"
-          className="docs-share-panel"
-          aria-label="Share customer documents"
-        >
-          <div className="docs-share-heading">
-            <div>
-              <h4>Share with customer</h4>
-              <p className="muted">
-                {1 + selectedDocuments.length} document
-                {selectedDocuments.length ? "s" : ""} in this packet · Review
-                recipients and send
-              </p>
-            </div>
-            <button
-              className="btn secondary"
-              type="button"
-              onClick={() => setShareOpen(false)}
-            >
-              Close
-            </button>
+      {!embeddedReview && (
+        <header className="docs-toolbar">
+          <div>
+            <h3>
+              Documents <span className="docs-counter">{items.length}</span>
+            </h3>
+            <p className="muted">Your RO documents and signed copies.</p>
           </div>
-          {demoMode ? (
-            <div className="docs-demo-composer">
-              <p>
-                <strong>Recipient</strong>
-              </p>
-              <input
-                aria-label="Demo customer email"
-                type="email"
-                placeholder="customer@example.com"
-              />
-              <p className="muted">
-                The real Share action sends one customer link for the estimate
-                and selected agreements.
-              </p>
-              <button type="button" className="btn primary" disabled>
-                Send (disabled in public preview)
+          <div className="docs-toolbar-actions">
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={!previewPath && !active?.preview}
+              onClick={() => {
+                if (active?.preview) {
+                  setShowPreview(true);
+                } else if (previewPath) {
+                  window.open(previewPath, "_blank", "noopener,noreferrer");
+                }
+              }}
+            >
+              Open preview
+            </button>
+            {!archiveOnly && (!readOnly || demoMode) && (
+              <button
+                type="button"
+                className="btn primary"
+                disabled={!estimate?.estimateShareId && !demoMode}
+                onClick={() => setShareOpen((open) => !open)}
+                aria-expanded={shareOpen}
+                aria-controls="docs-share-panel"
+              >
+                {shareOpen ? "Close share" : "Share packet"}
               </button>
-            </div>
-          ) : estimate?.estimateShareId ? (
-            <DocumentShare
-              id={estimate.estimateShareId}
-              kind="estimate"
-              primary
-              autoOpen
-              selectedDocumentIds={selectedDocuments}
-            />
-          ) : null}
-        </section>
+            )}
+          </div>
+        </header>
       )}
 
-      {!embeddedReview && <div className="docs-tabs" role="group" aria-label="Document types">
-        <button
-          type="button"
-          className={view === "all" ? "is-active" : ""}
-          onClick={() => setView("all")}
-        >
-          All ({items.length})
-        </button>
-        <button
-          type="button"
-          className={view === "generated" ? "is-active" : ""}
-          onClick={() => setView("generated")}
-        >
-          Generated (
-          {items.filter((item) => item.group !== "Added files").length})
-        </button>
-        <button
-          type="button"
-          className={view === "uploaded" ? "is-active" : ""}
-          onClick={() => setView("uploaded")}
-        >
-          Uploaded (
-          {items.filter((item) => item.group === "Added files").length})
-        </button>
-      </div>}
+      {!embeddedReview &&
+        !archiveOnly &&
+        shareOpen &&
+        (estimate?.estimateShareId || demoMode) && (
+          <section
+            id="docs-share-panel"
+            className="docs-share-panel"
+            aria-label="Share customer documents"
+          >
+            <div className="docs-share-heading">
+              <div>
+                <h4>Share with customer</h4>
+                <p className="muted">
+                  {1 + selectedDocuments.length} document
+                  {selectedDocuments.length ? "s" : ""} in this packet · Review
+                  recipients and send
+                </p>
+              </div>
+              <button
+                className="btn secondary"
+                type="button"
+                onClick={() => setShareOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            {demoMode ? (
+              <div className="docs-demo-composer">
+                <p>
+                  <strong>Recipient</strong>
+                </p>
+                <input
+                  aria-label="Demo customer email"
+                  type="email"
+                  placeholder="customer@example.com"
+                />
+                <p className="muted">
+                  The real Share action sends one customer link for the estimate
+                  and selected agreements.
+                </p>
+                <button type="button" className="btn primary" disabled>
+                  Send (disabled in public preview)
+                </button>
+              </div>
+            ) : estimate?.estimateShareId ? (
+              <DocumentShare
+                id={estimate.estimateShareId}
+                kind="estimate"
+                primary
+                autoOpen
+                selectedDocumentIds={selectedDocuments}
+              />
+            ) : null}
+          </section>
+        )}
+
+      {!embeddedReview && (
+        <div className="docs-tabs" role="group" aria-label="Document types">
+          <button
+            type="button"
+            className={view === "all" ? "is-active" : ""}
+            onClick={() => setView("all")}
+          >
+            All ({items.length})
+          </button>
+          <button
+            type="button"
+            className={view === "generated" ? "is-active" : ""}
+            onClick={() => setView("generated")}
+          >
+            Generated (
+            {items.filter((item) => item.group !== "Added files").length})
+          </button>
+          <button
+            type="button"
+            className={view === "uploaded" ? "is-active" : ""}
+            onClick={() => setView("uploaded")}
+          >
+            Uploaded (
+            {items.filter((item) => item.group === "Added files").length})
+          </button>
+        </div>
+      )}
 
       <div className="docs-split">
         <div className="docs-list" role="list" aria-label="Documents">
@@ -265,7 +274,10 @@ export function FileCabinet({
                 role="listitem"
               >
                 <div className="docs-row-first">
-                  {selectable && !readOnly && !embeddedReview && !archiveOnly ? (
+                  {selectable &&
+                  !readOnly &&
+                  !embeddedReview &&
+                  !archiveOnly ? (
                     <input
                       type="checkbox"
                       aria-label={`Include ${item.title} in packet`}
@@ -308,169 +320,178 @@ export function FileCabinet({
           })}
         </div>
 
-        {showPreview && <aside className="docs-preview-pane" aria-label="Document preview">
-          {active ? (
-            <>
-              <div className="docs-preview-head">
-                <div>
-                  <strong>{active.title}</strong>
-                  <small>{active.status || "Filed"}</small>
-                </div>
-                <div className="docs-preview-head-actions">
-                  {previewPath && (
-                    <a href={previewPath} target="_blank" rel="noreferrer">
-                      Open original
-                    </a>
-                  )}
-                  <button type="button" className="btn secondary" onClick={() => setShowPreview(false)}>
-                    Close
-                  </button>
-                </div>
-              </div>
-              {active.preview ? (
-                <article
-                  className="docs-paper"
-                  aria-label={`Document content: ${active.title}`}
-                >
-                  <div className="docs-paper-heading">
-                    <small>SHOP REVENUE · CUSTOMER DOCUMENT</small>
-                    <h4>{active.title}</h4>
-                    {active.preview.shopName && (
-                      <strong>{active.preview.shopName}</strong>
-                    )}
-                    {active.preview.customerName && (
-                      <p>Prepared for {active.preview.customerName}</p>
-                    )}
-                    {active.preview.subject && <p>{active.preview.subject}</p>}
+        {showPreview && (
+          <aside className="docs-preview-pane" aria-label="Document preview">
+            {active ? (
+              <>
+                <div className="docs-preview-head">
+                  <div>
+                    <strong>{active.title}</strong>
+                    <small>{active.status || "Filed"}</small>
                   </div>
-                  {active.preview.type === "estimate" && (
-                    <>
-                      <table className="docs-paper-lines">
-                        <thead>
-                          <tr>
-                            <th scope="col">Work / item</th>
-                            <th scope="col">Qty</th>
-                            <th scope="col">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(active.preview.lines ?? []).map((line) => (
-                            <tr key={line.id}>
-                              <td>{line.description}</td>
-                              <td>{line.quantity}</td>
-                              <td>{money(line.totalCents)}</td>
+                  <div className="docs-preview-head-actions">
+                    {previewPath && (
+                      <a href={previewPath} target="_blank" rel="noreferrer">
+                        Open original
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      onClick={() => setShowPreview(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+                {active.preview ? (
+                  <article
+                    className="docs-paper"
+                    aria-label={`Document content: ${active.title}`}
+                  >
+                    <div className="docs-paper-heading">
+                      <small>SHOP REVENUE · CUSTOMER DOCUMENT</small>
+                      <h4>{active.title}</h4>
+                      {active.preview.shopName && (
+                        <strong>{active.preview.shopName}</strong>
+                      )}
+                      {active.preview.customerName && (
+                        <p>Prepared for {active.preview.customerName}</p>
+                      )}
+                      {active.preview.subject && (
+                        <p>{active.preview.subject}</p>
+                      )}
+                    </div>
+                    {active.preview.type === "estimate" && (
+                      <>
+                        <table className="docs-paper-lines">
+                          <thead>
+                            <tr>
+                              <th scope="col">Work / item</th>
+                              <th scope="col">Qty</th>
+                              <th scope="col">Amount</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {(active.preview.lines ?? []).map((line) => (
+                              <tr key={line.id}>
+                                <td>{line.description}</td>
+                                <td>{line.quantity}</td>
+                                <td>{money(line.totalCents)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div className="docs-paper-totals">
+                          <span>Tax</span>
+                          <span>{money(active.preview.taxCents ?? 0)}</span>
+                          <strong>Estimated total</strong>
+                          <strong>
+                            {money(active.preview.totalCents ?? 0)}
+                          </strong>
+                        </div>
+                        <p className="docs-paper-note">
+                          Customer approves or declines each priced item and
+                          signs the authorization. Amounts cannot be changed by
+                          the customer.
+                        </p>
+                      </>
+                    )}
+                    {active.preview.type === "agreement" && (
+                      <>
+                        <div className="docs-paper-body">
+                          {active.preview.body}
+                        </div>
+                        {(active.preview.fields ?? []).length > 0 && (
+                          <div className="docs-paper-fields">
+                            {(active.preview.fields ?? []).map((field, idx) => (
+                              <div key={idx}>
+                                <span>{field.label}</span>
+                                <span className="docs-paper-blank">
+                                  {field.type === "checkbox"
+                                    ? "☐"
+                                    : "________________"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="docs-paper-sign">
+                          <span>Customer signature</span>
+                          <span>________________________________</span>
+                        </div>
+                      </>
+                    )}
+                    {active.preview.type === "invoice" && (
                       <div className="docs-paper-totals">
-                        <span>Tax</span>
-                        <span>{money(active.preview.taxCents ?? 0)}</span>
-                        <strong>Estimated total</strong>
+                        <strong>Invoice total</strong>
                         <strong>{money(active.preview.totalCents ?? 0)}</strong>
                       </div>
-                      <p className="docs-paper-note">
-                        Customer approves or declines each priced item and signs
-                        the authorization. Amounts cannot be changed by the
-                        customer.
-                      </p>
-                    </>
-                  )}
-                  {active.preview.type === "agreement" && (
-                    <>
-                      <div className="docs-paper-body">
-                        {active.preview.body}
-                      </div>
-                      {(active.preview.fields ?? []).length > 0 && (
-                        <div className="docs-paper-fields">
-                          {(active.preview.fields ?? []).map((field, idx) => (
-                            <div key={idx}>
-                              <span>{field.label}</span>
-                              <span className="docs-paper-blank">
-                                {field.type === "checkbox"
-                                  ? "☐"
-                                  : "________________"}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      <div className="docs-paper-sign">
-                        <span>Customer signature</span>
-                        <span>________________________________</span>
-                      </div>
-                    </>
-                  )}
-                  {active.preview.type === "invoice" && (
-                    <div className="docs-paper-totals">
-                      <strong>Invoice total</strong>
-                      <strong>{money(active.preview.totalCents ?? 0)}</strong>
+                    )}
+                    <div className="docs-paper-footer">
+                      Read-only preview · No approval, signature, or payment is
+                      recorded here.
                     </div>
-                  )}
-                  <div className="docs-paper-footer">
-                    Read-only preview · No approval, signature, or payment is
-                    recorded here.
+                  </article>
+                ) : (
+                  <div className="docs-preview-compact">
+                    <p className="muted">
+                      {previewError && active.estimateShareId
+                        ? previewError
+                        : previewPath
+                          ? "Original document available to view."
+                          : "This file has no online preview."}
+                    </p>
+                    {previewPath && (
+                      <a
+                        className="btn secondary"
+                        href={previewPath}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View original document
+                      </a>
+                    )}
                   </div>
-                </article>
-              ) : (
-                <div className="docs-preview-compact">
-                  <p className="muted">
-                    {previewError && active.estimateShareId
-                      ? previewError
-                      : previewPath
-                        ? "Original document available to view."
-                        : "This file has no online preview."}
-                  </p>
-                  {previewPath && (
-                    <a
-                      className="btn secondary"
-                      href={previewPath}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      View original document
-                    </a>
-                  )}
-                </div>
-              )}
-              {active.signLink && !readOnly && (
-                <div className="docs-preview-foot">
-                  <span className="muted">Customer signature requested</span>
-                  <ActionForm
-                    action={voidDocumentAction}
-                    hidden={{ documentId: active.documentId! }}
-                    submitLabel="Void document"
-                    variant="danger"
-                    confirm="Void this document? The customer's link stops working."
-                  />
-                </div>
-              )}
-              {active.group === "Added files" &&
-                active.documentId &&
-                !readOnly && (
+                )}
+                {active.signLink && !readOnly && (
                   <div className="docs-preview-foot">
+                    <span className="muted">Customer signature requested</span>
                     <ActionForm
-                      action={removeDocumentAction}
-                      hidden={{ documentId: active.documentId }}
-                      submitLabel="Remove file"
+                      action={voidDocumentAction}
+                      hidden={{ documentId: active.documentId! }}
+                      submitLabel="Void document"
                       variant="danger"
-                      confirm={`Remove ${active.title}?`}
+                      confirm="Void this document? The customer's link stops working."
                     />
                   </div>
                 )}
-            </>
-          ) : (
-            <div className="docs-preview-placeholder">
-              <h4>No documents yet</h4>
-              <p>
-                Save parts and labor on this RO to create the customer estimate
-                draft. It will appear here automatically.
-              </p>
-            </div>
-          )}
-        </aside>}
+                {active.group === "Added files" &&
+                  active.documentId &&
+                  !readOnly && (
+                    <div className="docs-preview-foot">
+                      <ActionForm
+                        action={removeDocumentAction}
+                        hidden={{ documentId: active.documentId }}
+                        submitLabel="Remove file"
+                        variant="danger"
+                        confirm={`Remove ${active.title}?`}
+                      />
+                    </div>
+                  )}
+              </>
+            ) : (
+              <div className="docs-preview-placeholder">
+                <h4>No documents yet</h4>
+                <p>
+                  Save parts and labor on this RO to create the customer
+                  estimate draft. It will appear here automatically.
+                </p>
+              </div>
+            )}
+          </aside>
+        )}
       </div>
-
     </section>
   );
 }

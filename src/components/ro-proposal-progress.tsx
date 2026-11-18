@@ -17,16 +17,30 @@ export function RoProposalProgress({
 }) {
   const current = stages.findIndex((item) => item.key === stage);
   return (
-    <div className="ro-proposal-progress" aria-label="Customer proposal progress">
+    <div
+      className="ro-proposal-progress"
+      aria-label="Customer proposal progress"
+    >
       <div className="ro-proposal-progress-header">
         <strong>Customer proposal</strong>
-        <span>Step {current + 1} of {stages.length}</span>
+        <span>
+          Step {current + 1} of {stages.length}
+        </span>
       </div>
       <ol>
         {stages.map((item, index) => (
-          <li key={item.key} aria-current={index === current ? "step" : undefined}>
+          <li
+            key={item.key}
+            aria-current={index === current ? "step" : undefined}
+          >
             <span
-              className={index < current ? "is-complete" : index === current ? "is-current" : ""}
+              className={
+                index < current
+                  ? "is-complete"
+                  : index === current
+                    ? "is-current"
+                    : ""
+              }
               aria-hidden="true"
             />
             <small>{item.label}</small>

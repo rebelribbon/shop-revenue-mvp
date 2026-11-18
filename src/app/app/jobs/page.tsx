@@ -51,7 +51,12 @@ import { localDateKey } from "@/lib/timezone";
 import { notFound } from "next/navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { and, eq, desc, inArray, sql } from "drizzle-orm";
-import { activity, appointment, estimateVersion, recommendation } from "@/db/schema";
+import {
+  activity,
+  appointment,
+  estimateVersion,
+  recommendation,
+} from "@/db/schema";
 import { EstimatePublisher } from "@/components/estimate-publisher";
 import Link from "next/link";
 import { calculateJob } from "@/domain/job-costing";
@@ -259,11 +264,7 @@ export default async function JobsPage({
     const latestFlow = page.selected
       ? workflows.get(page.selected.id)?.latest
       : undefined;
-    if (
-      s.role !== "technician" &&
-      s.actor.type === "user" &&
-      latestFlow
-    ) {
+    if (s.role !== "technician" && s.actor.type === "user" && latestFlow) {
       try {
         presentPath = (
           await getDocumentShare(tx, latestFlow.estimate.id, "estimate")
@@ -275,35 +276,47 @@ export default async function JobsPage({
     return {
       ...page,
       cabinet,
-      proposalEvents: page.selected && s.role !== "technician" && !ownerAsTechnician
-        ? await tx
-            .select({
-              id: activity.id,
-              kind: activity.kind,
-              data: activity.data,
-              summary: activity.summary,
-              at: activity.occurredAt,
-            })
-            .from(activity)
-            .where(and(
-              eq(activity.businessId, tx.businessId),
-              inArray(activity.kind, [
-                "document.email_submitted",
-                "estimate.customer_opened",
-              ]),
-              sql`${activity.data}->>'jobId' = ${page.selected.id}`,
-            ))
-            .orderBy(desc(activity.occurredAt))
-            .limit(100)
-        : [],
+      proposalEvents:
+        page.selected && s.role !== "technician" && !ownerAsTechnician
+          ? await tx
+              .select({
+                id: activity.id,
+                kind: activity.kind,
+                data: activity.data,
+                summary: activity.summary,
+                at: activity.occurredAt,
+              })
+              .from(activity)
+              .where(
+                and(
+                  eq(activity.businessId, tx.businessId),
+                  inArray(activity.kind, [
+                    "document.email_submitted",
+                    "estimate.customer_opened",
+                  ]),
+                  sql`${activity.data}->>'jobId' = ${page.selected.id}`,
+                ),
+              )
+              .orderBy(desc(activity.occurredAt))
+              .limit(100)
+          : [],
       authorizationPolicyReady: page.selected
-        ? (await tx.select({ id: legalPolicy.id })
-            .from(legalPolicy)
-            .where(and(
-              eq(legalPolicy.jurisdictionCode, (await getBusinessProfile(tx)).jurisdictionCode),
-              eq(legalPolicy.kind, "estimate_authorization"),
-              eq(legalPolicy.status, "approved"),
-            )).limit(1)).length > 0
+        ? (
+            await tx
+              .select({ id: legalPolicy.id })
+              .from(legalPolicy)
+              .where(
+                and(
+                  eq(
+                    legalPolicy.jurisdictionCode,
+                    (await getBusinessProfile(tx)).jurisdictionCode,
+                  ),
+                  eq(legalPolicy.kind, "estimate_authorization"),
+                  eq(legalPolicy.status, "approved"),
+                ),
+              )
+              .limit(1)
+          ).length > 0
         : false,
       contact,
       estimateDraftPath,
@@ -468,9 +481,7 @@ export default async function JobsPage({
       currency: "USD",
     }).format(c / 100);
   const canChooseInitialTech =
-    s.actor.type === "user" &&
-    !data.assignee &&
-    data.advisorId === s.actor.id;
+    s.actor.type === "user" && !data.assignee && data.advisorId === s.actor.id;
   const advisorAssignment =
     selected && s.role !== "technician" && s.actor.type !== "support" ? (
       data.canManageTeam ? (
@@ -521,13 +532,22 @@ export default async function JobsPage({
           Only technician work assigned to your account appears here.
         </p>
         {ownerAsTechnician && (
-          <Link className="btn secondary" href={selected ? `/app/jobs?job=${selected.id}` : "/app/jobs"}>
+          <Link
+            className="btn secondary"
+            href={selected ? `/app/jobs?job=${selected.id}` : "/app/jobs"}
+          >
             Return to advisor / owner view
           </Link>
         )}
         {selected ? (
           <>
-            <Link href={ownerAsTechnician ? "/app/jobs?mode=technician" : "/app/jobs"}>← My assigned ROs</Link>
+            <Link
+              href={
+                ownerAsTechnician ? "/app/jobs?mode=technician" : "/app/jobs"
+              }
+            >
+              ← My assigned ROs
+            </Link>
             <section className="card">
               <h2>{assignedInput?.title || "Repair order"}</h2>
               {(assignedInput?.concerns ||
@@ -568,7 +588,6 @@ export default async function JobsPage({
                 />
               )}
             </section>
-
           </>
         ) : (
           <>
@@ -581,7 +600,13 @@ export default async function JobsPage({
               <ul className="row-list card">
                 {data.jobs.map((j) => (
                   <li key={j.id}>
-                    <Link href={ownerAsTechnician ? `/app/jobs?job=${j.id}&mode=technician` : `/app/jobs?job=${j.id}`}>
+                    <Link
+                      href={
+                        ownerAsTechnician
+                          ? `/app/jobs?job=${j.id}&mode=technician`
+                          : `/app/jobs?job=${j.id}`
+                      }
+                    >
                       <strong>
                         {(j.data as { title?: string }).title || "Repair order"}
                       </strong>
@@ -650,7 +675,10 @@ export default async function JobsPage({
                   : undefined
               }
             />
-          ) : auto && selected && data.inspection?.complete && estimateInitial ? (
+          ) : auto &&
+            selected &&
+            data.inspection?.complete &&
+            estimateInitial ? (
             <RoEstimateBuilder
               key={selected.version}
               initial={jobInput.parse(estimateInitial)}
@@ -681,7 +709,9 @@ export default async function JobsPage({
               }
               options={data.options}
               recommendations={data.recommendations}
-              inspectionPricingOnly={auto && !!selected && !!data.inspection?.complete}
+              inspectionPricingOnly={
+                auto && !!selected && !!data.inspection?.complete
+              }
               initial={estimateInitial}
               today={localDateKey(
                 new Date(),
@@ -827,64 +857,90 @@ export default async function JobsPage({
                 ? "history"
                 : auto && requestedTab === "estimate"
                   ? "files"
-                : ["inspection", "photos", "proposal", "estimate", "files", "history"].includes(
-                      requestedTab ?? "",
-                    )
-                  ? requestedTab!
-                  : "work";
+                  : [
+                        "inspection",
+                        "photos",
+                        "proposal",
+                        "estimate",
+                        "files",
+                        "history",
+                      ].includes(requestedTab ?? "")
+                    ? requestedTab!
+                    : "work";
           // An automotive RO begins with check-in and technician inspection.
           // Existing published ROs retain their document access.
           const awaitingInspection =
             auto && !data.inspection?.complete && !flow?.latest;
           const pricingReady =
             (input.parts.length > 0 || input.labor.length > 0) &&
-            input.parts.every((part) => part.description.trim() && part.quantity > 0 &&
-              part.unitCostCents !== null) &&
-            input.labor.every((line) => line.description.trim() &&
-              (!line.fromInspection || (line.sellRateCents > 0 && line.costRateCents !== null)));
+            input.parts.every(
+              (part) =>
+                part.description.trim() &&
+                part.quantity > 0 &&
+                part.unitCostCents !== null,
+            ) &&
+            input.labor.every(
+              (line) =>
+                line.description.trim() &&
+                (!line.fromInspection ||
+                  (line.sellRateCents > 0 && line.costRateCents !== null)),
+            );
           const needsEstimateDraft =
-            auto && !!data.inspection?.complete &&
+            auto &&
+            !!data.inspection?.complete &&
             (!flow?.latest || flow.changedSinceEstimate);
           const taxRateForDocuments =
-            flow?.currentInvoice?.snapshot.taxBps ?? data.profile?.taxRateBps ?? 0;
+            flow?.currentInvoice?.snapshot.taxBps ??
+            data.profile?.taxRateBps ??
+            0;
           const draftLines = [
             ...input.parts.map((part, i) => ({
-              id: `part-${i}`, kind: "part" as const,
-              description: part.description, quantity: part.quantity,
+              id: `part-${i}`,
+              kind: "part" as const,
+              description: part.description,
+              quantity: part.quantity,
               unitPriceCents: part.unitPriceCents,
               totalCents: Math.round(part.quantity * part.unitPriceCents),
-              taxable: part.taxable ?? data.profile?.partsTaxableDefault ?? true,
+              taxable:
+                part.taxable ?? data.profile?.partsTaxableDefault ?? true,
             })),
             ...input.labor.map((line, i) => ({
-              id: `labor-${i}`, kind: "labor" as const,
+              id: `labor-${i}`,
+              kind: "labor" as const,
               description: line.description,
               quantity: line.estimatedHoursHundredths / 100,
               unitPriceCents: line.sellRateCents,
-              totalCents: Math.round(line.estimatedHoursHundredths * line.sellRateCents / 100),
-              taxable: line.taxable ?? data.profile?.laborTaxableDefault ?? true,
+              totalCents: Math.round(
+                (line.estimatedHoursHundredths * line.sellRateCents) / 100,
+              ),
+              taxable:
+                line.taxable ?? data.profile?.laborTaxableDefault ?? true,
             })),
           ];
           const draftTotals = estimateTotals(draftLines, taxRateForDocuments);
           const documentItems: CabinetItem[] =
             needsEstimateDraft && draftLines.length
-              ? [{
-                  id: `ro-estimate-draft-${selected.id}`,
-                  group: "Created for this job",
-                  title: "Customer estimate · Draft",
-                  detail: "Not sent · Review before finalizing",
-                  at: selected.createdAt,
-                  status: "Draft — not sent",
-                  href: null,
-                  preview: {
-                    type: "estimate",
-                    customerName,
-                    shopName,
-                    subject: selected.title,
-                    totalCents: draftTotals.totalCents,
-                    taxCents: draftTotals.taxCents,
-                    lines: draftLines,
+              ? [
+                  {
+                    id: `ro-estimate-draft-${selected.id}`,
+                    group: "Created for this job",
+                    title: "Customer estimate · Draft",
+                    detail: "Not sent · Review before finalizing",
+                    at: selected.createdAt,
+                    status: "Draft — not sent",
+                    href: null,
+                    preview: {
+                      type: "estimate",
+                      customerName,
+                      shopName,
+                      subject: selected.title,
+                      totalCents: draftTotals.totalCents,
+                      taxCents: draftTotals.taxCents,
+                      lines: draftLines,
+                    },
                   },
-                }, ...data.cabinet]
+                  ...data.cabinet,
+                ]
               : data.cabinet;
           return (
             <>
@@ -920,18 +976,25 @@ export default async function JobsPage({
                   </Link>
                 </div>
               )}
-              <article className={`card job-profile record-job-profile ${auto ? "ro-mobile-focus" : ""}`}>
-                {!auto && <CustomerContactActions
-                  target={{ customerId: input.customerId, jobId: selected.id }}
-                  phone={data.contact?.phone}
-                  email={data.contact?.email}
-                  textAllowed={
-                    !data.contact?.textOff && !data.contact?.doNotContact
-                  }
-                  emailAllowed={
-                    !data.contact?.emailOff && !data.contact?.doNotContact
-                  }
-                />}
+              <article
+                className={`card job-profile record-job-profile ${auto ? "ro-mobile-focus" : ""}`}
+              >
+                {!auto && (
+                  <CustomerContactActions
+                    target={{
+                      customerId: input.customerId,
+                      jobId: selected.id,
+                    }}
+                    phone={data.contact?.phone}
+                    email={data.contact?.email}
+                    textAllowed={
+                      !data.contact?.textOff && !data.contact?.doNotContact
+                    }
+                    emailAllowed={
+                      !data.contact?.emailOff && !data.contact?.doNotContact
+                    }
+                  />
+                )}
                 <header className="profile-head">
                   <div>
                     <div className="identifier-with-copy">
@@ -957,14 +1020,22 @@ export default async function JobsPage({
                     </h2>
                     <p className="muted">
                       {auto
-                        ? [customerName, input.mileageIn != null
-                          ? `${input.mileageIn.toLocaleString("en-US")} mi` : ""]
-                          .filter(Boolean).join(" · ")
-                        : [flow?.latest?.estimate.snapshot.serviceLabel ||
-                            flow?.latest?.estimate.snapshot.vehicleLabel,
+                        ? [
+                            customerName,
+                            input.mileageIn != null
+                              ? `${input.mileageIn.toLocaleString("en-US")} mi`
+                              : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : [
+                            flow?.latest?.estimate.snapshot.serviceLabel ||
+                              flow?.latest?.estimate.snapshot.vehicleLabel,
                             input.repeat &&
-                              `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`]
-                          .filter(Boolean).join(" · ") || customerName}
+                              `${cadenceText(input.repeat)}, ${untilText(input.repeat)}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || customerName}
                     </p>
                   </div>
                   {flow && (
@@ -975,7 +1046,12 @@ export default async function JobsPage({
                 </header>
                 {(input.concerns || input.mileageIn != null) && (
                   <details className="ro-check-in ro-check-in-collapsible">
-                    <summary>Check-in details{input.mileageIn != null ? ` · ${input.mileageIn.toLocaleString("en-US")} mi` : ""}</summary>
+                    <summary>
+                      Check-in details
+                      {input.mileageIn != null
+                        ? ` · ${input.mileageIn.toLocaleString("en-US")} mi`
+                        : ""}
+                    </summary>
                     {input.mileageIn != null && (
                       <p>
                         <strong>Miles in:</strong>{" "}
@@ -989,63 +1065,77 @@ export default async function JobsPage({
                     )}
                   </details>
                 )}
-                <details className="ro-team-assignment" open={!data.assignee || !data.advisorId}>
+                <details
+                  className="ro-team-assignment"
+                  open={!data.assignee || !data.advisorId}
+                >
                   <summary>
                     <span>
                       <strong>Assigned team</strong>
-                      <small>Advisor: {data.advisors.find((person) =>
-                        person.userId === data.advisorId)?.name ?? "Not assigned"}
-                        {" · "}Tech: {data.techs.find((person) =>
-                          person.userId === data.assignee)?.name ?? "Not assigned"}
+                      <small>
+                        Advisor:{" "}
+                        {data.advisors.find(
+                          (person) => person.userId === data.advisorId,
+                        )?.name ?? "Not assigned"}
+                        {" · "}Tech:{" "}
+                        {data.techs.find(
+                          (person) => person.userId === data.assignee,
+                        )?.name ?? "Not assigned"}
                       </small>
                     </span>
                     <span className="ro-team-manage">Manage</span>
                   </summary>
                   <div className="ro-team-controls">
-                {!data.canManageTeam && !canChooseInitialTech ? (
-                  <p className="muted">
-                    Tech:{" "}
-                    {data.techs.find((t) => t.userId === data.assignee)?.name ??
-                      "nobody yet"}
-                  </p>
-                ) : (
-                  <div
-                    className="tech-pick ro-assignment"
-                    key={data.assignee ?? "none"}
-                  >
-                    <ActionForm
-                      action={assignJobAction}
-                      hidden={{ jobId: selected.id }}
-                      submitLabel={data.assignee ? "Change technician" : "Assign technician"}
-                      variant="secondary"
-                    >
-                      <label htmlFor="job-tech">Technician for this RO (all repairs)</label>
-                      <select
-                        id="job-tech"
-                        name="userId"
-                        defaultValue={data.assignee ?? ""}
+                    {!data.canManageTeam && !canChooseInitialTech ? (
+                      <p className="muted">
+                        Tech:{" "}
+                        {data.techs.find((t) => t.userId === data.assignee)
+                          ?.name ?? "nobody yet"}
+                      </p>
+                    ) : (
+                      <div
+                        className="tech-pick ro-assignment"
+                        key={data.assignee ?? "none"}
                       >
-                        <option value="">Nobody yet</option>
-                        {data.techs.map((t) => (
-                          <option key={t.userId} value={t.userId}>
-                            {t.userId === s.actor.id
-                              ? `${t.name} (me)`
-                              : t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </ActionForm>
-                  </div>
-                )}
-                {advisorAssignment}
-                {s.role === "owner" && data.assignee === s.actor.id && (
-                  <Link
-                    className="btn secondary"
-                    href={`/app/jobs?job=${selected.id}&mode=technician`}
-                  >
-                    Work this RO as technician
-                  </Link>
-                )}
+                        <ActionForm
+                          action={assignJobAction}
+                          hidden={{ jobId: selected.id }}
+                          submitLabel={
+                            data.assignee
+                              ? "Change technician"
+                              : "Assign technician"
+                          }
+                          variant="secondary"
+                        >
+                          <label htmlFor="job-tech">
+                            Technician for this RO (all repairs)
+                          </label>
+                          <select
+                            id="job-tech"
+                            name="userId"
+                            defaultValue={data.assignee ?? ""}
+                          >
+                            <option value="">Nobody yet</option>
+                            {data.techs.map((t) => (
+                              <option key={t.userId} value={t.userId}>
+                                {t.userId === s.actor.id
+                                  ? `${t.name} (me)`
+                                  : t.name}
+                              </option>
+                            ))}
+                          </select>
+                        </ActionForm>
+                      </div>
+                    )}
+                    {advisorAssignment}
+                    {s.role === "owner" && data.assignee === s.actor.id && (
+                      <Link
+                        className="btn secondary"
+                        href={`/app/jobs?job=${selected.id}&mode=technician`}
+                      >
+                        Work this RO as technician
+                      </Link>
+                    )}
                   </div>
                 </details>
                 {auto && (
@@ -1059,11 +1149,17 @@ export default async function JobsPage({
                     statusLabel={statusLabels[statusOf(selected.id)]}
                     editHref={`/app/jobs?edit=${selected.id}`}
                     documentsHref={`/app/jobs?job=${selected.id}&tab=files`}
-                    proposalHref={flow?.latest ? `/app/jobs?job=${selected.id}#customer-proposal-review` : undefined}
+                    proposalHref={
+                      flow?.latest
+                        ? `/app/jobs?job=${selected.id}#customer-proposal-review`
+                        : undefined
+                    }
                     workflowHref={`/app/jobs?job=${selected.id}#ro-workflow`}
-                    technicianHref={s.role === "owner" && data.assignee === s.actor.id
-                      ? `/app/jobs?job=${selected.id}&mode=technician`
-                      : undefined}
+                    technicianHref={
+                      s.role === "owner" && data.assignee === s.actor.id
+                        ? `/app/jobs?job=${selected.id}&mode=technician`
+                        : undefined
+                    }
                   />
                 )}
                 {!auto && data.presentPath && (
@@ -1132,52 +1228,70 @@ export default async function JobsPage({
                     )}
                   </div>
                 )}
-                {auto && flow?.latest && tab !== "work" && tab !== "proposal" && (
-                  <Link
-                    className="ro-proposal-shortcut"
-                    href={`/app/jobs?job=${selected.id}&tab=proposal`}
-                    aria-label="Open customer proposal tracking"
-                  >
-                    <span>
-                      <strong>Customer proposal</strong>
-                      <small>
-                        {flow.latest.authorization
-                          ? "Signed authorization received"
-                          : data.proposalEvents.some((event) =>
-                              (event.data as Record<string, unknown>).versionId === flow.latest?.estimate.id &&
-                              event.kind === "estimate.customer_opened")
-                            ? "Customer opened proposal"
-                            : data.proposalEvents.some((event) =>
-                                (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id &&
-                                event.kind === "document.email_submitted")
-                              ? "Email submitted · awaiting customer"
-                              : "Prepared · not sent"}
-                      </small>
-                    </span>
-                    <span className="ro-proposal-shortcut-total">
-                      {money(flow.latest.estimate.snapshot.totalCents)} <span aria-hidden="true">→</span>
-                    </span>
-                  </Link>
-                )}
-                {auto && awaitingInspection && !data.inspection?.assessment.vehiclePickedUp && (
-                  <details className="ro-intake-photos">
-                    <summary>Check-in photos — document existing body damage (optional)</summary>
-                    <p className="muted">
-                      Take exterior photos before handing the vehicle to the
-                      technician. These stay in this RO and are not sent to the customer.
-                    </p>
-                    <MediaUploader
-                      purpose="intake"
-                      customerId={input.customerId}
-                      jobId={selected.id}
-                      vehicleId={input.vehicleId ?? null}
-                      serviceAssetId={input.serviceAssetId ?? null}
-                    />
-                    <p className="muted">
-                      {data.jobMedia.filter((m) => m.tag === "before").length} check-in photo(s) recorded.
-                    </p>
-                  </details>
-                )}
+                {auto &&
+                  flow?.latest &&
+                  tab !== "work" &&
+                  tab !== "proposal" && (
+                    <Link
+                      className="ro-proposal-shortcut"
+                      href={`/app/jobs?job=${selected.id}&tab=proposal`}
+                      aria-label="Open customer proposal tracking"
+                    >
+                      <span>
+                        <strong>Customer proposal</strong>
+                        <small>
+                          {flow.latest.authorization
+                            ? "Signed authorization received"
+                            : data.proposalEvents.some(
+                                  (event) =>
+                                    (event.data as Record<string, unknown>)
+                                      .versionId === flow.latest?.estimate.id &&
+                                    event.kind === "estimate.customer_opened",
+                                )
+                              ? "Customer opened proposal"
+                              : data.proposalEvents.some(
+                                    (event) =>
+                                      (event.data as Record<string, unknown>)
+                                        .documentId ===
+                                        flow.latest?.estimate.id &&
+                                      event.kind === "document.email_submitted",
+                                  )
+                                ? "Email submitted · awaiting customer"
+                                : "Prepared · not sent"}
+                        </small>
+                      </span>
+                      <span className="ro-proposal-shortcut-total">
+                        {money(flow.latest.estimate.snapshot.totalCents)}{" "}
+                        <span aria-hidden="true">→</span>
+                      </span>
+                    </Link>
+                  )}
+                {auto &&
+                  awaitingInspection &&
+                  !data.inspection?.assessment.vehiclePickedUp && (
+                    <details className="ro-intake-photos">
+                      <summary>
+                        Check-in photos — document existing body damage
+                        (optional)
+                      </summary>
+                      <p className="muted">
+                        Take exterior photos before handing the vehicle to the
+                        technician. These stay in this RO and are not sent to
+                        the customer.
+                      </p>
+                      <MediaUploader
+                        purpose="intake"
+                        customerId={input.customerId}
+                        jobId={selected.id}
+                        vehicleId={input.vehicleId ?? null}
+                        serviceAssetId={input.serviceAssetId ?? null}
+                      />
+                      <p className="muted">
+                        {data.jobMedia.filter((m) => m.tag === "before").length}{" "}
+                        check-in photo(s) recorded.
+                      </p>
+                    </details>
+                  )}
                 {!auto && !awaitingInspection && (
                   <nav
                     className="section-tabs"
@@ -1473,25 +1587,33 @@ export default async function JobsPage({
                 )}
                 <nav className="section-tabs" aria-label="RO records">
                   {(awaitingInspection
-                    ? ([["work", "Next step"], ["history", "History"]] as const)
-                    : [
-                      ["work", "Overview"],
-                      [
-                        "inspection",
-                        `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
-                      ],
-                      ...(!auto
-                        ? ([["photos", `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`]] as const)
-                        : []),
-                      ...(auto && flow?.latest
-                        ? ([["proposal", "Proposal history"]] as const)
-                        : []),
-                      [
-                        "files",
-                        `Documents${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
-                      ],
-                      ["history", "History"],
-                    ] as const
+                    ? ([
+                        ["work", "Next step"],
+                        ["history", "History"],
+                      ] as const)
+                    : ([
+                        ["work", "Overview"],
+                        [
+                          "inspection",
+                          `Inspection${data.inspection?.counts.fix ? ` (${data.inspection.counts.fix})` : ""}`,
+                        ],
+                        ...(!auto
+                          ? ([
+                              [
+                                "photos",
+                                `Photos${data.jobMedia.length ? ` (${data.jobMedia.length})` : ""}`,
+                              ],
+                            ] as const)
+                          : []),
+                        ...(auto && flow?.latest
+                          ? ([["proposal", "Proposal history"]] as const)
+                          : []),
+                        [
+                          "files",
+                          `Documents${data.cabinet.length ? ` (${data.cabinet.length})` : ""}`,
+                        ],
+                        ["history", "History"],
+                      ] as const)
                   ).map(([key, label]) => (
                     <Link
                       key={key}
@@ -1504,135 +1626,254 @@ export default async function JobsPage({
                 </nav>
                 {tab === "work" && (
                   <>
-                    {auto && !!data.inspection?.complete && (needsEstimateDraft || !!flow?.latest) && (
-                      <section id="customer-proposal-review" className="ro-inline-proposal" aria-label="Review, finalize and send customer documents">
-                        {s.actor.type !== "support" && (
-                          <details className="ro-inline-attach-agreement">
-                            <summary>+ Add supporting agreement</summary>
-                            {data.templates.length ? (
-                              <ActionForm
-                                action={sendDocumentAction}
-                                hidden={{ jobId: selected.id }}
-                                submitLabel="Add to packet"
-                                variant="secondary"
-                              >
-                                <label htmlFor="ro-proposal-agreement">Agreement</label>
-                                <select id="ro-proposal-agreement" name="templateId" required>
-                                  {data.templates.map((template) => (
-                                    <option key={template.id} value={template.id}>{template.name}</option>
-                                  ))}
-                                </select>
-                              </ActionForm>
-                            ) : (
-                              <p className="muted">No agreement templates are configured. <Link href="/app/settings/documents">Manage templates</Link></p>
-                            )}
-                          </details>
-                        )}
-                        {needsEstimateDraft ? (
-                          <>
-                            <div className="ro-inline-proposal-heading">
-                              <p className="muted">RO OVERVIEW · CUSTOMER PACKET</p>
-                              <h3>Review before sending</h3>
-                              <p>Review the estimate and supporting documents here. Nothing is sent until you finalize and choose Send.</p>
-                            </div>
-                            <FileCabinet
-                              items={documentItems}
-                              embeddedReview
-                              customerPhone={null}
-                              customerEmail={null}
-                              readOnly={s.actor.type === "support"}
-                              timeZone={data.profile?.timezone || "America/Chicago"}
-                            />
-                            {draftLines.length > 0 && s.actor.type !== "support" && !selected.documentOnly ? (
-                              <RoDocumentPrepare
-                                jobId={selected.id}
-                                version={selected.version}
-                                taxRateBps={taxRateForDocuments}
-                                readyToPrepare={pricingReady}
-                                policyConfigured={data.authorizationPolicyReady}
-                              />
-                            ) : (
-                              <Link className="btn primary" href={`/app/jobs?edit=${selected.id}`}>Finish parts &amp; labor</Link>
-                            )}
-                            <Link className="ro-edit-pricing-link" href={`/app/jobs?edit=${selected.id}`}>Edit parts &amp; labor</Link>
-                          </>
-                        ) : flow?.latest ? (
-                          <>
-                            <div className="ro-inline-proposal-heading">
-                              <RoProposalProgress stage={flow.latest.authorization || data.proposalEvents.some(
-                                (event) => event.kind === "document.email_submitted" &&
-                                  (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id,
-                              ) ? "track" : "send"} />
-                              <h3>{flow.latest.authorization ? "Customer authorization received" : "Review and send the customer packet"}</h3>
-                              <p>{flow.latest.authorization
-                                ? "Signed approval is saved to this RO. Release only approved repairs."
-                                : "Review the frozen estimate and supporting documents below, confirm the recipient, and send directly from here."}</p>
-                            </div>
-                            <FileCabinet
-                              items={documentItems}
-                              embeddedReview
-                              customerPhone={null}
-                              customerEmail={null}
-                              readOnly={s.actor.type === "support"}
-                              timeZone={data.profile?.timezone || "America/Chicago"}
-                            />
-                            {flow.latest.estimate.snapshot.authorizationPolicy && (
-                              <details className="ro-inline-authorization">
-                                <summary>Review customer authorization wording</summary>
-                                <div className="ro-authorization-copy">
-                                  {flow.latest.estimate.snapshot.authorizationPolicy.body}
-                                </div>
-                              </details>
-                            )}
-                            {!flow.latest.authorization && s.actor.type === "user" && (
-                              <div className="ro-inline-proposal-send" aria-label="Send customer packet">
-                                <h4>Send to customer</h4>
-                                <p className="muted">The customer will review the inspection, approve or decline repairs, and sign on their secure page.</p>
-                                <DocumentShare
-                                  id={flow.latest.estimate.id}
-                                  kind="estimate"
-                                  autoOpen
-                                />
-                              </div>
-                            )}
-                            <div className="ro-inline-proposal-status" role="status">
-                              <strong>Customer response</strong>
-                              {flow.latest.authorization ? (
-                                <p>Signed by {flow.latest.authorization.signerName}. Review the authorized work in the RO workflow below.</p>
-                              ) : data.proposalEvents.some(
-                                  (event) => event.kind === "estimate.customer_opened" &&
-                                    (event.data as Record<string, unknown>).versionId === flow.latest?.estimate.id,
-                                ) ? (
-                                <p>Customer opened the secure proposal. Awaiting a signed authorization.</p>
-                              ) : data.proposalEvents.some(
-                                  (event) => event.kind === "document.email_submitted" &&
-                                    (event.data as Record<string, unknown>).documentId === flow.latest?.estimate.id,
-                                ) ? (
-                                <p>Email submitted to the provider. Delivery is not confirmed; customer has not opened the proposal yet.</p>
+                    {auto &&
+                      !!data.inspection?.complete &&
+                      (needsEstimateDraft || !!flow?.latest) && (
+                        <section
+                          id="customer-proposal-review"
+                          className="ro-inline-proposal"
+                          aria-label="Review, finalize and send customer documents"
+                        >
+                          {s.actor.type !== "support" && (
+                            <details className="ro-inline-attach-agreement">
+                              <summary>+ Add supporting agreement</summary>
+                              {data.templates.length ? (
+                                <ActionForm
+                                  action={sendDocumentAction}
+                                  hidden={{ jobId: selected.id }}
+                                  submitLabel="Add to packet"
+                                  variant="secondary"
+                                >
+                                  <label htmlFor="ro-proposal-agreement">
+                                    Agreement
+                                  </label>
+                                  <select
+                                    id="ro-proposal-agreement"
+                                    name="templateId"
+                                    required
+                                  >
+                                    {data.templates.map((template) => (
+                                      <option
+                                        key={template.id}
+                                        value={template.id}
+                                      >
+                                        {template.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </ActionForm>
                               ) : (
-                                <p>Not sent yet. Use the recipient form above to send this packet.</p>
+                                <p className="muted">
+                                  No agreement templates are configured.{" "}
+                                  <Link href="/app/settings/documents">
+                                    Manage templates
+                                  </Link>
+                                </p>
                               )}
-                              <Link className="ro-edit-pricing-link" href={`/app/jobs?job=${selected.id}&tab=proposal`}>
-                                View full customer activity &amp; decisions
+                            </details>
+                          )}
+                          {needsEstimateDraft ? (
+                            <>
+                              <div className="ro-inline-proposal-heading">
+                                <p className="muted">
+                                  RO OVERVIEW · CUSTOMER PACKET
+                                </p>
+                                <h3>Review before sending</h3>
+                                <p>
+                                  Review the estimate and supporting documents
+                                  here. Nothing is sent until you finalize and
+                                  choose Send.
+                                </p>
+                              </div>
+                              <FileCabinet
+                                items={documentItems}
+                                embeddedReview
+                                customerPhone={null}
+                                customerEmail={null}
+                                readOnly={s.actor.type === "support"}
+                                timeZone={
+                                  data.profile?.timezone || "America/Chicago"
+                                }
+                              />
+                              {draftLines.length > 0 &&
+                              s.actor.type !== "support" &&
+                              !selected.documentOnly ? (
+                                <RoDocumentPrepare
+                                  jobId={selected.id}
+                                  version={selected.version}
+                                  taxRateBps={taxRateForDocuments}
+                                  readyToPrepare={pricingReady}
+                                  policyConfigured={
+                                    data.authorizationPolicyReady
+                                  }
+                                />
+                              ) : (
+                                <Link
+                                  className="btn primary"
+                                  href={`/app/jobs?edit=${selected.id}`}
+                                >
+                                  Finish parts &amp; labor
+                                </Link>
+                              )}
+                              <Link
+                                className="ro-edit-pricing-link"
+                                href={`/app/jobs?edit=${selected.id}`}
+                              >
+                                Edit parts &amp; labor
                               </Link>
-                            </div>
-                          </>
-                        ) : null}
-                      </section>
-                    )}
+                            </>
+                          ) : flow?.latest ? (
+                            <>
+                              <div className="ro-inline-proposal-heading">
+                                <RoProposalProgress
+                                  stage={
+                                    flow.latest.authorization ||
+                                    data.proposalEvents.some(
+                                      (event) =>
+                                        event.kind ===
+                                          "document.email_submitted" &&
+                                        (event.data as Record<string, unknown>)
+                                          .documentId ===
+                                          flow.latest?.estimate.id,
+                                    )
+                                      ? "track"
+                                      : "send"
+                                  }
+                                />
+                                <h3>
+                                  {flow.latest.authorization
+                                    ? "Customer authorization received"
+                                    : "Review and send the customer packet"}
+                                </h3>
+                                <p>
+                                  {flow.latest.authorization
+                                    ? "Signed approval is saved to this RO. Release only approved repairs."
+                                    : "Review the frozen estimate and supporting documents below, confirm the recipient, and send directly from here."}
+                                </p>
+                              </div>
+                              <FileCabinet
+                                items={documentItems}
+                                embeddedReview
+                                customerPhone={null}
+                                customerEmail={null}
+                                readOnly={s.actor.type === "support"}
+                                timeZone={
+                                  data.profile?.timezone || "America/Chicago"
+                                }
+                              />
+                              {flow.latest.estimate.snapshot
+                                .authorizationPolicy && (
+                                <details className="ro-inline-authorization">
+                                  <summary>
+                                    Review customer authorization wording
+                                  </summary>
+                                  <div className="ro-authorization-copy">
+                                    {
+                                      flow.latest.estimate.snapshot
+                                        .authorizationPolicy.body
+                                    }
+                                  </div>
+                                </details>
+                              )}
+                              {!flow.latest.authorization &&
+                                s.actor.type === "user" && (
+                                  <div
+                                    className="ro-inline-proposal-send"
+                                    aria-label="Send customer packet"
+                                  >
+                                    <h4>Send to customer</h4>
+                                    <p className="muted">
+                                      The customer will review the inspection,
+                                      approve or decline repairs, and sign on
+                                      their secure page.
+                                    </p>
+                                    <DocumentShare
+                                      id={flow.latest.estimate.id}
+                                      kind="estimate"
+                                      autoOpen
+                                    />
+                                  </div>
+                                )}
+                              <div
+                                className="ro-inline-proposal-status"
+                                role="status"
+                              >
+                                <strong>Customer response</strong>
+                                {flow.latest.authorization ? (
+                                  <p>
+                                    Signed by{" "}
+                                    {flow.latest.authorization.signerName}.
+                                    Review the authorized work in the RO
+                                    workflow below.
+                                  </p>
+                                ) : data.proposalEvents.some(
+                                    (event) =>
+                                      event.kind ===
+                                        "estimate.customer_opened" &&
+                                      (event.data as Record<string, unknown>)
+                                        .versionId === flow.latest?.estimate.id,
+                                  ) ? (
+                                  <p>
+                                    Customer opened the secure proposal.
+                                    Awaiting a signed authorization.
+                                  </p>
+                                ) : data.proposalEvents.some(
+                                    (event) =>
+                                      event.kind ===
+                                        "document.email_submitted" &&
+                                      (event.data as Record<string, unknown>)
+                                        .documentId ===
+                                        flow.latest?.estimate.id,
+                                  ) ? (
+                                  <p>
+                                    Email submitted to the provider. Delivery is
+                                    not confirmed; customer has not opened the
+                                    proposal yet.
+                                  </p>
+                                ) : (
+                                  <p>
+                                    Not sent yet. Use the recipient form above
+                                    to send this packet.
+                                  </p>
+                                )}
+                                <Link
+                                  className="ro-edit-pricing-link"
+                                  href={`/app/jobs?job=${selected.id}&tab=proposal`}
+                                >
+                                  View full customer activity &amp; decisions
+                                </Link>
+                              </div>
+                            </>
+                          ) : null}
+                        </section>
+                      )}
 
-                    {!awaitingInspection && flow && (
-                      auto ? (
-                        <details className="ro-work-controls" open={["ready", "working", "bill", "payment", "attention"].includes(flow.stage)}>
-                          <summary>Work controls &amp; authorization details</summary>
+                    {!awaitingInspection &&
+                      flow &&
+                      (auto ? (
+                        <details
+                          className="ro-work-controls"
+                          open={[
+                            "ready",
+                            "working",
+                            "bill",
+                            "payment",
+                            "attention",
+                          ].includes(flow.stage)}
+                        >
+                          <summary>
+                            Work controls &amp; authorization details
+                          </summary>
                           <div id="ro-workflow">
                             <JobWorkflow
-                          flow={flow}
-                          jobId={selected.id}
-                          timezone={data.profile?.timezone || "America/Chicago"}
-                          readOnly={s.actor.type === "support"}
-                          technicianOnly={false}
-                          canEditEstimate={!selected.documentOnly}
+                              flow={flow}
+                              jobId={selected.id}
+                              timezone={
+                                data.profile?.timezone || "America/Chicago"
+                              }
+                              readOnly={s.actor.type === "support"}
+                              technicianOnly={false}
+                              canEditEstimate={!selected.documentOnly}
                             />
                           </div>
                         </details>
@@ -1644,14 +1885,15 @@ export default async function JobsPage({
                           <JobWorkflow
                             flow={flow}
                             jobId={selected.id}
-                            timezone={data.profile?.timezone || "America/Chicago"}
+                            timezone={
+                              data.profile?.timezone || "America/Chicago"
+                            }
                             readOnly={s.actor.type === "support"}
                             technicianOnly={false}
                             canEditEstimate={!selected.documentOnly}
                           />
                         </RecordSection>
-                      )
-                    )}
+                      ))}
                     {!auto && !awaitingInspection && data.profit && (
                       <RecordSection
                         title="Costs & profit"
@@ -1703,22 +1945,30 @@ export default async function JobsPage({
                     canShare={s.actor.type === "user"}
                     version={flow.latest.estimate.version}
                     snapshot={flow.latest.estimate.snapshot}
-                    authorization={flow.latest.authorization
-                      ? {
-                          signerName: flow.latest.authorization.signerName,
-                          approvedLineIds: flow.latest.authorization.approvedLineIds,
-                          createdAt: flow.latest.authorization.createdAt.toISOString(),
-                        }
-                      : null}
+                    authorization={
+                      flow.latest.authorization
+                        ? {
+                            signerName: flow.latest.authorization.signerName,
+                            approvedLineIds:
+                              flow.latest.authorization.approvedLineIds,
+                            createdAt:
+                              flow.latest.authorization.createdAt.toISOString(),
+                          }
+                        : null
+                    }
                     events={data.proposalEvents
                       .filter((event) => {
                         const entry = event.data as Record<string, unknown>;
-                        return entry.documentId === flow.latest!.estimate.id ||
-                          entry.versionId === flow.latest!.estimate.id;
+                        return (
+                          entry.documentId === flow.latest!.estimate.id ||
+                          entry.versionId === flow.latest!.estimate.id
+                        );
                       })
                       .map((event) => ({
                         id: event.id,
-                        kind: event.kind as "document.email_submitted" | "estimate.customer_opened",
+                        kind: event.kind as
+                          | "document.email_submitted"
+                          | "estimate.customer_opened",
                         at: event.at.toISOString(),
                         description: event.summary,
                       }))}
@@ -1728,167 +1978,201 @@ export default async function JobsPage({
                       <FileCabinet
                         items={documentItems}
                         archiveOnly
-                        customerPhone={data.contact && !data.contact.textOff
-                          ? data.contact.phone : null}
-                        customerEmail={data.contact && !data.contact.emailOff
-                          ? data.contact.email : null}
+                        customerPhone={
+                          data.contact && !data.contact.textOff
+                            ? data.contact.phone
+                            : null
+                        }
+                        customerEmail={
+                          data.contact && !data.contact.emailOff
+                            ? data.contact.email
+                            : null
+                        }
                         readOnly={s.actor.type === "support"}
                         timeZone={data.profile?.timezone || "America/Chicago"}
                       />
                     }
                   />
                 )}
-                {tab === "files" && (auto ? (
-                  <section className="ro-archive-view" aria-label="RO document archive">
-                    <div className="ro-archive-return">
-                      <strong>Documents &amp; signed copies</strong>
-                      <Link href={`/app/jobs?job=${selected.id}#customer-proposal-review`}>
-                        Return to proposal review &amp; send
-                      </Link>
-                    </div>
-                    <FileCabinet
-                      items={documentItems}
-                      archiveOnly
-                      customerPhone={null}
-                      customerEmail={null}
-                      readOnly={s.actor.type === "support"}
-                      timeZone={data.profile?.timezone || "America/Chicago"}
-                    />
-                  </section>
-                ) : (
-                  <>
-                    {!needsEstimateDraft && <section
-                      className="docs-prep-toolbar"
-                      aria-label="Documents setup"
-                      id="share-customer-packet"
+                {tab === "files" &&
+                  (auto ? (
+                    <section
+                      className="ro-archive-view"
+                      aria-label="RO document archive"
                     >
-                      <div>
-                        <p className="muted">CUSTOMER DOCUMENTS</p>
-                        <h3>Estimate &amp; Documents</h3>
-                        {!flow?.latest?.estimate && (
-                          <p className="muted">
-                            {needsEstimateDraft
-                              ? "Your priced work is available as a draft below. Review it and finalize it here."
-                              : "Finish parts and labor pricing to generate a draft estimate."}
-                          </p>
-                        )}
-                      </div>
-                      {auto && data.inspection?.complete && (
-                        <Link className="btn secondary" href={`/app/jobs?edit=${selected.id}`}>
-                          Edit parts and labor
+                      <div className="ro-archive-return">
+                        <strong>Documents &amp; signed copies</strong>
+                        <Link
+                          href={`/app/jobs?job=${selected.id}#customer-proposal-review`}
+                        >
+                          Return to proposal review &amp; send
                         </Link>
-                      )}
-                      {s.actor.type !== "support" && (
-                        <details className="docs-add-menu">
-                          <summary className="btn secondary">
-                            + Add agreement
-                          </summary>
-                          {data.templates.length ? (
-                            <ActionForm
-                              action={sendDocumentAction}
-                              hidden={{ jobId: selected.id }}
-                              submitLabel="Add to documents"
-                              variant="secondary"
+                      </div>
+                      <FileCabinet
+                        items={documentItems}
+                        archiveOnly
+                        customerPhone={null}
+                        customerEmail={null}
+                        readOnly={s.actor.type === "support"}
+                        timeZone={data.profile?.timezone || "America/Chicago"}
+                      />
+                    </section>
+                  ) : (
+                    <>
+                      {!needsEstimateDraft && (
+                        <section
+                          className="docs-prep-toolbar"
+                          aria-label="Documents setup"
+                          id="share-customer-packet"
+                        >
+                          <div>
+                            <p className="muted">CUSTOMER DOCUMENTS</p>
+                            <h3>Estimate &amp; Documents</h3>
+                            {!flow?.latest?.estimate && (
+                              <p className="muted">
+                                {needsEstimateDraft
+                                  ? "Your priced work is available as a draft below. Review it and finalize it here."
+                                  : "Finish parts and labor pricing to generate a draft estimate."}
+                              </p>
+                            )}
+                          </div>
+                          {auto && data.inspection?.complete && (
+                            <Link
+                              className="btn secondary"
+                              href={`/app/jobs?edit=${selected.id}`}
                             >
-                              <label htmlFor="docs-template">Agreement</label>
-                              <select
-                                id="docs-template"
-                                name="templateId"
-                                required
-                              >
-                                {data.templates.map((t) => (
-                                  <option key={t.id} value={t.id}>
-                                    {t.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </ActionForm>
-                          ) : (
-                            <Link href="/app/settings/documents">
-                              Set up document templates
+                              Edit parts and labor
                             </Link>
                           )}
-                        </details>
+                          {s.actor.type !== "support" && (
+                            <details className="docs-add-menu">
+                              <summary className="btn secondary">
+                                + Add agreement
+                              </summary>
+                              {data.templates.length ? (
+                                <ActionForm
+                                  action={sendDocumentAction}
+                                  hidden={{ jobId: selected.id }}
+                                  submitLabel="Add to documents"
+                                  variant="secondary"
+                                >
+                                  <label htmlFor="docs-template">
+                                    Agreement
+                                  </label>
+                                  <select
+                                    id="docs-template"
+                                    name="templateId"
+                                    required
+                                  >
+                                    {data.templates.map((t) => (
+                                      <option key={t.id} value={t.id}>
+                                        {t.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </ActionForm>
+                              ) : (
+                                <Link href="/app/settings/documents">
+                                  Set up document templates
+                                </Link>
+                              )}
+                            </details>
+                          )}
+                        </section>
                       )}
-                    </section>}
-                    {needsEstimateDraft && data.inspection?.complete && (
-                      <Link className="ro-edit-pricing-link" href={`/app/jobs?edit=${selected.id}`}>
-                        Edit parts &amp; labor
-                      </Link>
-                    )}
-                    {needsEstimateDraft && draftLines.length > 0 &&
-                      s.actor.type !== "support" && !selected.documentOnly && (
-                        <RoDocumentPrepare
-                          jobId={selected.id}
-                          version={selected.version}
-                          taxRateBps={taxRateForDocuments}
-                          readyToPrepare={pricingReady}
-                          policyConfigured={data.authorizationPolicyReady}
+                      {needsEstimateDraft && data.inspection?.complete && (
+                        <Link
+                          className="ro-edit-pricing-link"
+                          href={`/app/jobs?edit=${selected.id}`}
+                        >
+                          Edit parts &amp; labor
+                        </Link>
+                      )}
+                      {needsEstimateDraft &&
+                        draftLines.length > 0 &&
+                        s.actor.type !== "support" &&
+                        !selected.documentOnly && (
+                          <RoDocumentPrepare
+                            jobId={selected.id}
+                            version={selected.version}
+                            taxRateBps={taxRateForDocuments}
+                            readyToPrepare={pricingReady}
+                            policyConfigured={data.authorizationPolicyReady}
+                          />
+                        )}
+                      {needsEstimateDraft ? (
+                        <details className="ro-documents-archive">
+                          <summary>
+                            Preview estimate draft &amp; saved documents (
+                            {documentItems.length})
+                          </summary>
+                          <FileCabinet
+                            items={documentItems}
+                            autoOpenShare={share === "1"}
+                            customerPhone={
+                              data.contact && !data.contact.textOff
+                                ? data.contact.phone
+                                : null
+                            }
+                            customerEmail={
+                              data.contact && !data.contact.emailOff
+                                ? data.contact.email
+                                : null
+                            }
+                            readOnly={s.actor.type === "support" || false}
+                            timeZone={
+                              data.profile?.timezone || "America/Chicago"
+                            }
+                          />
+                        </details>
+                      ) : (
+                        <FileCabinet
+                          items={documentItems}
+                          autoOpenShare={share === "1"}
+                          customerPhone={
+                            data.contact && !data.contact.textOff
+                              ? data.contact.phone
+                              : null
+                          }
+                          customerEmail={
+                            data.contact && !data.contact.emailOff
+                              ? data.contact.email
+                              : null
+                          }
+                          readOnly={s.actor.type === "support" || false}
+                          timeZone={data.profile?.timezone || "America/Chicago"}
                         />
                       )}
-                    {needsEstimateDraft ? (
-                      <details className="ro-documents-archive">
-                        <summary>Preview estimate draft &amp; saved documents ({documentItems.length})</summary>
-                        <FileCabinet
-                      items={documentItems}
-                      autoOpenShare={share === "1"}
-                      customerPhone={
-                        data.contact && !data.contact.textOff
-                          ? data.contact.phone
-                          : null
-                      }
-                      customerEmail={
-                        data.contact && !data.contact.emailOff
-                          ? data.contact.email
-                          : null
-                      }
-                      readOnly={s.actor.type === "support" || false}
-                      timeZone={data.profile?.timezone || "America/Chicago"}
-                    />
-                      </details>
-                    ) : (
-                      <FileCabinet
-                      items={documentItems}
-                      autoOpenShare={share === "1"}
-                      customerPhone={
-                        data.contact && !data.contact.textOff
-                          ? data.contact.phone
-                          : null
-                      }
-                      customerEmail={
-                        data.contact && !data.contact.emailOff
-                          ? data.contact.email
-                          : null
-                      }
-                      readOnly={s.actor.type === "support" || false}
-                      timeZone={data.profile?.timezone || "America/Chicago"}
-                    />
-                    )}
-                  </>
-                ))}
+                    </>
+                  ))}
                 {tab === "inspection" && data.inspection && (
                   <section aria-label="Inspection">
                     {auto && data.jobMedia.length > 0 && (
-                      <Link className="ro-inspection-media-link" href={`/app/jobs?job=${selected.id}&tab=photos`}>
+                      <Link
+                        className="ro-inspection-media-link"
+                        href={`/app/jobs?job=${selected.id}&tab=photos`}
+                      >
                         View inspection photos & videos ({data.jobMedia.length})
                       </Link>
                     )}
-                    {!auto && <p className="inspection-summary">
-                      <span className="insp-count is-good">
-                        {data.inspection.counts.good} pass
-                      </span>
-                      <span className="insp-count is-watch">
-                        {data.inspection.counts.watch} caution
-                      </span>
-                      <span className="insp-count is-fix">
-                        {data.inspection.counts.fix} fail
-                      </span>
-                      {data.inspection.counts.unchecked > 0 && (
-                        <span className="muted">
-                          {data.inspection.counts.unchecked} not checked
+                    {!auto && (
+                      <p className="inspection-summary">
+                        <span className="insp-count is-good">
+                          {data.inspection.counts.good} pass
                         </span>
-                      )}
-                    </p>}
+                        <span className="insp-count is-watch">
+                          {data.inspection.counts.watch} caution
+                        </span>
+                        <span className="insp-count is-fix">
+                          {data.inspection.counts.fix} fail
+                        </span>
+                        {data.inspection.counts.unchecked > 0 && (
+                          <span className="muted">
+                            {data.inspection.counts.unchecked} not checked
+                          </span>
+                        )}
+                      </p>
+                    )}
                     <InspectionForm
                       key={selected.id}
                       jobId={selected.id}

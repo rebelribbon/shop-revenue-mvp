@@ -80,7 +80,8 @@ const HANDOFF_TEXT: Record<
 };
 
 function handoffTask(h: JobHandoff, today: string): TaskRow {
-  const technicianStep = h.stage === "inspect_vehicle" || h.stage === "perform_work";
+  const technicianStep =
+    h.stage === "inspect_vehicle" || h.stage === "perform_work";
   const roHref = `/app/jobs?job=${h.jobId}${technicianStep ? "&mode=technician" : ""}`;
   return {
     key: `handoff:${h.jobId}:${h.stage}`,

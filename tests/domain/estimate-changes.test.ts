@@ -31,7 +31,9 @@ describe("automatic customer estimate revision history", () => {
   it("records which labor price changed and the total without typing", () => {
     const updated: EstimateSnapshot = {
       ...original,
-      lines: [{ ...original.lines[0], unitPriceCents: 15000, totalCents: 15000 }],
+      lines: [
+        { ...original.lines[0], unitPriceCents: 15000, totalCents: 15000 },
+      ],
       subtotalCents: 15000,
       totalCents: 15000,
     };

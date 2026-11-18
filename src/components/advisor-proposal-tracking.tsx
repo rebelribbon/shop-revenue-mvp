@@ -56,9 +56,14 @@ export function AdvisorProposalTracking({
   customerPath?: string;
   timeZone: string;
 }) {
-  const [tab, setTab] = useState<"activity" | "decisions" | "documents">("activity");
+  const [tab, setTab] = useState<"activity" | "decisions" | "documents">(
+    "activity",
+  );
   const [preview, setPreview] = useState(false);
-  const [sendOpen, setSendOpen] = useState(shareRequested || !events.some((e) => e.kind === "document.email_submitted"));
+  const [sendOpen, setSendOpen] = useState(
+    shareRequested ||
+      !events.some((e) => e.kind === "document.email_submitted"),
+  );
   const opened = events.find((e) => e.kind === "estimate.customer_opened");
   const submitted = events.find((e) => e.kind === "document.email_submitted");
   const signed = Boolean(authorization);
@@ -77,33 +82,52 @@ export function AdvisorProposalTracking({
         : "Prepared · not sent";
   const timeline = [
     ...(authorization
-      ? [{
-          id: "signed",
-          title: "Customer authorization signed",
-          at: authorization.createdAt,
-          details: `Signed by ${authorization.signerName}. ${approved.length} line(s) approved; ${declined.length} declined.`,
-        }]
+      ? [
+          {
+            id: "signed",
+            title: "Customer authorization signed",
+            at: authorization.createdAt,
+            details: `Signed by ${authorization.signerName}. ${approved.length} line(s) approved; ${declined.length} declined.`,
+          },
+        ]
       : []),
     ...events.map((e) => ({
       id: e.id,
-      title: e.kind === "estimate.customer_opened"
-        ? "Customer proposal page opened"
-        : "Proposal email submitted",
+      title:
+        e.kind === "estimate.customer_opened"
+          ? "Customer proposal page opened"
+          : "Proposal email submitted",
       at: e.at,
       details: e.description,
     })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
   return (
-    <section className="proposal-tracker" aria-label="Customer proposal tracking">
+    <section
+      className="proposal-tracker"
+      aria-label="Customer proposal tracking"
+    >
       <RoProposalProgress stage={submitted || signed ? "track" : "send"} />
       <header className="proposal-tracker-heading">
         <div>
-          <p className="muted proposal-eyebrow">CUSTOMER PROPOSAL · VERSION {version}</p>
+          <p className="muted proposal-eyebrow">
+            CUSTOMER PROPOSAL · VERSION {version}
+          </p>
           <h2>Proposal &amp; Customer Activity</h2>
-          <p className="muted">{snapshot.customerName} · {snapshot.serviceLabel || snapshot.vehicleLabel}</p>
+          <p className="muted">
+            {snapshot.customerName} ·{" "}
+            {snapshot.serviceLabel || snapshot.vehicleLabel}
+          </p>
         </div>
-        <span className={`proposal-status ${signed ? "is-signed" : opened ? "is-opened" : ""}`}>
-          {signed ? "Signed" : opened ? "Opened" : submitted ? "Submitted" : "Not sent"}
+        <span
+          className={`proposal-status ${signed ? "is-signed" : opened ? "is-opened" : ""}`}
+        >
+          {signed
+            ? "Signed"
+            : opened
+              ? "Opened"
+              : submitted
+                ? "Submitted"
+                : "Not sent"}
         </span>
       </header>
 
@@ -114,43 +138,97 @@ export function AdvisorProposalTracking({
         </div>
         <div>
           <p className="muted">AUTHORIZED TOTAL</p>
-          <strong>{signed ? formatMoney(approvedTotal) : "Pending signature"}</strong>
+          <strong>
+            {signed ? formatMoney(approvedTotal) : "Pending signature"}
+          </strong>
         </div>
         <p className="proposal-heading-status">{heading}</p>
         <div className="proposal-tracker-metrics">
-          <div><span>Sent</span><strong>{submitted ? dateTime(submitted.at, timeZone) : "Not submitted"}</strong></div>
-          <div><span>Delivered</span><strong>Not confirmed</strong></div>
-          <div><span>Opened</span><strong>{opened ? dateTime(opened.at, timeZone) : "Not recorded"}</strong></div>
-          <div><span>Signed</span><strong>{authorization ? dateTime(authorization.createdAt, timeZone) : "Pending"}</strong></div>
+          <div>
+            <span>Sent</span>
+            <strong>
+              {submitted ? dateTime(submitted.at, timeZone) : "Not submitted"}
+            </strong>
+          </div>
+          <div>
+            <span>Delivered</span>
+            <strong>Not confirmed</strong>
+          </div>
+          <div>
+            <span>Opened</span>
+            <strong>
+              {opened ? dateTime(opened.at, timeZone) : "Not recorded"}
+            </strong>
+          </div>
+          <div>
+            <span>Signed</span>
+            <strong>
+              {authorization
+                ? dateTime(authorization.createdAt, timeZone)
+                : "Pending"}
+            </strong>
+          </div>
         </div>
         <p className="muted proposal-clarifier">
-          Email submitted means the provider accepted the message, not that it was delivered.
-          Opened means the secure proposal page loaded; it does not prove the customer read it.
+          Email submitted means the provider accepted the message, not that it
+          was delivered. Opened means the secure proposal page loaded; it does
+          not prove the customer read it.
         </p>
       </div>
 
       {!signed && canShare && !trackingOnly && (
-        <section className="proposal-send-stage" id="proposal-send" aria-label="Send customer proposal">
+        <section
+          className="proposal-send-stage"
+          id="proposal-send"
+          aria-label="Send customer proposal"
+        >
           <div className="proposal-send-stage-head">
             <div>
-              <p className="muted">{submitted ? "STEP 3 OF 4 · SHARED" : "STEP 3 OF 4 · SEND"}</p>
-              <h3>{submitted ? "Customer response pending" : "Send proposal for approval"}</h3>
-              <p>{submitted
-                ? "The proposal email was submitted. You can send it again, preview the customer page, or check activity below."
-                : "Confirm the recipient and send the secure inspection and authorization link. We will track when the page is opened and signed."}</p>
+              <p className="muted">
+                {submitted ? "STEP 3 OF 4 · SHARED" : "STEP 3 OF 4 · SEND"}
+              </p>
+              <h3>
+                {submitted
+                  ? "Customer response pending"
+                  : "Send proposal for approval"}
+              </h3>
+              <p>
+                {submitted
+                  ? "The proposal email was submitted. You can send it again, preview the customer page, or check activity below."
+                  : "Confirm the recipient and send the secure inspection and authorization link. We will track when the page is opened and signed."}
+              </p>
             </div>
-            <button type="button" className="btn secondary" onClick={() => setSendOpen((open) => !open)} aria-expanded={sendOpen}>
-              {sendOpen ? "Hide sending" : submitted ? "Resend / share" : "Send proposal"}
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => setSendOpen((open) => !open)}
+              aria-expanded={sendOpen}
+            >
+              {sendOpen
+                ? "Hide sending"
+                : submitted
+                  ? "Resend / share"
+                  : "Send proposal"}
             </button>
           </div>
-          {sendOpen && <DocumentShare id={estimateId} kind="estimate" autoOpen />}
+          {sendOpen && (
+            <DocumentShare id={estimateId} kind="estimate" autoOpen />
+          )}
         </section>
       )}
       {signed && (
         <div className="proposal-signed-next">
           <strong>Customer authorization received.</strong>
-          <p>Only approved repairs may be released to the assigned technician. Continue on the RO&apos;s Overview.</p>
-          <Link className="btn primary" href={`/app/jobs?job=${jobId}#ro-workflow`}>Review approved work</Link>
+          <p>
+            Only approved repairs may be released to the assigned technician.
+            Continue on the RO&apos;s Overview.
+          </p>
+          <Link
+            className="btn primary"
+            href={`/app/jobs?job=${jobId}#ro-workflow`}
+          >
+            Review approved work
+          </Link>
         </div>
       )}
 
@@ -173,18 +251,24 @@ export function AdvisorProposalTracking({
             Open exact customer page
           </a>
         )}
-        <Link className="btn secondary" href={`/app/jobs?job=${jobId}&tab=files`}>
+        <Link
+          className="btn secondary"
+          href={`/app/jobs?job=${jobId}&tab=files`}
+        >
           All RO documents
         </Link>
       </div>
 
       {preview && (
         <div className="proposal-customer-preview">
-          <p className="muted">READ-ONLY CUSTOMER PREVIEW · NO APPROVAL RECORDED</p>
+          <p className="muted">
+            READ-ONLY CUSTOMER PREVIEW · NO APPROVAL RECORDED
+          </p>
           <EstimateDocument snapshot={snapshot} />
           <p className="muted">
-            This preview uses the exact saved estimate version, prices and terms.
-            Open the customer page to inspect its interactive signature steps and media.
+            This preview uses the exact saved estimate version, prices and
+            terms. Open the customer page to inspect its interactive signature
+            steps and media.
           </p>
         </div>
       )}
@@ -198,7 +282,11 @@ export function AdvisorProposalTracking({
             aria-current={tab === name ? "page" : undefined}
             onClick={() => setTab(name)}
           >
-            {name === "activity" ? "Activity" : name === "decisions" ? "Decisions" : "Documents"}
+            {name === "activity"
+              ? "Activity"
+              : name === "decisions"
+                ? "Decisions"
+                : "Documents"}
           </button>
         ))}
       </nav>
@@ -216,47 +304,96 @@ export function AdvisorProposalTracking({
               {timeline.map((event) => (
                 <li key={event.id}>
                   <strong>{event.title}</strong>
-                  <time dateTime={event.at}>{dateTime(event.at, timeZone)}</time>
+                  <time dateTime={event.at}>
+                    {dateTime(event.at, timeZone)}
+                  </time>
                   <p className="muted">{event.details}</p>
                 </li>
               ))}
             </ol>
-          ) : <p className="muted">No customer delivery, opening, or authorization events recorded for this version yet.</p>}
+          ) : (
+            <p className="muted">
+              No customer delivery, opening, or authorization events recorded
+              for this version yet.
+            </p>
+          )}
           {!signed && canShare && trackingOnly && (
-            <Link className="btn secondary" href={`/app/jobs?job=${jobId}#customer-proposal-review`}>
+            <Link
+              className="btn secondary"
+              href={`/app/jobs?job=${jobId}#customer-proposal-review`}
+            >
               {submitted ? "Return to RO to resend" : "Review and send from RO"}
             </Link>
           )}
           {!signed && canShare && !trackingOnly && (
-            <button type="button" className="btn secondary" onClick={() => { setSendOpen(true); document.getElementById("proposal-send")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => {
+                setSendOpen(true);
+                document
+                  .getElementById("proposal-send")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
               {submitted ? "Resend proposal" : "Send customer proposal"}
             </button>
           )}
         </section>
       )}
       {tab === "decisions" && (
-        <section className="proposal-decisions" aria-label="Customer repair decisions">
+        <section
+          className="proposal-decisions"
+          aria-label="Customer repair decisions"
+        >
           <h3>Repair decisions</h3>
-          {!signed && <p className="muted">Awaiting signed authorization. No line items can be released to the technician yet.</p>}
+          {!signed && (
+            <p className="muted">
+              Awaiting signed authorization. No line items can be released to
+              the technician yet.
+            </p>
+          )}
           {snapshot.lines.map((line) => (
             <div className="proposal-decision" key={line.id}>
               <div>
                 <strong>{line.description}</strong>
-                <p className="muted">{line.kind === "part" ? "Part" : "Labor"} · Qty {line.quantity}</p>
+                <p className="muted">
+                  {line.kind === "part" ? "Part" : "Labor"} · Qty{" "}
+                  {line.quantity}
+                </p>
               </div>
               <div className="proposal-decision-right">
                 <strong>{formatMoney(line.totalCents)}</strong>
-                <span className={authorization ? ids.has(line.id) ? "is-approved" : "is-declined" : "is-pending"}>
-                  {authorization ? ids.has(line.id) ? "Approved" : "Declined" : "Awaiting signature"}
+                <span
+                  className={
+                    authorization
+                      ? ids.has(line.id)
+                        ? "is-approved"
+                        : "is-declined"
+                      : "is-pending"
+                  }
+                >
+                  {authorization
+                    ? ids.has(line.id)
+                      ? "Approved"
+                      : "Declined"
+                    : "Awaiting signature"}
                 </span>
               </div>
             </div>
           ))}
-          {authorization && <p className="proposal-approved-total">Customer-authorized total: {formatMoney(approvedTotal)}</p>}
+          {authorization && (
+            <p className="proposal-approved-total">
+              Customer-authorized total: {formatMoney(approvedTotal)}
+            </p>
+          )}
         </section>
       )}
       {tab === "documents" && (
-        <div className="proposal-documents" aria-label="Documents sent and signed">
+        <div
+          className="proposal-documents"
+          aria-label="Documents sent and signed"
+        >
           {documents}
         </div>
       )}

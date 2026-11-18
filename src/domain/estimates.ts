@@ -270,7 +270,10 @@ export async function freezeEstimate(
   // versions instead of requiring the advisor to explain the revision.
   // Existing invoice restrictions still apply above, and signed versions
   // retain their authorization evidence.
-  const changeSummary = automaticEstimateChanges(prior?.snapshot ?? null, snapshot);
+  const changeSummary = automaticEstimateChanges(
+    prior?.snapshot ?? null,
+    snapshot,
+  );
   // Superseding a version revokes its link but never removes its signature evidence.
   await tx
     .update(estimateVersion)
