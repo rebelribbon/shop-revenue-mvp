@@ -226,8 +226,13 @@ test("routes an assigned inspection from the technician to its advisor without e
     await tech
       .getByRole("button", { name: "Submit inspection to advisor" })
       .click();
+    // The success toast is intentionally transient: router.refresh replaces
+    // the editor with the immutable completed report once the server confirms.
     await expect(
-      tech.getByText("Inspection submitted to the advisor.", { exact: false }),
+      tech.getByRole("region", { name: "Completed inspection report" }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(
+      tech.getByRole("link", { name: "Return to my assigned work" }),
     ).toBeVisible();
     expect((await readTasks(tech)).some((task) => task.jobId === jobId)).toBe(
       false,
