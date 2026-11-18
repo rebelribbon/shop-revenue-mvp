@@ -146,66 +146,52 @@ test("routes an assigned inspection from the technician to its advisor without e
     await expect(
       tech.getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
+    // The compact wizard starts with vehicle pickup, then goes system by
+    // system. Save midway and verify that the technician can resume.
+    await expect(tech.getByText(/Vehicle inspection/)).toBeVisible();
     await expect(
-      tech.getByText("40-point inspection", { exact: true }),
-    ).toBeVisible();
-    await expect(tech.getByLabel("Tech on this job")).toHaveCount(0);
+      tech.getByLabel("Technician for this RO (all repairs)"),
+    ).toHaveCount(0);
     await expect(
       tech.getByRole("button", {
         name: /Send estimate|Create invoice|Record payment/,
       }),
     ).toHaveCount(0);
-    await tech
-      .getByLabel("I have picked up the vehicle for assessment", {
+    await tech.getByLabel("I have the vehicle", { exact: true }).check();
+    await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
+    await tech.getByRole("button", { name: "Save and exit" }).click();
+    await tech.goto(`/app/jobs?job=${jobId}`);
+    await expect(
+      tech.getByLabel("Rack / bay", { exact: true }),
+    ).toHaveValue("Bay 2");
+    await tech.getByRole("button", { name: "Start inspection" }).click();
+
+    let reachedReview = false;
+    for (let section = 0; section < 16; section++) {
+      for (const pass of await tech
+        .getByRole("radio", { name: "Pass", exact: true })
+        .all()) await pass.check();
+      const reviewButton = tech.getByRole("button", {
+        name: "Review inspection",
         exact: true,
-      })
-      .check();
-    await tech.getByLabel("Bay / rack", { exact: true }).fill("Bay 2");
-    await tech
-      .getByLabel("Technician diagnosis", { exact: true })
-      .fill("Road tested the customer concern. No additional faults found.");
-    await Promise.all([
-      tech.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/app/jobs"),
-      ),
-      tech.getByRole("button", { name: "Save progress", exact: true }).click(),
-    ]);
-    await tech.reload();
-    await expect(
-      tech.getByRole("button", { name: "Submit inspection → Notify advisor" }),
-    ).toBeDisabled();
-    await expect(tech.getByLabel("Bay / rack", { exact: true })).toHaveValue(
-      "Bay 2",
-    );
-    await expect(
-      tech.getByLabel("Technician diagnosis", { exact: true }),
-    ).toHaveValue(
-      "Road tested the customer concern. No additional faults found.",
-    );
-    // Each category is a separate page; all 40 results must be explicit.
-    for (let category = 0; category < 9; category++) {
-      for (const satisfactory of await tech
-        .getByRole("radio", { name: "Satisfactory", exact: true })
-        .all())
-        await satisfactory.check();
-      if (category < 8)
-        await tech
-          .getByRole("button", { name: "Next category →", exact: true })
-          .click();
+      });
+      if (await reviewButton.isVisible()) {
+        await reviewButton.click();
+        reachedReview = true;
+        break;
+      }
+      await tech.getByRole("button", { name: "Save and continue" }).click();
     }
+    expect(reachedReview).toBe(true);
     await expect(
       tech.getByText("40 of 40 checked", { exact: false }),
     ).toBeVisible();
     await tech
-      .getByRole("button", {
-        name: "Submit inspection → Notify advisor",
-        exact: true,
-      })
-      .click();
+      .getByLabel("Technician diagnosis", { exact: true })
+      .fill("Road tested the customer concern. No additional faults found.");
+    await tech.getByRole("button", { name: "Submit inspection to advisor" }).click();
     await expect(
-      tech.getByText("Inspection submitted.", { exact: true }),
+      tech.getByText("Inspection submitted to the advisor.", { exact: false }),
     ).toBeVisible();
     expect((await readTasks(tech)).some((task) => task.jobId === jobId)).toBe(
       false,
@@ -228,7 +214,7 @@ test("routes an assigned inspection from the technician to its advisor without e
     await expect(advisor.getByLabel("Copy RO number")).toBeVisible();
     await tech.reload();
     await expect(
-      tech.getByRole("button", { name: "Save progress", exact: true }),
+      tech.getByRole("button", { name: "Save and exit", exact: true }),
     ).toHaveCount(0);
     await auditUX(tech);
     await tech.screenshot({
