@@ -173,7 +173,8 @@ test("routes an assigned inspection from the technician to its advisor without e
     for (let section = 0; section < 16; section++) {
       for (const pass of await tech
         .getByRole("radio", { name: "Pass", exact: true })
-        .all()) await pass.check();
+        .all())
+        await pass.check();
       const reviewButton = tech.getByRole("button", {
         name: "Review inspection",
         exact: true,
@@ -192,7 +193,9 @@ test("routes an assigned inspection from the technician to its advisor without e
     await tech
       .getByLabel("Technician diagnosis", { exact: true })
       .fill("Road tested the customer concern. No additional faults found.");
-    await tech.getByRole("button", { name: "Submit inspection to advisor" }).click();
+    await tech
+      .getByRole("button", { name: "Submit inspection to advisor" })
+      .click();
     await expect(
       tech.getByText("Inspection submitted to the advisor.", { exact: false }),
     ).toBeVisible();
