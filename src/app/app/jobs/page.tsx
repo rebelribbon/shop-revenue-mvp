@@ -594,9 +594,7 @@ export default async function JobsPage({
                 className="btn primary"
                 data-ux-primary="true"
                 href={
-                  ownerAsTechnician
-                    ? "/app/jobs?mode=technician"
-                    : "/app/tasks"
+                  ownerAsTechnician ? "/app/jobs?mode=technician" : "/app/tasks"
                 }
               >
                 Return to my assigned work
