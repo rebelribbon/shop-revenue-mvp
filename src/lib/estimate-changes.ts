@@ -1,7 +1,5 @@
 import type { EstimateSnapshot } from "@/db/schema/m3";
 
-type Line = EstimateSnapshot["lines"][number];
-
 // The customer sees the new immutable estimate. This summary is an audit
 // supplement: it is derived from both stored versions, never entered by staff.
 export function automaticEstimateChanges(
