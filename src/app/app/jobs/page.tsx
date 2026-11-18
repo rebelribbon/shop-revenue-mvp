@@ -84,6 +84,7 @@ import { JobEditor } from "@/components/job-editor";
 import { RoEstimateBuilder } from "@/components/ro-estimate-builder";
 import { canManageTeam } from "@/domain/membership";
 import { RoCheckinEditor } from "@/components/ro-checkin-editor";
+import { RoCheckIn } from "@/components/ro-check-in";
 import { RoStageSummary } from "@/components/ro-stage-summary";
 import { requireShopSession } from "@/server/views/shop";
 
@@ -661,7 +662,26 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          {auto && !selected ? (
+          {auto && !selected && !customerId ? (
+            <RoCheckIn
+              key={[customerId, vehicleId, sourceAppointmentId].join(":")}
+              customers={data.options.customers}
+              vehicles={data.options.vehicles}
+              techs={data.techs}
+              initial={{
+                customerId: initial?.customerId,
+                vehicleId: initial?.vehicleId,
+                sourceRecoveryItemId: initial?.sourceRecoveryItemId,
+                sourceContactActivityId: initial?.sourceContactActivityId,
+                sourceAppointmentId: initial?.sourceAppointmentId,
+              }}
+              attachMediaId={
+                data.fromMedia && data.fromMedia.customerId === customerId
+                  ? data.fromMedia.id
+                  : undefined
+              }
+            />
+          ) : auto && !selected ? (
             <RoCheckinEditor
               key={[customerId, vehicleId, sourceAppointmentId].join(":")}
               options={data.options}

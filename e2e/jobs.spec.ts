@@ -1,4 +1,4 @@
-import { revealField } from "./helpers";
+import { openFullJobSheet, revealField } from "./helpers";
 import { auditUX } from "./ux-audit";
 import { test, expect } from "@playwright/test";
 import { drawEstimateSignature, signInWithPassword } from "./helpers";
@@ -24,6 +24,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   const vehicleId = new URL(page.url()).pathname.split("/").at(-1)!;
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
+  await openFullJobSheet(page);
   await page.getByLabel("Job name").fill(`Brakes ${info.project.name}`);
   await page.getByLabel(/Warranty in months/).fill("12");
   await expect(

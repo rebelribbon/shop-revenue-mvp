@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signInWithPassword } from "./helpers";
+import { openFullJobSheet, signInWithPassword } from "./helpers";
 test("Money Finder records real work, manual follow-up and source-linked jobs", async ({
   page,
 }, info) => {
@@ -56,6 +56,7 @@ test("Money Finder records real work, manual follow-up and source-linked jobs", 
   });
   await item.getByRole("button", { name: "Start job", exact: true }).click();
   await expect(page).toHaveURL(/jobs\?sourceRecoveryItemId=/);
+  await openFullJobSheet(page);
   await expect(page.getByLabel("Customer", { exact: true })).not.toHaveValue(
     "",
   );

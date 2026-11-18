@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signInWithPassword, revealField } from "./helpers";
+import { openFullJobSheet, revealField, signInWithPassword } from "./helpers";
 import { auditUX } from "./ux-audit";
 // The same form is exercised by the production browser suite and a dev-mode smoke.
 test("owner can reuse common jobs, book a future visit, and log expenses without form errors", async ({
@@ -42,6 +42,7 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   // The customer page has its own "+ New RO"; wait for the vehicle page.
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
+  await openFullJobSheet(page);
   await page
     .getByLabel("Job name", { exact: true })
     .fill(`Saved brakes ${name}`);
@@ -80,7 +81,7 @@ test("owner can reuse common jobs, book a future visit, and log expenses without
   await expect(page.getByRole("status")).not.toContainText(
     "Something went wrong",
   );
-  await page.goto("/app/jobs?new=1");
+  await page.goto("/app/jobs?new=1&full=1");
   await page
     .getByLabel("Start from a common job", { exact: true })
     .selectOption({ label: `Saved brakes ${name}` });
