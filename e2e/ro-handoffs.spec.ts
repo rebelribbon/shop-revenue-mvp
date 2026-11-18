@@ -66,18 +66,30 @@ test("routes an assigned inspection from the technician to its advisor without e
   await expect(
     page.getByLabel("Service advisor for this RO").locator("option:checked"),
   ).toHaveText("Staff B");
-  await page.getByLabel("Tech on this job").selectOption({ label: "Tech B" });
+  const team = page.locator("details.ro-team-assignment");
+  if (!(await team.evaluate((el) => (el as HTMLDetailsElement).open))) {
+    await team.locator("summary").click();
+  }
+  await team
+    .getByLabel("Technician for this RO (all repairs)")
+    .selectOption({ label: "Tech B" });
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
         response.url().includes("/app/jobs"),
     ),
-    page.getByRole("button", { name: "Save tech", exact: true }).click(),
+    page.getByRole("button", { name: "Assign technician", exact: true }).click(),
   ]);
   await page.reload();
+  const updatedTeam = page.locator("details.ro-team-assignment");
+  if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open))) {
+    await updatedTeam.locator("summary").click();
+  }
   await expect(
-    page.getByLabel("Tech on this job").locator("option:checked"),
+    updatedTeam
+      .getByLabel("Technician for this RO (all repairs)")
+      .locator("option:checked"),
   ).toHaveText("Tech B");
 
   const techContext = await browser.newContext({

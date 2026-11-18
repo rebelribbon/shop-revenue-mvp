@@ -123,23 +123,14 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
   const [revised] = await withTenant(a.businessId, a.owner.actor, (tx) =>
     listJobs(tx),
   );
-  await expect(
-    withTenant(a.businessId, a.owner.actor, (tx) =>
-      freezeEstimate(tx, meta(), {
-        jobId: job.id,
-        expectedJobVersion: revised.version,
-        taxBps: 0,
-        supplementReason: "",
-        terms: "",
-      }),
-    ),
-  ).rejects.toThrow();
+  // Changes between immutable versions are recorded automatically.
+  // Signed revisions no longer require an advisor-typed supplement reason.
   const second = await withTenant(a.businessId, a.owner.actor, (tx) =>
     freezeEstimate(tx, meta(), {
       jobId: job.id,
       expectedJobVersion: revised.version,
       taxBps: 0,
-      supplementReason: "Updated parts",
+      supplementReason: "",
       terms: "",
     }),
   );

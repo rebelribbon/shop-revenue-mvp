@@ -18,6 +18,7 @@ import { audit, recordActivity, type RequestMeta } from "./records";
 import {
   notifyAdvisorWorkCompleted,
   notifyTechnicianWorkApproved,
+  completeTechnicianWorkHandoff,
 } from "./job-handoffs";
 import { activeCheckoutStates } from "./payments";
 import { listServicePlans, type PlanSummary } from "./service-plans";
@@ -540,6 +541,9 @@ export async function recordJobProgress(
       : flow.work === "completed"
         ? await notifyTechnicianWorkApproved(tx, job.id)
         : false;
+  if (input.status === "completed" && !handoff) {
+    await completeTechnicianWorkHandoff(tx, job.id);
+  }
   return {
     id: job.id,
     handoff,

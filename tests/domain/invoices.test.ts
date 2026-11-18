@@ -105,7 +105,7 @@ it("invoices only approved frozen work and maintains an immutable, tenant-safe p
         terms: "",
       }),
     ),
-  ).rejects.toThrow(/already has an invoice/);
+  ).rejects.toThrow(/same tax rate as invoice/);
   const p = await withTenant(a.businessId, a.owner.actor, (tx) =>
     recordInvoicePayment(tx, meta(), {
       invoiceId: i.id,

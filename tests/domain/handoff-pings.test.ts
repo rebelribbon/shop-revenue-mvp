@@ -10,6 +10,7 @@ import {
   setHandoffPings,
 } from "@/domain/handoff-pings";
 import { getInspection, saveInspection } from "@/domain/inspections";
+import { listMyJobHandoffs } from "@/domain/job-handoffs";
 import { createJob } from "@/domain/jobs";
 import { acceptInvite, inviteStaff } from "@/domain/membership";
 import {
@@ -129,7 +130,14 @@ describe("RO handoff email pings", () => {
     expect(submitted.complete).toBe(true);
     expect(submitted.advisorNotified).toBe(true);
     const handoff = await f.owner((tx) => prepareHandoffPing(tx, f.job.id));
-    expect(handoff?.stage).toBe("build_estimate");
+    // The owner still receives the in-app task, without an email to themself.
+    expect(handoff).toBeNull();
+    const ownerTasks = await f.owner((tx) => listMyJobHandoffs(tx));
+    expect(
+      ownerTasks.some(
+        (task) => task.jobId === f.job.id && task.stage === "build_estimate",
+      ),
+    ).toBe(true);
   });
 
   it("allows the RO advisor to choose the initial technician, but only management can change assignments", async () => {

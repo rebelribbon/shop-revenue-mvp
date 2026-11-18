@@ -451,6 +451,20 @@ export async function notifyAdvisorWorkCompleted(
   return true;
 }
 
+/** Close the technician's work task when authorized repairs are already invoiced. */
+export async function completeTechnicianWorkHandoff(tx: TenantTx, jobId: string) {
+  const data = await latestHandoff(tx, jobId);
+  if (data?.stage !== "perform_work") return;
+  await recordActivity(tx, {
+    kind: "job.handoff",
+    subjectType: "job",
+    subjectId: jobId,
+    summary: "Authorized repairs complete; existing invoice unchanged",
+    data: { ...data, stage: "completed" },
+    recordedAtNow: true,
+  });
+}
+
 /** Issuing the invoice clears the advisor's "invoice the customer" task. */
 export async function completeInvoiceHandoff(tx: TenantTx, jobId: string) {
   const data = await latestHandoff(tx, jobId);

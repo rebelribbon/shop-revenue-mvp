@@ -83,7 +83,7 @@ describe("Technician role", () => {
       asTech((tx) =>
         assignJob(tx, meta(), { jobId: other.id, userId: joined.userId }),
       ),
-    ).rejects.toThrow(/management/);
+    ).rejects.toThrow(/not found/);
     await expect(
       asTech((tx) =>
         createJob(tx, {
