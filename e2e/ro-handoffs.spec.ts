@@ -160,10 +160,13 @@ test("routes an assigned inspection from the technician to its advisor without e
     await tech.getByLabel("I have the vehicle", { exact: true }).check();
     await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
     await tech.getByRole("button", { name: "Save and exit" }).click();
+    await expect(tech).toHaveURL(/\/app\/tasks$/);
     await tech.goto(`/app/jobs?job=${jobId}`);
-    await expect(
-      tech.getByLabel("Rack / bay", { exact: true }),
-    ).toHaveValue("Bay 2");
+    // A resumed wizard opens directly on the first unfinished system.
+    await tech.getByRole("button", { name: "Back", exact: true }).click();
+    await expect(tech.getByLabel("Rack / bay", { exact: true })).toHaveValue(
+      "Bay 2",
+    );
     await tech.getByRole("button", { name: "Start inspection" }).click();
 
     let reachedReview = false;
