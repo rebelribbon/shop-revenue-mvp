@@ -249,6 +249,12 @@ test("routes an assigned inspection from the technician to its advisor without e
       .click();
     await expect(advisor.getByLabel("Copy RO number")).toBeVisible();
     await tech.reload();
+    // A reload can briefly render the loading shell. Inspect the completed
+    // technician workspace only after the authenticated view has hydrated.
+    await expect(
+      tech.getByRole("heading", { name: "My technician work" }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(tech.locator('main[data-ux-ready="true"]')).toBeVisible();
     await expect(
       tech.getByRole("button", { name: "Save and exit", exact: true }),
     ).toHaveCount(0);
