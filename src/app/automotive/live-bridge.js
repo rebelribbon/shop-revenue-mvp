@@ -125,6 +125,33 @@ customerRoute = function(){return null;};
 settingsPrototype = function(){return "";};
 unifiedWalkthrough = function(){return "";};
 techDemoLauncher = function(){return "";};
+// Remove prototype-only badges and the fake employee role switcher.
+const originalHeader = header;
+header = function () {
+  return originalHeader()
+    .replace("● Automotive · Offline preview", "● Automotive · Live workspace")
+    .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/, '<span class="pill blue">Signed in · ' + esc(role()) + '</span>');
+};
+// The source design's file pickers are local-only. Never let technicians choose
+// attachments that could be discarded before a real upload occurs.
+photoUploadControl = function (r, kind, checkId, label) {
+  return '<a class="tech-upload" href="/app/jobs?job=' + encodeURIComponent(r.id) +
+    '&tab=photos" aria-label="Open secure photo upload">📷 ' + esc(label || "Take or upload inspection photo") + '</a>';
+};
+videoUploadControl = function (r) {
+  return '<a class="tech-upload video" href="/app/jobs?job=' + encodeURIComponent(r.id) +
+    '&tab=photos" aria-label="Open secure video upload">🎥 Record or upload customer video</a>';
+};
+roPayment = function (r) {
+  if (techView()) return '<div class="notice">Payments are not visible to technicians.</div>';
+  return '<div class="section-head"><h2>Payment & receipt</h2>' +
+    pill(r.paid ? "Paid" : r.invoiceSent ? "Awaiting payment" : "Not invoiced",
+      r.paid ? "green" : "amber") + '</div>' +
+    '<div class="card card-pad"><p class="sub">Invoices, collected payments, refunds, and receipts are managed in the authenticated RO ledger. No test payments or simulated receipts are created here.</p>' +
+    '<p style="margin-top:16px"><a class="btn primary" href="/app/jobs?job=' +
+    encodeURIComponent(r.id) + '">Open invoice & secure payments</a></p></div>';
+};
+
 const originalDashboard = dashboard;
 dashboard = function(){
   return originalDashboard()
