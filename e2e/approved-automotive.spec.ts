@@ -144,7 +144,9 @@ test("solo shop owner can create and inspect an RO without assigning separate st
     buffer: png,
   });
   const storedMedia = await finishUpload;
-  expect(await storedMedia.json()).toMatchObject({ ok: true });
+  // The successful upload immediately navigates. The response body is
+  // intentionally gone by then; assert status and persisted rendered pixels.
+  expect(storedMedia.status()).toBe(200);
   await expect(page).toHaveURL(/tab=media/, { timeout: 30_000 });
 
   // Only media actually persisted on this RO should appear after refresh.
