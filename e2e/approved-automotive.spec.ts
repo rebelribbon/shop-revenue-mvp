@@ -119,6 +119,34 @@ test("solo shop owner can create and inspect an RO without assigning separate st
     page.getByText("Customer reports a vibration under braking.").first(),
   ).toBeVisible();
 
+  // Exercise the approved technician photo picker with an actual PNG,
+  // including signed storage, association to this RO, and readback.
+  await page.goto(`/automotive?ro=${ro.id}&tab=diagnosis`);
+  const upload = page.locator('.tech-upload input[type="file"]').first();
+  await expect(upload).toBeAttached();
+  const png = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/SPoAAAAASUVORK5CYII=",
+    "base64",
+  );
+  const finishUpload = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/automotive/actions") &&
+      response.request().postData()?.includes('"media.finish"') === true,
+    { timeout: 30_000 },
+  );
+  await upload.setInputFiles({
+    name: "diagnostic-evidence.png",
+    mimeType: "image/png",
+    buffer: png,
+  });
+  const storedMedia = await finishUpload;
+  expect(await storedMedia.json()).toMatchObject({ ok: true });
+  await expect(page).toHaveURL(/tab=media/, { timeout: 30_000 });
+
+  // Only media actually persisted on this RO should appear after refresh.
+  await page.reload();
+  await expect(page.locator('.tech-media-grid img').first()).toBeVisible();
+
   const inspection = await post("inspection.save", {
     jobId: ro.id,
     submit: true,
