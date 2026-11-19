@@ -22,18 +22,28 @@ export async function GET(request: Request) {
 
   const actorId = state.session.actor.id;
   const key = await withTenant(
-    state.session.businessId, state.session.actor, async (tx) => {
-      const [row] = await tx.select({ jobId: jobMedia.jobId }).from(jobMedia)
-        .where(and(
-          eq(jobMedia.businessId, tx.businessId),
-          eq(jobMedia.fileId, fileId),
-          isNull(jobMedia.deletedAt),
-        )).limit(1);
+    state.session.businessId,
+    state.session.actor,
+    async (tx) => {
+      const [row] = await tx
+        .select({ jobId: jobMedia.jobId })
+        .from(jobMedia)
+        .where(
+          and(
+            eq(jobMedia.businessId, tx.businessId),
+            eq(jobMedia.fileId, fileId),
+            isNull(jobMedia.deletedAt),
+          ),
+        )
+        .limit(1);
       if (!row?.jobId) return null;
       const manager = await canManageTeam(tx);
       const role = await currentMemberRole(tx);
-      if (!manager && role === "staff" &&
-          (await assignedAdvisorForJob(tx, row.jobId)) !== actorId)
+      if (
+        !manager &&
+        role === "staff" &&
+        (await assignedAdvisorForJob(tx, row.jobId)) !== actorId
+      )
         return null;
       // shopMediaKey independently verifies the assigned technician.
       return shopMediaKey(tx, fileId);
