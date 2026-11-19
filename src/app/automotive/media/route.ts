@@ -51,7 +51,8 @@ export async function GET(request: Request) {
   );
   if (!key) return new Response("File not found.", { status: 404 });
   try {
-    return NextResponse.redirect(await createReadUrl(key, 180), {
+    const signedUrl = await createReadUrl(key, 180);
+    return NextResponse.redirect(new URL(signedUrl, request.url), {
       status: 302,
       headers: { "cache-control": "private, no-store" },
     });
