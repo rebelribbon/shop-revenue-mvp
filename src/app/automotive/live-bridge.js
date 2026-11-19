@@ -811,6 +811,13 @@ if(initialView.get("view")==="appointments")ui.page="appointments";
 if(initialView.get("view")==="settings")ui.page="settings";
 if(initialView.has("tab") && ui.selectedRo) {
   const tab = initialView.get("tab");
-  if(["estimate","proposal","inspection","diagnosis","media","work","invoice","payment","documents","activity"].includes(tab))ui.tab=tab;
+  if(["estimate","proposal","inspection","diagnosis","media","work","invoice","payment","documents","activity"].includes(tab)) {
+    ui.tab=tab;
+    // A solo owner may wear both hats on the same RO. Deep links into
+    // diagnosis or media should open the technician workbench, while the
+    // pricing and customer steps remain in the owner/advisor view.
+    if(role()==="owner" && ["diagnosis","media"].includes(tab))
+      ui.technicianMode=true;
+  }
 }
 
