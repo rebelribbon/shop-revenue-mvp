@@ -100,7 +100,7 @@ const originalOpenModal=openModal;
 openModal=function(type,extra){
   if(type==="role") return alert("Employee access is enforced by sign-in. Use the employee's own account to see their workspace.");
   if(type==="staff"||type==="editStaff") return originalOpenModal(type,extra);
-  if(type==="collect"||type==="receipt") return nativeWarning(extra && extra.id || ui.selectedRo);
+  if(type==="collect"||type==="receipt") return originalOpenModal(type,extra);
   return originalOpenModal(type,extra);
 };
 // Each checkpoint is saved under its exact approved key; never recode it
@@ -191,8 +191,66 @@ sendEstimate=async function(id){
 };
 submitApproval = function(id){nativeRo(id);};
 // Completion is verified and saved below using repair.finish.
-sendInvoice = function(id){nativeRo(id);};
-recordPayment = function(form,id){nativeRo(id);};
+const invoicesBeingSent=new Set();
+sendInvoice=async function(id){
+  const r=roBy(id);
+  if(!r || invoicesBeingSent.has(id) || techView())return;
+  if(!["invoice","payment"].includes(r.stage))
+    return alert("Complete authorized repairs before invoicing.");
+  const c=data.customers.find(x=>x.id===r.customer);
+  if(!c?.email)return alert("Add a customer email address before sending the invoice.");
+  invoicesBeingSent.add(id);
+  try{
+    let invoiceId=r.invoiceId;
+    if(!invoiceId){
+      if(!r.estimateId)throw new Error("The customer's signed estimate is missing.");
+      const issue=await liveWrite("invoice.issue",{
+        versionId:r.estimateId,dueOn:"",
+        terms:"Payment is due upon completion of authorized vehicle repairs."
+      });
+      invoiceId=issue.id;
+    }
+    if(!invoiceId)throw new Error("Invoice could not be issued.");
+    let path="";
+    try{
+      const prepared=await liveWrite("document.prepare",{id:invoiceId,kind:"invoice"});
+      path=prepared.path||"";
+    }catch(e){throw new Error("The invoice exists, but its payment link is unavailable: "+e.message);}
+    try{
+      await liveWrite("document.email",{id:invoiceId,kind:"invoice",email:c.email});
+    }catch(e){
+      window.prompt("Invoice issued but the email was not accepted. Copy the secure payment link: "+
+        e.message,new URL(path,window.location.origin).href);
+      return;
+    }
+    try{
+      await liveWrite("document.shared",{jobId:id,documentId:invoiceId,kind:"invoice"});
+    }catch(e){alert("The email was submitted, but sharing history did not update. Do not resend solely for this warning.");}
+    window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=payment");
+  }catch(e){alert(e.message||"Could not issue or send the invoice.");}
+  finally{invoicesBeingSent.delete(id);}
+};
+recordPayment=async function(form,id){
+  const r=roBy(id);
+  if(!r?.invoiceId || !r.invoiceSent || r.invoiceBalanceCents<=0)return;
+  const f=formData(form);
+  if(!f.confirmed)return alert("Confirm receipt of actual customer funds first.");
+  const method=String(f.method||"");
+  if(!["cash","check","external_card","bank_transfer"].includes(method))
+    return alert("Choose an actual payment method.");
+  const reference=String(f.ref||"").trim();
+  if(method==="external_card" && !reference)
+    return alert("Enter the external processor's transaction reference.");
+  try{
+    const amountCents=centsFromForm(f.amount);
+    if(amountCents<=0 || amountCents>r.invoiceBalanceCents)
+      throw new Error("Amount must be positive and no more than the unpaid balance.");
+    await liveWrite("payment.record",{
+      invoiceId:r.invoiceId,amountCents,method,reference
+    });
+    window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=payment");
+  }catch(e){alert(e.message||"No payment was recorded.");}
+};
 closeRo = function(id){nativeRo(id);};
 const centsFromForm = (amount) => {
   const text = String(amount ?? "").trim();
