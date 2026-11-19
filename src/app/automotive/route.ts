@@ -97,7 +97,7 @@ export async function GET() {
             .filter((id): id is string => !!id),
         ),
       ];
-      const customers = technician
+      const customers = technician && !assignedCustomers.length
         ? []
         : await tx
             .select({
@@ -117,23 +117,25 @@ export async function GET() {
               and(
                 eq(customer.businessId, session.businessId),
                 eq(customer.status, "active"),
-                management
-                  ? undefined
-                  : actorId
-                    ? or(
-                        eq(customer.assignedUserId, actorId),
-                        assignedCustomers.length
-                          ? inArray(customer.id, assignedCustomers)
-                          : undefined,
-                      )
-                    : undefined,
+                technician
+                  ? inArray(customer.id, assignedCustomers)
+                  : management
+                    ? undefined
+                    : actorId
+                      ? or(
+                          eq(customer.assignedUserId, actorId),
+                          assignedCustomers.length
+                            ? inArray(customer.id, assignedCustomers)
+                            : undefined,
+                        )
+                      : undefined,
               ),
             )
             .orderBy(customer.displayName)
             .limit(300);
       const allowedIds = customers.map((c) => c.id);
       const vehicles =
-        technician || !allowedIds.length
+        !allowedIds.length
           ? []
           : await tx
               .select({
@@ -245,14 +247,16 @@ export async function GET() {
             paid: flow?.stage === "paid",
             amountPaid: technician ? 0 : (flow?.paidCents ?? 0) / 100,
             created: row.createdAt.toISOString(),
-            history: (flow?.timeline ?? [])
-              .slice(-30)
-              .reverse()
-              .map((h) => ({
-                at: moneyDate(h.at) ?? "",
-                by: "System",
-                text: h.text,
-              })),
+            history: technician
+              ? []
+              : (flow?.timeline ?? [])
+                  .slice(-30)
+                  .reverse()
+                  .map((h) => ({
+                    at: moneyDate(h.at) ?? "",
+                    by: "System",
+                    text: h.text,
+                  })),
             // Real documents are handled by the existing authenticated RO flow.
             liveHref: "/app/jobs?job=" + row.id,
             customerName: nameOf(j.customerId),
@@ -348,11 +352,13 @@ export async function GET() {
         customers: customers.map((c) => ({
           id: c.id,
           name: c.name,
-          phone: c.phone ?? "",
-          email: c.email ?? "",
-          address: [c.address, c.city, c.region].filter(Boolean).join(", "),
+          phone: technician ? "" : (c.phone ?? ""),
+          email: technician ? "" : (c.email ?? ""),
+          address: technician
+            ? ""
+            : [c.address, c.city, c.region].filter(Boolean).join(", "),
           advisor: c.advisor ?? self,
-          notes: c.notes ?? "",
+          notes: technician ? "" : (c.notes ?? ""),
           created: c.created?.toISOString() ?? "",
         })),
         vehicles,
