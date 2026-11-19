@@ -145,7 +145,12 @@ test("solo shop owner can create and inspect an RO without assigning separate st
 
   // Only media actually persisted on this RO should appear after refresh.
   await page.reload();
-  await expect(page.locator('.tech-media-grid img').first()).toBeVisible();
+  const evidence = page.locator('.tech-media-grid img').first();
+  await expect(evidence).toBeVisible();
+  await expect.poll(
+    () => evidence.evaluate((image: HTMLImageElement) => image.naturalWidth),
+    { timeout: 15_000 },
+  ).toBeGreaterThan(0);
 
   const inspection = await post("inspection.save", {
     jobId: ro.id,
