@@ -39,7 +39,8 @@ import {
   addAutomotiveRecommendationAction,
   removeAutomotiveRecommendationAction,
 } from "@/server/actions/automotive-pricing";
-import { createAppointmentAction } from "@/server/actions/appointments";
+import { createAppointmentAction, rescheduleAppointmentAction, setAppointmentStatusAction } from "@/server/actions/appointments";
+import { recordCorrespondenceAction } from "@/server/actions/correspondence";
 import {
   assignCustomerAction,
   assignJobAction,
@@ -365,6 +366,29 @@ export async function POST(request: Request) {
           jobId: id(payload.jobId),
           expectedVersion: id(payload.expectedVersion),
           description: value(payload.description),
+        });
+        break;
+      case "correspondence.log":
+        result = await recordCorrespondenceAction({
+          clientRequestId,
+          customerId: id(payload.customerId),
+          channel: value(payload.channel),
+          outcome: value(payload.outcome),
+          summary: value(payload.summary),
+        });
+        break;
+      case "appointment.reschedule":
+        result = await rescheduleAppointmentAction({
+          clientRequestId,
+          appointmentId: id(payload.appointmentId),
+          startsAt: value(payload.startsAt),
+        });
+        break;
+      case "appointment.status":
+        result = await setAppointmentStatusAction({
+          clientRequestId,
+          appointmentId: id(payload.appointmentId),
+          status: value(payload.status),
         });
         break;
       case "appointment.create":
