@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { approvedAutomotivePoints } from "../src/lib/approved-automotive-inspection";
 import {
-  approveEstimateSteps,
   drawEstimateSignature,
   signInWithPassword,
 } from "./helpers";
@@ -325,7 +324,19 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       timeout: 15_000,
     });
     checkpoint("portal opened; running line approval");
-    await approveEstimateSteps(customerPage);
+    // The current customer UI presents an explicit grouped repair decision.
+    // Its individual part/labor radios are intentionally hidden in a closed
+    // details panel, so choose the visible "Approve this repair" control.
+    for (let step = 0; step < 5; step++) {
+      for (const control of await customerPage
+        .getByRole("button", { name: "Approve this repair", exact: true })
+        .all())
+        await control.click();
+      const next = customerPage.getByRole("button", { name: /^Next: / });
+      if (!(await next.count())) break;
+      await expect(next).toBeEnabled();
+      await next.click();
+    }
     checkpoint("line approval reached signature");
     await customerPage
       .getByLabel("Your full name", { exact: true })
