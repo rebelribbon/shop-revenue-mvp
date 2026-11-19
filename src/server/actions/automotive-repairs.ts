@@ -26,7 +26,8 @@ export const saveAutomotiveRepairLineAction = defineShopAction({
   name: "saveAutomotiveRepairLine",
   technicianAccess: requireAssignedJob,
   input: jobVersion.extend({
-    lineId: z.uuid(),
+    // Frozen estimate line IDs are part-0 / labor-0, not database UUIDs.
+    lineId: z.string().regex(/^(?:part|labor)-[0-9]+$/).max(60),
     started: z.boolean(),
     done: z.boolean(),
     notes: z.string().max(2000),
