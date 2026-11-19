@@ -411,12 +411,18 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   await expect(page.getByText("Vehicle released. RO closed.")).toBeVisible();
 });
 
-test("owner manages team and business details inside the unified Automotive settings", async ({page}) => {
+test("owner manages team and business details inside the unified Automotive settings", async ({
+  page,
+}) => {
   await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/automotive?view=settings");
-  await expect(page.getByRole("heading", {name: "Team & permissions"})).toBeVisible();
-  await expect(page.getByRole("heading", {name: "Business profile"})).toBeVisible();
-  await page.getByRole("button", {name: "+ Invite employee"}).click();
+  await expect(
+    page.getByRole("heading", { name: "Team & permissions" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Business profile" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "+ Invite employee" }).click();
   await expect(page.locator('.modal input[name="email"]')).toBeVisible();
-  await expect(page).toHaveURL(/automotive\?view=settings/);
+  await expect(page).toHaveURL(/automotive\\?view=settings/);
 });
