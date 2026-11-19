@@ -6,6 +6,8 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
+import { inviteStaffAction, changeTeamAccessAction, removeStaffAction } from "@/server/actions/team";
+import { updateBusinessProfileAction } from "@/server/actions/business";
 import { prepareMediaUploadAction, finishMediaUploadAction, updateMediaAction } from "@/server/actions/job-media";
 import {
   addAutomotiveRecommendationAction,
@@ -109,6 +111,45 @@ export async function POST(request: Request) {
           ...(typeof payload.showCustomer === "boolean"
             ? { showCustomer: payload.showCustomer ? "true" : "false" }
             : {}),
+        });
+        break;
+      case "team.invite":
+        result = await inviteStaffAction({
+          clientRequestId,
+          name: value(payload.name),
+          email: value(payload.email),
+          phone: value(payload.phone),
+          role: value(payload.role),
+        });
+        break;
+      case "team.change":
+        result = await changeTeamAccessAction({
+          clientRequestId,
+          membershipId: id(payload.membershipId),
+          role: value(payload.role),
+        });
+        break;
+      case "team.remove":
+        result = await removeStaffAction({
+          clientRequestId,
+          membershipId: id(payload.membershipId),
+        });
+        break;
+      case "business.update":
+        result = await updateBusinessProfileAction({
+          clientRequestId,
+          legalName: value(payload.legalName),
+          dba: value(payload.dba),
+          phone: value(payload.phone),
+          addressLine1: value(payload.addressLine1),
+          city: value(payload.city),
+          region: value(payload.region),
+          postalCode: value(payload.postalCode),
+          timezone: value(payload.timezone),
+          taxPercent: Number(payload.taxPercent),
+          laborSellRate: Number(payload.laborSellRate),
+          laborCostRate: Number(payload.laborCostRate),
+          ...(payload.taxConfirmed === true ? { taxConfirmed: "on" } : {}),
         });
         break;
       case "customer.create":
