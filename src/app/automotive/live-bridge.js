@@ -416,6 +416,9 @@ roPayment=function(r){
     (issued&&due>0 ? '<button class="btn primary full" style="margin-top:16px" onclick="openModal(\'collect\',{id:\''+r.id+'\'})">Record received payment</button>' : '') +
     (issued&&!r.invoiceShared ? '<button class="btn full" style="margin-top:12px" onclick="sendInvoice(\''+r.id+'\')">Send invoice & payment link</button>' : '') +
     (issued&&records ? '<button class="btn full" style="margin-top:12px" onclick="openModal(\'receipt\',{id:\''+r.id+'\'})">View actual payment receipts</button>' : '') +
+    (issued&&due===0&&!r.released ?
+      '<button class="btn primary full" style="margin-top:12px" onclick="closeRo(\''+r.id+'\')">Release vehicle & close RO</button>' : '') +
+    (r.released ? '<div class="notice good" style="margin-top:14px">Vehicle released. RO closed.</div>' : '') +
     '</div></div><div class="section-head" style="margin-top:20px"><h3>Recorded payment history</h3>' +
     pill((r.paymentRows||[]).length + ' entry/entries',"blue") + '</div>' +
     (records||'<div class="notice">No payments have been recorded for this invoice.</div>');
