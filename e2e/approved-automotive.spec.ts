@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
+import { approvedAutomotivePoints } from "../src/lib/approved-automotive-inspection";
 import { signInWithPassword } from "./helpers";
 
 // The Automotive experience must use the approved shell with authenticated
@@ -69,4 +71,80 @@ test("Automotive creates a real customer and keeps it after reload", async ({
   await expect(page.getByRole("heading", { name: key })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: key })).toBeVisible();
+});
+
+test("solo shop owner can create and inspect an RO without assigning separate staff", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await signInWithPassword(page, "owner.b@shop-b.test");
+  await page.goto("/automotive");
+  const post = async (operation: string, payload: Record<string, unknown>) => {
+    const response = await page.request.post("/automotive/actions", {
+      data: { operation, payload, clientRequestId: randomUUID() },
+    });
+    const body = await response.json();
+    expect(body.ok, JSON.stringify(body)).toBe(true);
+    expect(response.status()).toBe(200);
+    return body.data;
+  };
+  const marker = randomUUID().slice(0, 12);
+  const customer = await post("customer.create", {
+    firstName: "Solo",
+    lastName: marker,
+    phone: "",
+    email: `solo-${marker}@example.test`,
+  });
+  const vehicle = await post("vehicle.create", {
+    customerId: customer.id,
+    year: 2019,
+    make: "Honda",
+    model: "Civic",
+    vin: "",
+    plate: "",
+    mileage: 88000,
+  });
+  const ro = await post("ro.checkin", {
+    customerId: customer.id,
+    vehicleId: vehicle.id,
+    mileageIn: 88000,
+    concerns: "Customer reports a vibration under braking.",
+    // Intentionally no separate advisor or technician.
+    technicianUserId: "",
+  });
+  expect(ro.id).toMatch(/^[0-9a-f-]{36}$/i);
+  await page.goto(`/automotive?ro=${ro.id}`);
+  await expect(page.locator("#app .app")).toBeVisible();
+  await expect(page.getByText("Customer reports a vibration under braking.").first()).toBeVisible();
+
+  const inspection = await post("inspection.save", {
+    jobId: ro.id,
+    submit: true,
+    items: JSON.stringify(
+      approvedAutomotivePoints.map((p) => ({
+        ...p,
+        status: "good",
+        note: "",
+        recommendedWork: "",
+        hoursHundredths: 100,
+        addedToJob: false,
+      })),
+    ),
+    assessment: {
+      diagnosis: JSON.stringify({
+        confirmed: "yes",
+        codes: "None",
+        symptoms: "Customer reports braking vibration.",
+        tests: "Road test and all approved 40 checks completed.",
+        cause: "No active issue observed during inspection.",
+        recommendation: "No repair recommended.",
+      }),
+      bay: "Bay 1",
+      vehiclePickedUp: true,
+    },
+  });
+  expect(inspection.complete).toBe(true);
+  await page.reload();
+  await expect(page.locator("#app .app")).toBeVisible();
+  await expect(page.getByText("Customer reports a vibration under braking.").first()).toBeVisible();
 });
