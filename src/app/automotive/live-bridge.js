@@ -141,7 +141,54 @@ submitInspectionComplete=async function(id){
     window.location.assign("/automotive?ro="+encodeURIComponent(id));
   }catch(e){alert(e.message||"Could not submit inspection.");}
 };
-sendEstimate = function(id){nativeRo(id);};
+const estimatesBeingSent=new Set();
+sendEstimate=async function(id){
+  const r=roBy(id);
+  if(!r || techView() || estimatesBeingSent.has(id))return;
+  if(!["estimate","approval"].includes(r.stage))
+    return alert("Only a priced draft or unsigned estimate can be sent.");
+  const c=data.customers.find(x=>x.id===r.customer);
+  if(!c?.email)return alert("Add a valid email to this customer's profile before sending the estimate.");
+  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(c.email))
+    return alert("Correct the customer's email address before sending.");
+  estimatesBeingSent.add(id);
+  try{
+    let estimateId=r.estimateId;
+    let path="";
+    if(r.stage==="estimate"){
+      if(!r.lines?.length)return alert("Price at least one recommendation before sending.");
+      const result=await liveWrite("estimate.freeze",{
+        jobId:id,expectedJobVersion:r.version,
+        taxBps:Math.round(Number(data.settings?.tax||0)*100),
+        supplementReason:"",
+        terms:"Each recommendation requires the customer's individual approval. Work begins only after signed authorization."
+      });
+      estimateId=result.id;
+      path=result.path || "";
+    }
+    if(!estimateId)throw new Error("The current estimate document could not be found.");
+    if(!path){
+      const prepared=await liveWrite("document.prepare",{id:estimateId,kind:"estimate"});
+      path=prepared.path || "";
+    }
+    if(!path)throw new Error("Unable to prepare the secure customer link.");
+    try{
+      await liveWrite("document.email",{id:estimateId,kind:"estimate",email:c.email});
+    }catch(err){
+      window.prompt("Estimate finalized but email was not accepted. Copy the secure link and send it manually: " +
+        (err.message || ""),new URL(path,window.location.origin).href);
+      return;
+    }
+    try{
+      await liveWrite("document.shared",{jobId:id,documentId:estimateId,kind:"estimate"});
+    }catch(err){
+      alert("The email was submitted, but the sharing-history update failed. Do not resend solely because of this warning.");
+    }
+    window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=documents");
+  }catch(err){
+    alert(err.message || "Could not finalize the estimate.");
+  }finally{estimatesBeingSent.delete(id);}
+};
 submitApproval = function(id){nativeRo(id);};
 completeWork = function(id){nativeRo(id);};
 sendInvoice = function(id){nativeRo(id);};
