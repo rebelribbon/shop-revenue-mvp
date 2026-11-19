@@ -55,9 +55,15 @@ export async function getInspection(tx: TenantTx, jobId: string) {
         eq(inspection.jobId, jobId),
       ),
     );
+  // Only new approved Automotive check-ins use the 8×5 checklist. Already
+  // persisted legacy inspection data is never silently remapped by index.
+  const job = row ? null : await getJob(tx, jobId);
+  const parsedJob = job ? jobInput.safeParse(job.data) : null;
+  const version =
+    parsedJob?.success ? parsedJob.data.inspectionTemplateVersion : null;
   const items: InspectionItem[] = row
     ? inspectionItems.parse(row.items)
-    : inspectionTemplate(await businessType(tx));
+    : inspectionTemplate(await businessType(tx), version);
   const count = (s: InspectionItem["status"]) =>
     items.filter((i) => i.status === s).length;
   const [assessmentRow] = await tx
