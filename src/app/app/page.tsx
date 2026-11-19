@@ -49,7 +49,10 @@ export default async function HomePage({
   const businessProfile = await withTenant(s.businessId, s.actor, (tx) =>
     getBusinessProfile(tx),
   );
-  if (isAutomotive(businessProfile?.businessType ?? "automotive"))
+  if (
+    process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
+    isAutomotive(businessProfile?.businessType ?? "automotive")
+  )
     redirect("/automotive");
   if (s.role === "technician") redirect("/app/tasks");
   const [
