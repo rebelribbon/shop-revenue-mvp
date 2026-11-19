@@ -115,7 +115,9 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   expect(ro.id).toMatch(/^[0-9a-f-]{36}$/i);
   await page.goto(`/automotive?ro=${ro.id}`);
   await expect(page.locator("#app .app")).toBeVisible();
-  await expect(page.getByText("Customer reports a vibration under braking.").first()).toBeVisible();
+  await expect(
+    page.getByText("Customer reports a vibration under braking.").first(),
+  ).toBeVisible();
 
   const inspection = await post("inspection.save", {
     jobId: ro.id,
@@ -146,5 +148,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   expect(inspection.complete).toBe(true);
   await page.reload();
   await expect(page.locator("#app .app")).toBeVisible();
-  await expect(page.getByText("Customer reports a vibration under braking.").first()).toBeVisible();
+  await expect(
+    page.getByText("Customer reports a vibration under braking.").first(),
+  ).toBeVisible();
 });
