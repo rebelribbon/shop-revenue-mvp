@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { customer, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
@@ -132,7 +132,7 @@ export async function GET() {
                         : undefined,
                 ),
               )
-              .orderBy(customer.displayName)
+              .orderBy(desc(customer.updatedAt))
               .limit(300);
       const allowedIds = customers.map((c) => c.id);
       const vehicles = !allowedIds.length
