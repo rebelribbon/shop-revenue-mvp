@@ -167,15 +167,74 @@ header = function () {
     .replace("● Automotive · Offline preview", "● Automotive · Live workspace")
     .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/, '<span class="pill blue">Signed in · ' + esc(role()) + '</span>');
 };
-// The source design's file pickers are local-only. Never let technicians choose
-// attachments that could be discarded before a real upload occurs.
-photoUploadControl = function (r, kind, checkId, label) {
-  return '<a class="tech-upload" href="/app/jobs?job=' + encodeURIComponent(r.id) +
-    '&tab=photos" aria-label="Open secure photo upload">📷 ' + esc(label || "Take or upload inspection photo") + '</a>';
+// Upload directly from the approved technician workspace, never through
+// a legacy page or a prototype data URL. The backend checks shop membership
+// and current technician assignment for each upload and update.
+const uploadAutomotiveMedia = async (event, roId, kind, checkId = "") => {
+  const input = event.target, file = input.files?.[0], r = roBy(roId);
+  if (!file || !r) return;
+  input.disabled = true;
+  try {
+    const photo = kind !== "video";
+    if (photo ? !file.type.startsWith("image/") : !file.type.startsWith("video/"))
+      throw new Error("Choose the correct photo or video format.");
+    const prep = await liveWrite("media.prepare", {
+      customerId: r.customer, contentType: file.type, byteSize: file.size
+    });
+    // Uploads use a short-lived server-signed storage URL.
+    const uploaded = await fetch(prep.uploadUrl, {
+      method: "PUT", headers: { "content-type": file.type }, body: file
+    });
+    if (!uploaded.ok) throw new Error("The file upload did not complete.");
+    const point = checkId && TECH_CHECKS.find(x => x.id === checkId);
+    await liveWrite("media.finish", {
+      fileId: prep.fileId, customerId: r.customer, jobId: roId,
+      vehicleId: r.vehicle || undefined,
+      tag: kind === "repair" ? "after" : photo ? "issue" : "other",
+      mediaPurpose: photo ? "general" : "walkaround",
+      caption: point?.name || (kind === "repair" ? "After repair" : photo ? "Inspection evidence" : "Technician walk-through")
+    });
+    window.location.assign("/automotive?ro=" + encodeURIComponent(roId) + "&tab=media");
+  } catch(e) {
+    input.disabled = false;
+    input.value = "";
+    alert(e.message || "Could not save this file to the RO.");
+  }
 };
-videoUploadControl = function (r) {
-  return '<a class="tech-upload video" href="/app/jobs?job=' + encodeURIComponent(r.id) +
-    '&tab=photos" aria-label="Open secure video upload">🎥 Record or upload customer video</a>';
+photoUploadControl = (r, kind, checkId, label) =>
+  '<label class="tech-upload"><span>📷 ' + esc(label || "Take or upload inspection photo") +
+  '</span><input type="file" accept="image/jpeg,image/png,image/webp,image/heic" ' +
+  'aria-label="' + esc(label || "Add photo") +
+  '" onchange="addTechPhoto(event,\'' + r.id + '\',\'' + esc(kind || "diagnosis") +
+  '\',\'' + esc(checkId || "") + '\')"></label>';
+videoUploadControl = (r) =>
+  '<label class="tech-upload video"><span>🎥 Record or choose customer video</span>' +
+  '<input type="file" accept="video/mp4,video/quicktime,video/webm" ' +
+  'aria-label="Record or upload video" onchange="addTechVideo(event,\'' + r.id + '\')"></label>';
+const originalRoMedia = roMedia;
+roMedia = function(r) {
+  return originalRoMedia(r).replace(
+    "Videos remain in this browser session only and are not sent or uploaded.",
+    "Photos and videos are saved securely to this repair order."
+  );
+};
+techMediaGallery = function(r,filter="all") {
+  const rows=(r.media||[]).filter(m => filter==="all" || m.category===filter || (filter==="inspection"&&m.category==="diagnosis"));
+  return rows.length
+    ? '<div class="tech-media-grid">' + rows.map(m =>
+       '<article class="tech-media-card"><div class="tech-media-visual">' +
+       (m.kind==="video" ? '<video controls playsinline preload="metadata" src="' + esc(m.fileUrl) + '"></video>'
+        : '<img alt="' + esc(m.caption || "Inspection photo") + '" src="' + esc(m.fileUrl) + '">') +
+       '</div><div class="tech-media-body"><div class="row"><b>' + esc(m.caption || m.name) +
+       '</b>' + pill(m.public ? "Customer-visible" : "Internal",m.public?"green":"") +
+       '</div><label>Caption<textarea aria-label="Media caption" rows="2" onblur="updateTechMedia(\'' +
+       r.id + '\',\'' + m.id + '\',\'caption\',this.value)">' + esc(m.caption || "") +
+       '</textarea></label><div class="tech-media-actions">' +
+       (manager() ? '<label class="tech-share-check"><input type="checkbox" ' + (m.public?"checked":"") +
+        ' onchange="updateTechMedia(\'' + r.id + '\',\'' + m.id + '\',\'public\',this.checked)"> Include in customer packet</label>' : '<span class="sub">Advisor reviews sharing</span>') +
+       '<button class="btn small" onclick="removeTechMedia(\'' + r.id + '\',\'' + m.id + '\')">Remove</button>' +
+       '</div></div></article>').join("") + '</div>'
+    : '<div class="tech-media-empty"><b>No media attached yet</b><p>Use the photo or video picker above. Uploaded evidence is retained on the RO.</p></div>';
 };
 roPayment = function (r) {
   if (techView()) return '<div class="notice">Payments are not visible to technicians.</div>';
@@ -215,10 +274,27 @@ settings = function(){
 saveDiagnosis=function(id){nativeRo(id);};
 setTechCheck=function(id){nativeRo(id);};
 saveTechCheckNote=function(id){nativeRo(id);};
-addTechPhoto=function(event,id){if(event)event.target.value="";nativeRo(id);};
-addTechVideo=function(event,id){if(event)event.target.value="";nativeRo(id);};
-updateTechMedia=function(id){nativeRo(id);};
-removeTechMedia=function(id){nativeRo(id);};
+addTechPhoto=(event,id,kind,checkId)=>uploadAutomotiveMedia(event,id,kind,checkId);
+addTechVideo=(event,id)=>uploadAutomotiveMedia(event,id,"video");
+updateTechMedia=async function(roId,mediaId,key,val){
+  const r=roBy(roId);
+  if(!r?.media?.some(m=>m.id===mediaId))return;
+  try {
+    await liveWrite("media.update",{
+      jobId:roId,mediaId,
+      ...(key==="caption" ? {caption:String(val)} : {}),
+      ...(key==="public" ? {showCustomer:!!val} : {})
+    });
+    window.location.assign("/automotive?ro="+encodeURIComponent(roId)+"&tab=media");
+  }catch(e){alert(e.message||"Could not update media.");}
+};
+removeTechMedia=async function(roId,mediaId){
+  if(!confirm("Remove this attachment from this repair order?"))return;
+  try{
+    await liveWrite("media.update",{jobId:roId,mediaId,remove:true});
+    window.location.assign("/automotive?ro="+encodeURIComponent(roId)+"&tab=media");
+  }catch(e){alert(e.message||"Could not remove media.");}
+};
 startRepair=function(id){nativeRo(id);};
 saveRepairNotes=function(id){nativeRo(id);};
 setRepairDone=function(id){nativeRo(id);};
