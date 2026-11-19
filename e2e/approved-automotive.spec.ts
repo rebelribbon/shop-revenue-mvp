@@ -284,7 +284,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   const share = await post("document.prepare", {
     id: frozen.id, kind: "estimate",
   });
-  expect(share.path).toMatch(/^\\/(?:estimate|packet)\\//);
+  expect(share.path).toMatch(new RegExp("^/(estimate|packet)/"));
 
   const customerContext = await browser.newContext({ baseURL: baseURL! });
   try {
