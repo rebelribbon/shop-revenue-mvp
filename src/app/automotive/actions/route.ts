@@ -7,6 +7,8 @@ import {
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
 import { freezeEstimateAction } from "@/server/actions/estimates";
+import { issueInvoiceAction, recordInvoicePaymentAction } from "@/server/actions/invoices";
+import { recordJobProgressAction } from "@/server/actions/job-workflow";
 import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
 import { recordJobSharingAction } from "@/server/actions/job-workflow";
 import { saveInspectionAction } from "@/server/actions/inspections";
@@ -73,6 +75,7 @@ export async function POST(request: Request) {
   // actions enforce assigned-customer and assigned-RO access server-side.
   const technicianOperation =
     raw.operation === "inspection.save" ||
+    raw.operation === "work.progress" ||
     raw.operation === "media.prepare" ||
     raw.operation === "media.finish" ||
     raw.operation === "media.update";
@@ -218,6 +221,33 @@ export async function POST(request: Request) {
           jobId: id(payload.jobId),
           documentId: id(payload.documentId),
           kind: value(payload.kind),
+        });
+        break;
+      case "work.progress":
+        result = await recordJobProgressAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          versionId: id(payload.versionId),
+          expectedStatus: value(payload.expectedStatus),
+          status: value(payload.status),
+          note: value(payload.note),
+        });
+        break;
+      case "invoice.issue":
+        result = await issueInvoiceAction({
+          clientRequestId,
+          versionId: id(payload.versionId),
+          dueOn: value(payload.dueOn),
+          terms: value(payload.terms),
+        });
+        break;
+      case "payment.record":
+        result = await recordInvoicePaymentAction({
+          clientRequestId,
+          invoiceId: id(payload.invoiceId),
+          amountCents: Number(payload.amountCents),
+          method: value(payload.method),
+          reference: value(payload.reference),
         });
         break;
       case "customer.create":
