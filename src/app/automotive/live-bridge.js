@@ -99,7 +99,7 @@ assignRo=async(form,id)=>{
 const originalOpenModal=openModal;
 openModal=function(type,extra){
   if(type==="role") return alert("Employee access is enforced by sign-in. Use the employee's own account to see their workspace.");
-  if(type==="staff"||type==="editStaff") return nativePage("/app/settings/team");
+  if(type==="staff"||type==="editStaff") return originalOpenModal(type,extra);
   if(type==="collect"||type==="receipt") return nativeWarning(extra && extra.id || ui.selectedRo);
   return originalOpenModal(type,extra);
 };
@@ -265,10 +265,81 @@ reports = function(){
     '</div><section class="card card-pad"><h2>Shop reporting</h2><p class="sub">View sales, costs, profit, and actual payments in the secure reports system.</p><p style="margin-top:16px"><a class="btn primary" href="/app/reports">Open complete reports</a></p></section>';
 };
 settings = function(){
-  const name=esc(data.business);
-  return pageHead("Settings","Manage your real team, business, and payment setup.")+
-  '<div class="grid two"><section class="card card-pad"><h2>'+name+'</h2><p class="sub">Automotive Repair · authenticated account</p><div class="stack" style="margin-top:18px"><a class="btn full" href="/app/settings/team">Team & permissions</a><a class="btn full" href="/app/settings/business">Business profile</a><a class="btn full" href="/app/settings/billing">Subscription & billing</a><a class="btn full" href="/app/settings">Other settings</a></div></section><section class="card card-pad"><h2>Signed in</h2><p class="sub">'+esc(staff(data.actor).name)+' · '+esc(data.currentRole)+'</p><p style="margin-top:18px"><a class="btn" href="/auth/sign-out">Sign out</a></p><div class="notice" style="margin-top:18px">Access is assigned by the shop owner or manager. Employee role switching is disabled in the live application.</div></section></div>';
+  const a=data.settings || {}, members=data.teamMembers || [];
+  const teamRows=members.map(m =>
+    '<div class="item"><span class="iconbox">👤</span><div class="item-main"><b>' + esc(m.name) +
+    '</b><div class="secondarytext">' + esc(m.email || m.phone || "No contact") +
+    '</div><div class="secondarytext">' + esc(m.role) + ' · ' + esc(m.status) + '</div></div>' +
+    (m.role === "owner" ? pill("Owner","blue") : '<button class="btn small" onclick="openModal(\'editStaff\',{id:\'' + m.id + '\'})">Manage</button>') +
+    '</div>').join("");
+  const team=manager() ? '<section class="card card-pad"><div class="section-head"><div><h2>Team & permissions</h2><p class="sub">Invite employees and control access without leaving this workspace.</p></div><button class="btn primary" onclick="openModal(\'staff\')">+ Invite employee</button></div>' +
+    (teamRows || '<div class="notice">Only you are on this shop. You can manage every step yourself.</div>') + '</section>' :
+    '<section class="card card-pad"><h2>My access</h2><p class="sub">Your shop owner manages employee permissions.</p></section>';
+  const profile = role() === "owner" ?
+    '<form class="formgrid" onsubmit="event.preventDefault();saveBusiness(this)">' +
+    '<label class="span">Business legal name<input name="legalName" maxlength="200" required value="' + esc(a.legalName || data.business) + '"></label>' +
+    '<label class="span">Doing business as<input name="dba" maxlength="200" value="' + esc(a.dba || "") + '"></label>' +
+    '<label>Phone<input name="phone" value="' + esc(a.phone || "") + '"></label>' +
+    '<label>Time zone<input name="timezone" required value="' + esc(a.timezone || "America/Chicago") + '"></label>' +
+    '<label class="span">Street address<input name="addressLine1" value="' + esc(a.addressLine1 || "") + '"></label>' +
+    '<label>City<input name="city" value="' + esc(a.city || "") + '"></label>' +
+    '<label>State<input name="region" value="' + esc(a.region || "") + '"></label>' +
+    '<label>Postal code<input name="postalCode" value="' + esc(a.postalCode || "") + '"></label>' +
+    '<label>Sales tax (%)<input name="taxPercent" type="number" min="0" max="20" step="0.01" value="' + Number(a.tax || 0) + '"></label>' +
+    '<label>Labor selling rate ($/hour)<input name="laborSellRate" type="number" min="0" step="0.01" value="' + Number(a.laborSellRate || 0) + '"></label>' +
+    '<label>Labor cost rate ($/hour)<input name="laborCostRate" type="number" min="0" step="0.01" value="' + Number(a.laborCostRate || 0) + '"></label>' +
+    '<label class="span"><input name="taxConfirmed" type="checkbox" value="on"> I confirm this is the tax rate I chose for my business.</label>' +
+    '<div class="span form-actions"><button class="btn primary">Save business settings</button></div></form>' :
+    '<p class="sub">' + esc(data.business) + ' · Automotive Repair</p><p class="secondarytext">Only the owner can change tax or company details.</p>';
+  return pageHead("Settings","Your real team, permissions and business details.") +
+    '<div class="stack">' + team +
+    '<section class="card card-pad"><div class="section-head"><h2>Business profile</h2>' + pill("Automotive Repair","blue") + '</div>' + profile + '</section>' +
+    '<section class="card card-pad"><h2>Account & security</h2><p class="sub">Signed in as ' + esc(staff(data.actor).name) + ' · ' + esc(data.currentRole) + '. Role permissions are enforced by your account.</p><p style="margin-top:16px"><a class="btn" href="/auth/sign-out">Sign out</a></p></section></div>';
 };
+const originalRenderModal = renderModal;
+renderModal = function(){
+  const m=ui.modal;
+  if(!m || (m.type !== "staff" && m.type !== "editStaff")) return originalRenderModal();
+  if(!manager())return "";
+  const member=m.id ? (data.teamMembers || []).find(x=>x.id===m.id) : null;
+  if(m.id && !member)return "";
+  if(member?.role === "owner")return modalWrap("Shop owner","The owner account has every role and cannot be changed here.");
+  const roleOptions=[["advisor","Service advisor"],["technician","Technician"],["manager","Manager"]].map(([key,label]) =>
+    '<option value="' + key + '" ' + ((member?.role || "advisor")===key?"selected":"") + '>' + label + '</option>').join("");
+  const form='<form class="formgrid" onsubmit="event.preventDefault();saveStaff(this,' + (m.id?"\'"+m.id+"\'":"null") + ')">' +
+    (member ? '<div class="span notice">Change access for ' + esc(member.name) + '. Assignments and open tasks follow the updated role.</div>' :
+    '<label class="span">Employee name<input name="name" required maxlength="100" placeholder="Name"></label>' +
+    '<label>Email for secure invitation<input name="email" type="email" placeholder="employee@shop.com"></label>' +
+    '<label>Mobile (alternative)<input name="phone" placeholder="(210) 555-0100"></label>') +
+    '<label class="span">Role<select name="role">' + roleOptions + '</select></label>' +
+    '<div class="span form-actions"><button type="button" class="btn" onclick="closeModal()">Cancel</button>' +
+    (member ? '<button type="button" class="btn danger" onclick="removeShopMember(\'' + m.id + '\')">Remove access</button>' : "") +
+    '<button class="btn primary">' + (member ? "Save permissions" : "Send invitation") + '</button></div></form>';
+  return modalWrap(member ? "Manage employee" : "Invite an employee",form);
+};
+saveStaff=async function(form,id){
+  const f=formData(form);
+  try {
+    if(id)await liveWrite("team.change",{membershipId:id,role:String(f.role)});
+    else await liveWrite("team.invite",{name:String(f.name || ""),email:String(f.email || ""),phone:String(f.phone || ""),role:String(f.role)==="advisor"?"staff":String(f.role)});
+    window.location.assign("/automotive?view=settings");
+  }catch(e){alert(e.message || "Team change was not saved.");}
+};
+const removeShopMember=async(id)=>{
+  if(!confirm("Remove this employee login and access from the shop?"))return;
+  try {await liveWrite("team.remove",{membershipId:id});window.location.assign("/automotive?view=settings");}
+  catch(e){alert(e.message || "Could not remove this user.");}
+};
+saveBusiness=async function(form){
+  const f=formData(form);
+  try{await liveWrite("business.update",{legalName:String(f.legalName || ""),dba:String(f.dba || ""),phone:String(f.phone || ""),
+    addressLine1:String(f.addressLine1 || ""),city:String(f.city || ""),region:String(f.region || ""),postalCode:String(f.postalCode || ""),
+    timezone:String(f.timezone || "America/Chicago"),taxPercent:Number(f.taxPercent),
+    laborSellRate:Number(f.laborSellRate),laborCostRate:Number(f.laborCostRate),taxConfirmed:!!f.taxConfirmed});
+    window.location.assign("/automotive?view=settings");
+  }catch(e){alert(e.message || "Business settings were not saved.");}
+};
+if(initialView?.get("view")==="settings")ui.page="settings";
 // Technician writes must use the actual tenant-guarded inspection, evidence,
 // and repair actions. No local-only diagnosis or photo/video upload is accepted.
 saveDiagnosis=function(id){nativeRo(id);};
