@@ -97,66 +97,66 @@ export async function GET() {
             .filter((id): id is string => !!id),
         ),
       ];
-      const customers = technician && !assignedCustomers.length
-        ? []
-        : await tx
-            .select({
-              id: customer.id,
-              name: customer.displayName,
-              phone: customer.phoneE164,
-              email: customer.email,
-              address: customer.addressLine1,
-              city: customer.city,
-              region: customer.region,
-              notes: customer.notes,
-              advisor: customer.assignedUserId,
-              created: customer.createdAt,
-            })
-            .from(customer)
-            .where(
-              and(
-                eq(customer.businessId, session.businessId),
-                eq(customer.status, "active"),
-                technician
-                  ? inArray(customer.id, assignedCustomers)
-                  : management
-                    ? undefined
-                    : actorId
-                      ? or(
-                          eq(customer.assignedUserId, actorId),
-                          assignedCustomers.length
-                            ? inArray(customer.id, assignedCustomers)
-                            : undefined,
-                        )
-                      : undefined,
-              ),
-            )
-            .orderBy(customer.displayName)
-            .limit(300);
-      const allowedIds = customers.map((c) => c.id);
-      const vehicles =
-        !allowedIds.length
+      const customers =
+        technician && !assignedCustomers.length
           ? []
           : await tx
               .select({
-                id: vehicle.id,
-                customer: vehicle.customerId,
-                year: vehicle.year,
-                make: vehicle.make,
-                model: vehicle.model,
-                vin: vehicle.vin,
-                plate: vehicle.plate,
-                mileage: vehicle.mileage,
+                id: customer.id,
+                name: customer.displayName,
+                phone: customer.phoneE164,
+                email: customer.email,
+                address: customer.addressLine1,
+                city: customer.city,
+                region: customer.region,
+                notes: customer.notes,
+                advisor: customer.assignedUserId,
+                created: customer.createdAt,
               })
-              .from(vehicle)
+              .from(customer)
               .where(
                 and(
-                  eq(vehicle.businessId, session.businessId),
-                  eq(vehicle.status, "active"),
-                  inArray(vehicle.customerId, allowedIds),
+                  eq(customer.businessId, session.businessId),
+                  eq(customer.status, "active"),
+                  technician
+                    ? inArray(customer.id, assignedCustomers)
+                    : management
+                      ? undefined
+                      : actorId
+                        ? or(
+                            eq(customer.assignedUserId, actorId),
+                            assignedCustomers.length
+                              ? inArray(customer.id, assignedCustomers)
+                              : undefined,
+                          )
+                        : undefined,
                 ),
               )
-              .limit(600);
+              .orderBy(customer.displayName)
+              .limit(300);
+      const allowedIds = customers.map((c) => c.id);
+      const vehicles = !allowedIds.length
+        ? []
+        : await tx
+            .select({
+              id: vehicle.id,
+              customer: vehicle.customerId,
+              year: vehicle.year,
+              make: vehicle.make,
+              model: vehicle.model,
+              vin: vehicle.vin,
+              plate: vehicle.plate,
+              mileage: vehicle.mileage,
+            })
+            .from(vehicle)
+            .where(
+              and(
+                eq(vehicle.businessId, session.businessId),
+                eq(vehicle.status, "active"),
+                inArray(vehicle.customerId, allowedIds),
+              ),
+            )
+            .limit(600);
       const now = new Date();
       const start = new Date(now);
       start.setDate(start.getDate() - 30);
