@@ -5918,7 +5918,7 @@ main.customer-index-page {
   font-size: .85rem;
   list-style: none;
   width: max-content;
-  min-height: 38px;
+  min-height: 44px;
   display: flex;
   align-items: center;
 }
@@ -6702,3 +6702,35 @@ main.customer-index-page {
 .customer-contact-actions-compact .customer-contact-buttons { display: flex; flex-wrap: wrap; gap: 8px; max-width: none; }
 .customer-contact-actions-compact .contact-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0; margin: 0; }
 .customer-contact-actions-compact .contact-icon-button svg { width: 18px; height: 18px; }
+
+/* The customer page must be genuinely single-column on a phone. These
+   descendants used to retain desktop min-content widths and spill past main. */
+@media (max-width: 600px) {
+  .customer-hero-main,
+  .customer-hero-identity,
+  .customer-profile-layout,
+  .customer-profile-main,
+  .customer-profile-side,
+  .customer-overview-grid,
+  .customer-overview-card,
+  .customer-work-overview,
+  .customer-job-history,
+  .customer-contact-summary,
+  .customer-record-tabs {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .customer-hero-identity {
+    flex: 1 1 0;
+    overflow-wrap: anywhere;
+  }
+  .customer-profile-main .record-work-grid,
+  .customer-work-overview .record-work-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .customer-profile-main .card,
+  .customer-profile-side .card {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
