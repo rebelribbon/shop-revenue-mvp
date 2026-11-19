@@ -430,5 +430,5 @@ test("owner manages team and business details inside the unified Automotive sett
   ).toBeVisible();
   await page.getByRole("button", { name: "+ Invite employee" }).click();
   await expect(page.locator('.modal input[name="email"]')).toBeVisible();
-  await expect(page).toHaveURL(/automotive\\?view=settings/);
+  await expect(page).toHaveURL(/automotive[?]view=settings/);
 });
