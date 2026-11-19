@@ -73,9 +73,16 @@ jobs:
         run: pnpm exec playwright test e2e/ro-handoffs.spec.ts e2e/technician-role.spec.ts e2e/tech-board.spec.ts --max-failures=1 --reporter=list,github
       - name: Playwright (phone 390x844 and desktop)
         run: |
-          pnpm e2e --project=phone --max-failures=0 --grep-invert @mfa --reporter=list,github
+          # Camera/VIN tests sign in using a shared seeded shop account. Run
+          # them first so this disposable stack's authentication throttle is
+          # not exhausted by the earlier broad suite.
+          pnpm exec playwright test e2e/vin-scan.spec.ts --project=phone --reporter=list,github
           pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
-          pnpm e2e --project=desktop --max-failures=0 --grep-invert @mfa --reporter=list,github
+          pnpm e2e --project=phone --max-failures=0 --grep-invert 'Scan a VIN barcode|No scan button|@mfa' --reporter=list,github
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm exec playwright test e2e/vin-scan.spec.ts --project=desktop --reporter=list,github
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm e2e --project=desktop --max-failures=0 --grep-invert 'Scan a VIN barcode|No scan button|@mfa' --reporter=list,github
       - name: Job form development-mode smoke
         run: |
           pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
