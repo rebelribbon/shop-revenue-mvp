@@ -57,10 +57,7 @@ test("Automotive creates a real customer and keeps it after reload", async ({
       response.url().endsWith("/automotive/actions") &&
       response.request().method() === "POST",
   );
-  await modal
-    .getByRole("button", { name: /Save|Add customer/i })
-    .last()
-    .click();
+  await modal.getByRole("button", { name: "Create customer" }).click();
   const response = await responsePromise;
   expect(response.status()).toBe(200);
   await expect(page).toHaveURL(/\/automotive\?customer=[0-9a-f-]{36}/, {
