@@ -9,7 +9,7 @@ import { listTasks } from "@/domain/tasks";
 import { listVisitsRange } from "@/domain/appointments";
 import { listTechs, listAdvisors, jobAssignees } from "@/domain/assignments";
 import { getBusinessProfile } from "@/domain/business-profile";
-import { canManageTeam } from "@/domain/membership";
+import { canManageTeam, listTeam } from "@/domain/membership";
 import { loadJobWorkflows } from "@/domain/job-workflow";
 import { getInspection } from "@/domain/inspections";
 import { listMedia } from "@/domain/job-media";
@@ -77,11 +77,12 @@ export async function GET() {
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
       const technician = session.role === "technician";
       const management = session.role === "owner" || (await canManageTeam(tx));
-      const [jobs, taskRows, technicians, advisors] = await Promise.all([
+      const [jobs, taskRows, technicians, advisors, teamRows] = await Promise.all([
         listJobs(tx),
         listTasks(tx),
         listTechs(tx),
         listAdvisors(tx),
+        management ? listTeam(tx) : Promise.resolve([]),
       ]);
       const jobIds = jobs.map((j) => j.id);
       const [flows, techMap, mediaRows] = await Promise.all([
@@ -389,6 +390,15 @@ export async function GET() {
         isLive: true,
         settings: {
           tax: (profile?.taxRateBps ?? 0) / 100,
+          legalName: profile?.legalName ?? "",
+          dba: profile?.dba ?? "",
+          addressLine1: profile?.addressLine1 ?? "",
+          city: profile?.city ?? "",
+          region: profile?.region ?? "",
+          postalCode: profile?.postalCode ?? "",
+          timezone: profile?.timezone ?? "America/Chicago",
+          laborSellRate: (profile?.laborSellRateCents ?? 0) / 100,
+          laborCostRate: (profile?.laborCostRateCents ?? 0) / 100,
           address: [profile?.addressLine1, profile?.city, profile?.region]
             .filter(Boolean)
             .join(", "),
@@ -397,6 +407,15 @@ export async function GET() {
           currency: "USD",
         },
         staff: [...team.values()],
+        teamMembers: teamRows.map((m) => ({
+          id: m.id,
+          userId: m.userId,
+          name: m.displayName || m.inviteName || "Team member",
+          email: m.email || m.inviteEmail || "",
+          phone: m.phoneE164 || m.invitePhoneE164 || "",
+          role: m.role === "owner" ? "owner" : m.role === "technician" ? "technician" : m.canManageTeam ? "manager" : "advisor",
+          status: m.status,
+        })),
         customers: customers.map((c) => ({
           id: c.id,
           name: c.name,
