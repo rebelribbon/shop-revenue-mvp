@@ -48,7 +48,7 @@ test("Automotive creates a real customer and keeps it after reload", async ({
   await page.getByRole("button", { name: "+ Add customer" }).click();
   const modal = page.locator(".modal");
   await modal.locator('input[name="name"]').fill(key);
-  await modal.locator('input[name="phone"]').fill("+12105550101");
+  // Both device projects write to the same shop: use distinct phone numbers\n  // so customer duplicate protection is not mistaken for a UI failure.\n  const suffix = String(Date.now() % 10000).padStart(4, "0");\n  await modal.locator('input[name="phone"]').fill(`+1210555${suffix}`);
   await modal
     .locator('input[name="email"]')
     .fill(`unified-${Date.now()}@example.test`);
