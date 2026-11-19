@@ -9,6 +9,7 @@ import { checkInAction } from "@/server/actions/check-in";
 import { freezeEstimateAction } from "@/server/actions/estimates";
 import { issueInvoiceAction, recordInvoicePaymentAction } from "@/server/actions/invoices";
 import { recordJobProgressAction } from "@/server/actions/job-workflow";
+import { releaseAutomotiveRoAction } from "@/server/actions/automotive-release";
 import { saveAutomotiveRepairLineAction, saveAutomotiveRepairQaAction, finishAutomotiveRepairAction } from "@/server/actions/automotive-repairs";
 import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
 import { recordJobSharingAction } from "@/server/actions/job-workflow";
@@ -279,6 +280,12 @@ export async function POST(request: Request) {
           amountCents: Number(payload.amountCents),
           method: value(payload.method),
           reference: value(payload.reference),
+        });
+        break;
+      case "ro.release":
+        result = await releaseAutomotiveRoAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
         });
         break;
       case "customer.create":
