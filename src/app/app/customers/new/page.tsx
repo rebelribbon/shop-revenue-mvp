@@ -48,7 +48,13 @@ export default async function NewCustomerPage() {
               <select
                 id="new-customer-advisor"
                 name="assignedUserId"
-                defaultValue=""
+                defaultValue={
+                  advisors.some((a) => a.userId === s.actor.id)
+                    ? s.actor.id
+                    : advisors.length === 1
+                      ? advisors[0].userId
+                      : ""
+                }
                 required
               >
                 <option value="" disabled>
