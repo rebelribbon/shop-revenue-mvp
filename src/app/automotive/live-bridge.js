@@ -2,14 +2,6 @@
 
 /* This adapter is the only mutable surface of the approved HTML shell.
    The live app never uses the prototype's browser storage or simulated actions. */
-const nativeRo = (id) => {
-  window.location.assign("/app/jobs?job=" + encodeURIComponent(id));
-};
-const nativePage = (path) => window.location.assign(path);
-const nativeWarning = (id) => {
-  if (id) nativeRo(id);
-  else window.alert("This operation is available in the secure shop workspace.");
-};
 const liveWrite = async (operation, payload) => {
   const r = await fetch("/automotive/actions", {
     method: "POST",
@@ -71,16 +63,32 @@ createRo = async (form) => {
   }catch(e){alert(e.message || "Check-in failed. No RO was created in this browser.");}
 };
 saveAppointment = async(form,id) => {
-  if (id) return nativePage("/app/schedule");
-  const f=formData(form);
+  const f=formData(form),when=String(f.date||"")+"T"+String(f.time||"09:00");
+  if(!String(f.date||"") || !String(f.time||""))return alert("Choose a date and time.");
   try{
-    await liveWrite("appointment.create",{
-      customerId:String(f.customer || ""),vehicleId:String(f.vehicle || ""),
-      startsAt:String(f.date || "")+"T"+String(f.time || "09:00"),
-      reason:String(f.purpose || ""),notes:""
-    });
+    if(id){
+      const ap=(data.appointments||[]).find(x=>x.id===id);
+      if(!ap)throw new Error("Appointment not found. Reload.");
+      if(String(f.customer||"")!==ap.customer || String(f.vehicle||"")!==ap.vehicle ||
+        String(f.purpose||"")!==String(ap.purpose||""))
+        throw new Error("To change the customer, vehicle or reason, cancel this appointment and schedule a new one.");
+      if(String(f.date)!==ap.date || String(f.time)!==ap.time)
+        await liveWrite("appointment.reschedule",{appointmentId:id,startsAt:when});
+      const requested=String(f.status||"Scheduled");
+      const next=requested==="Canceled"?"cancelled":requested==="Scheduled"||requested==="Confirmed"?"scheduled":null;
+      if(requested==="Arrived" && ap.status!=="Arrived")
+        throw new Error("Arrival is recorded when you check the vehicle in and create its repair order.");
+      if(!next && requested!=="Arrived")throw new Error("Unsupported appointment status.");
+      if(next && !(next==="scheduled" && ["Scheduled","Confirmed","scheduled"].includes(ap.status)))
+        await liveWrite("appointment.status",{appointmentId:id,status:next});
+    }else{
+      await liveWrite("appointment.create",{
+        customerId:String(f.customer||""),vehicleId:String(f.vehicle||""),
+        startsAt:when,reason:String(f.purpose||""),notes:""
+      });
+    }
     window.location.assign("/automotive?view=appointments");
-  }catch(e){alert(e.message || "Appointment not scheduled.");}
+  }catch(e){alert(e.message||"Appointment was not saved.");}
 };
 assignCustomer = async(form,id)=>{
   const f=formData(form);
@@ -189,7 +197,13 @@ sendEstimate=async function(id){
     alert(err.message || "Could not finalize the estimate.");
   }finally{estimatesBeingSent.delete(id);}
 };
-submitApproval = function(id){nativeRo(id);};
+submitApproval=function(id){
+  const r=roBy(id);
+  if(!r || techView())return;
+  ui.page="jobs";ui.selectedRo=id;ui.tab="documents";render();
+  if(!r.authorized)
+    alert("The customer must approve or decline every line and sign the secure estimate link. Shop staff cannot authorize work for them.");
+};
 // Completion is verified and saved below using repair.finish.
 const invoicesBeingSent=new Set();
 sendInvoice=async function(id){
@@ -298,12 +312,38 @@ removeLine = async function(roId,lineId) {
   } catch(e) { alert(e.message || "Recommendation was not removed."); }
 };
 setApproval = function(){alert("Use the actual secure customer approval link sent from the RO.");};
-saveContact = function(form,id){nativePage("/app/customers/" + encodeURIComponent(id));};
-saveStaff = function(){nativePage("/app/settings/team");};
-saveBusiness = function(){nativePage("/app/settings/business");};
+// Keep the approved contact-log modal but use outcomes the server recognizes.
+contactResultOptions=function(channel){
+  const options={
+    Call:[["reached","Connected"],["left_message","Left voicemail"],["no_answer","No answer"],["received","Customer returned call"]],
+    Text:[["sent","Text sent"],["received","Customer replied"]],
+    Email:[["sent","Email sent"],["received","Customer replied"]],
+    "In person":[["completed","Spoke with customer"],["received","Customer contacted us"]]
+  };
+  return (options[channel]||options["In person"]).map(([value,label])=>
+    '<option value="'+value+'">'+esc(label)+'</option>').join("");
+};
+saveContact=async function(form,id){
+  const f=formData(form);
+  if(!id || !data.customers.some(c=>c.id===id))
+    return alert("Choose a customer before recording contact.");
+  const channel=String(f.method)==="In person"?"other":String(f.method||"").toLowerCase();
+  const summary=String(f.summary||"").trim();
+  if(!summary)return alert("Enter what happened during this contact.");
+  try{
+    await liveWrite("correspondence.log",{customerId:id,channel,
+      outcome:String(f.outcome||""),summary});
+    window.location.assign("/automotive?customer="+encodeURIComponent(id));
+  }catch(e){alert(e.message||"Contact was not saved.");}
+};
+
 resetDemo = function(){alert("Live shop records cannot be reset.");};
-exportData = function(){nativePage("/app/reports");};
-launchCustomerDemo = function(){nativePage("/app/jobs");};
+exportData=function(){ui.page="reports";ui.selectedRo=null;render();};
+launchCustomerDemo=function(){
+  const ro=(data.ros||[]).find(x=>!!x.estimateId);
+  if(ro)openCustomerPreview(ro.id);
+  else alert("There are no finalized customer estimates to preview yet.");
+};
 openCustomerPreview = function(id){
   const r=roBy(id);
   if(!r || techView())return;
@@ -480,7 +520,7 @@ reports = function(){
       stat("Open tasks",activeTasks().length,"Workflow-generated")+
       stat("Payments recorded",manager()?money((m.paidCents||0)/100):"Restricted","Based on actual ledger entries")+
       stat("Outstanding",manager()?money((m.outstandingCents||0)/100):"Restricted","Payments not yet collected")+
-    '</div><section class="card card-pad"><h2>Shop reporting</h2><p class="sub">View sales, costs, profit, and actual payments in the secure reports system.</p><p style="margin-top:16px"><a class="btn primary" href="/app/reports">Open complete reports</a></p></section>';
+    '</div><section class="card card-pad"><h2>Shop reporting</h2><p class="sub">View sales, costs, profit, and actual payments in the secure reports system.</p><p style="margin-top:16px">These totals are based on the current, permission-scoped shop data. Owner-only financial reporting will be available here.</p></section>';
 };
 settings = function(){
   const a=data.settings || {}, members=data.teamMembers || [];
