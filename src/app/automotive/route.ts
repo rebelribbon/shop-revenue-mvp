@@ -12,6 +12,7 @@ import { getBusinessProfile } from "@/domain/business-profile";
 import { canManageTeam, listTeam } from "@/domain/membership";
 import { loadJobWorkflows } from "@/domain/job-workflow";
 import { getInspection } from "@/domain/inspections";
+import { getTechnicianRepairs } from "@/domain/technician-repairs";
 import { listMedia } from "@/domain/job-media";
 import { isAutomotive } from "@/lib/business-types";
 import { jobReference } from "@/lib/job-reference";
@@ -86,10 +87,11 @@ export async function GET() {
           management ? listTeam(tx) : Promise.resolve([]),
         ]);
       const jobIds = jobs.map((j) => j.id);
-      const [flows, techMap, mediaRows] = await Promise.all([
+      const [flows, techMap, mediaRows, repairRows] = await Promise.all([
         loadJobWorkflows(tx, jobIds),
         jobAssignees(tx, jobIds),
         listMedia(tx, {}),
+        getTechnicianRepairs(tx, jobIds),
       ]);
       const parsed = jobs
         .map((j) => ({ row: j, input: jobInput.safeParse(j.data) }))
@@ -212,6 +214,7 @@ export async function GET() {
             }
           }
           const checklist = inspection?.items ?? [];
+          const repair = repairRows.get(row.id);
           const checks = Object.fromEntries(
             checklist.map((item) => [
               item.key,
@@ -367,6 +370,9 @@ export async function GET() {
             techData: {
               media,
               checks,
+              repair: repair?.lines ?? {},
+              qualityCheck: repair?.qualityCheck ?? false,
+              postRepairNotes: repair?.postRepairNotes ?? "",
               diagnosis: {
                 ...diagnosis,
                 bay: assessment.bay,
