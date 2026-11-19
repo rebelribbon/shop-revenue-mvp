@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { approvedAutomotivePoints } from "../src/lib/approved-automotive-inspection";
-import {
-  drawEstimateSignature,
-  signInWithPassword,
-} from "./helpers";
+import { drawEstimateSignature, signInWithPassword } from "./helpers";
 
 // The Automotive experience must use the approved shell with authenticated
 // shop data, not the browser-only demo / fake employee switcher.
