@@ -6,9 +6,17 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
-import { inviteStaffAction, changeTeamAccessAction, removeStaffAction } from "@/server/actions/team";
+import {
+  inviteStaffAction,
+  changeTeamAccessAction,
+  removeStaffAction,
+} from "@/server/actions/team";
 import { updateBusinessProfileAction } from "@/server/actions/business";
-import { prepareMediaUploadAction, finishMediaUploadAction, updateMediaAction } from "@/server/actions/job-media";
+import {
+  prepareMediaUploadAction,
+  finishMediaUploadAction,
+  updateMediaAction,
+} from "@/server/actions/job-media";
 import {
   addAutomotiveRecommendationAction,
   removeAutomotiveRecommendationAction,
@@ -32,10 +40,7 @@ const numberOrNull = (v: unknown) =>
 
 export async function POST(request: Request) {
   const state = await getSessionState();
-  if (
-    state.kind !== "shop" ||
-    state.session.actor.type !== "user"
-  )
+  if (state.kind !== "shop" || state.session.actor.type !== "user")
     return NextResponse.json(
       {
         ok: false,
@@ -63,10 +68,15 @@ export async function POST(request: Request) {
   // Technicians can upload only media for assigned work. The underlying
   // actions enforce assigned-customer and assigned-RO access server-side.
   const technicianOperation =
-    raw.operation === "media.prepare" || raw.operation === "media.finish" || raw.operation === "media.update";
+    raw.operation === "media.prepare" ||
+    raw.operation === "media.finish" ||
+    raw.operation === "media.update";
   if (state.session.role === "technician" && !technicianOperation)
     return NextResponse.json(
-      { ok: false, error: { message: "This action is for the service advisor." } },
+      {
+        ok: false,
+        error: { message: "This action is for the service advisor." },
+      },
       { status: 403 },
     );
   const payload = (
@@ -95,7 +105,9 @@ export async function POST(request: Request) {
           fileId: id(payload.fileId),
           customerId: id(payload.customerId),
           jobId: id(payload.jobId),
-          ...(id(payload.vehicleId) ? { vehicleId: id(payload.vehicleId) } : {}),
+          ...(id(payload.vehicleId)
+            ? { vehicleId: id(payload.vehicleId) }
+            : {}),
           tag: value(payload.tag),
           mediaPurpose: value(payload.mediaPurpose),
           caption: value(payload.caption),
@@ -107,7 +119,9 @@ export async function POST(request: Request) {
           mediaId: id(payload.mediaId),
           jobId: id(payload.jobId),
           ...(payload.remove === true ? { remove: "true" } : {}),
-          ...(typeof payload.caption === "string" ? { caption: value(payload.caption) } : {}),
+          ...(typeof payload.caption === "string"
+            ? { caption: value(payload.caption) }
+            : {}),
           ...(typeof payload.showCustomer === "boolean"
             ? { showCustomer: payload.showCustomer ? "true" : "false" }
             : {}),
