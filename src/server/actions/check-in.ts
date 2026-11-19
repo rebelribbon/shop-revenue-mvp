@@ -35,7 +35,9 @@ export const checkInAction = defineShopAction({
       title: checkInTitle(i.concerns),
       // Estimate pricing waits for the technician's inspection.
       inspectionFirst: true,
-      ...(i.approvedInspection ? { inspectionTemplateVersion: "approved-2026" as const } : {}),
+      ...(i.approvedInspection
+        ? { inspectionTemplateVersion: "approved-2026" as const }
+        : {}),
       mileageIn: i.mileageIn,
       concerns: i.concerns,
       sourceRecoveryItemId: i.sourceRecoveryItemId,
