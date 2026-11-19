@@ -77,13 +77,14 @@ export async function GET() {
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
       const technician = session.role === "technician";
       const management = session.role === "owner" || (await canManageTeam(tx));
-      const [jobs, taskRows, technicians, advisors, teamRows] = await Promise.all([
-        listJobs(tx),
-        listTasks(tx),
-        listTechs(tx),
-        listAdvisors(tx),
-        management ? listTeam(tx) : Promise.resolve([]),
-      ]);
+      const [jobs, taskRows, technicians, advisors, teamRows] =
+        await Promise.all([
+          listJobs(tx),
+          listTasks(tx),
+          listTechs(tx),
+          listAdvisors(tx),
+          management ? listTeam(tx) : Promise.resolve([]),
+        ]);
       const jobIds = jobs.map((j) => j.id);
       const [flows, techMap, mediaRows] = await Promise.all([
         loadJobWorkflows(tx, jobIds),
@@ -191,17 +192,30 @@ export async function GET() {
           const latest = flow?.latest?.estimate;
           const auth = flow?.latest?.authorization;
           const inspection = inspectionsById.get(row.id);
-          const media = mediaRows.filter((m) => m.jobId === row.id).map((m) => ({
-            id: m.id,
-            kind: m.mediaType === "video" ? "video" : "photo",
-            category: m.mediaType === "video" ? "customer" : m.tag === "after" ? "repair" : "diagnosis",
-            checkId: "",
-            name: m.caption ?? (m.mediaType === "video" ? "Customer video" : "Inspection photo"),
-            caption: m.caption ?? "",
-            public: m.showCustomer,
-            fileUrl: "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
-            dataUrl: "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
-          }));
+          const media = mediaRows
+            .filter((m) => m.jobId === row.id)
+            .map((m) => ({
+              id: m.id,
+              kind: m.mediaType === "video" ? "video" : "photo",
+              category:
+                m.mediaType === "video"
+                  ? "customer"
+                  : m.tag === "after"
+                    ? "repair"
+                    : "diagnosis",
+              checkId: "",
+              name:
+                m.caption ??
+                (m.mediaType === "video"
+                  ? "Customer video"
+                  : "Inspection photo"),
+              caption: m.caption ?? "",
+              public: m.showCustomer,
+              fileUrl:
+                "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
+              dataUrl:
+                "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
+            }));
           const stage = stageFor(
             flow?.stage ?? "draft",
             !!j.inspectionFirst,
@@ -225,38 +239,50 @@ export async function GET() {
               .reduce((n, p) => n + (p.quantity * p.unitPriceCents) / 100, 0),
             labor: j.labor
               .filter((l) => l.description === name)
-              .reduce((n, l) => n +
-                (l.estimatedHoursHundredths * l.sellRateCents) / 10000, 0),
-            cost:
-              j.parts.filter((p) => p.description === name).reduce(
-                (n, p) => n + (p.quantity * (p.unitCostCents ?? 0)) / 100, 0,
-              ) +
-              j.labor.filter((l) => l.description === name).reduce(
-                (n, l) => n +
-                  (l.estimatedHoursHundredths * (l.costRateCents ?? 0)) / 10000,
+              .reduce(
+                (n, l) =>
+                  n + (l.estimatedHoursHundredths * l.sellRateCents) / 10000,
                 0,
               ),
+            cost:
+              j.parts
+                .filter((p) => p.description === name)
+                .reduce(
+                  (n, p) => n + (p.quantity * (p.unitCostCents ?? 0)) / 100,
+                  0,
+                ) +
+              j.labor
+                .filter((l) => l.description === name)
+                .reduce(
+                  (n, l) =>
+                    n +
+                    (l.estimatedHoursHundredths * (l.costRateCents ?? 0)) /
+                      10000,
+                  0,
+                ),
             decision: null,
           }));
           const lines = technician
             ? []
             : latest
               ? latest.snapshot.lines.map((l) => ({
-                id: l.id,
-                name: l.description,
-                parts:
-                  l.kind === "part" ? (l.quantity * l.unitPriceCents) / 100 : 0,
-                labor:
-                  l.kind === "labor"
-                    ? (l.quantity * l.unitPriceCents) / 100
-                    : 0,
-                cost: 0,
-                decision: auth
-                  ? approved.has(l.id)
-                    ? "approved"
-                    : "declined"
-                  : null,
-              }))
+                  id: l.id,
+                  name: l.description,
+                  parts:
+                    l.kind === "part"
+                      ? (l.quantity * l.unitPriceCents) / 100
+                      : 0,
+                  labor:
+                    l.kind === "labor"
+                      ? (l.quantity * l.unitPriceCents) / 100
+                      : 0,
+                  cost: 0,
+                  decision: auth
+                    ? approved.has(l.id)
+                      ? "approved"
+                      : "declined"
+                    : null,
+                }))
               : draftLines;
           return {
             id: row.id,
@@ -413,7 +439,14 @@ export async function GET() {
           name: m.displayName || m.inviteName || "Team member",
           email: m.email || m.inviteEmail || "",
           phone: m.phoneE164 || m.invitePhoneE164 || "",
-          role: m.role === "owner" ? "owner" : m.role === "technician" ? "technician" : m.canManageTeam ? "manager" : "advisor",
+          role:
+            m.role === "owner"
+              ? "owner"
+              : m.role === "technician"
+                ? "technician"
+                : m.canManageTeam
+                  ? "manager"
+                  : "advisor",
           status: m.status,
         })),
         customers: customers.map((c) => ({
