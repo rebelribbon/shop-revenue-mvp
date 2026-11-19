@@ -83,6 +83,8 @@ test("Technicians see only their jobs and no owner pages", async ({
     .click();
   await expect(tech).toHaveURL(/\/app\/tasks$/);
   await tech.goto(jobUrls[0]);
+  // A resumed inspection starts on the first unfinished system, not pickup.
+  await tech.getByRole("button", { name: "Back", exact: true }).click();
   await expect(tech.getByLabel("Rack / bay", { exact: true })).toHaveValue(
     "Bay 2",
   );

@@ -6381,7 +6381,7 @@ main.customer-index-page {
 .inspection-result-finding-head span { font-size: .76rem; font-weight: 700; }
 .inspection-result-finding p { margin: 0; font-size: .88rem; line-height: 1.45; }
 .inspection-result-full { border-top: 1px solid var(--line); padding-top: 8px; }
-.inspection-result-full > summary, .inspection-result-section > summary { min-height: 48px; cursor: pointer; font-weight: 600; padding: 12px 0; }
+.inspection-result-full > summary, .inspection-result-section > summary { min-height: 48px; cursor: pointer; font-weight: 600; padding: 8px 0; }
 .inspection-result-section { margin-left: 8px; border-top: 1px solid var(--line); }
 .inspection-result-section ul { list-style: none; padding: 0; margin: 0 0 8px; }
 .inspection-result-section li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; font-size: .86rem; }
