@@ -155,7 +155,12 @@ saveBusiness = function(){nativePage("/app/settings/business");};
 resetDemo = function(){alert("Live shop records cannot be reset.");};
 exportData = function(){nativePage("/app/reports");};
 launchCustomerDemo = function(){nativePage("/app/jobs");};
-openCustomerPreview = function(id){nativeRo(id);};
+openCustomerPreview = function(id){
+  const r=roBy(id);
+  if(!r || techView())return;
+  ui.modal={type:"customerPacket",id};
+  render();
+};
 customerRoute = function(){return null;};
 settingsPrototype = function(){return "";};
 unifiedWalkthrough = function(){return "";};
@@ -246,6 +251,32 @@ roPayment = function (r) {
     encodeURIComponent(r.id) + '">Open invoice & secure payments</a></p></div>';
 };
 
+// The signed authorization archive belongs inside its repair order. PDF
+// links download the real legally recorded document directly, not an old UI.
+roDocuments = function(r) {
+  if(techView())return '<div class="notice">Customer financial documents are restricted to the front office.</div>';
+  const records=r.authorizationRecords || [];
+  const authorizations=records.length ? records.map(record =>
+    '<div class="item"><span class="iconbox">✍️</span><div class="item-main"><b>Estimate v' +
+    Number(record.version) + ' · ' + (record.signed ? "Signed authorization" : "Awaiting authorization") + '</b>' +
+    '<p class="secondarytext">' + esc(record.signed ?
+      ('Signed by ' + (record.signedBy || "Customer") + ' · ' + (record.signedAt || "Recorded")) :
+      (record.revoked ? "Link revoked" : "Unsigned customer document")) + '</p>' +
+    '<p class="secondarytext">' + Number(record.approvedCount) + '/' + Number(record.lineCount) +
+    ' repair lines approved</p></div>' +
+    (record.signed ? '<a class="btn small" href="/app/estimates/' +
+      encodeURIComponent(record.id) + '/authorization.pdf">Download signed PDF</a>' : '') +
+    '</div>').join("") :
+    '<div class="notice">No estimate versions or authorization records exist for this RO yet.</div>';
+  return '<div class="section-head"><h2>Documents & authorization history</h2>' +
+    pill(records.length + ' version(s)',"blue") + '</div>' +
+    '<p class="sub">All signed decisions remain attached to this repair order. Prior versions are retained.</p>' +
+    '<div class="card card-pad" style="margin-top:15px">' + authorizations + '</div>' +
+    (r.lines?.length ? '<div class="section-head" style="margin-top:24px"><h3>Customer-facing estimate</h3>' +
+      '<button class="btn small" onclick="openCustomerPreview(\'' + r.id + '\')">Preview packet</button></div>' +
+      documentPreview(r,"estimate") : '');
+};
+
 const originalDashboard = dashboard;
 dashboard = function(){
   return originalDashboard()
@@ -299,6 +330,14 @@ settings = function(){
 const originalRenderModal = renderModal;
 renderModal = function(){
   const m=ui.modal;
+  if(m?.type==="customerPacket"){
+    const r=roBy(m.id);
+    if(!r || techView())return "";
+    return modalWrap("Customer document packet — shop preview",
+      '<div class="notice">Preview only: this screen cannot sign for the customer. Actual approve/decline decisions and signature are collected through the secure customer link.</div>' +
+      '<div style="margin-top:16px">' + documentPreview(r,"estimate") + '</div>' +
+      '<div class="form-actions"><button class="btn" onclick="closeModal()">Close preview</button></div>',true);
+  }
   if(!m || (m.type !== "staff" && m.type !== "editStaff")) return originalRenderModal();
   if(!manager())return "";
   const member=m.id ? (data.teamMembers || []).find(x=>x.id===m.id) : null;
