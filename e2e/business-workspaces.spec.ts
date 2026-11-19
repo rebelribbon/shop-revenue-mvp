@@ -184,9 +184,7 @@ test("home-service setup creates a real property and equipment job without vehic
       await expect(
         page.getByLabel("Property / equipment", { exact: true }),
       ).toHaveCount(0);
-      await expect(
-        page.getByLabel("Job name", { exact: true }),
-      ).toHaveCount(0);
+      await expect(page.getByLabel("Job name", { exact: true })).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Add part", exact: true }),
       ).toHaveCount(0);
