@@ -90,7 +90,9 @@ test("M2 customer, vehicle, search and Today/Tomorrow appointment flow", async (
 
   const tomorrow = page
     .locator("details.schedule-day")
-    .filter({ has: page.locator("summary").getByText("Tomorrow", { exact: true }) })
+    .filter({
+      has: page.locator("summary").getByText("Tomorrow", { exact: true }),
+    })
     .filter({ hasText: `${first} ${last}` });
   await expect(tomorrow).toContainText("Brake inspection");
 
