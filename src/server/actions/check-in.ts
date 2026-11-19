@@ -18,6 +18,7 @@ export const checkInAction = defineShopAction({
     mileageIn: z.number().int().min(0).max(3000000).nullable(),
     concerns: z.string().trim().min(1).max(2000),
     technicianUserId: z.uuid().nullable(),
+    approvedInspection: z.boolean().optional(),
     sourceRecoveryItemId: z.uuid().optional(),
     sourceContactActivityId: z.uuid().optional(),
     sourceAppointmentId: z.uuid().optional(),
@@ -34,6 +35,7 @@ export const checkInAction = defineShopAction({
       title: checkInTitle(i.concerns),
       // Estimate pricing waits for the technician's inspection.
       inspectionFirst: true,
+      ...(i.approvedInspection ? { inspectionTemplateVersion: "approved-2026" as const } : {}),
       mileageIn: i.mileageIn,
       concerns: i.concerns,
       sourceRecoveryItemId: i.sourceRecoveryItemId,
