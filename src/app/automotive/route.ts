@@ -57,8 +57,8 @@ function stageFor(
   if (stage === "awaiting") return "approval";
   if (stage === "ready" || stage === "working") return "repair";
   if (stage === "bill") return "invoice";
-  if (stage === "payment" || stage === "attention") return "payment";
-  if (stage === "paid" || stage === "declined" || stage === "plan_ended")
+  if (stage === "payment" || stage === "attention" || stage === "paid") return "payment";
+  if (stage === "declined" || stage === "plan_ended")
     return "closed";
   return "estimate";
 }
@@ -274,7 +274,7 @@ export async function GET() {
             !!j.inspectionFirst,
             !!inspection?.complete,
           );
-          const stage = releasedIds.has(row.id) && liveStage === "closed" ? "closed" : liveStage;
+          const stage = releasedIds.has(row.id) ? "closed" : liveStage;
           const approved = new Set(auth?.approvedLineIds ?? []);
           // Pricing must show the CURRENT draft, not only already-frozen
           // customer estimates. Parts and labor belonging to one named
@@ -400,6 +400,7 @@ export async function GET() {
             estimateSent: moneyDate(latest?.createdAt),
             authorized: moneyDate(auth?.createdAt),
             signedBy: technician ? null : (auth?.signerName ?? null),
+            released: releasedIds.has(row.id),
             workDone: flow?.work === "completed",
             workStatus: flow?.work ?? "not_recorded",
             invoiceId: flow?.currentInvoice?.id ?? null,
