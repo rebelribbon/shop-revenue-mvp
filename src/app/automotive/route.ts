@@ -497,9 +497,11 @@ export async function GET() {
         ro: item.jobId ?? null,
         customer: item.customerId,
         step: item.jobId
-          ? item.title.toLowerCase().includes("inspect") || item.title.toLowerCase().includes("diagnos")
+          ? item.title.toLowerCase().includes("inspect") ||
+            item.title.toLowerCase().includes("diagnos")
             ? "diagnosis"
-            : item.title.toLowerCase().includes("repair") || item.title.toLowerCase().includes("authorized work")
+            : item.title.toLowerCase().includes("repair") ||
+                item.title.toLowerCase().includes("authorized work")
               ? "work"
               : item.title.toLowerCase().includes("invoice")
                 ? "invoice"
