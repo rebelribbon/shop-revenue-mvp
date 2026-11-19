@@ -357,7 +357,13 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     await customerContext.close();
   }
 
-  checkpoint("authorization recorded; technician repairs");
+  checkpoint("authorization recorded; checking signed RO archive");
+  await page.goto(`/automotive?ro=${ro.id}&tab=documents`);
+  await expect(
+    page.getByRole("heading", { name: "Documents & authorization history" }),
+  ).toBeVisible();
+  await expect(page.getByText("Signed authorization").first()).toBeVisible();
+  checkpoint("signed RO archive verified; technician repairs");
   await page.goto(`/automotive?ro=${ro.id}&tab=work`);
   const approvedLines = (await page.evaluate(
     `data.ros.find(r => r.id === "${ro.id}")?.lines.filter(l => l.decision === "approved").map(l => l.id) ?? []`,
