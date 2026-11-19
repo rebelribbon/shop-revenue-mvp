@@ -251,7 +251,15 @@ recordPayment=async function(form,id){
     window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=payment");
   }catch(e){alert(e.message||"No payment was recorded.");}
 };
-closeRo = function(id){nativeRo(id);};
+closeRo=async function(id){
+  const r=roBy(id);
+  if(!r || !r.paid || techView())return;
+  if(!confirm("Confirm the customer has received the vehicle and all keys?"))return;
+  try{
+    await liveWrite("ro.release",{jobId:id});
+    window.location.assign("/automotive?ro="+encodeURIComponent(id));
+  }catch(e){alert(e.message||"The repair order was not closed.");}
+};
 const centsFromForm = (amount) => {
   const text = String(amount ?? "").trim();
   if (!/^(?:0|[1-9]\d{0,6})(?:\.\d{1,2})?$/.test(text))
