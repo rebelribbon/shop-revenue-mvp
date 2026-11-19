@@ -192,6 +192,42 @@ export async function GET() {
           const latest = flow?.latest?.estimate;
           const auth = flow?.latest?.authorization;
           const inspection = inspectionsById.get(row.id);
+          const assessment = inspection?.assessment ?? {
+            diagnosis: "",
+            bay: "",
+            vehiclePickedUp: false,
+          };
+          let diagnosis: Record<string, string | boolean> = {};
+          if (assessment.diagnosis) {
+            try {
+              const parsedDiagnosis: unknown = JSON.parse(assessment.diagnosis);
+              if (
+                parsedDiagnosis &&
+                typeof parsedDiagnosis === "object" &&
+                !Array.isArray(parsedDiagnosis)
+              )
+                diagnosis = parsedDiagnosis as Record<string, string | boolean>;
+            } catch {
+              diagnosis = { cause: assessment.diagnosis };
+            }
+          }
+          const checklist = inspection?.items ?? [];
+          const checks = Object.fromEntries(
+            checklist.map((item) => [
+              item.key,
+              {
+                result:
+                  item.status === "good"
+                    ? "good"
+                    : item.status === "na"
+                      ? "na"
+                      : item.status === "unchecked"
+                        ? null
+                        : "attention",
+                note: item.note,
+              },
+            ]),
+          );
           const media = mediaRows
             .filter((m) => m.jobId === row.id)
             .map((m) => ({
@@ -312,6 +348,8 @@ export async function GET() {
               })),
             lines,
             media,
+            inspectionItems: checklist,
+            inspectionAssessment: assessment,
             authorizationRecords: technician
               ? []
               : (flow?.estimates ?? []).map(({ estimate, authorization }) => ({
@@ -326,7 +364,16 @@ export async function GET() {
                   revoked: !!estimate.revokedAt,
                 })),
             mediaPreviewRequired: true,
-            techData: { media },
+            techData: {
+              media,
+              checks,
+              diagnosis: {
+                ...diagnosis,
+                bay: assessment.bay,
+                vehiclePickedUp: assessment.vehiclePickedUp,
+                saved: !!assessment.diagnosis,
+              },
+            },
             estimateVersion: latest?.version ?? 0,
             estimateSent: moneyDate(latest?.createdAt),
             authorized: moneyDate(auth?.createdAt),
