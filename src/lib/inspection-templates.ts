@@ -72,9 +72,9 @@ export function inspectionTemplate(businessType: string): InspectionItem[] {
 }
 
 export const STATUS_LABELS: Record<InspectionStatus, string> = {
-  good: "Satisfactory",
-  watch: "Service Soon",
-  fix: "Service Now",
+  good: "Pass",
+  watch: "Caution",
+  fix: "Fail",
   na: "N/A",
   unchecked: "Not checked",
 };

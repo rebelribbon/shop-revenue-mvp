@@ -77,10 +77,12 @@ export const createCustomerAction = defineShopAction({
       .optional(),
     leadSource: leadSourceField,
     leadSourceDetail: z.string().max(200).optional(),
+    assignedUserId: z.uuid(),
   }),
   run: ({ tx, meta }, input) =>
     createCustomer(tx, meta, {
       ...customerInput(input),
+      assignedUserId: input.assignedUserId,
       leadSource: input.leadSource,
       leadSourceDetail: input.leadSourceDetail ?? null,
       allowDuplicate:

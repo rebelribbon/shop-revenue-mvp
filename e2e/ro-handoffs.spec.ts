@@ -36,6 +36,7 @@ test("routes an assigned inspection from the technician to its advisor without e
     .fill(
       `+1210555${String(Date.now()).slice(-3)}${info.project.name === "phone" ? 1 : 2}`,
     );
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   const customerUrl = page.url();
@@ -45,10 +46,9 @@ test("routes an assigned inspection from the technician to its advisor without e
   await expect(page).toHaveURL(/vehicles\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "+ New RO", exact: true }).click();
   await page.getByLabel("Customer concerns / reason for visit").fill(title);
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Create RO", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Repair order", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByLabel("Copy RO number")).toBeVisible();
   const jobId = new URL(page.url()).searchParams.get("job")!;
   expect(jobId).toMatch(/^[0-9a-f-]{36}$/);
   await page
@@ -66,18 +66,32 @@ test("routes an assigned inspection from the technician to its advisor without e
   await expect(
     page.getByLabel("Service advisor for this RO").locator("option:checked"),
   ).toHaveText("Staff B");
-  await page.getByLabel("Tech on this job").selectOption({ label: "Tech B" });
+  const team = page.locator("details.ro-team-assignment");
+  if (!(await team.evaluate((el) => (el as HTMLDetailsElement).open))) {
+    await team.locator("summary").click();
+  }
+  await team
+    .getByLabel("Technician for this RO (all repairs)")
+    .selectOption({ label: "Tech B" });
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
         response.url().includes("/app/jobs"),
     ),
-    page.getByRole("button", { name: "Save tech", exact: true }).click(),
+    page
+      .getByRole("button", { name: "Assign technician", exact: true })
+      .click(),
   ]);
   await page.reload();
+  const updatedTeam = page.locator("details.ro-team-assignment");
+  if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open))) {
+    await updatedTeam.locator("summary").click();
+  }
   await expect(
-    page.getByLabel("Tech on this job").locator("option:checked"),
+    updatedTeam
+      .getByLabel("Technician for this RO (all repairs)")
+      .locator("option:checked"),
   ).toHaveText("Tech B");
 
   const techContext = await browser.newContext({
@@ -132,66 +146,93 @@ test("routes an assigned inspection from the technician to its advisor without e
     await expect(
       tech.getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
+    // The compact wizard starts with vehicle pickup, then goes system by
+    // system. Save midway and verify that the technician can resume.
+    await expect(tech.getByText(/Vehicle inspection/)).toBeVisible();
     await expect(
-      tech.getByText("40-point inspection", { exact: true }),
-    ).toBeVisible();
-    await expect(tech.getByLabel("Tech on this job")).toHaveCount(0);
+      tech.getByLabel("Technician for this RO (all repairs)"),
+    ).toHaveCount(0);
     await expect(
       tech.getByRole("button", {
         name: /Send estimate|Create invoice|Record payment/,
       }),
     ).toHaveCount(0);
-    await tech
-      .getByLabel("I have picked up the vehicle for assessment", {
-        exact: true,
-      })
-      .check();
-    await tech.getByLabel("Bay / rack", { exact: true }).fill("Bay 2");
-    await tech
-      .getByLabel("Technician diagnosis", { exact: true })
-      .fill("Road tested the customer concern. No additional faults found.");
-    await Promise.all([
-      tech.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response.url().includes("/app/jobs"),
-      ),
-      tech.getByRole("button", { name: "Save progress", exact: true }).click(),
-    ]);
-    await tech.reload();
-    await expect(
-      tech.getByRole("button", { name: "Submit inspection → Notify advisor" }),
-    ).toBeDisabled();
-    await expect(tech.getByLabel("Bay / rack", { exact: true })).toHaveValue(
+    await tech.getByLabel("I have the vehicle", { exact: true }).check();
+    await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
+    await tech.getByRole("button", { name: "Save and exit" }).click();
+    await expect(tech).toHaveURL(/\/app\/tasks$/);
+    await tech.goto(`/app/jobs?job=${jobId}`);
+    // A resumed wizard opens directly on the first unfinished system.
+    await tech.getByRole("button", { name: "Back", exact: true }).click();
+    await expect(tech.getByLabel("Rack / bay", { exact: true })).toHaveValue(
       "Bay 2",
     );
-    await expect(
-      tech.getByLabel("Technician diagnosis", { exact: true }),
-    ).toHaveValue(
-      "Road tested the customer concern. No additional faults found.",
-    );
-    // Each category is a separate page; all 40 results must be explicit.
-    for (let category = 0; category < 9; category++) {
-      for (const satisfactory of await tech
-        .getByRole("radio", { name: "Satisfactory", exact: true })
-        .all())
-        await satisfactory.check();
-      if (category < 8)
-        await tech
-          .getByRole("button", { name: "Next category →", exact: true })
-          .click();
+    await tech.getByRole("button", { name: "Start inspection" }).click();
+
+    let reachedReview = false;
+    let inspected = 0;
+    let previousSystem = "";
+    for (let section = 0; section < 16; section++) {
+      const group = tech.locator(".inspection-system");
+      // Advancing saves to the database before showing the next vehicle system.
+      // Wait for the new system rather than racing the pending save.
+      await expect(group).toBeVisible({ timeout: 20000 });
+      if (previousSystem) {
+        await expect(group).not.toHaveAttribute("aria-label", previousSystem, {
+          timeout: 20000,
+        });
+      }
+      previousSystem = (await group.getAttribute("aria-label")) ?? "";
+      const points = group.locator(".inspection-point");
+      const count = await points.count();
+      expect(
+        count,
+        `No checklist points in section ${section + 1}`,
+      ).toBeGreaterThan(0);
+      inspected += count;
+      for (let i = 0; i < count; i++) {
+        await points
+          .nth(i)
+          .getByRole("radio", { name: "Pass", exact: true })
+          .check();
+      }
+      const reviewButton = tech.getByRole("button", {
+        name: "Review inspection",
+        exact: true,
+      });
+      if (await reviewButton.isVisible()) {
+        await expect(reviewButton).toBeEnabled({ timeout: 7000 });
+        await reviewButton.click();
+        reachedReview = true;
+        break;
+      }
+      const nextButton = tech.getByRole("button", {
+        name: "Save and continue",
+      });
+      await expect(
+        nextButton,
+        `Inspection section ${section + 1} (${await group.getAttribute("aria-label")}) must be complete`,
+      ).toBeEnabled({ timeout: 7000 });
+      await nextButton.click();
     }
+    expect(inspected).toBe(40);
+    expect(reachedReview).toBe(true);
     await expect(
       tech.getByText("40 of 40 checked", { exact: false }),
     ).toBeVisible();
     await tech
-      .getByRole("button", {
-        name: "Submit inspection → Notify advisor",
-        exact: true,
-      })
+      .getByLabel("Technician diagnosis", { exact: true })
+      .fill("Road tested the customer concern. No additional faults found.");
+    await tech
+      .getByRole("button", { name: "Submit inspection to advisor" })
       .click();
+    // The success toast is intentionally transient: router.refresh replaces
+    // the editor with the immutable completed report once the server confirms.
     await expect(
-      tech.getByText("Inspection submitted.", { exact: true }),
+      tech.getByRole("region", { name: "Completed inspection report" }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(
+      tech.getByRole("link", { name: "Return to my assigned work" }),
     ).toBeVisible();
     expect((await readTasks(tech)).some((task) => task.jobId === jobId)).toBe(
       false,
@@ -199,8 +240,9 @@ test("routes an assigned inspection from the technician to its advisor without e
     expect(
       (await readTasks(advisor)).some((task) => task.jobId === jobId),
     ).toBe(true);
+    // Owners supervise both technician and advisor queues.
     expect((await readTasks(page)).some((task) => task.jobId === jobId)).toBe(
-      false,
+      true,
     );
     await advisor.goto("/app/tasks");
     const task = advisor
@@ -210,12 +252,16 @@ test("routes an assigned inspection from the technician to its advisor without e
     await task
       .getByRole("link", { name: "Build estimate", exact: true })
       .click();
-    await expect(
-      advisor.getByRole("heading", { name: "Repair order", exact: true }),
-    ).toBeVisible();
+    await expect(advisor.getByLabel("Copy RO number")).toBeVisible();
     await tech.reload();
+    // A reload can briefly render the loading shell. Inspect the completed
+    // technician workspace only after the authenticated view has hydrated.
     await expect(
-      tech.getByRole("button", { name: "Save progress", exact: true }),
+      tech.getByRole("heading", { name: "My technician work" }),
+    ).toBeVisible({ timeout: 30000 });
+    await expect(tech.locator('main[data-ux-ready="true"]')).toBeVisible();
+    await expect(
+      tech.getByRole("button", { name: "Save and exit", exact: true }),
     ).toHaveCount(0);
     await auditUX(tech);
     await tech.screenshot({

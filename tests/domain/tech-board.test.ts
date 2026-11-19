@@ -43,7 +43,10 @@ describe("Tech board and My day", () => {
       withTenant(t.businessId, staff.actor, fn);
 
     const techs = await asOwner((tx) => listTechs(tx));
-    expect(techs.map((x) => x.name).sort()).toEqual(["Techs Technician"]);
+    expect(techs.map((x) => x.name).sort()).toEqual([
+      "Techs Owner",
+      "Techs Technician",
+    ]);
 
     const c = await asOwner((tx) =>
       createCustomer(tx, meta(), { firstName: "Bay", lastName: "TEST" }),

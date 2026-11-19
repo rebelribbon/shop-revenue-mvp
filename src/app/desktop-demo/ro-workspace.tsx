@@ -217,6 +217,8 @@ export function RoWorkspace({
     return () => {
       cancelled = true;
     };
+    // RO identity is represented by storageKey; changing jobs must not reset edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
   useEffect(() => {

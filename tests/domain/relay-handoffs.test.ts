@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { withTenant } from "@/db/tenant";
-import { assignAdvisor, assignJob } from "@/domain/assignments";
+import { assignAdvisor, assignCustomer, assignJob } from "@/domain/assignments";
 import { createCustomer, createVehicle } from "@/domain/customers";
 import { freezeEstimate } from "@/domain/estimates";
 import {
@@ -84,6 +84,10 @@ async function shop(label: string) {
         },
       ],
     }),
+  );
+  // The advisor can only price work for a customer assigned to them.
+  await owner((tx) =>
+    assignCustomer(tx, meta(), { customerId: c.id, userId: t.staff!.userId }),
   );
   const f = { t, owner, advisor, tech, techEmail, techId: joined.userId, job };
   const inbox = async (run: typeof owner) =>

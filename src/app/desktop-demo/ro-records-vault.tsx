@@ -67,6 +67,8 @@ export function RoRecordsVault({ roId }: { roId: string }) {
     return () => {
       active = false;
     };
+    // This session-only demo reloads the vault when the RO changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roId]);
   const checked = inspectionPoints.filter(
     (item) => doc?.inspectionResults?.[item.id]?.result,

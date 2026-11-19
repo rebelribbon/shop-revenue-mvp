@@ -16,6 +16,7 @@ test("Technicians see only their jobs and no owner pages", async ({
   await page.goto("/app/customers/new");
   await page.getByLabel("First name").fill("Techrole");
   await page.getByLabel("Last name").fill(`TEST ${stamp}`);
+  await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/customers\/[0-9a-f-]+$/);
   await page.getByRole("link", { name: "Vehicles", exact: true }).click();
@@ -28,17 +29,31 @@ test("Technicians see only their jobs and no owner pages", async ({
     await page.goto(vehicleUrl);
     await page.getByRole("link", { name: "+ New RO", exact: true }).click();
     await page.getByLabel("Customer concerns / reason for visit").fill(title);
+    await page
+      .getByLabel("Assigned service advisor")
+      .selectOption({ index: 1 });
     await page.getByRole("button", { name: "Create RO", exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Repair order", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByLabel("Copy RO number")).toBeVisible();
     jobUrls.push(page.url());
   }
   await page.goto(jobUrls[0]);
-  await page.getByLabel("Tech on this job").selectOption({ label: "Tech B" });
-  await page.getByRole("button", { name: "Save tech", exact: true }).click();
+  const team = page.locator("details.ro-team-assignment");
+  if (!(await team.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await team.locator("summary").click();
+  await team
+    .getByLabel("Technician for this RO (all repairs)")
+    .selectOption({ label: "Tech B" });
+  await page
+    .getByRole("button", { name: "Assign technician", exact: true })
+    .click();
+  await page.reload();
+  const updatedTeam = page.locator("details.ro-team-assignment");
+  if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open)))
+    await updatedTeam.locator("summary").click();
   await expect(
-    page.getByLabel("Tech on this job").locator("option:checked"),
+    updatedTeam
+      .getByLabel("Technician for this RO (all repairs)")
+      .locator("option:checked"),
   ).toHaveText("Tech B");
 
   const ctx = await browser.newContext({
@@ -52,21 +67,27 @@ test("Technicians see only their jobs and no owner pages", async ({
   await expect(tech.getByText(other, { exact: true })).toHaveCount(0);
   await auditUX(tech, true);
   await tech.goto(jobUrls[0]);
+  await expect(tech.getByText(/Vehicle inspection/)).toBeVisible();
   await expect(
-    tech.getByRole("button", { name: "Save tech", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    tech.getByRole("link", { name: "+ Photo / video", exact: true }),
+    tech.getByLabel("I have the vehicle", { exact: true }),
   ).toBeVisible();
   await expect(
-    tech.getByRole("link", { name: "+ File", exact: true }),
+    tech.getByRole("button", {
+      name: /Assign technician|Create invoice|Send estimate/,
+    }),
   ).toHaveCount(0);
+  await tech.getByLabel("I have the vehicle", { exact: true }).check();
+  await tech.getByLabel("Rack / bay", { exact: true }).fill("Bay 2");
   await tech
-    .getByRole("button", { name: "▶ Start clock", exact: true })
+    .getByRole("button", { name: "Save and exit", exact: true })
     .click();
-  await expect(tech.getByRole("button", { name: /Stop clock/ })).toBeVisible();
-  await tech.getByRole("button", { name: /Stop clock/ }).click();
-  await auditUX(tech, true);
+  await expect(tech).toHaveURL(/\/app\/tasks$/);
+  await tech.goto(jobUrls[0]);
+  // A resumed inspection starts on the first unfinished system, not pickup.
+  await tech.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(tech.getByLabel("Rack / bay", { exact: true })).toHaveValue(
+    "Bay 2",
+  );
   // The other job's page doesn't open for them.
   await tech.goto(jobUrls[1]);
   await expect(

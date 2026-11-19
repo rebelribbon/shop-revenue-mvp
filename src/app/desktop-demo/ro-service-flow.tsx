@@ -193,6 +193,8 @@ export function ServiceFlowDemo({
     return () => {
       active = false;
     };
+    // Rehydrate on RO identity change, not on each parent callback/render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roId]);
 
   useEffect(() => {
