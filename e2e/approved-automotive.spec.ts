@@ -1,7 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { approvedAutomotivePoints } from "../src/lib/approved-automotive-inspection";
-import { approveEstimateSteps, drawEstimateSignature, signInWithPassword } from "./helpers";
+import {
+  approveEstimateSteps,
+  drawEstimateSignature,
+  signInWithPassword,
+} from "./helpers";
 
 // The Automotive experience must use the approved shell with authenticated
 // shop data, not the browser-only demo / fake employee switcher.
@@ -239,8 +243,12 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   });
   const vehicle = await post("vehicle.create", {
     customerId: customer.id,
-    make: "Honda", model: "Accord", year: 2018,
-    vin: "", plate: "", mileage: 45670,
+    make: "Honda",
+    model: "Accord",
+    year: 2018,
+    vin: "",
+    plate: "",
+    mileage: 45670,
   });
   const ro = await post("ro.checkin", {
     customerId: customer.id,
@@ -251,14 +259,21 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   });
   await post("inspection.save", {
     jobId: ro.id,
-    items: JSON.stringify(approvedAutomotivePoints.map((p) => ({
-      ...p, status: "good", note: "",
-      recommendedWork: "", hoursHundredths: 100, addedToJob: false,
-    }))),
+    items: JSON.stringify(
+      approvedAutomotivePoints.map((p) => ({
+        ...p,
+        status: "good",
+        note: "",
+        recommendedWork: "",
+        hoursHundredths: 100,
+        addedToJob: false,
+      })),
+    ),
     submit: true,
     assessment: {
       diagnosis: "Brake rotor vibration confirmed during road test.",
-      bay: "Bay 1", vehiclePickedUp: true,
+      bay: "Bay 1",
+      vehiclePickedUp: true,
     },
   });
   await page.goto(`/automotive?ro=${ro.id}`);
@@ -267,22 +282,28 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   )) as string;
   expect(draftVersion).toMatch(/^[0-9a-f-]{36}$/i);
   await post("ro.pricing.add", {
-    jobId: ro.id, expectedVersion: draftVersion,
+    jobId: ro.id,
+    expectedVersion: draftVersion,
     description: "Replace front brake rotors",
-    partsCents: 12000, laborCents: 9500, costCents: 7500,
+    partsCents: 12000,
+    laborCents: 9500,
+    costCents: 7500,
   });
   await page.reload();
   const currentVersion = (await page.evaluate(
     `data.ros.find(r => r.id === "${ro.id}")?.version ?? ""`,
   )) as string;
   const frozen = await post("estimate.freeze", {
-    jobId: ro.id, expectedJobVersion: currentVersion,
-    taxBps: 0, terms: "Customer approval is required before work.",
+    jobId: ro.id,
+    expectedJobVersion: currentVersion,
+    taxBps: 0,
+    terms: "Customer approval is required before work.",
     supplementReason: "",
   });
   expect(frozen.id).toMatch(/^[0-9a-f-]{36}$/i);
   const share = await post("document.prepare", {
-    id: frozen.id, kind: "estimate",
+    id: frozen.id,
+    kind: "estimate",
   });
   expect(share.path).toMatch(new RegExp("^/(estimate|packet)/"));
 
@@ -291,13 +312,23 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     const customerPage = await customerContext.newPage();
     await customerPage.goto(share.path);
     await approveEstimateSteps(customerPage);
-    await customerPage.getByLabel("Your full name", { exact: true }).fill("End To End Customer");
-    await customerPage.getByRole("checkbox", { name: /I have reviewed/ }).check();
-    for (const radio of await customerPage.getByRole("radio", { name: /^Approve / }).all())
+    await customerPage
+      .getByLabel("Your full name", { exact: true })
+      .fill("End To End Customer");
+    await customerPage
+      .getByRole("checkbox", { name: /I have reviewed/ })
+      .check();
+    for (const radio of await customerPage
+      .getByRole("radio", { name: /^Approve / })
+      .all())
       await radio.check();
     await drawEstimateSignature(customerPage);
-    await customerPage.getByRole("button", { name: "Sign authorization", exact: true }).click();
-    await expect(customerPage.getByRole("heading", { name: "Decision recorded" })).toBeVisible();
+    await customerPage
+      .getByRole("button", { name: "Sign authorization", exact: true })
+      .click();
+    await expect(
+      customerPage.getByRole("heading", { name: "Decision recorded" }),
+    ).toBeVisible();
   } finally {
     await customerContext.close();
   }
@@ -309,21 +340,28 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   expect(approvedLines.length).toBeGreaterThan(0);
   for (const lineId of approvedLines) {
     await post("repair.line", {
-      jobId: ro.id, versionId: frozen.id, lineId,
-      started: true, done: true,
+      jobId: ro.id,
+      versionId: frozen.id,
+      lineId,
+      started: true,
+      done: true,
       notes: "Completed authorized repair and verified installation.",
     });
   }
   await post("repair.qa", {
-    jobId: ro.id, versionId: frozen.id,
+    jobId: ro.id,
+    versionId: frozen.id,
     qualityCheck: true,
     postRepairNotes: "Road tested successfully. Customer complaint resolved.",
   });
   await post("repair.finish", {
-    jobId: ro.id, versionId: frozen.id,
+    jobId: ro.id,
+    versionId: frozen.id,
   });
   await page.reload();
-  await expect(page.getByText("Technician handoff complete").first()).toBeVisible();
+  await expect(
+    page.getByText("Technician handoff complete").first(),
+  ).toBeVisible();
   const invoice = await post("invoice.issue", {
     versionId: frozen.id,
     dueOn: "",
