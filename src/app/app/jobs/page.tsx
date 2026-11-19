@@ -987,6 +987,11 @@ export default async function JobsPage({
                   and labor costs were not recorded. Profit is unknown.
                 </p>
               )}
+              {saved === "checkin" && (
+                <p role="status" className="notice ok">
+                  Vehicle checked in.
+                </p>
+              )}
               {saved === "1" && (
                 <p role="status" className="notice ok">
                   {auto && data.inspection?.complete
