@@ -113,7 +113,7 @@ recordPayment = function(form,id){nativeRo(id);};
 closeRo = function(id){nativeRo(id);};
 const centsFromForm = (amount) => {
   const text = String(amount ?? "").trim();
-  if (!/^(?:0|[1-9]\\d{0,6})(?:\\.\\d{1,2})?$/.test(text))
+  if (!/^(?:0|[1-9]\d{0,6})(?:\.\d{1,2})?$/.test(text))
     throw new Error("Enter a nonnegative dollar amount with at most two decimals.");
   return Math.round(Number(text) * 100);
 };
