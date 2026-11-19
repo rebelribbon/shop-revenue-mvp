@@ -26,7 +26,9 @@ test("approved Automotive interface loads real records without demo controls", a
     .first();
   await customerNav.click();
   await expect(page.getByRole("heading", { name: "Customers" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ Add customer" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "+ Add customer" }),
+  ).toBeVisible();
   expect(pageErrors, `Browser errors in ${info.project.name}`).toEqual([]);
 });
 
@@ -47,15 +49,18 @@ test("Automotive creates a real customer and keeps it after reload", async ({
   const modal = page.locator(".modal");
   await modal.locator('input[name="name"]').fill(key);
   await modal.locator('input[name="phone"]').fill("+12105550101");
-  await modal.locator('input[name="email"]').fill(
-    `unified-${Date.now()}@example.test`,
-  );
+  await modal
+    .locator('input[name="email"]')
+    .fill(`unified-${Date.now()}@example.test`);
   const responsePromise = page.waitForResponse(
     (response) =>
       response.url().endsWith("/automotive/actions") &&
       response.request().method() === "POST",
   );
-  await modal.getByRole("button", { name: /Save|Add customer/i }).last().click();
+  await modal
+    .getByRole("button", { name: /Save|Add customer/i })
+    .last()
+    .click();
   const response = await responsePromise;
   expect(response.status()).toBe(200);
   await expect(page).toHaveURL(/\/automotive\?customer=[0-9a-f-]{36}/, {
