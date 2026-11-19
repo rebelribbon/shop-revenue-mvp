@@ -7,7 +7,7 @@ import {
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
 import { freezeEstimateAction } from "@/server/actions/estimates";
-import { emailCustomerDocument } from "@/server/actions/document-sharing";
+import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
 import { recordJobSharingAction } from "@/server/actions/job-workflow";
 import { saveInspectionAction } from "@/server/actions/inspections";
 import {
@@ -190,6 +190,16 @@ export async function POST(request: Request) {
           terms: value(payload.terms),
         });
         break;
+      case "document.prepare": {
+        const shared = await prepareDocumentShare({
+          id: id(payload.id),
+          kind: value(payload.kind),
+        });
+        result = shared.ok
+          ? { ok: true as const, data: shared.data }
+          : { ok: false as const, error: { message: shared.message } };
+        break;
+      }
       case "document.email": {
         const delivery = await emailCustomerDocument({
           id: id(payload.id),
