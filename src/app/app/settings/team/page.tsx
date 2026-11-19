@@ -46,7 +46,9 @@ export default async function TeamPage() {
   );
   // Non-manager employees may inspect only their own role; managing team
   // members and viewing private invite details remains management-only.
-  const visibleTeam = canManage ? team : team.filter((m) => m.userId === s.userId);
+  const visibleTeam = canManage
+    ? team
+    : team.filter((m) => m.userId === s.userId);
   const statusLabel = (m: (typeof team)[number]) => {
     if (m.status !== "invited") return { text: "Active", warn: false };
     if (delivery.get(m.id) === "failed")
