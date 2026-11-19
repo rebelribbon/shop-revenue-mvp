@@ -487,14 +487,34 @@ export async function GET() {
         id: item.key,
         title: item.title,
         type: "workflow",
-        role: "advisor",
+        role:
+          technician ||
+          item.title.toLowerCase().includes("technician") ||
+          item.title.toLowerCase().includes("authorized work")
+            ? "technician"
+            : "advisor",
         who: self,
         ro: item.jobId ?? null,
         customer: item.customerId,
+        step: item.jobId
+          ? item.title.toLowerCase().includes("inspect") || item.title.toLowerCase().includes("diagnos")
+            ? "diagnosis"
+            : item.title.toLowerCase().includes("repair") || item.title.toLowerCase().includes("authorized work")
+              ? "work"
+              : item.title.toLowerCase().includes("invoice")
+                ? "invoice"
+                : item.title.toLowerCase().includes("estimate")
+                  ? "estimate"
+                  : "overview"
+          : undefined,
         status: "open",
         detail: item.detail ?? item.title,
         due: item.dueOn,
-        liveHref: item.href,
+        liveHref: item.jobId
+          ? "/automotive?ro=" + encodeURIComponent(item.jobId)
+          : item.customerId
+            ? "/automotive?customer=" + encodeURIComponent(item.customerId)
+            : "/automotive?view=tasks",
       }));
       const metrics = {
         active: ros.filter((r) => r.stage !== "closed").length,
