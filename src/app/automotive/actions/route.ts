@@ -251,7 +251,8 @@ export async function POST(request: Request) {
           clientRequestId,
           jobId: id(payload.jobId),
           versionId: id(payload.versionId),
-          lineId: id(payload.lineId),
+          // Immutable estimate line keys are part-0 / labor-0, not UUIDs.
+          lineId: value(payload.lineId),
           started: payload.started === true,
           done: payload.done === true,
           notes: value(payload.notes),
