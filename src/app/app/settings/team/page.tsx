@@ -1,5 +1,4 @@
 import { formatPhone } from "@/lib/phone-format";
-import { notFound } from "next/navigation";
 import { HydratedMain } from "@/components/hydrated-main";
 import { ActionForm } from "@/components/action-form";
 import { withTenant } from "@/db/tenant";
@@ -45,7 +44,9 @@ export default async function TeamPage() {
       };
     },
   );
-  if (!canManage) notFound();
+  // Non-manager employees may inspect only their own role; managing team
+  // members and viewing private invite details remains management-only.
+  const visibleTeam = canManage ? team : team.filter((m) => m.userId === s.userId);
   const statusLabel = (m: (typeof team)[number]) => {
     if (m.status !== "invited") return { text: "Active", warn: false };
     if (delivery.get(m.id) === "failed")
@@ -85,7 +86,7 @@ export default async function TeamPage() {
             </tr>
           </thead>
           <tbody>
-            {team.map((m) => (
+            {visibleTeam.map((m) => (
               <tr key={m.id}>
                 <td>
                   {m.displayName ?? m.inviteName ?? "—"}
