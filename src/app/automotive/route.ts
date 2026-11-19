@@ -57,9 +57,9 @@ function stageFor(
   if (stage === "awaiting") return "approval";
   if (stage === "ready" || stage === "working") return "repair";
   if (stage === "bill") return "invoice";
-  if (stage === "payment" || stage === "attention" || stage === "paid") return "payment";
-  if (stage === "declined" || stage === "plan_ended")
-    return "closed";
+  if (stage === "payment" || stage === "attention" || stage === "paid")
+    return "payment";
+  if (stage === "declined" || stage === "plan_ended") return "closed";
   return "estimate";
 }
 const serialize = (value: unknown) =>
@@ -88,24 +88,25 @@ export async function GET() {
           management ? listTeam(tx) : Promise.resolve([]),
         ]);
       const jobIds = jobs.map((j) => j.id);
-      const [flows, techMap, mediaRows, repairRows, releasedRows] = await Promise.all([
-        loadJobWorkflows(tx, jobIds),
-        jobAssignees(tx, jobIds),
-        listMedia(tx, {}),
-        getTechnicianRepairs(tx, jobIds),
-        jobIds.length
-          ? tx
-              .select({ id: activity.subjectId })
-              .from(activity)
-              .where(
-                and(
-                  eq(activity.businessId, tx.businessId),
-                  eq(activity.kind, "ro.released"),
-                  inArray(activity.subjectId, jobIds),
-                ),
-              )
-          : Promise.resolve([]),
-      ]);
+      const [flows, techMap, mediaRows, repairRows, releasedRows] =
+        await Promise.all([
+          loadJobWorkflows(tx, jobIds),
+          jobAssignees(tx, jobIds),
+          listMedia(tx, {}),
+          getTechnicianRepairs(tx, jobIds),
+          jobIds.length
+            ? tx
+                .select({ id: activity.subjectId })
+                .from(activity)
+                .where(
+                  and(
+                    eq(activity.businessId, tx.businessId),
+                    eq(activity.kind, "ro.released"),
+                    inArray(activity.subjectId, jobIds),
+                  ),
+                )
+            : Promise.resolve([]),
+        ]);
       const releasedIds = new Set(releasedRows.map((entry) => entry.id));
       const parsed = jobs
         .map((j) => ({ row: j, input: jobInput.safeParse(j.data) }))
