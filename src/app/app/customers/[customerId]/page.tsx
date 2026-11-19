@@ -165,20 +165,23 @@ export default async function CustomerDetailPage(props: {
         </Link>
       </p>
       <header className="customer-hero" aria-label="Customer summary">
-        <CustomerContactActions
-          target={{ customerId }}
-          phone={c.phoneE164}
-          email={c.email}
-          textAllowed={!c.textOptedOutAt && !c.doNotContact}
-          emailAllowed={!c.emailOptedOutAt && !c.doNotContact}
-        />
         <div className="customer-hero-main">
           <div className="customer-hero-avatar" aria-hidden="true">
             {c.displayName.trim().charAt(0).toUpperCase()}
           </div>
           <div className="customer-hero-identity">
             <p className="customer-eyebrow">Customer record</p>
-            <h1>{c.displayName}</h1>
+            <div className="customer-hero-title-row">
+              <h1>{c.displayName}</h1>
+              <CustomerContactActions
+                compact
+                target={{ customerId }}
+                phone={c.phoneE164}
+                email={c.email}
+                textAllowed={!c.textOptedOutAt && !c.doNotContact}
+                emailAllowed={!c.emailOptedOutAt && !c.doNotContact}
+              />
+            </div>
             <CustomerContactSummary
               phone={c.phoneE164 ? formatPhone(c.phoneE164) : null}
               email={c.email}
