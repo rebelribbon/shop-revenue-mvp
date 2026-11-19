@@ -35,6 +35,9 @@ export const jobInput = z.object({
   title: z.string().trim().min(1).max(200),
   // Intake-created automotive ROs require an explicit technician inspection.
   inspectionFirst: z.boolean().optional(),
+  // The approved 8×5 technician checklist is explicit: old ROs retain their
+  // original inspection point identities and existing authorization records.
+  inspectionTemplateVersion: z.enum(["approved-2026"]).optional(),
   advisorUserId: z.uuid().optional(),
   // Recurring work; absent for a one-time job.
   repeat: repeatInput.nullable().optional(),
