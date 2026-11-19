@@ -151,21 +151,31 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await expect(
     page.getByText("Customer reports a vibration under braking.").first(),
   ).toBeVisible();
-  // This is the exact step that previously fell through to the legacy RO
-  // workspace: the inspected recommendation must be priced and persisted.
-  const version = (await page.evaluate(
-    `data.ros.find(r => r.id === "${ro.id}")?.version ?? ""`,
-  )) as string;
-  expect(version).toMatch(/^[0-9a-f-]{36}$/i);
-  await post("ro.pricing.add", {
-    jobId: ro.id,
-    expectedVersion: version,
-    description: "Front rotor replacement",
-    partsCents: 22545,
-    laborCents: 15050,
-    costCents: 12500,
-  });
+  // Operate the actual advisor pricing form (rather than calling its API)
+  // and verify the saved work is still present after a full reload.
   await page.goto(`/automotive?ro=${ro.id}&tab=estimate`);
-  await expect(page.locator("#app .app")).toBeVisible();
-  await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Build estimate" })).toBeVisible();
+  const price = page.locator('form[onsubmit*="addLine"]');
+  await price.locator('input[name="name"]').fill("Front rotor replacement");
+  await price.locator('input[name="parts"]').fill("225.45");
+  await price.locator('input[name="labor"]').fill("150.50");
+  await price.locator('input[name="cost"]').fill("125.00");
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/automotive/actions") &&
+      response.request().method() === "POST" &&
+      response.request().postData()?.includes('"ro.pricing.add"') === true,
+  );
+  await price.getByRole("button", { name: /Add recommendation/ }).click();
+  const priceResponse = await responsePromise;
+  expect(await priceResponse.json()).toMatchObject({ ok: true });
+  await expect(
+    page.getByText("Front rotor replacement").first(),
+  ).toBeVisible({ timeout: 30000 });
+  await page.reload();
+  await expect(
+    page.getByText("Front rotor replacement").first(),
+  ).toBeVisible();
+  await expect(page.getByText("$225.45").first()).toBeVisible();
+
 });
