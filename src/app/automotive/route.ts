@@ -388,6 +388,8 @@ export async function GET() {
             workDone: flow?.work === "completed",
             workStatus: flow?.work ?? "not_recorded",
             invoiceId: flow?.currentInvoice?.id ?? null,
+            invoiceNumber: flow?.currentInvoice?.number ?? null,
+            invoiceShared: flow?.sharedInvoice ?? false,
             invoiceBalanceCents: flow?.balanceCents ?? 0,
             invoiceTotalCents: flow?.currentInvoice?.totalCents ?? 0,
             paymentRows: technician
