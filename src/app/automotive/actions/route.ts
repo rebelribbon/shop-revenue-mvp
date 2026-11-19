@@ -6,6 +6,7 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
+import { prepareMediaUploadAction, finishMediaUploadAction } from "@/server/actions/job-media";
 import {
   addAutomotiveRecommendationAction,
   removeAutomotiveRecommendationAction,
@@ -31,8 +32,7 @@ export async function POST(request: Request) {
   const state = await getSessionState();
   if (
     state.kind !== "shop" ||
-    state.session.actor.type !== "user" ||
-    state.session.role === "technician"
+    state.session.actor.type !== "user"
   )
     return NextResponse.json(
       {
@@ -58,6 +58,15 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  // Technicians can upload only media for assigned work. The underlying
+  // actions enforce assigned-customer and assigned-RO access server-side.
+  const technicianOperation =
+    raw.operation === "media.prepare" || raw.operation === "media.finish";
+  if (state.session.role === "technician" && !technicianOperation)
+    return NextResponse.json(
+      { ok: false, error: { message: "This action is for the service advisor." } },
+      { status: 403 },
+    );
   const payload = (
     raw.payload &&
     typeof raw.payload === "object" &&
@@ -70,6 +79,26 @@ export async function POST(request: Request) {
   try {
     let result;
     switch (raw.operation) {
+      case "media.prepare":
+        result = await prepareMediaUploadAction({
+          clientRequestId,
+          customerId: id(payload.customerId),
+          contentType: value(payload.contentType),
+          byteSize: Number(payload.byteSize),
+        });
+        break;
+      case "media.finish":
+        result = await finishMediaUploadAction({
+          clientRequestId,
+          fileId: id(payload.fileId),
+          customerId: id(payload.customerId),
+          jobId: id(payload.jobId),
+          ...(id(payload.vehicleId) ? { vehicleId: id(payload.vehicleId) } : {}),
+          tag: value(payload.tag),
+          mediaPurpose: value(payload.mediaPurpose),
+          caption: value(payload.caption),
+        });
+        break;
       case "customer.create":
         result = await createCustomerAction({
           clientRequestId,
