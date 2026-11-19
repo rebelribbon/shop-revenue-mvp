@@ -1,4 +1,5 @@
 import { ContactLaunchLink } from "./correspondence";
+import { WorkspaceIcon } from "./workspace-icon";
 import type {
   CorrespondenceChannel,
   CorrespondenceTarget,
@@ -10,12 +11,14 @@ export function CustomerContactActions({
   email,
   textAllowed = true,
   emailAllowed = true,
+  compact = false,
 }: {
   target?: CorrespondenceTarget;
   phone?: string | null;
   email?: string | null;
   textAllowed?: boolean;
   emailAllowed?: boolean;
+  compact?: boolean;
 }) {
   const actions: {
     label: string;
@@ -32,7 +35,7 @@ export function CustomerContactActions({
 
   return (
     <div
-      className="customer-contact-actions"
+      className={`customer-contact-actions${compact ? " customer-contact-actions-compact" : ""}`}
       role="group"
       aria-label="Contact customer"
     >
@@ -42,10 +45,14 @@ export function CustomerContactActions({
             contact={target}
             channel={action.channel}
             key={action.label}
-            className="btn secondary"
+            className={compact ? "btn secondary contact-icon-button" : "btn secondary"}
             href={action.href}
+            aria-label={compact ? action.label : undefined}
+            title={compact ? action.label : undefined}
           >
-            {action.label}
+            {compact ? (
+              <WorkspaceIcon name={action.channel === "call" ? "phone" : action.channel === "text" ? "message" : "mail"} />
+            ) : action.label}
           </ContactLaunchLink>
         ))}
       </div>

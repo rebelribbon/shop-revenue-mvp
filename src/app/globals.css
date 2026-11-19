@@ -6694,3 +6694,11 @@ main.customer-index-page {
   margin: 16px 0 0 !important;
   box-shadow: none;
 }
+
+/* Compact contact shortcuts beside customer name, without shrinking touch targets. */
+.customer-hero-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.customer-hero-title-row h1 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.customer-hero-title-row .customer-contact-actions { width: auto; }
+.customer-contact-actions-compact .customer-contact-buttons { display: flex; flex-wrap: wrap; gap: 8px; max-width: none; }
+.customer-contact-actions-compact .contact-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0; margin: 0; }
+.customer-contact-actions-compact .contact-icon-button svg { width: 18px; height: 18px; }

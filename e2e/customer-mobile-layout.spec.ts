@@ -94,3 +94,34 @@ test("authenticated Add Customer stays in the page flow above the list", async (
     expect(lastRect!.y + lastRect!.height).toBeLessThanOrEqual(navRect!.y - 8);
   }
 });
+
+test("authenticated customer shortcuts are icons beside the name", async ({page}) => {
+  const { signInWithPassword } = await import("./helpers");
+  await page.setViewportSize({width:390,height:844});
+  await signInWithPassword(page,"owner.b@shop-b.test");
+  await page.goto("/app/customers/new");
+  await page.getByLabel("Assigned service advisor").selectOption({index:1});
+  await page.getByLabel("First name").fill("Contact");
+  await page.getByLabel("Last name").fill("Icon Test");
+  await page.getByLabel("Mobile number").fill("+12105550123");
+  await page.getByLabel("Email",{exact:true}).fill("contact-icon@example.test");
+  await page.getByRole("button",{name:"Add customer",exact:true}).click();
+  await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
+  const row=page.locator(".customer-hero-title-row");
+  await expect(row.getByRole("heading",{name:"Contact Icon Test"})).toBeVisible();
+  const contacts=row.getByRole("group",{name:"Contact customer"});
+  for(const [name,href] of [
+    ["Call","tel:+12105550123"],
+    ["Text","sms:+12105550123"],
+    ["Email","mailto:contact-icon@example.test"],
+  ]) {
+    const link=contacts.getByRole("link",{name,exact:true});
+    await expect(link).toHaveAttribute("href",href);
+    await expect(link.locator("svg")).toHaveCount(1);
+    const box=await link.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.width).toBeGreaterThanOrEqual(48);
+    expect(box!.height).toBeGreaterThanOrEqual(48);
+    expect(box!.x+box!.width).toBeLessThanOrEqual(390);
+  }
+});
