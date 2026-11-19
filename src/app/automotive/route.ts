@@ -390,6 +390,15 @@ export async function GET() {
             invoiceId: flow?.currentInvoice?.id ?? null,
             invoiceBalanceCents: flow?.balanceCents ?? 0,
             invoiceTotalCents: flow?.currentInvoice?.totalCents ?? 0,
+            paymentRows: technician
+              ? []
+              : (flow?.entries ?? []).map((payment) => ({
+                  id: payment.id,
+                  at: moneyDate(payment.createdAt),
+                  amountCents: payment.amountCents,
+                  method: payment.method,
+                  reference: payment.reference,
+                })),
             invoiceSent: moneyDate(flow?.currentInvoice?.createdAt),
             paid: flow?.stage === "paid",
             amountPaid: technician ? 0 : (flow?.paidCents ?? 0) / 100,
