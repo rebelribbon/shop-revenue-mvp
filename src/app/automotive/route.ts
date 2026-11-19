@@ -374,6 +374,7 @@ export async function GET() {
                 saved: !!assessment.diagnosis,
               },
             },
+            estimateId: latest?.id ?? null,
             estimateVersion: latest?.version ?? 0,
             estimateSent: moneyDate(latest?.createdAt),
             authorized: moneyDate(auth?.createdAt),
