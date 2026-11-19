@@ -312,6 +312,20 @@ export async function GET() {
               })),
             lines,
             media,
+            authorizationRecords: technician
+              ? []
+              : (flow?.estimates ?? []).map(({ estimate, authorization }) => ({
+                  id: estimate.id,
+                  version: estimate.version,
+                  created: moneyDate(estimate.createdAt),
+                  signed: !!authorization,
+                  signedBy: authorization?.signerName ?? null,
+                  signedAt: moneyDate(authorization?.createdAt),
+                  approvedCount: authorization?.approvedLineIds.length ?? 0,
+                  lineCount: estimate.snapshot.lines.length,
+                  revoked: !!estimate.revokedAt,
+                })),
+            mediaPreviewRequired: true,
             techData: { media },
             estimateVersion: latest?.version ?? 0,
             estimateSent: moneyDate(latest?.createdAt),
