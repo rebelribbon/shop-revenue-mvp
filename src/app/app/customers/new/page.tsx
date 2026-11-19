@@ -50,9 +50,9 @@ export default async function NewCustomerPage() {
                 name="assignedUserId"
                 defaultValue={
                   advisors.some((a) => a.userId === s.actor.id)
-                    ? (s.actor.id ?? "")
+                    ? s.actor.id || ""
                     : advisors.length === 1
-                      ? (advisors[0].userId ?? "")
+                      ? advisors[0].userId || ""
                       : ""
                 }
                 required
