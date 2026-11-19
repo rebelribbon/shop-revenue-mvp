@@ -194,9 +194,40 @@ export async function GET() {
             !!inspection?.complete,
           );
           const approved = new Set(auth?.approvedLineIds ?? []);
+          // Pricing must show the CURRENT draft, not only already-frozen
+          // customer estimates. Parts and labor belonging to one named
+          // recommendation appear as a single priced decision.
+          const draftNames = [
+            ...new Set([
+              ...j.parts.map((p) => p.description),
+              ...j.labor.map((l) => l.description),
+            ]),
+          ];
+          const draftLines = draftNames.map((name, index) => ({
+            id: `draft-${index}`,
+            name,
+            parts: j.parts
+              .filter((p) => p.description === name)
+              .reduce((n, p) => n + (p.quantity * p.unitPriceCents) / 100, 0),
+            labor: j.labor
+              .filter((l) => l.description === name)
+              .reduce((n, l) => n +
+                (l.estimatedHoursHundredths * l.sellRateCents) / 10000, 0),
+            cost:
+              j.parts.filter((p) => p.description === name).reduce(
+                (n, p) => n + (p.quantity * (p.unitCostCents ?? 0)) / 100, 0,
+              ) +
+              j.labor.filter((l) => l.description === name).reduce(
+                (n, l) => n +
+                  (l.estimatedHoursHundredths * (l.costRateCents ?? 0)) / 10000,
+                0,
+              ),
+            decision: null,
+          }));
           const lines = technician
             ? []
-            : (latest?.snapshot.lines ?? []).map((l) => ({
+            : latest
+              ? latest.snapshot.lines.map((l) => ({
                 id: l.id,
                 name: l.description,
                 parts:
@@ -211,9 +242,11 @@ export async function GET() {
                     ? "approved"
                     : "declined"
                   : null,
-              }));
+              }))
+              : draftLines;
           return {
             id: row.id,
+            version: row.version,
             num: jobReference(row.id, true),
             customer: j.customerId,
             vehicle: j.vehicleId ?? null,
