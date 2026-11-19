@@ -147,6 +147,7 @@ export async function POST(request: Request) {
             : {}),
           tag: value(payload.tag),
           mediaPurpose: value(payload.mediaPurpose),
+          ...(value(payload.inspectionItemKey) ? { inspectionItemKey: value(payload.inspectionItemKey) } : {}),
           caption: value(payload.caption),
         });
         break;
