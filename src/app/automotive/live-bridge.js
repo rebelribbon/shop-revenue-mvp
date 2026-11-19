@@ -383,14 +383,48 @@ techMediaGallery = function(r,filter="all") {
        '</div></div></article>').join("") + '</div>'
     : '<div class="tech-media-empty"><b>No media attached yet</b><p>Use the photo or video picker above. Uploaded evidence is retained on the RO.</p></div>';
 };
-roPayment = function (r) {
-  if (techView()) return '<div class="notice">Payments are not visible to technicians.</div>';
+roPayment=function(r){
+  if(techView())return '<div class="notice">Customer payments are not available to technicians.</div>';
+  const issued=!!r.invoiceId, due=Math.max(0,Number(r.invoiceBalanceCents||0));
+  const records=(r.paymentRows||[]).map(p =>
+    '<div class="item"><span class="iconbox">✓</span><div class="item-main"><b>' +
+    money(p.amountCents/100) + ' · ' + esc(p.method.replaceAll("_"," ")) + '</b>' +
+    '<div class="secondarytext">' + esc(p.at||"") +
+    (p.reference ? ' · Ref: '+esc(p.reference) : '') + '</div></div></div>'
+  ).join("");
   return '<div class="section-head"><h2>Payment & receipt</h2>' +
-    pill(r.paid ? "Paid" : r.invoiceSent ? "Awaiting payment" : "Not invoiced",
-      r.paid ? "green" : "amber") + '</div>' +
-    '<div class="card card-pad"><p class="sub">Invoices, collected payments, refunds, and receipts are managed in the authenticated RO ledger. No test payments or simulated receipts are created here.</p>' +
-    '<p style="margin-top:16px"><a class="btn primary" href="/app/jobs?job=' +
-    encodeURIComponent(r.id) + '">Open invoice & secure payments</a></p></div>';
+    pill(!issued?"Not invoiced":due===0?"Paid":r.invoiceShared?"Payment requested":"Invoice issued",
+      due===0&&issued?"green":"amber") + '</div>' +
+    '<div class="grid two"><div class="callout"><div class="kpi-label">OUTSTANDING BALANCE</div>' +
+    '<div class="finance-head">' + money(due/100) + '</div>' +
+    '<div class="metricrow"><span>Invoice</span><b>' +
+    (issued ? "#"+esc(String(r.invoiceNumber||"")) : "Not issued") + '</b></div>' +
+    '<div class="metricrow"><span>Total invoiced</span><b>' +
+    money(Number(r.invoiceTotalCents||0)/100) + '</b></div>' +
+    '<div class="metricrow"><span>Email status</span><b>' +
+    (r.invoiceShared?"Submitted to provider":issued?"Not confirmed":"Not sent") + '</b></div>' +
+    '</div><div class="callout"><h3>Collect & reconcile</h3>' +
+    '<p class="sub">Online card payments are collected through the customer invoice link using the shop’s connected payment provider. Manual entries here record money already received; they never charge a card.</p>' +
+    (issued&&due>0 ? '<button class="btn primary full" style="margin-top:16px" onclick="openModal(\'collect\',{id:\''+r.id+'\'})">Record received payment</button>' : '') +
+    (issued&&!r.invoiceShared ? '<button class="btn full" style="margin-top:12px" onclick="sendInvoice(\''+r.id+'\')">Send invoice & payment link</button>' : '') +
+    (issued&&records ? '<button class="btn full" style="margin-top:12px" onclick="openModal(\'receipt\',{id:\''+r.id+'\'})">View actual payment receipts</button>' : '') +
+    '</div></div><div class="section-head" style="margin-top:20px"><h3>Recorded payment history</h3>' +
+    pill((r.paymentRows||[]).length + ' entry/entries',"blue") + '</div>' +
+    (records||'<div class="notice">No payments have been recorded for this invoice.</div>');
+};
+roInvoice=function(r){
+  if(techView())return '<div class="notice">Invoicing belongs to the assigned advisor.</div>';
+  return '<div class="section-head"><h2>Customer invoice</h2>' +
+    pill(!r.invoiceId?"Ready to issue":r.invoiceShared?"Email submitted":"Issued",
+      r.invoiceShared?"green":"blue") + '</div>' +
+    (r.stage==="invoice" ? '<div class="card card-pad"><h3>Review completed authorized work</h3><p class="sub">Issue an actual invoice with a payment link; only signed and completed repair work can be billed.</p>' +
+      documentPreview(r,"invoice") +
+      '<button class="btn primary full" style="margin-top:16px" onclick="sendInvoice(\''+r.id+'\')">Issue invoice & send payment link</button></div>' :
+      '<div class="card card-pad"><p class="sub">Invoice #' +
+      esc(String(r.invoiceNumber||"—")) + ' · ' +
+      (r.invoiceShared?"Customer email submitted":"Not yet sent") +
+      ' · Remaining '+money(Number(r.invoiceBalanceCents||0)/100)+'</p>' +
+      (r.invoiceId&&!r.invoiceShared ? '<button class="btn primary" onclick="sendInvoice(\''+r.id+'\')">Send invoice email</button>' : '') + '</div>');
 };
 
 // The signed authorization archive belongs inside its repair order. PDF
@@ -472,6 +506,30 @@ settings = function(){
 const originalRenderModal = renderModal;
 renderModal = function(){
   const m=ui.modal;
+  if(m?.type==="collect"){
+    const r=roBy(m.id), due=Math.max(0,Number(r?.invoiceBalanceCents||0));
+    if(!r?.invoiceId||!due||techView())return "";
+    return modalWrap("Record payment already received",
+      '<p class="sub">This records actual funds received outside the app. It does not charge a card or simulate a successful payment.</p>' +
+      '<p class="finance-head" style="margin:14px 0">Balance '+money(due/100)+'</p>' +
+      '<form onsubmit="event.preventDefault();recordPayment(this,\''+r.id+'\')">' +
+      '<label>Amount actually received ($)<input name="amount" type="number" min="0.01" max="'+(due/100).toFixed(2)+'" step="0.01" value="'+(due/100).toFixed(2)+'" required></label>' +
+      '<label>Method<select name="method"><option value="cash">Cash</option><option value="check">Check</option><option value="bank_transfer">Bank transfer</option><option value="external_card">External card payment (already charged)</option></select></label>' +
+      '<label>Transaction reference<input name="ref" maxlength="500" placeholder="Receipt or transaction ID"></label>' +
+      '<label><input type="checkbox" name="confirmed" required> I confirm that the customer has actually paid this amount.</label>' +
+      '<div class="form-actions"><button class="btn" type="button" onclick="closeModal()">Cancel</button><button class="btn primary">Record payment & issue receipt</button></div></form>',true);
+  }
+  if(m?.type==="receipt"){
+    const r=roBy(m.id);
+    if(!r || techView())return "";
+    const rows=(r.paymentRows||[]).map(p=>
+      '<div class="metricrow"><span>'+esc(p.at||"")+' · '+esc(p.method.replaceAll("_"," "))+'</span><b>'+money(p.amountCents/100)+'</b></div>').join("");
+    return modalWrap("Actual payment receipts — "+r.num,
+      '<div class="preview"><h2>PAYMENT HISTORY</h2><p class="sub">'+esc(customer(r.customer).name)+'</p>' +
+      (rows||'<p>No payment recorded.</p>') +
+      '<div class="metricrow"><span>Outstanding balance</span><b>'+money(Math.max(0,Number(r.invoiceBalanceCents||0))/100)+'</b></div></div>' +
+      '<div class="form-actions"><button class="btn" onclick="window.print()">Print</button><button class="btn primary" onclick="closeModal()">Done</button></div>',true);
+  }
   if(m?.type==="customerPacket"){
     const r=roBy(m.id);
     if(!r || techView())return "";
