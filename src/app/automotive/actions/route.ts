@@ -9,6 +9,7 @@ import { checkInAction } from "@/server/actions/check-in";
 import { freezeEstimateAction } from "@/server/actions/estimates";
 import { issueInvoiceAction, recordInvoicePaymentAction } from "@/server/actions/invoices";
 import { recordJobProgressAction } from "@/server/actions/job-workflow";
+import { saveAutomotiveRepairLineAction, saveAutomotiveRepairQaAction, finishAutomotiveRepairAction } from "@/server/actions/automotive-repairs";
 import { emailCustomerDocument, prepareDocumentShare } from "@/server/actions/document-sharing";
 import { recordJobSharingAction } from "@/server/actions/job-workflow";
 import { saveInspectionAction } from "@/server/actions/inspections";
@@ -76,6 +77,9 @@ export async function POST(request: Request) {
   const technicianOperation =
     raw.operation === "inspection.save" ||
     raw.operation === "work.progress" ||
+    raw.operation === "repair.line" ||
+    raw.operation === "repair.qa" ||
+    raw.operation === "repair.finish" ||
     raw.operation === "media.prepare" ||
     raw.operation === "media.finish" ||
     raw.operation === "media.update";
@@ -221,6 +225,33 @@ export async function POST(request: Request) {
           jobId: id(payload.jobId),
           documentId: id(payload.documentId),
           kind: value(payload.kind),
+        });
+        break;
+      case "repair.line":
+        result = await saveAutomotiveRepairLineAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          versionId: id(payload.versionId),
+          lineId: id(payload.lineId),
+          started: payload.started === true,
+          done: payload.done === true,
+          notes: value(payload.notes),
+        });
+        break;
+      case "repair.qa":
+        result = await saveAutomotiveRepairQaAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          versionId: id(payload.versionId),
+          qualityCheck: payload.qualityCheck === true,
+          postRepairNotes: value(payload.postRepairNotes),
+        });
+        break;
+      case "repair.finish":
+        result = await finishAutomotiveRepairAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          versionId: id(payload.versionId),
         });
         break;
       case "work.progress":
