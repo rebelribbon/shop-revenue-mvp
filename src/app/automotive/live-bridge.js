@@ -149,7 +149,7 @@ sendEstimate=async function(id){
     return alert("Only a priced draft or unsigned estimate can be sent.");
   const c=data.customers.find(x=>x.id===r.customer);
   if(!c?.email)return alert("Add a valid email to this customer's profile before sending the estimate.");
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(c.email))
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
     return alert("Correct the customer's email address before sending.");
   estimatesBeingSent.add(id);
   try{
