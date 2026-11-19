@@ -176,7 +176,13 @@ export default async function TasksPage(props: {
                 <select
                   id="task-assignee"
                   name="assignedUserId"
-                  defaultValue=""
+                  defaultValue={
+                    advisors.some((advisor) => advisor.userId === s.actor.id)
+                      ? s.actor.id || ""
+                      : advisors.length === 1
+                        ? advisors[0].userId || ""
+                        : ""
+                  }
                   required
                 >
                   <option value="" disabled>
