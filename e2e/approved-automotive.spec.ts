@@ -320,7 +320,10 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   try {
     const customerPage = await customerContext.newPage();
     customerPage.setDefaultTimeout(12_000);
-    await customerPage.goto(share.path, { waitUntil: "domcontentloaded", timeout: 15_000 });
+    await customerPage.goto(share.path, {
+      waitUntil: "domcontentloaded",
+      timeout: 15_000,
+    });
     checkpoint("portal opened; running line approval");
     await approveEstimateSteps(customerPage);
     checkpoint("line approval reached signature");
