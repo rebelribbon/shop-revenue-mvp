@@ -151,12 +151,11 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await expect(
     page.getByText("Customer reports a vibration under braking.").first(),
   ).toBeVisible();
-}  // This is the exact step that previously fell through to the legacy RO
+  // This is the exact step that previously fell through to the legacy RO
   // workspace: the inspected recommendation must be priced and persisted.
-  const version = await page.evaluate((jobId) => {
-    const row = data.ros.find((r: { id: string; version: string }) => r.id === jobId);
-    return row?.version ?? "";
-  }, ro.id);
+  const version = (await page.evaluate(
+    `data.ros.find(r => r.id === "${ro.id}")?.version ?? ""`,
+  )) as string;
   expect(version).toMatch(/^[0-9a-f-]{36}$/i);
   await post("ro.pricing.add", {
     jobId: ro.id,
