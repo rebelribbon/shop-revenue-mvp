@@ -12,6 +12,7 @@ import { getBusinessProfile } from "@/domain/business-profile";
 import { canManageTeam } from "@/domain/membership";
 import { loadJobWorkflows } from "@/domain/job-workflow";
 import { getInspection } from "@/domain/inspections";
+import { listMedia } from "@/domain/job-media";
 import { isAutomotive } from "@/lib/business-types";
 import { jobReference } from "@/lib/job-reference";
 import { requireShopSession } from "@/server/views/shop";
@@ -83,9 +84,10 @@ export async function GET() {
         listAdvisors(tx),
       ]);
       const jobIds = jobs.map((j) => j.id);
-      const [flows, techMap] = await Promise.all([
+      const [flows, techMap, mediaRows] = await Promise.all([
         loadJobWorkflows(tx, jobIds),
         jobAssignees(tx, jobIds),
+        listMedia(tx, {}),
       ]);
       const parsed = jobs
         .map((j) => ({ row: j, input: jobInput.safeParse(j.data) }))
@@ -188,6 +190,17 @@ export async function GET() {
           const latest = flow?.latest?.estimate;
           const auth = flow?.latest?.authorization;
           const inspection = inspectionsById.get(row.id);
+          const media = mediaRows.filter((m) => m.jobId === row.id).map((m) => ({
+            id: m.id,
+            kind: m.mediaType === "video" ? "video" : "photo",
+            category: m.mediaType === "video" ? "customer" : m.tag === "after" ? "repair" : "diagnosis",
+            checkId: "",
+            name: m.caption ?? (m.mediaType === "video" ? "Customer video" : "Inspection photo"),
+            caption: m.caption ?? "",
+            public: m.showCustomer,
+            fileUrl: "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
+            dataUrl: "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
+          }));
           const stage = stageFor(
             flow?.stage ?? "draft",
             !!j.inspectionFirst,
@@ -271,6 +284,8 @@ export async function GET() {
                 note: i.note || i.recommendedWork || "",
               })),
             lines,
+            media,
+            techData: { media },
             estimateVersion: latest?.version ?? 0,
             estimateSent: moneyDate(latest?.createdAt),
             authorized: moneyDate(auth?.createdAt),
