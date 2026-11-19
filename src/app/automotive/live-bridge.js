@@ -339,7 +339,7 @@ saveBusiness=async function(form){
     window.location.assign("/automotive?view=settings");
   }catch(e){alert(e.message || "Business settings were not saved.");}
 };
-if(initialView?.get("view")==="settings")ui.page="settings";
+
 // Technician writes must use the actual tenant-guarded inspection, evidence,
 // and repair actions. No local-only diagnosis or photo/video upload is accepted.
 saveDiagnosis=function(id){nativeRo(id);};
@@ -386,6 +386,7 @@ if(initialView.has("ro")){
   if(data.ros.some(r=>r.id===id)){ui.page="jobs";ui.selectedRo=id;}
 }
 if(initialView.get("view")==="appointments")ui.page="appointments";
+if(initialView.get("view")==="settings")ui.page="settings";
 if(initialView.has("tab") && ui.selectedRo) {
   const tab = initialView.get("tab");
   if(["estimate","proposal","inspection","diagnosis","media","work","invoice","payment","documents","activity"].includes(tab))ui.tab=tab;
