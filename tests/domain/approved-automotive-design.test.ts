@@ -15,8 +15,11 @@ const approvedDesigns = [
 ] as const;
 
 describe("customer-approved Automotive UI sources", () => {
-  it.each(approvedDesigns)("retains the exact approved source: $path", ({ path, sha256 }) => {
-    const body = readFileSync(join(process.cwd(), path));
-    expect(createHash("sha256").update(body).digest("hex")).toBe(sha256);
-  });
+  it.each(approvedDesigns)(
+    "retains the exact approved source: $path",
+    ({ path, sha256 }) => {
+      const body = readFileSync(join(process.cwd(), path));
+      expect(createHash("sha256").update(body).digest("hex")).toBe(sha256);
+    },
+  );
 });
