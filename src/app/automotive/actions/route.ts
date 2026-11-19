@@ -6,6 +6,10 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
+import {
+  addAutomotiveRecommendationAction,
+  removeAutomotiveRecommendationAction,
+} from "@/server/actions/automotive-pricing";
 import { createAppointmentAction } from "@/server/actions/appointments";
 import {
   assignCustomerAction,
@@ -113,6 +117,25 @@ export async function POST(request: Request) {
           ...(id(payload.sourceAppointmentId)
             ? { sourceAppointmentId: id(payload.sourceAppointmentId) }
             : {}),
+        });
+        break;
+      case "ro.pricing.add":
+        result = await addAutomotiveRecommendationAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          expectedVersion: id(payload.expectedVersion),
+          description: value(payload.description),
+          partsCents: Number(payload.partsCents),
+          laborCents: Number(payload.laborCents),
+          costCents: Number(payload.costCents),
+        });
+        break;
+      case "ro.pricing.remove":
+        result = await removeAutomotiveRecommendationAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          expectedVersion: id(payload.expectedVersion),
+          description: value(payload.description),
         });
         break;
       case "appointment.create":
