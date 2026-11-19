@@ -190,7 +190,7 @@ sendEstimate=async function(id){
   }finally{estimatesBeingSent.delete(id);}
 };
 submitApproval = function(id){nativeRo(id);};
-completeWork = function(id){nativeRo(id);};
+// Completion is verified and saved below using repair.finish.
 sendInvoice = function(id){nativeRo(id);};
 recordPayment = function(form,id){nativeRo(id);};
 closeRo = function(id){nativeRo(id);};
@@ -551,11 +551,81 @@ removeTechMedia=async function(roId,mediaId){
     window.location.assign("/automotive?ro="+encodeURIComponent(roId)+"&tab=media");
   }catch(e){alert(e.message||"Could not remove media.");}
 };
-startRepair=function(id){nativeRo(id);};
-saveRepairNotes=function(id){nativeRo(id);};
-setRepairDone=function(id){nativeRo(id);};
-saveFinalQa=function(id){nativeRo(id);};
-toggleFinalQa=function(id){nativeRo(id);};
+const saveRepairItem=async(r,lineId,next)=>{
+  const data=await liveWrite("repair.line",{
+    jobId:r.id,versionId:r.estimateId,lineId,
+    started:!!next.started,done:!!next.done,notes:String(next.notes||"")
+  });
+  if(!data)throw new Error("Work progress could not be saved.");
+  ensureTech(r).repair[lineId]=next;
+  return data;
+};
+startRepair=async function(roId,lineId){
+  const r=roBy(roId);
+  if(!r || r.stage!=="repair" || !r.authorized)return;
+  const line=ensureTech(r).repair[lineId]||{};
+  try{
+    await saveRepairItem(r,lineId,{started:true,done:false,notes:line.notes||""});
+    const y=scrollY;render();scrollTo(0,y);
+  }catch(e){alert(e.message||"Could not start authorized repair.");}
+};
+saveRepairNotes=async function(roId,lineId,notes){
+  const r=roBy(roId);
+  if(!r || r.stage!=="repair")return;
+  const line=ensureTech(r).repair[lineId]||{};
+  try{
+    await saveRepairItem(r,lineId,{
+      started:!!line.started,done:!!line.done,notes:String(notes||"")
+    });
+  }catch(e){alert(e.message||"Repair notes were not saved.");}
+};
+setRepairDone=async function(roId,lineId,done){
+  const r=roBy(roId);
+  if(!r || r.stage!=="repair")return;
+  const line=ensureTech(r).repair[lineId]||{};
+  if(done && !String(line.notes||"").trim())
+    return alert("Record work performed and parts installed before marking complete.");
+  try{
+    await saveRepairItem(r,lineId,{started:true,done:!!done,notes:String(line.notes||"")});
+    const y=scrollY;render();scrollTo(0,y);
+  }catch(e){alert(e.message||"Could not update repair status.");}
+};
+const persistRepairQa=async(r,updates)=>{
+  const t=ensureTech(r);
+  const next={
+    qualityCheck:updates.qualityCheck===undefined?!!t.qualityCheck:!!updates.qualityCheck,
+    postRepairNotes:updates.postRepairNotes===undefined?String(t.postRepairNotes||""):String(updates.postRepairNotes)
+  };
+  await liveWrite("repair.qa",{jobId:r.id,versionId:r.estimateId,...next});
+  Object.assign(t,next);
+};
+saveFinalQa=async function(id,notes){
+  const r=roBy(id);
+  if(!r || r.stage!=="repair")return;
+  try{await persistRepairQa(r,{postRepairNotes:String(notes||"")});}
+  catch(e){alert(e.message||"Final quality notes were not saved.");}
+};
+toggleFinalQa=async function(id,checked){
+  const r=roBy(id);
+  if(!r || r.stage!=="repair")return;
+  try{
+    await persistRepairQa(r,{qualityCheck:!!checked});
+    const y=scrollY;render();scrollTo(0,y);
+  }catch(e){alert(e.message||"Final quality status was not saved.");}
+};
+completeWork=async function(id){
+  const r=roBy(id);
+  if(!r || r.stage!=="repair" || !r.authorized)return;
+  const t=ensureTech(r), approved=approvedLines(r);
+  if(!approved.length || approved.some(l=>!t.repair[l.id]?.done||!String(t.repair[l.id]?.notes||"").trim()))
+    return alert("Complete and document every authorized repair first.");
+  if(!t.qualityCheck || !String(t.postRepairNotes||"").trim())
+    return alert("Complete the final QA check and notes first.");
+  try{
+    await liveWrite("repair.finish",{jobId:id,versionId:r.estimateId});
+    window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=invoice");
+  }catch(e){alert(e.message||"Could not complete repair handoff.");}
+};
 // Keep the approved customer -> vehicle -> RO hierarchy after saves and reloads.
 const initialView=new URLSearchParams(window.location.search);
 if(initialView.has("customer")) {
