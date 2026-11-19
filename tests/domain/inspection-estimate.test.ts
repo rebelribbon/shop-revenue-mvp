@@ -11,6 +11,31 @@ const job: JobInput = {
   parts: [],
 };
 
+describe("approved Automotive 40-point checklist", () => {
+  it("uses the approved eight sections, five points each without rewriting legacy history", () => {
+    const approved = inspectionTemplate("automotive", "approved-2026");
+    const legacy = inspectionTemplate("automotive");
+    expect(approved).toHaveLength(40);
+    expect(legacy).toHaveLength(40);
+    expect(new Set(approved.map((p) => p.key)).size).toBe(40);
+    expect(approved[0]).toMatchObject({
+      key: "0-0",
+      label: "Dash warning lights",
+      section: "Safety & visibility",
+    });
+    expect(approved[14]).toMatchObject({
+      key: "2-4",
+      label: "Brake pedal / parking brake",
+    });
+    expect(approved[39]).toMatchObject({
+      key: "7-4",
+      label: "Vibration, rattles and road noise",
+    });
+    expect(legacy[0]).toMatchObject({ key: "windshield", label: "Windshield" });
+    expect(approved.every((i) => i.status === "unchecked")).toBe(true);
+  });
+});
+
 describe("advisor estimate from submitted vehicle inspection", () => {
   it("includes caution and fail findings without creating work for pass or N/A", () => {
     const points = inspectionTemplate("automotive");
