@@ -151,4 +151,22 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await expect(
     page.getByText("Customer reports a vibration under braking.").first(),
   ).toBeVisible();
+}  // This is the exact step that previously fell through to the legacy RO
+  // workspace: the inspected recommendation must be priced and persisted.
+  const version = await page.evaluate((jobId) => {
+    const row = data.ros.find((r: { id: string; version: string }) => r.id === jobId);
+    return row?.version ?? "";
+  }, ro.id);
+  expect(version).toMatch(/^[0-9a-f-]{36}$/i);
+  await post("ro.pricing.add", {
+    jobId: ro.id,
+    expectedVersion: version,
+    description: "Front rotor replacement",
+    partsCents: 22545,
+    laborCents: 15050,
+    costCents: 12500,
+  });
+  await page.goto(`/automotive?ro=${ro.id}&tab=estimate`);
+  await expect(page.locator("#app .app")).toBeVisible();
+  await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
 });
