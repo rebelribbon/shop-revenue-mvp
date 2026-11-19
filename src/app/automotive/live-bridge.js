@@ -103,8 +103,44 @@ openModal=function(type,extra){
   if(type==="collect"||type==="receipt") return nativeWarning(extra && extra.id || ui.selectedRo);
   return originalOpenModal(type,extra);
 };
-submitInspection = function(id){nativeRo(id);};
-submitInspectionComplete = function(id){nativeRo(id);};
+// Each checkpoint is saved under its exact approved key; never recode it
+// as an unrelated legacy vehicle-inspection component.
+const persistedInspectionAssessment=(r)=>({
+  diagnosis:String(r.inspectionAssessment?.diagnosis || ""),
+  bay:String(r.inspectionAssessment?.bay || ""),
+  vehiclePickedUp:!!r.inspectionAssessment?.vehiclePickedUp
+});
+const liveInspectionSave=async(r,items,assessment,submit=false)=>{
+  const result=await liveWrite("inspection.save",{
+    jobId:r.id,items:JSON.stringify(items),assessment,submit
+  });
+  if(!result)throw new Error("The inspection was not saved.");
+  r.inspectionItems=items;
+  r.inspectionAssessment=assessment;
+  return result;
+};
+submitInspection=function(form,id){
+  const r=roBy(id);
+  if(!r)return;
+  if(role()==="owner"){
+    ui.technicianMode=true;ui.tab="diagnosis";render();
+  }else alert("The assigned technician must complete the 40-point inspection before pricing.");
+};
+submitInspectionComplete=async function(id){
+  const r=roBy(id);
+  if(!r || r.stage!=="inspection")return;
+  const items=r.inspectionItems || [], assessment=persistedInspectionAssessment(r);
+  if(items.length!==40 || items.some(i=>i.status==="unchecked"))
+    return alert("Record all 40 checkpoint results before submitting.");
+  if(!assessment.bay || !assessment.vehiclePickedUp || !assessment.diagnosis)
+    return alert("Save the diagnosis, bay and vehicle pickup confirmation first.");
+  if(items.some(i=>(i.status==="fix"||i.status==="watch")&&(!i.note.trim()||!i.recommendedWork.trim())))
+    return alert("Enter a finding and recommended work for each flagged checkpoint.");
+  try{
+    await liveInspectionSave(r,items,assessment,true);
+    window.location.assign("/automotive?ro="+encodeURIComponent(id));
+  }catch(e){alert(e.message||"Could not submit inspection.");}
+};
 sendEstimate = function(id){nativeRo(id);};
 submitApproval = function(id){nativeRo(id);};
 completeWork = function(id){nativeRo(id);};
@@ -196,7 +232,8 @@ const uploadAutomotiveMedia = async (event, roId, kind, checkId = "") => {
       fileId: prep.fileId, customerId: r.customer, jobId: roId,
       vehicleId: r.vehicle || undefined,
       tag: kind === "repair" ? "after" : photo ? "issue" : "other",
-      mediaPurpose: photo ? "general" : "walkaround",
+      mediaPurpose: !photo ? "walkaround" : checkId ? "finding" : "general",
+      ...(checkId ? { inspectionItemKey: checkId } : {}),
       caption: point?.name || (kind === "repair" ? "After repair" : photo ? "Inspection evidence" : "Technician walk-through")
     });
     window.location.assign("/automotive?ro=" + encodeURIComponent(roId) + "&tab=media");
@@ -381,9 +418,71 @@ saveBusiness=async function(form){
 
 // Technician writes must use the actual tenant-guarded inspection, evidence,
 // and repair actions. No local-only diagnosis or photo/video upload is accepted.
-saveDiagnosis=function(id){nativeRo(id);};
-setTechCheck=function(id){nativeRo(id);};
-saveTechCheckNote=function(id){nativeRo(id);};
+const originalRoDiagnosis=roDiagnosis;
+roDiagnosis=function(r){
+  const d=ensureTech(r).diagnosis;
+  return originalRoDiagnosis(r).replace('<div class="tech-toolbar">',
+    '<div class="tech-field-grid"><label>Bay / work area<input name="bay" required maxlength="120" value="' + esc(d.bay || "") +
+    '" placeholder="e.g. Bay 1"></label><label class="tech-share-check">' +
+    '<input name="pickedUp" type="checkbox" ' + (d.vehiclePickedUp?"checked":"") +
+    '> I have taken possession of this vehicle for diagnosis</label></div>' +
+    '<div class="tech-toolbar">');
+};
+saveDiagnosis=async function(form,id){
+  const r=roBy(id);
+  if(!r || r.stage!=="inspection")return;
+  const f=formData(form);
+  if(!f.confirmed || !String(f.symptoms||"").trim() || !String(f.tests||"").trim() ||
+     !String(f.cause||"").trim() || !String(f.recommendation||"").trim())
+    return alert("Complete all diagnostic findings before continuing.");
+  if(!String(f.bay||"").trim() || !f.pickedUp)
+    return alert("Enter the bay and confirm vehicle possession.");
+  const saved={
+    confirmed:String(f.confirmed),codes:String(f.codes||"").trim(),
+    symptoms:String(f.symptoms).trim(),tests:String(f.tests).trim(),
+    cause:String(f.cause).trim(),recommendation:String(f.recommendation).trim()
+  };
+  const assessment={diagnosis:JSON.stringify(saved),bay:String(f.bay).trim(),vehiclePickedUp:true};
+  if(assessment.diagnosis.length>4000)return alert("Shorten the diagnosis to 4000 characters.");
+  try{
+    await liveInspectionSave(r,r.inspectionItems,assessment,false);
+    r.techData.diagnosis={...saved,bay:assessment.bay,vehiclePickedUp:true,saved:true};
+    ui.tab="inspection";render();
+  }catch(e){alert(e.message||"Could not save diagnosis.");}
+};
+setTechCheck=async function(roId,key,result){
+  const r=roBy(roId);
+  if(!r || r.stage!=="inspection")return;
+  const current=r.inspectionItems||[];
+  const item=current.find(i=>i.key===key);
+  if(!item)return alert("Inspection checkpoint has changed. Reload this RO.");
+  const next=current.map(i=>i.key!==key?i:{
+    ...i,status:result==="good"?"good":result==="na"?"na":"fix",
+    ...(result==="attention"?{}:{note:"",recommendedWork:""})
+  });
+  try{
+    await liveInspectionSave(r,next,persistedInspectionAssessment(r),false);
+    const c=r.techData.checks[key]||{};
+    r.techData.checks[key]={...c,result,note:result==="attention"?c.note||"":"",};
+    const y=window.scrollY;render();window.scrollTo(0,y);
+  }catch(e){alert(e.message||"Could not save checkpoint.");}
+};
+saveTechCheckNote=async function(roId,key,note){
+  const r=roBy(roId);
+  if(!r || r.stage!=="inspection")return;
+  const current=r.inspectionItems||[];
+  const item=current.find(i=>i.key===key);
+  if(!item)return;
+  const finding=String(note||"").trim();
+  const next=current.map(i=>i.key!==key?i:{
+    ...i,note:finding,
+    recommendedWork:i.status==="fix"||i.status==="watch"?finding:""
+  });
+  try{
+    await liveInspectionSave(r,next,persistedInspectionAssessment(r),false);
+    r.techData.checks[key]={...(r.techData.checks[key]||{}),note:finding};
+  }catch(e){alert(e.message||"Could not save finding.");}
+};
 addTechPhoto=(event,id,kind,checkId)=>uploadAutomotiveMedia(event,id,kind,checkId);
 addTechVideo=(event,id)=>uploadAutomotiveMedia(event,id,"video");
 updateTechMedia=async function(roId,mediaId,key,val){
