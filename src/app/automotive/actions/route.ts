@@ -6,6 +6,7 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
+import { saveInspectionAction } from "@/server/actions/inspections";
 import {
   inviteStaffAction,
   changeTeamAccessAction,
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
   // Technicians can upload only media for assigned work. The underlying
   // actions enforce assigned-customer and assigned-RO access server-side.
   const technicianOperation =
+    raw.operation === "inspection.save" ||
     raw.operation === "media.prepare" ||
     raw.operation === "media.finish" ||
     raw.operation === "media.update";
@@ -91,6 +93,15 @@ export async function POST(request: Request) {
   try {
     let result;
     switch (raw.operation) {
+      case "inspection.save":
+        result = await saveInspectionAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          items: value(payload.items),
+          submit: payload.submit === true,
+          assessment: payload.assessment,
+        });
+        break;
       case "media.prepare":
         result = await prepareMediaUploadAction({
           clientRequestId,
@@ -204,6 +215,7 @@ export async function POST(request: Request) {
         break;
       case "ro.checkin":
         result = await checkInAction({
+          approvedInspection: true,
           clientRequestId,
           customerId: id(payload.customerId),
           vehicleId: id(payload.vehicleId),
