@@ -39,7 +39,11 @@ import {
   addAutomotiveRecommendationAction,
   removeAutomotiveRecommendationAction,
 } from "@/server/actions/automotive-pricing";
-import { createAppointmentAction, rescheduleAppointmentAction, setAppointmentStatusAction } from "@/server/actions/appointments";
+import {
+  createAppointmentAction,
+  rescheduleAppointmentAction,
+  setAppointmentStatusAction,
+} from "@/server/actions/appointments";
 import { recordCorrespondenceAction } from "@/server/actions/correspondence";
 import {
   assignCustomerAction,
