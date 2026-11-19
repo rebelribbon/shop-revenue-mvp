@@ -6,7 +6,7 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
-import { prepareMediaUploadAction, finishMediaUploadAction } from "@/server/actions/job-media";
+import { prepareMediaUploadAction, finishMediaUploadAction, updateMediaAction } from "@/server/actions/job-media";
 import {
   addAutomotiveRecommendationAction,
   removeAutomotiveRecommendationAction,
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   // Technicians can upload only media for assigned work. The underlying
   // actions enforce assigned-customer and assigned-RO access server-side.
   const technicianOperation =
-    raw.operation === "media.prepare" || raw.operation === "media.finish";
+    raw.operation === "media.prepare" || raw.operation === "media.finish" || raw.operation === "media.update";
   if (state.session.role === "technician" && !technicianOperation)
     return NextResponse.json(
       { ok: false, error: { message: "This action is for the service advisor." } },
@@ -97,6 +97,18 @@ export async function POST(request: Request) {
           tag: value(payload.tag),
           mediaPurpose: value(payload.mediaPurpose),
           caption: value(payload.caption),
+        });
+        break;
+      case "media.update":
+        result = await updateMediaAction({
+          clientRequestId,
+          mediaId: id(payload.mediaId),
+          jobId: id(payload.jobId),
+          ...(payload.remove === true ? { remove: "true" } : {}),
+          ...(typeof payload.caption === "string" ? { caption: value(payload.caption) } : {}),
+          ...(typeof payload.showCustomer === "boolean"
+            ? { showCustomer: payload.showCustomer ? "true" : "false" }
+            : {}),
         });
         break;
       case "customer.create":
