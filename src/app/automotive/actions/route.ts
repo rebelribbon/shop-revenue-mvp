@@ -6,6 +6,9 @@ import {
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
+import { freezeEstimateAction } from "@/server/actions/estimates";
+import { emailCustomerDocument } from "@/server/actions/document-sharing";
+import { recordJobSharingAction } from "@/server/actions/job-workflow";
 import { saveInspectionAction } from "@/server/actions/inspections";
 import {
   inviteStaffAction,
@@ -175,6 +178,36 @@ export async function POST(request: Request) {
           laborSellRate: Number(payload.laborSellRate),
           laborCostRate: Number(payload.laborCostRate),
           ...(payload.taxConfirmed === true ? { taxConfirmed: "on" } : {}),
+        });
+        break;
+      case "estimate.freeze":
+        result = await freezeEstimateAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          expectedJobVersion: id(payload.expectedJobVersion),
+          taxBps: Number(payload.taxBps),
+          supplementReason: value(payload.supplementReason),
+          terms: value(payload.terms),
+        });
+        break;
+      case "document.email": {
+        const delivery = await emailCustomerDocument({
+          id: id(payload.id),
+          kind: value(payload.kind),
+          email: value(payload.email),
+          documentIds: [],
+        });
+        result = delivery.ok
+          ? { ok: true as const, data: { message: delivery.message } }
+          : { ok: false as const, error: { message: delivery.message } };
+        break;
+      }
+      case "document.shared":
+        result = await recordJobSharingAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          documentId: id(payload.documentId),
+          kind: value(payload.kind),
         });
         break;
       case "customer.create":
