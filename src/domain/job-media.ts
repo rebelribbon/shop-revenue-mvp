@@ -117,8 +117,10 @@ export async function finishMediaUpload(
     purpose === "finding" &&
     (!input.jobId ||
       !input.inspectionItemKey ||
-      !inspectionPoints.some((p) => p.id === input.inspectionItemKey) &&
-      !approvedAutomotivePoints.some((p) => p.key === input.inspectionItemKey))
+      (!inspectionPoints.some((p) => p.id === input.inspectionItemKey) &&
+        !approvedAutomotivePoints.some(
+          (p) => p.key === input.inspectionItemKey,
+        )))
   )
     throw new AppError(
       "VALIDATION",
