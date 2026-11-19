@@ -13,6 +13,7 @@ import { canManageTeam, listTeam } from "@/domain/membership";
 import { loadJobWorkflows } from "@/domain/job-workflow";
 import { getInspection } from "@/domain/inspections";
 import { getTechnicianRepairs } from "@/domain/technician-repairs";
+import { activity } from "@/db/schema";
 import { listMedia } from "@/domain/job-media";
 import { isAutomotive } from "@/lib/business-types";
 import { jobReference } from "@/lib/job-reference";
@@ -87,12 +88,25 @@ export async function GET() {
           management ? listTeam(tx) : Promise.resolve([]),
         ]);
       const jobIds = jobs.map((j) => j.id);
-      const [flows, techMap, mediaRows, repairRows] = await Promise.all([
+      const [flows, techMap, mediaRows, repairRows, releasedRows] = await Promise.all([
         loadJobWorkflows(tx, jobIds),
         jobAssignees(tx, jobIds),
         listMedia(tx, {}),
         getTechnicianRepairs(tx, jobIds),
+        jobIds.length
+          ? tx
+              .select({ id: activity.subjectId })
+              .from(activity)
+              .where(
+                and(
+                  eq(activity.businessId, tx.businessId),
+                  eq(activity.kind, "ro.released"),
+                  inArray(activity.subjectId, jobIds),
+                ),
+              )
+          : Promise.resolve([]),
       ]);
+      const releasedIds = new Set(releasedRows.map((entry) => entry.id));
       const parsed = jobs
         .map((j) => ({ row: j, input: jobInput.safeParse(j.data) }))
         .filter((j) => j.input.success);
@@ -255,11 +269,12 @@ export async function GET() {
               dataUrl:
                 "/automotive/media?fileId=" + encodeURIComponent(m.fileId),
             }));
-          const stage = stageFor(
+          const liveStage = stageFor(
             flow?.stage ?? "draft",
             !!j.inspectionFirst,
             !!inspection?.complete,
           );
+          const stage = releasedIds.has(row.id) && liveStage === "closed" ? "closed" : liveStage;
           const approved = new Set(auth?.approvedLineIds ?? []);
           // Pricing must show the CURRENT draft, not only already-frozen
           // customer estimates. Parts and labor belonging to one named
