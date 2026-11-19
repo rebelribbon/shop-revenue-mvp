@@ -14,25 +14,39 @@ export type RepairState = {
   postRepairNotes: string;
 };
 const empty = (): RepairState => ({
-  lines: {}, qualityCheck: false, postRepairNotes: "",
+  lines: {},
+  qualityCheck: false,
+  postRepairNotes: "",
 });
 export async function getTechnicianRepairs(tx: TenantTx, jobIds: string[]) {
   const result = new Map<string, RepairState>();
   if (!jobIds.length) return result;
   const rows = await tx
-    .select({ subjectId: activity.subjectId, kind: activity.kind, data: activity.data })
+    .select({
+      subjectId: activity.subjectId,
+      kind: activity.kind,
+      data: activity.data,
+    })
     .from(activity)
-    .where(and(
-      eq(activity.businessId, tx.businessId),
-      eq(activity.subjectType, "job"),
-      inArray(activity.subjectId, jobIds),
-      inArray(activity.kind, ["technician.repair_line", "technician.final_qa"]),
-    ))
+    .where(
+      and(
+        eq(activity.businessId, tx.businessId),
+        eq(activity.subjectType, "job"),
+        inArray(activity.subjectId, jobIds),
+        inArray(activity.kind, [
+          "technician.repair_line",
+          "technician.final_qa",
+        ]),
+      ),
+    )
     .orderBy(asc(activity.occurredAt), asc(activity.id));
   for (const row of rows) {
     const state = result.get(row.subjectId) ?? empty();
     const raw = row.data as Record<string, unknown>;
-    if (row.kind === "technician.repair_line" && typeof raw.lineId === "string") {
+    if (
+      row.kind === "technician.repair_line" &&
+      typeof raw.lineId === "string"
+    ) {
       state.lines[raw.lineId] = {
         started: raw.started === true,
         done: raw.done === true,
@@ -52,45 +66,85 @@ async function authorizedFlow(tx: TenantTx, jobId: string, versionId: string) {
   if (!job) throw notFound("That repair order");
   const flow = (await loadJobWorkflows(tx, [jobId])).get(jobId);
   if (!flow?.latest?.authorization || flow.latest.estimate.id !== versionId)
-    throw new AppError("INVALID_TRANSITION", "Use the current customer-signed estimate before working on this RO.");
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "Use the current customer-signed estimate before working on this RO.",
+    );
   return flow;
 }
 export async function saveRepairLine(
   tx: TenantTx,
   meta: RequestMeta,
-  input: { jobId: string; versionId: string; lineId: string; started: boolean; done: boolean; notes: string },
+  input: {
+    jobId: string;
+    versionId: string;
+    lineId: string;
+    started: boolean;
+    done: boolean;
+    notes: string;
+  },
 ) {
   const flow = await authorizedFlow(tx, input.jobId, input.versionId);
   if (!flow.approved.some((line) => line.id === input.lineId))
-    throw new AppError("FORBIDDEN", "That repair was not approved by the customer.");
+    throw new AppError(
+      "FORBIDDEN",
+      "That repair was not approved by the customer.",
+    );
   if (input.done && (!input.started || !input.notes.trim()))
-    throw new AppError("VALIDATION", "Start the authorized repair and record your work notes before marking it complete.");
+    throw new AppError(
+      "VALIDATION",
+      "Start the authorized repair and record your work notes before marking it complete.",
+    );
   if (flow.work === "completed")
-    throw new AppError("INVALID_TRANSITION", "This repair order is already marked complete.");
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "This repair order is already marked complete.",
+    );
   // Starting the first approved line opens the RO for authorized technician work.
   if (input.started && flow.work === "not_recorded")
     await recordJobProgress(tx, meta, {
-      jobId: input.jobId, versionId: input.versionId,
-      expectedStatus: "not_recorded", status: "in_progress", note: "Technician began authorized repair.",
+      jobId: input.jobId,
+      versionId: input.versionId,
+      expectedStatus: "not_recorded",
+      status: "in_progress",
+      note: "Technician began authorized repair.",
     });
   await recordActivity(tx, {
-    kind: "technician.repair_line", subjectType: "job", subjectId: input.jobId,
+    kind: "technician.repair_line",
+    subjectType: "job",
+    subjectId: input.jobId,
     summary: `Authorized repair ${input.done ? "completed" : input.started ? "in progress" : "reopened"}`,
-    data: input, recordedAtNow: true,
+    data: input,
+    recordedAtNow: true,
   });
-  return { message: input.done ? "Repair work saved as complete." : "Repair work saved." };
+  return {
+    message: input.done
+      ? "Repair work saved as complete."
+      : "Repair work saved.",
+  };
 }
 export async function saveRepairQa(
   tx: TenantTx,
-  input: { jobId: string; versionId: string; qualityCheck: boolean; postRepairNotes: string },
+  input: {
+    jobId: string;
+    versionId: string;
+    qualityCheck: boolean;
+    postRepairNotes: string;
+  },
 ) {
   const flow = await authorizedFlow(tx, input.jobId, input.versionId);
   if (flow.work === "completed")
-    throw new AppError("INVALID_TRANSITION", "Completed ROs cannot have their final QA replaced.");
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "Completed ROs cannot have their final QA replaced.",
+    );
   await recordActivity(tx, {
-    kind: "technician.final_qa", subjectType: "job", subjectId: input.jobId,
+    kind: "technician.final_qa",
+    subjectType: "job",
+    subjectId: input.jobId,
     summary: "Technician final QA recorded",
-    data: input, recordedAtNow: true,
+    data: input,
+    recordedAtNow: true,
   });
   return { message: "Final quality check saved." };
 }
@@ -101,15 +155,33 @@ export async function submitCompletedRepairs(
 ) {
   const flow = await authorizedFlow(tx, input.jobId, input.versionId);
   if (flow.work !== "in_progress")
-    throw new AppError("INVALID_TRANSITION", "Start the authorized repairs before completing the RO.");
-  const state = (await getTechnicianRepairs(tx, [input.jobId])).get(input.jobId) ?? empty();
-  if (!flow.approved.length ||
-      flow.approved.some((line) => !state.lines[line.id]?.done || !state.lines[line.id]?.notes.trim()))
-    throw new AppError("VALIDATION", "Finish and document every authorized repair first.");
+    throw new AppError(
+      "INVALID_TRANSITION",
+      "Start the authorized repairs before completing the RO.",
+    );
+  const state =
+    (await getTechnicianRepairs(tx, [input.jobId])).get(input.jobId) ?? empty();
+  if (
+    !flow.approved.length ||
+    flow.approved.some(
+      (line) =>
+        !state.lines[line.id]?.done || !state.lines[line.id]?.notes.trim(),
+    )
+  )
+    throw new AppError(
+      "VALIDATION",
+      "Finish and document every authorized repair first.",
+    );
   if (!state.qualityCheck || !state.postRepairNotes.trim())
-    throw new AppError("VALIDATION", "Complete the final QA check and its notes before submitting.");
+    throw new AppError(
+      "VALIDATION",
+      "Complete the final QA check and its notes before submitting.",
+    );
   return recordJobProgress(tx, meta, {
-    jobId: input.jobId, versionId: input.versionId,
-    expectedStatus: "in_progress", status: "completed", note: state.postRepairNotes,
+    jobId: input.jobId,
+    versionId: input.versionId,
+    expectedStatus: "in_progress",
+    status: "completed",
+    note: state.postRepairNotes,
   });
 }
