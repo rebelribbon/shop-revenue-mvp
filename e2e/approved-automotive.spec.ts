@@ -145,12 +145,14 @@ test("solo shop owner can create and inspect an RO without assigning separate st
 
   // Only media actually persisted on this RO should appear after refresh.
   await page.reload();
-  const evidence = page.locator('.tech-media-grid img').first();
+  const evidence = page.locator(".tech-media-grid img").first();
   await expect(evidence).toBeVisible();
-  await expect.poll(
-    () => evidence.evaluate((image: HTMLImageElement) => image.naturalWidth),
-    { timeout: 15_000 },
-  ).toBeGreaterThan(0);
+  await expect
+    .poll(
+      () => evidence.evaluate((image: HTMLImageElement) => image.naturalWidth),
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThan(0);
 
   const inspection = await post("inspection.save", {
     jobId: ro.id,
@@ -187,7 +189,9 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   // Operate the actual advisor pricing form (rather than calling its API)
   // and verify the saved work is still present after a full reload.
   await page.goto(`/automotive?ro=${ro.id}&tab=estimate`);
-  await expect(page.getByRole("heading", { name: "Build estimate" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Build estimate" }),
+  ).toBeVisible();
   const price = page.locator('form[onsubmit*="addLine"]');
   await price.locator('input[name="name"]').fill("Front rotor replacement");
   await price.locator('input[name="parts"]').fill("225.45");
@@ -202,13 +206,10 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await price.getByRole("button", { name: /Add recommendation/ }).click();
   const priceResponse = await responsePromise;
   expect(await priceResponse.json()).toMatchObject({ ok: true });
-  await expect(
-    page.getByText("Front rotor replacement").first(),
-  ).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Front rotor replacement").first()).toBeVisible({
+    timeout: 30000,
+  });
   await page.reload();
-  await expect(
-    page.getByText("Front rotor replacement").first(),
-  ).toBeVisible();
+  await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
   await expect(page.getByText("$225.45").first()).toBeVisible();
-
 });
