@@ -15,6 +15,7 @@ import { createUploadUrl, statObject } from "@/lib/media-storage";
 import { getCustomerWithVehicles } from "./customers";
 import { currentMemberRole } from "./membership";
 import { inspectionPoints } from "@/lib/vehicle-inspection";
+import { approvedAutomotivePoints } from "@/lib/approved-automotive-inspection";
 import { audit, recordActivity, type RequestMeta } from "./records";
 
 export const MEDIA_TYPES: Record<string, { ext: string; video: boolean }> = {
@@ -116,7 +117,8 @@ export async function finishMediaUpload(
     purpose === "finding" &&
     (!input.jobId ||
       !input.inspectionItemKey ||
-      !inspectionPoints.some((p) => p.id === input.inspectionItemKey))
+      !inspectionPoints.some((p) => p.id === input.inspectionItemKey) &&
+      !approvedAutomotivePoints.some((p) => p.key === input.inspectionItemKey))
   )
     throw new AppError(
       "VALIDATION",
