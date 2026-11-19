@@ -111,8 +111,43 @@ completeWork = function(id){nativeRo(id);};
 sendInvoice = function(id){nativeRo(id);};
 recordPayment = function(form,id){nativeRo(id);};
 closeRo = function(id){nativeRo(id);};
-addLine = function(id){nativeRo(id);};
-removeLine = function(id){nativeRo(id);};
+const centsFromForm = (amount) => {
+  const text = String(amount ?? "").trim();
+  if (!/^(?:0|[1-9]\\d{0,6})(?:\\.\\d{1,2})?$/.test(text))
+    throw new Error("Enter a nonnegative dollar amount with at most two decimals.");
+  return Math.round(Number(text) * 100);
+};
+const showPricedRo = (id) =>
+  window.location.assign("/automotive?ro=" + encodeURIComponent(id) + "&tab=estimate");
+addLine = async function(form,id) {
+  const r = roBy(id);
+  if (!r || r.stage !== "estimate") return alert("This RO is not ready for pricing.");
+  const f = formData(form);
+  try {
+    const partsCents = centsFromForm(f.parts);
+    const laborCents = centsFromForm(f.labor);
+    const costCents = centsFromForm(f.cost);
+    if (!String(f.name || "").trim() || partsCents + laborCents <= 0)
+      throw new Error("Enter the recommendation and a positive selling price.");
+    await liveWrite("ro.pricing.add", {
+      jobId: id, expectedVersion: r.version, description: String(f.name).trim(),
+      partsCents, laborCents, costCents
+    });
+    showPricedRo(id);
+  } catch(e) { alert(e.message || "Recommendation was not saved."); }
+};
+removeLine = async function(roId,lineId) {
+  const r = roBy(roId);
+  const line = r?.lines.find(l => l.id === lineId);
+  if (!r || r.stage !== "estimate" || !line || !lineId.startsWith("draft-"))
+    return alert("This recommendation can no longer be removed from the draft.");
+  try {
+    await liveWrite("ro.pricing.remove", {
+      jobId:roId, expectedVersion:r.version, description:line.name
+    });
+    showPricedRo(roId);
+  } catch(e) { alert(e.message || "Recommendation was not removed."); }
+};
 setApproval = function(){alert("Use the actual secure customer approval link sent from the RO.");};
 saveContact = function(form,id){nativePage("/app/customers/" + encodeURIComponent(id));};
 saveStaff = function(){nativePage("/app/settings/team");};
@@ -204,4 +239,8 @@ if(initialView.has("ro")){
   if(data.ros.some(r=>r.id===id)){ui.page="jobs";ui.selectedRo=id;}
 }
 if(initialView.get("view")==="appointments")ui.page="appointments";
+if(initialView.has("tab") && ui.selectedRo) {
+  const tab = initialView.get("tab");
+  if(["estimate","proposal","inspection","diagnosis","media","work","invoice","payment","documents","activity"].includes(tab))ui.tab=tab;
+}
 
