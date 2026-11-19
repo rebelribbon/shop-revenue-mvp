@@ -45,14 +45,26 @@ export function CustomerContactActions({
             contact={target}
             channel={action.channel}
             key={action.label}
-            className={compact ? "btn secondary contact-icon-button" : "btn secondary"}
+            className={
+              compact ? "btn secondary contact-icon-button" : "btn secondary"
+            }
             href={action.href}
             aria-label={compact ? action.label : undefined}
             title={compact ? action.label : undefined}
           >
             {compact ? (
-              <WorkspaceIcon name={action.channel === "call" ? "phone" : action.channel === "text" ? "message" : "mail"} />
-            ) : action.label}
+              <WorkspaceIcon
+                name={
+                  action.channel === "call"
+                    ? "phone"
+                    : action.channel === "text"
+                      ? "message"
+                      : "mail"
+                }
+              />
+            ) : (
+              action.label
+            )}
           </ContactLaunchLink>
         ))}
       </div>
