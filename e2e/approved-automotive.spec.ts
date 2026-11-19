@@ -227,7 +227,9 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   browser,
   baseURL,
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(120_000);
+  page.setDefaultTimeout(12_000);
+  const checkpoint = (name: string) => console.log(`[AUTOMOTIVE E2E] ${name}`);
   await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/automotive");
   const post = async (operation: string, payload: Record<string, unknown>) => {
@@ -280,6 +282,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       vehiclePickedUp: true,
     },
   });
+  checkpoint("inspection complete; pricing");
   await page.goto(`/automotive?ro=${ro.id}`);
   const draftVersion = (await page.evaluate(
     `data.ros.find(r => r.id === "${ro.id}")?.version ?? ""`,
@@ -305,17 +308,22 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     supplementReason: "",
   });
   expect(frozen.id).toMatch(/^[0-9a-f-]{36}$/i);
+  checkpoint("estimate frozen; requesting customer link");
   const share = await post("document.prepare", {
     id: frozen.id,
     kind: "estimate",
   });
   expect(share.path).toMatch(new RegExp("^/(estimate|packet)/"));
 
+  checkpoint("customer link ready; opening unsigned portal");
   const customerContext = await browser.newContext({ baseURL: baseURL! });
   try {
     const customerPage = await customerContext.newPage();
-    await customerPage.goto(share.path);
+    customerPage.setDefaultTimeout(12_000);
+    await customerPage.goto(share.path, { waitUntil: "domcontentloaded", timeout: 15_000 });
+    checkpoint("portal opened; running line approval");
     await approveEstimateSteps(customerPage);
+    checkpoint("line approval reached signature");
     await customerPage
       .getByLabel("Your full name", { exact: true })
       .fill("End To End Customer");
@@ -327,6 +335,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       .all())
       await radio.check();
     await drawEstimateSignature(customerPage);
+    checkpoint("signature drawn; submitting");
     await customerPage
       .getByRole("button", { name: "Sign authorization", exact: true })
       .click();
@@ -337,6 +346,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     await customerContext.close();
   }
 
+  checkpoint("authorization recorded; technician repairs");
   await page.goto(`/automotive?ro=${ro.id}&tab=work`);
   const approvedLines = (await page.evaluate(
     `data.ros.find(r => r.id === "${ro.id}")?.lines.filter(l => l.decision === "approved").map(l => l.id) ?? []`,
@@ -366,6 +376,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   await expect(
     page.getByText("Technician handoff complete").first(),
   ).toBeVisible();
+  checkpoint("repair finished; issuing invoice");
   const invoice = await post("invoice.issue", {
     versionId: frozen.id,
     dueOn: "",
@@ -383,6 +394,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     method: "cash",
     reference: "E2E MANUAL CASH RECEIPT",
   });
+  checkpoint("manual payment logged; releasing RO");
   await post("ro.release", { jobId: ro.id });
   await page.goto(`/automotive?ro=${ro.id}&tab=payment`);
   await expect(page.getByText("Vehicle released. RO closed.")).toBeVisible();
