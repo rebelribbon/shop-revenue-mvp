@@ -5,7 +5,13 @@ import type { NextConfig } from "next";
 // "cached per request, no stale snapshots").
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  outputFileTracingIncludes: { "/*": ["./src/assets/authorization-font.ttf"] },
+  outputFileTracingIncludes: {
+    "/*": [
+      "./src/assets/authorization-font.ttf",
+      "./docs/approved-designs/automotive-unified.html",
+      "./src/app/automotive/live-bridge.js",
+    ],
+  },
   serverExternalPackages: ["pg", "graphile-worker", "pino"],
 };
 

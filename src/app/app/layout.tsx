@@ -89,6 +89,11 @@ export default async function ShopLayout({
           >
             {b?.dba || b?.legalName}
           </Link>
+          {isAutomotive(b?.businessType ?? "automotive") && (
+            <Link className="btn secondary" href="/automotive">
+              Automotive
+            </Link>
+          )}
           {s.role !== "technician" && (
             <QuickFind
               automotive={isAutomotive(b?.businessType ?? "automotive")}
