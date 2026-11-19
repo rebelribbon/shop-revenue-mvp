@@ -40,7 +40,20 @@ jobs:
           echo "::add-mask::$hook"
           printf 'SUPABASE_AUTH_HOOK_SECRET="v1,whsec_%s"\nSUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN="placeholder-not-used-hook-delivers-sms"\n' "$hook" > supabase/.env
       - name: Start Supabase local stack
-        run: supabase start -x vector,logflare,imgproxy,postgres-meta,studio,realtime,edge-runtime,supavisor,postgrest > /dev/null
+        run: |
+          # A cancelled run can leave the local CLI's Docker network/ports behind
+          # on a reused runner. Clean only this project's local stack.
+          supabase stop --no-backup >/dev/null 2>&1 || true
+          for attempt in 1 2 3; do
+            if supabase start -x vector,logflare,imgproxy,postgres-meta,studio,realtime,edge-runtime,supavisor,postgrest > /dev/null; then
+              exit 0
+            fi
+            echo "Local Supabase startup failed (attempt $attempt); cleaning and retrying."
+            supabase stop --no-backup >/dev/null 2>&1 || true
+            sleep 4
+          done
+          echo "Local Supabase unavailable after three attempts."
+          exit 1
       - name: Environment, roles, migrations, seed
         run: |
           pnpm env:local
