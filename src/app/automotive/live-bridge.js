@@ -807,8 +807,17 @@ if(initialView.has("ro")){
   const id=initialView.get("ro");
   if(data.ros.some(r=>r.id===id)){ui.page="jobs";ui.selectedRo=id;}
 }
-if(initialView.get("view")==="appointments")ui.page="appointments";
-if(initialView.get("view")==="settings")ui.page="settings";
+if(["appointments","settings","jobs","tasks","customers","reports"].includes(initialView.get("view")))
+  ui.page=initialView.get("view");
+if(initialView.get("new")==="1" && role()!=="technician"){
+  ui.page="jobs";
+  ui.modal={
+    type:"checkin",
+    customerId:initialView.get("customerId")||"",
+    vehicleId:initialView.get("vehicleId")||"",
+    appointmentId:initialView.get("sourceAppointmentId")||""
+  };
+}
 if(initialView.has("tab") && ui.selectedRo) {
   const tab = initialView.get("tab");
   if(["estimate","proposal","inspection","diagnosis","media","work","invoice","payment","documents","activity"].includes(tab)) {
