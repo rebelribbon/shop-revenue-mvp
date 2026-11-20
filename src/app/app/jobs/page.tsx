@@ -1950,7 +1950,7 @@ export default async function JobsPage({
 
                     {!awaitingInspection &&
                       flow &&
-                      (auto ? (
+                      (inspectionFirst ? (
                         <details
                           className="ro-work-controls"
                           open={[
