@@ -1067,7 +1067,7 @@ export default async function JobsPage({
                 </div>
               )}
               <article
-                className={`card job-profile record-job-profile ${auto ? "ro-mobile-focus" : ""}`}
+                className={`card job-profile record-job-profile ${inspectionFirst ? "ro-mobile-focus" : ""}`}
                 data-legacy-job-actions={inspectionFirst ? undefined : "true"}
               >
                 {!inspectionFirst && (
@@ -1235,7 +1235,7 @@ export default async function JobsPage({
                     )}
                   </div>
                 </details>
-                {auto && (
+                {inspectionFirst && (
                   <RoStageSummary
                     inspectionComplete={!!data.inspection?.complete}
                     hasEstimate={!!flow?.latest}
