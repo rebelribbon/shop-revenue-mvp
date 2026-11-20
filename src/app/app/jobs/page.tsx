@@ -147,6 +147,7 @@ export default async function JobsPage({
   // source attribution can be transferred without losing financial history.
   if (
     process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
+    s.actor.type === "user" &&
     !sourceRecoveryItemId &&
     !sourceContactActivityId &&
     !fromMedia &&
