@@ -97,29 +97,31 @@ test("authenticated Add Customer stays in the page flow above the list", async (
 
 test("authenticated customer shortcuts are icons beside the name", async ({
   page,
-}) => {
+}, info) => {
   const { signInWithPassword } = await import("./helpers");
+  // The phone and desktop projects run in the same disposable shop.
+  const lastName = `Icon Test ${info.project.name}`;
+  const phone = info.project.name === "phone" ? "+12105550142" : "+12105550143";
+  const email = `contact-icon-${info.project.name}@example.test`;
   await page.setViewportSize({ width: 390, height: 844 });
   await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/app/customers/new");
   await page.getByLabel("Assigned service advisor").selectOption({ index: 1 });
   await page.getByLabel("First name").fill("Contact");
-  await page.getByLabel("Last name").fill("Icon Test");
-  await page.getByLabel("Mobile number").fill("+12105550123");
-  await page
-    .getByLabel("Email", { exact: true })
-    .fill("contact-icon@example.test");
+  await page.getByLabel("Last name").fill(lastName);
+  await page.getByLabel("Mobile number").fill(phone);
+  await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Add customer", exact: true }).click();
   await expect(page).toHaveURL(/\/app\/customers\/[0-9a-f-]+$/);
   const row = page.locator(".customer-hero-title-row");
   await expect(
-    row.getByRole("heading", { name: "Contact Icon Test" }),
+    row.getByRole("heading", { name: `Contact ${lastName}` }),
   ).toBeVisible();
   const contacts = row.getByRole("group", { name: "Contact customer" });
   for (const [name, href] of [
-    ["Call", "tel:+12105550123"],
-    ["Text", "sms:+12105550123"],
-    ["Email", "mailto:contact-icon@example.test"],
+    ["Call", `tel:${phone}`],
+    ["Text", `sms:${phone}`],
+    ["Email", `mailto:${email}`],
   ]) {
     const link = contacts.getByRole("link", { name, exact: true });
     await expect(link).toHaveAttribute("href", href);
