@@ -150,26 +150,29 @@ export default async function ReportsPage({
           </Link>
         ))}
       </div>
-      <form method="get" className="card">
-        <input type="hidden" name="report" value={key} />
-        <label htmlFor="report-from">From</label>
-        <input
-          id="report-from"
-          name="from"
-          type="date"
-          defaultValue={range.from}
-          required
-        />
-        <label htmlFor="report-to">To</label>
-        <input
-          id="report-to"
-          name="to"
-          type="date"
-          defaultValue={range.to}
-          required
-        />
-        <button className="btn secondary">Show these dates</button>
-      </form>
+      <details className="report-date-filter">
+        <summary>Custom date range</summary>
+        <form method="get" className="card">
+          <input type="hidden" name="report" value={key} />
+          <label htmlFor="report-from">From</label>
+          <input
+            id="report-from"
+            name="from"
+            type="date"
+            defaultValue={range.from}
+            required
+          />
+          <label htmlFor="report-to">To</label>
+          <input
+            id="report-to"
+            name="to"
+            type="date"
+            defaultValue={range.to}
+            required
+          />
+          <button className="btn secondary">Apply dates</button>
+        </form>
+      </details>
       <section className="card">
         <h2>
           {info.title}: {nice(range.from)} – {nice(range.to)}

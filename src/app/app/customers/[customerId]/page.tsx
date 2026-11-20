@@ -20,6 +20,9 @@ import { ActionForm } from "@/components/action-form";
 import { VehicleFields } from "@/components/vehicle-fields";
 import { withTenant } from "@/db/tenant";
 import { getCustomerWithVehicles } from "@/domain/customers";
+import { listAdvisors } from "@/domain/assignments";
+import { canManageTeam } from "@/domain/membership";
+import { assignCustomerAction } from "@/server/actions/assignments";
 import {
   customerHistory,
   customerMoney,
@@ -69,6 +72,8 @@ export default async function CustomerDetailPage(props: {
     portal,
     reviewLink,
     lastReview,
+    canManage,
+    advisors,
   ] = await withTenant(s.businessId, s.actor, async (tx) =>
     Promise.all([
       getCustomerWithVehicles(tx, customerId),
@@ -81,6 +86,8 @@ export default async function CustomerDetailPage(props: {
       portalLink(tx, customerId),
       readReviewSettings(tx).then((r) => r.link),
       lastReviewRequest(tx, customerId),
+      canManageTeam(tx),
+      listAdvisors(tx),
     ]),
   );
   const profileNotes = notes.filter((n) => n.kind === "profile");
@@ -158,20 +165,23 @@ export default async function CustomerDetailPage(props: {
         </Link>
       </p>
       <header className="customer-hero" aria-label="Customer summary">
-        <CustomerContactActions
-          target={{ customerId }}
-          phone={c.phoneE164}
-          email={c.email}
-          textAllowed={!c.textOptedOutAt && !c.doNotContact}
-          emailAllowed={!c.emailOptedOutAt && !c.doNotContact}
-        />
         <div className="customer-hero-main">
           <div className="customer-hero-avatar" aria-hidden="true">
             {c.displayName.trim().charAt(0).toUpperCase()}
           </div>
           <div className="customer-hero-identity">
             <p className="customer-eyebrow">Customer record</p>
-            <h1>{c.displayName}</h1>
+            <div className="customer-hero-title-row">
+              <h1>{c.displayName}</h1>
+              <CustomerContactActions
+                compact
+                target={{ customerId }}
+                phone={c.phoneE164}
+                email={c.email}
+                textAllowed={!c.textOptedOutAt && !c.doNotContact}
+                emailAllowed={!c.emailOptedOutAt && !c.doNotContact}
+              />
+            </div>
             <CustomerContactSummary
               phone={c.phoneE164 ? formatPhone(c.phoneE164) : null}
               email={c.email}
@@ -262,6 +272,39 @@ export default async function CustomerDetailPage(props: {
               <strong>{formatMoney(money.paidCents)}</strong> paid you, all time
             </span>
           </p>
+          {canManage && (
+            <section
+              className="record-customer-tools"
+              aria-label="Customer assignment"
+            >
+              <h3>Assigned service advisor</h3>
+              <ActionForm
+                action={assignCustomerAction}
+                hidden={{ customerId }}
+                submitLabel="Reassign customer"
+                variant="secondary"
+              >
+                <label htmlFor="customer-advisor">Service advisor</label>
+                <select
+                  id="customer-advisor"
+                  name="userId"
+                  defaultValue={c.assignedUserId ?? ""}
+                  required
+                >
+                  <option value="">Select an advisor</option>
+                  {advisors.map((advisor) => (
+                    <option key={advisor.userId} value={advisor.userId}>
+                      {advisor.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="muted">
+                  Reassigning transfers open customer tasks and immediately
+                  removes the previous advisor&apos;s customer access.
+                </p>
+              </ActionForm>
+            </section>
+          )}
           <details className="record-customer-tools">
             <summary>Customer options</summary>
             <div className="portal-box">

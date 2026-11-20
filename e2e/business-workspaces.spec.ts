@@ -1,4 +1,4 @@
-import { openFullJobSheet, revealField } from "./helpers";
+import { revealField } from "./helpers";
 import { expect, test } from "@playwright/test";
 import { signInWithPassword } from "./helpers";
 
@@ -130,7 +130,7 @@ test("home-service setup creates a real property and equipment job without vehic
     await expect(saved).toBeVisible();
     await saved
       .getByRole("button", {
-        name: "Prepare estimate & choose recipient",
+        name: "Prepare customer estimate",
         exact: true,
       })
       .click();
@@ -179,13 +179,15 @@ test("home-service setup creates a real property and equipment job without vehic
       await expect(
         page.getByRole("heading", { name: "Vehicle", exact: true }),
       ).toBeVisible();
-      await openFullJobSheet(page);
+      // Returning to Automotive must restore the inspection-first check-in,
+      // never the old parts/labor form before a technician has inspected it.
       await expect(
         page.getByLabel("Property / equipment", { exact: true }),
       ).toHaveCount(0);
+      await expect(page.getByLabel("Job name", { exact: true })).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: "Add part", exact: true }),
-      ).toBeVisible();
+      ).toHaveCount(0);
       await page.getByRole("link", { name: "Customers", exact: true }).click();
       await page
         .getByRole("link", { name: "Add customer", exact: true })

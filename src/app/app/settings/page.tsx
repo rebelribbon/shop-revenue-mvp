@@ -1,9 +1,12 @@
 import { HydratedMain } from "@/components/hydrated-main";
 import Link from "next/link";
 import { requireFrontOfficeView } from "@/server/views/shop";
+import { withTenant } from "@/db/tenant";
+import { canManageTeam } from "@/domain/membership";
 
 export default async function SettingsPage() {
   const s = await requireFrontOfficeView("/app/settings");
+  const canManage = await withTenant(s.businessId, s.actor, canManageTeam);
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Settings</h1>
@@ -92,10 +95,12 @@ export default async function SettingsPage() {
             Business type, name, address and timezone
           </span>
         </Link>
-        <Link className="card settings-link" href="/app/settings/team">
-          <strong>Team</strong>
-          <span className="muted">Owner and staff access</span>
-        </Link>
+        {canManage && (
+          <Link className="card settings-link" href="/app/settings/team">
+            <strong>Team & permissions</strong>
+            <span className="muted">Invite users, manage roles and access</span>
+          </Link>
+        )}
         {s.role !== "staff" && s.role !== "technician" && (
           <Link
             className="card settings-link"

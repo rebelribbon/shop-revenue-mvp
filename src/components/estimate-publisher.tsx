@@ -13,13 +13,11 @@ export function EstimatePublisher({
   version,
   existingVersion,
   taxRateBps = 0,
-  pendingChanges = false,
 }: {
   jobId: string;
   version: string;
   existingVersion?: number;
   taxRateBps?: number;
-  // The job changed since the latest estimate: show the resend form open.
   pendingChanges?: boolean;
 }) {
   const [message, setMessage] = useState("");
@@ -83,8 +81,11 @@ export function EstimatePublisher({
             setPath(data.path ?? "");
             setPublishedId((result.data as { id: string }).id);
             setShare((result.data as { share?: typeof share }).share);
-            setMessage("Estimate prepared. Choose a recipient to send it.");
+            setMessage("Estimate saved in RO Documents.");
             setRequestId(crypto.randomUUID());
+            router.push(
+              `/app/jobs?job=${encodeURIComponent(jobId)}&tab=files&share=1#file-cabinet`,
+            );
             router.refresh();
           } else setMessage(result.error.message);
         } catch {
@@ -95,7 +96,7 @@ export function EstimatePublisher({
       }}
     >
       <fieldset className="hydration-fields" disabled={!ready}>
-        <h4>Step 1 of 2 — Prepare the estimate</h4>
+        <h4>Prepare customer estimate</h4>
         <p>
           Review the work and prices. This saves a fixed estimate in the job and
           opens the recipient and delivery options; it does not send anything
@@ -134,21 +135,12 @@ export function EstimatePublisher({
           </label>
           <p className="muted">Changes need the customer’s approval again.</p>
         </details>{" "}
-        <label hidden={!existingVersion}>
-          What changed?
-          <textarea
-            required={!!existingVersion}
-            name="supplementReason"
-            maxLength={2000}
-            rows={2}
-          />
-        </label>
         <button
           className="btn secondary"
           data-page-primary={!existingVersion ? "true" : undefined}
           disabled={pending}
         >
-          {pending ? "Preparing…" : "Prepare estimate & choose recipient"}
+          {pending ? "Preparing…" : "Prepare customer estimate"}
         </button>
         <p role="status">{message}</p>
         {path && (
@@ -170,16 +162,7 @@ export function EstimatePublisher({
       </fieldset>
     </form>
   );
-  return existingVersion ? (
-    <details open={pendingChanges || undefined}>
-      <summary>
-        {pendingChanges ? "Send updated estimate" : "Change estimate"}
-      </summary>
-      {form}
-    </details>
-  ) : (
-    form
-  );
+  return form;
 }
 
 export function EstimateLink({ id }: { id: string }) {

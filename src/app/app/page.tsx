@@ -44,6 +44,16 @@ export default async function HomePage({
     redirect(`/app/opportunities?${query}`);
   }
   const s = await requireShopSession("/app");
+  // Automotive owners, advisors, and technicians use the approved Unified workspace.
+  // Keep Home Services on its existing industry-specific application.
+  const businessProfile = await withTenant(s.businessId, s.actor, (tx) =>
+    getBusinessProfile(tx),
+  );
+  if (
+    process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
+    isAutomotive(businessProfile?.businessType ?? "automotive")
+  )
+    redirect("/automotive");
   if (s.role === "technician") redirect("/app/tasks");
   const [
     profile,

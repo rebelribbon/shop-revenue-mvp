@@ -35,6 +35,23 @@ export function PageActions() {
     let frame = 0;
     const choose = () => {
       frame = 0;
+      // RO and advisor pricing are multi-stage workspaces. A global floating
+      // button can pick an unrelated action from a different section (for
+      // example "Price parts & labor" while viewing signed documents).
+      // These screens own their local stage actions instead.
+      const isRoWorkflow =
+        pathname === "/app/jobs" &&
+        !document.querySelector("[data-legacy-job-actions]") &&
+        ["job", "edit"].some((key) =>
+          new URLSearchParams(window.location.search).has(key),
+        );
+      if (isRoWorkflow) {
+        selected?.removeAttribute("data-ux-primary");
+        selected = null;
+        document.body.style.removeProperty("--primary-space");
+        setFallback(false);
+        return;
+      }
       const main =
         document.querySelector("dialog[open]") ??
         document.querySelector("main");

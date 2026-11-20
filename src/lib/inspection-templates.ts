@@ -2,6 +2,7 @@
 // customer understands; each item gets Good / Watch / Needs work.
 import { isAutomotive } from "./business-types";
 import { inspectionPoints } from "./vehicle-inspection";
+import { approvedAutomotivePoints } from "./approved-automotive-inspection";
 
 export type InspectionStatus = "good" | "watch" | "fix" | "na" | "unchecked";
 export type InspectionAssessment = {
@@ -48,7 +49,22 @@ const HOME = [
   ["damage", "Damage found on site", 100],
 ] as const;
 
-export function inspectionTemplate(businessType: string): InspectionItem[] {
+export function inspectionTemplate(
+  businessType: string,
+  version?: "approved-2026" | null,
+): InspectionItem[] {
+  if (isAutomotive(businessType) && version === "approved-2026")
+    return approvedAutomotivePoints.map((item) => ({
+      key: item.key,
+      label: item.label,
+      section: item.section,
+      hint: item.hint,
+      status: "unchecked",
+      note: "",
+      recommendedWork: "",
+      hoursHundredths: 100,
+      addedToJob: false,
+    }));
   const list = isAutomotive(businessType)
     ? AUTO
     : businessType === "hvac"
@@ -72,9 +88,9 @@ export function inspectionTemplate(businessType: string): InspectionItem[] {
 }
 
 export const STATUS_LABELS: Record<InspectionStatus, string> = {
-  good: "Satisfactory",
-  watch: "Service Soon",
-  fix: "Service Now",
+  good: "Pass",
+  watch: "Caution",
+  fix: "Fail",
   na: "N/A",
   unchecked: "Not checked",
 };

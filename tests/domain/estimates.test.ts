@@ -2,8 +2,8 @@ import { signTestEstimate as signEstimate } from "../helpers/authorization";
 import { it, expect } from "vitest";
 import { and, eq, sql } from "drizzle-orm";
 import { hashToken } from "@/lib/tokens";
-import { withTenant } from "@/db/tenant";
-import { estimateVersion, estimateAuthorization } from "@/db/schema";
+import { runInContext, withTenant } from "@/db/tenant";
+import { activity, estimateVersion, estimateAuthorization } from "@/db/schema";
 import { createCustomer, createVehicle } from "@/domain/customers";
 import { createJob, listJobs } from "@/domain/jobs";
 import {
@@ -62,6 +62,34 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
   const token = first.path.split("/").pop()!;
   const visible = await readPublicEstimate(token);
   expect(visible?.snapshot.totalCents).toBe(46650);
+  const openEstimate = (shareToken: string) =>
+    runInContext(null, { type: "customer", id: null }, async (tx) => {
+      const { rows } = await tx.execute<{ recorded: boolean }>(
+        sql`select app.record_estimate_open(${hashToken(shareToken)}) as recorded`,
+      );
+      return rows[0]?.recorded;
+    });
+  expect(await openEstimate("x".repeat(43))).toBe(false);
+  expect(await Promise.all([openEstimate(token), openEstimate(token)])).toEqual(
+    [true, true],
+  );
+  const opensByTenant = (tenant: typeof a) =>
+    withTenant(tenant.businessId, tenant.owner.actor, (tx) =>
+      tx
+        .select({ data: activity.data })
+        .from(activity)
+        .where(
+          and(
+            eq(activity.kind, "estimate.customer_opened"),
+            sql`${activity.data}->>'versionId' = ${first.id}`,
+          ),
+        ),
+    );
+  expect(await opensByTenant(a)).toEqual([
+    { data: { jobId: job.id, version: 1, versionId: first.id } },
+  ]);
+  expect(await opensByTenant(b)).toEqual([]);
+
   expect(JSON.stringify(visible)).not.toMatch(
     /unitCost|costRate|actualHours|GrossProfit|12345/,
   );
@@ -123,27 +151,19 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
   const [revised] = await withTenant(a.businessId, a.owner.actor, (tx) =>
     listJobs(tx),
   );
-  await expect(
-    withTenant(a.businessId, a.owner.actor, (tx) =>
-      freezeEstimate(tx, meta(), {
-        jobId: job.id,
-        expectedJobVersion: revised.version,
-        taxBps: 0,
-        supplementReason: "",
-        terms: "",
-      }),
-    ),
-  ).rejects.toThrow();
+  // Changes between immutable versions are recorded automatically.
+  // Signed revisions no longer require an advisor-typed supplement reason.
   const second = await withTenant(a.businessId, a.owner.actor, (tx) =>
     freezeEstimate(tx, meta(), {
       jobId: job.id,
       expectedJobVersion: revised.version,
       taxBps: 0,
-      supplementReason: "Updated parts",
+      supplementReason: "",
       terms: "",
     }),
   );
   expect(await readPublicEstimate(token)).toBeNull();
+  expect(await openEstimate(token)).toBe(false);
   await expect(signEstimate(token, "Old link", [], meta())).rejects.toThrow();
   const secondToken = second.path.split("/").pop()!;
   expect((await readPublicEstimate(secondToken))?.authorization).toBeNull();

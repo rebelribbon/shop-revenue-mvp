@@ -42,6 +42,7 @@ test("contact tasks log the outcome and update the task in one step", async ({
   await expect(
     task.getByRole("link", { name: "Call", exact: true }),
   ).toHaveCount(0);
+  await task.getByText("More options", { exact: true }).click();
   const record = task.getByRole("link", { name: "View customer", exact: true });
   await expect(record).toHaveAttribute("href", customerPath);
   await auditUX(page);

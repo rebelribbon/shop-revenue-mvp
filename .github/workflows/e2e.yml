@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 30
     env:
       PUBLIC_SIGNUP_ENABLED: "true"
+      # Legacy navigation regressions run alongside the direct /automotive acceptance suite.
+      # This does not disable Unified Automotive on hosted preview or production.
+      AUTOMOTIVE_UNIFIED_DEFAULT: "false"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -37,7 +40,20 @@ jobs:
           echo "::add-mask::$hook"
           printf 'SUPABASE_AUTH_HOOK_SECRET="v1,whsec_%s"\nSUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN="placeholder-not-used-hook-delivers-sms"\n' "$hook" > supabase/.env
       - name: Start Supabase local stack
-        run: supabase start -x vector,logflare,imgproxy,postgres-meta,studio,realtime,edge-runtime,supavisor,postgrest > /dev/null
+        run: |
+          # A cancelled run can leave the local CLI's Docker network/ports behind
+          # on a reused runner. Clean only this project's local stack.
+          supabase stop --no-backup >/dev/null 2>&1 || true
+          for attempt in 1 2 3; do
+            if supabase start -x vector,logflare,imgproxy,postgres-meta,studio,realtime,edge-runtime,supavisor,postgrest > /dev/null; then
+              exit 0
+            fi
+            echo "Local Supabase startup failed (attempt $attempt); cleaning and retrying."
+            supabase stop --no-backup >/dev/null 2>&1 || true
+            sleep 4
+          done
+          echo "Local Supabase unavailable after three attempts."
+          exit 1
       - name: Environment, roles, migrations, seed
         run: |
           pnpm env:local
@@ -51,13 +67,25 @@ jobs:
           nohup pnpm start > web.log 2>&1 &
           for i in $(seq 1 60); do curl -fsS -o /dev/null http://localhost:3000/sign-in && break; sleep 2; done
       - run: timeout 180 pnpm exec playwright install chromium
+      - name: Default Automotive workspace and end-to-end RO (phone and desktop)
+        run: |
+          AUTOMOTIVE_UNIFIED_DEFAULT=true PORT=3003 nohup pnpm start > automotive-web.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:3003/sign-in && break; sleep 2; done
+          E2E_BASE_URL=http://localhost:3003 pnpm exec playwright test e2e/approved-automotive.spec.ts --max-failures=1 --reporter=list,github
       - name: Assigned RO handoffs and technician permissions (phone and desktop)
         run: pnpm exec playwright test e2e/ro-handoffs.spec.ts e2e/technician-role.spec.ts e2e/tech-board.spec.ts --max-failures=1 --reporter=list,github
       - name: Playwright (phone 390x844 and desktop)
         run: |
-          pnpm e2e --project=phone --max-failures=0 --grep-invert @mfa --reporter=list,github
+          # Camera/VIN tests sign in using a shared seeded shop account. Run
+          # them first so this disposable stack's authentication throttle is
+          # not exhausted by the earlier broad suite.
+          pnpm exec playwright test e2e/vin-scan.spec.ts --project=phone --reporter=list,github
           pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
-          pnpm e2e --project=desktop --max-failures=0 --grep-invert @mfa --reporter=list,github
+          pnpm e2e --project=phone --max-failures=0 --grep-invert 'Scan a VIN barcode|No scan button|@mfa|approved-automotive\.spec\.ts' --reporter=list,github
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm exec playwright test e2e/vin-scan.spec.ts --project=desktop --reporter=list,github
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm e2e --project=desktop --max-failures=0 --grep-invert 'Scan a VIN barcode|No scan button|@mfa|approved-automotive\.spec\.ts' --reporter=list,github
       - name: Job form development-mode smoke
         run: |
           pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
@@ -73,6 +101,7 @@ jobs:
       - if: failure()
         run: |
           tail -100 web.log
+          test ! -f automotive-web.log || tail -100 automotive-web.log
           test ! -f dev-web.log || tail -100 dev-web.log
           test ! -f mfa-web.log || tail -100 mfa-web.log
       - if: always()

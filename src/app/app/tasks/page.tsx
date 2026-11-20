@@ -14,6 +14,8 @@ import { HydratedMain } from "@/components/hydrated-main";
 import { TasksNavigation } from "@/components/tasks-navigation";
 import { withTenant } from "@/db/tenant";
 import { listCustomers } from "@/domain/customers";
+import { canManageTeam } from "@/domain/membership";
+import { listAdvisors } from "@/domain/assignments";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { getJobFollowUp, listTasks, type TaskRow } from "@/domain/tasks";
 import { isAutomotive } from "@/lib/business-types";
@@ -54,19 +56,25 @@ export default async function TasksPage(props: {
   const canAdd = !readOnly && !technician;
   const jobId = p.add && canAdd ? p.jobId : undefined;
   const view = p.view === "later" ? "later" : "due";
-  const [data, customers, context, profile] = await withTenant(
-    s.businessId,
-    s.actor,
-    (tx) =>
+  const [data, customers, context, profile, management, advisors] =
+    await withTenant(s.businessId, s.actor, (tx) =>
       Promise.all([
         listTasks(tx),
         p.add && canAdd && !jobId ? listCustomers(tx) : [],
         jobId ? getJobFollowUp(tx, jobId) : null,
         jobId ? getBusinessProfile(tx) : null,
+        canManageTeam(tx),
+        listAdvisors(tx),
       ]),
-  );
+    );
   if (jobId && !context) notFound();
-  const rows = view === "due" ? data.due : data.later;
+  const rows =
+    view === "due"
+      ? [...data.due].sort(
+          (a, b) => Number(b.source === "work") - Number(a.source === "work"),
+        )
+      : data.later;
+  const actionable = rows.filter((task) => task.source === "work").length;
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <header className="task-heading">
@@ -162,6 +170,41 @@ export default async function TasksPage(props: {
               required
               defaultValue={addLocalDays(data.today, 1)}
             />
+            {management ? (
+              <>
+                <label htmlFor="task-assignee">Assigned service advisor</label>
+                <select
+                  id="task-assignee"
+                  name="assignedUserId"
+                  defaultValue={
+                    advisors.some((advisor) => advisor.userId === s.actor.id)
+                      ? s.actor.id || ""
+                      : advisors.length === 1
+                        ? advisors[0].userId || ""
+                        : ""
+                  }
+                  required
+                >
+                  <option value="" disabled>
+                    Choose an advisor
+                  </option>
+                  {advisors.map((advisor) => (
+                    <option key={advisor.userId} value={advisor.userId}>
+                      {advisor.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <p className="muted">This task is assigned to you.</p>
+                <input
+                  type="hidden"
+                  name="assignedUserId"
+                  value={s.actor.id ?? ""}
+                />
+              </>
+            )}
             <label htmlFor="task-customer">Customer (optional)</label>
             <select
               id="task-customer"
@@ -179,6 +222,21 @@ export default async function TasksPage(props: {
           <Link className="panel-close" href="/app/tasks">
             Close
           </Link>
+        </section>
+      )}
+      {view === "due" && rows.length > 0 && (
+        <section className="task-focus" aria-label="Today's work">
+          <p className="muted">YOUR WORK QUEUE</p>
+          <h2>
+            {actionable
+              ? `${actionable} repair order handoff${actionable === 1 ? "" : "s"} ready`
+              : "Today's follow-ups"}
+          </h2>
+          <p className="muted">
+            {actionable
+              ? "Assigned repair orders come first. Open the task, complete the next stage, and hand the RO to the next person."
+              : "Start with the next customer who needs a response. Every completed task stays in the RO or customer history."}
+          </p>
         </section>
       )}
       {rows.length === 0 ? (
@@ -418,75 +476,86 @@ function TaskItem({
               {action.label}
             </TaskActionLink>
           )}
-          {related && (
-            <Link className="btn secondary" href={related}>
-              {relatedLabel}
-            </Link>
-          )}
-          {canLogCall && (
-            <>
-              <ActionForm
-                action={updateOutcome}
-                hidden={reached}
-                submitLabel="Reached"
-                successText="Call recorded."
-              />
-              {(["left_message", "no_answer"] as const).map((outcome) => (
-                <ActionForm
-                  key={outcome}
-                  action={updateOutcome}
-                  hidden={retryCall(outcome)}
-                  submitLabel={`${outcomeLabels[outcome]} · try tomorrow`}
-                  successText="Call recorded. Follow up tomorrow."
-                />
-              ))}
-            </>
-          )}
-          {canUpdate && !canLogCall && t.source === "manual" && (
-            <>
-              <ActionForm
-                action={updateTaskAction}
-                hidden={{ id: t.subjectId, action: "done" }}
-                submitLabel="Done"
-                variant="secondary"
-              />
-              <ActionForm
-                action={updateTaskAction}
-                hidden={{ id: t.subjectId, action: "snooze", days: "1" }}
-                submitLabel="Tomorrow"
-                variant="secondary"
-              />
-            </>
-          )}
-          {canUpdate && !canLogCall && t.source === "rule" && (
-            <>
-              <ActionForm
-                action={updateRecoveryAction}
-                hidden={{
-                  ...rule,
-                  action: "contact",
-                  method: contactMethod,
-                  note: "Task marked done",
-                  deliveryConfirmed: "false",
-                }}
-                submitLabel="Done"
-                variant="secondary"
-              />
-              <ActionForm
-                action={updateRecoveryAction}
-                hidden={{ ...rule, action: "snooze", days: "1" }}
-                submitLabel="Tomorrow"
-                variant="secondary"
-              />
-            </>
-          )}
-          {canUpdate && t.source === "rule" && (
-            <ActionForm
-              action={updateRecoveryAction}
-              hidden={{ ...rule, action: "dismiss", reason: "Not needed" }}
-              submitLabel="Not needed"
-              variant="secondary"
-            />
+          {(related || canLogCall || canUpdate) && (
+            <details className="task-more-actions">
+              <summary>More options</summary>
+              <div className="task-more-content">
+                {related && (
+                  <Link className="btn secondary" href={related}>
+                    {relatedLabel}
+                  </Link>
+                )}
+                {canLogCall && (
+                  <>
+                    <ActionForm
+                      action={updateOutcome}
+                      hidden={reached}
+                      submitLabel="Reached"
+                      successText="Call recorded."
+                    />
+                    {(["left_message", "no_answer"] as const).map((outcome) => (
+                      <ActionForm
+                        key={outcome}
+                        action={updateOutcome}
+                        hidden={retryCall(outcome)}
+                        submitLabel={`${outcomeLabels[outcome]} · try tomorrow`}
+                        successText="Call recorded. Follow up tomorrow."
+                      />
+                    ))}
+                  </>
+                )}
+                {canUpdate && !canLogCall && t.source === "manual" && (
+                  <>
+                    <ActionForm
+                      action={updateTaskAction}
+                      hidden={{ id: t.subjectId, action: "done" }}
+                      submitLabel="Done"
+                      variant="secondary"
+                    />
+                    <ActionForm
+                      action={updateTaskAction}
+                      hidden={{ id: t.subjectId, action: "snooze", days: "1" }}
+                      submitLabel="Tomorrow"
+                      variant="secondary"
+                    />
+                  </>
+                )}
+                {canUpdate && !canLogCall && t.source === "rule" && (
+                  <>
+                    <ActionForm
+                      action={updateRecoveryAction}
+                      hidden={{
+                        ...rule,
+                        action: "contact",
+                        method: contactMethod,
+                        note: "Task marked done",
+                        deliveryConfirmed: "false",
+                      }}
+                      submitLabel="Done"
+                      variant="secondary"
+                    />
+                    <ActionForm
+                      action={updateRecoveryAction}
+                      hidden={{ ...rule, action: "snooze", days: "1" }}
+                      submitLabel="Tomorrow"
+                      variant="secondary"
+                    />
+                  </>
+                )}
+                {canUpdate && t.source === "rule" && (
+                  <ActionForm
+                    action={updateRecoveryAction}
+                    hidden={{
+                      ...rule,
+                      action: "dismiss",
+                      reason: "Not needed",
+                    }}
+                    submitLabel="Not needed"
+                    variant="secondary"
+                  />
+                )}
+              </div>
+            </details>
           )}
         </div>
       )}

@@ -47,10 +47,13 @@ test("advisor checks a vehicle in from one short screen", async ({
   await expect(
     page.getByRole("heading", { name: "Repair order", exact: true }),
   ).toBeVisible();
-  // Pricing waits for the technician's inspection.
-  await expect(
-    page.getByRole("heading", { name: "Assign a technician", exact: true }),
-  ).toBeVisible();
+  // Owner can receive the inspection themselves. Pricing still waits for it.
+  await expect(page.getByText(/Advisor: .+ · Tech: /)).not.toContainText(
+    "Tech: Not assigned",
+  );
+  await expect(page.getByRole("link", { name: "Build estimate" })).toHaveCount(
+    0,
+  );
   const checkIn = page.getByLabel("Check-in", { exact: true });
   await expect(checkIn).toContainText("84,250");
   await expect(checkIn).toContainText("Grinding noise when braking.");

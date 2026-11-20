@@ -77,10 +77,14 @@ export const createCustomerAction = defineShopAction({
       .optional(),
     leadSource: leadSourceField,
     leadSourceDetail: z.string().max(200).optional(),
+    // Domain policy defaults an omitted assignee to the signed-in owner or
+    // advisor and independently checks active membership and transfer rights.
+    assignedUserId: z.uuid().optional(),
   }),
   run: ({ tx, meta }, input) =>
     createCustomer(tx, meta, {
       ...customerInput(input),
+      assignedUserId: input.assignedUserId,
       leadSource: input.leadSource,
       leadSourceDetail: input.leadSourceDetail ?? null,
       allowDuplicate:

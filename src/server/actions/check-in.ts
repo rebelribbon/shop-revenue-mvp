@@ -1,6 +1,7 @@
 "use server";
 import { z } from "zod";
-import { assignAdvisor, assignJob } from "@/domain/assignments";
+import { assignJob } from "@/domain/assignments";
+import { currentMemberRole } from "@/domain/membership";
 import { prepareHandoffPing, sendHandoffPing } from "@/domain/handoff-pings";
 import { createJob } from "@/domain/jobs";
 import { checkInTitle } from "@/lib/check-in";
@@ -17,17 +18,26 @@ export const checkInAction = defineShopAction({
     mileageIn: z.number().int().min(0).max(3000000).nullable(),
     concerns: z.string().trim().min(1).max(2000),
     technicianUserId: z.uuid().nullable(),
+    approvedInspection: z.boolean().optional(),
     sourceRecoveryItemId: z.uuid().optional(),
     sourceContactActivityId: z.uuid().optional(),
     sourceAppointmentId: z.uuid().optional(),
   }),
   run: async ({ tx, meta }, i) => {
+    // Check-in must assign an advisor before the inspection-first RO is saved.
+    // One-person owner shops can own the advisor and technician roles at once.
+    const advisorUserId = tx.actor.type === "user" ? tx.actor.id : null;
+    const owner = (await currentMemberRole(tx)) === "owner";
     const job = await createJob(tx, {
+      advisorUserId: advisorUserId ?? undefined,
       customerId: i.customerId,
       vehicleId: i.vehicleId,
       title: checkInTitle(i.concerns),
       // Estimate pricing waits for the technician's inspection.
       inspectionFirst: true,
+      ...(i.approvedInspection
+        ? { inspectionTemplateVersion: "approved-2026" as const }
+        : {}),
       mileageIn: i.mileageIn,
       concerns: i.concerns,
       sourceRecoveryItemId: i.sourceRecoveryItemId,
@@ -36,14 +46,14 @@ export const checkInAction = defineShopAction({
       parts: [],
       labor: [],
     });
-    // Whoever checks the vehicle in is its advisor, so the finished
-    // inspection comes back to them.
-    if (tx.actor.type === "user" && tx.actor.id)
-      await assignAdvisor(tx, meta, { jobId: job.id, userId: tx.actor.id });
-    const assigned = i.technicianUserId
+    // createJob records the advisor and customer ownership atomically.
+    // When no technician was selected, the owner becomes their own tech.
+    const technicianUserId =
+      i.technicianUserId ?? (owner ? advisorUserId : null);
+    const assigned = technicianUserId
       ? await assignJob(tx, meta, {
           jobId: job.id,
-          userId: i.technicianUserId,
+          userId: technicianUserId,
         })
       : null;
     return {
