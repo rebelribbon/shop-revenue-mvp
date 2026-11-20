@@ -130,7 +130,7 @@ test("home-service setup creates a real property and equipment job without vehic
     await expect(saved).toBeVisible();
     await saved
       .getByRole("button", {
-        name: "Finalize estimate & prepare to send",
+        name: "Prepare customer estimate",
         exact: true,
       })
       .click();

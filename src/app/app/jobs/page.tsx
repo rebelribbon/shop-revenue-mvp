@@ -97,6 +97,7 @@ export default async function JobsPage({
     edit?: string;
     job?: string;
     new?: string;
+    full?: string;
     saved?: string;
     q?: string;
     stage?: string;
@@ -121,6 +122,7 @@ export default async function JobsPage({
     edit,
     job,
     new: creating,
+    full,
     saved,
     q,
     stage,
@@ -143,11 +145,19 @@ export default async function JobsPage({
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
   // Existing Automotive bookmarks now lead into the approved unified workflow.
-  // Specialized recovery/media links retain the legacy handler until their
-  // source attribution can be transferred without losing financial history.
+  // Specialized routes retain their existing behavior and source attribution.
   if (
     process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
     s.actor.type === "user" &&
+    full !== "1" &&
+    !q &&
+    !stage &&
+    !show &&
+    !sort &&
+    !add &&
+    !share &&
+    view !== "board" &&
+    mode !== "customer" &&
     !sourceRecoveryItemId &&
     !sourceContactActivityId &&
     !fromMedia &&
@@ -425,6 +435,11 @@ export default async function JobsPage({
     sourceRecoveryItemId ||
     sourceAppointmentId
   );
+  const inspectionFirst =
+    auto &&
+    !!selected &&
+    !selected.documentOnly &&
+    jobInput.safeParse(selected.data).data?.inspectionFirst === true;
   const statusLabels = jobStatusLabels(type);
   const statusOf = (id: string) => jobStatus(data.workflows.get(id)!);
   const estimateName = auto ? "estimate" : "bid";
@@ -686,7 +701,7 @@ export default async function JobsPage({
 
       {editing &&
       selected &&
-      auto &&
+      inspectionFirst &&
       !data.inspection?.complete &&
       !data.workflows.get(selected.id)?.latest ? (
         <section className="card">
@@ -708,7 +723,7 @@ export default async function JobsPage({
               ← Back to {selected ? "job" : "jobs"}
             </Link>
           </p>
-          {auto && !selected && !customerId ? (
+          {auto && !selected && full !== "1" && !customerId ? (
             <RoCheckIn
               key={[customerId, vehicleId, sourceAppointmentId].join(":")}
               customers={data.options.customers}
@@ -727,7 +742,7 @@ export default async function JobsPage({
                   : undefined
               }
             />
-          ) : auto && !selected ? (
+          ) : auto && !selected && full !== "1" ? (
             <RoCheckinEditor
               key={[customerId, vehicleId, sourceAppointmentId].join(":")}
               options={data.options}
@@ -921,7 +936,7 @@ export default async function JobsPage({
             tab =
               requestedTab === "notes" || requestedTab === "timeline"
                 ? "history"
-                : auto && requestedTab === "estimate"
+                : inspectionFirst && requestedTab === "estimate"
                   ? "files"
                   : [
                         "inspection",
@@ -936,7 +951,7 @@ export default async function JobsPage({
           // An automotive RO begins with check-in and technician inspection.
           // Existing published ROs retain their document access.
           const awaitingInspection =
-            auto && !data.inspection?.complete && !flow?.latest;
+            inspectionFirst && !data.inspection?.complete && !flow?.latest;
           const pricingReady =
             (input.parts.length > 0 || input.labor.length > 0) &&
             input.parts.every(
@@ -1050,7 +1065,7 @@ export default async function JobsPage({
               <article
                 className={`card job-profile record-job-profile ${auto ? "ro-mobile-focus" : ""}`}
               >
-                {!auto && (
+                {!inspectionFirst && (
                   <CustomerContactActions
                     target={{
                       customerId: input.customerId,
@@ -1079,7 +1094,7 @@ export default async function JobsPage({
                       />
                     </div>
                     <h2 className="profile-title">
-                      {auto ? (
+                      {inspectionFirst ? (
                         flow?.latest?.estimate.snapshot.vehicleLabel ||
                         selected.title ||
                         "Repair order"
@@ -1256,7 +1271,7 @@ export default async function JobsPage({
                     </span>
                   </p>
                 )}
-                {canFollowUp && !auto && (
+                {canFollowUp && !inspectionFirst && (
                   <div className="job-follow-up-shortcuts">
                     <LogContactButton
                       target={{
@@ -1369,7 +1384,7 @@ export default async function JobsPage({
                       </p>
                     </details>
                   )}
-                {!auto && !awaitingInspection && (
+                {!inspectionFirst && !awaitingInspection && (
                   <nav
                     className="section-tabs"
                     aria-label="Estimate preparation and customer approval"
@@ -1394,7 +1409,7 @@ export default async function JobsPage({
                     </Link>
                   </nav>
                 )}
-                {!auto && !awaitingInspection && (
+                {!inspectionFirst && !awaitingInspection && (
                   <p className="muted">
                     Review the technician&apos;s findings, build the estimate,
                     then send the customer their approval link.
@@ -2072,7 +2087,7 @@ export default async function JobsPage({
                   />
                 )}
                 {tab === "files" &&
-                  (auto ? (
+                  (inspectionFirst ? (
                     <section
                       className="ro-archive-view"
                       aria-label="RO document archive"
@@ -2297,7 +2312,7 @@ export default async function JobsPage({
                     </section>
                   </>
                 )}
-                {tab === "work" && !auto && (
+                {tab === "work" && !inspectionFirst && (
                   <>
                     <section aria-label="Job costs">
                       <h3>Job-sheet costs &amp; profit</h3>

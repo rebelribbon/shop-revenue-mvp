@@ -114,7 +114,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await page.goto(jobUrl);
   await card
     .getByRole("button", {
-      name: "Prepare estimate & choose recipient",
+      name: "Prepare customer estimate",
       exact: true,
     })
     .click();

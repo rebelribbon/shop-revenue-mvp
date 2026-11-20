@@ -98,7 +98,7 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
     .locator("xpath=ancestor::article[1]");
   await job
     .getByRole("button", {
-      name: "Prepare estimate & choose recipient",
+      name: "Prepare customer estimate",
       exact: true,
     })
     .click();
