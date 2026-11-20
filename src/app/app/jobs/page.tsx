@@ -48,7 +48,7 @@ import {
   workspaceLabels,
 } from "@/lib/business-types";
 import { localDateKey } from "@/lib/timezone";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { and, eq, desc, inArray, sql } from "drizzle-orm";
 import {
@@ -142,6 +142,40 @@ export default async function JobsPage({
   } = await searchParams;
   const boardView = view === "board" && !edit && !job && !creating;
   const s = await requireShopSession("/app/jobs");
+  // Existing Automotive bookmarks now lead into the approved unified workflow.
+  // Specialized recovery/media links retain the legacy handler until their
+  // source attribution can be transferred without losing financial history.
+  if (
+    process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
+    !sourceRecoveryItemId &&
+    !sourceContactActivityId &&
+    !fromMedia &&
+    !serviceAssetId
+  ) {
+    const profile = await withTenant(s.businessId, s.actor, (tx) =>
+      getBusinessProfile(tx),
+    );
+    if (isAutomotive(profile?.businessType ?? "automotive")) {
+      const target = new URLSearchParams();
+      const selectedId = job || edit;
+      if (selectedId) target.set("ro", selectedId);
+      else if (creating === "1" || customerId || vehicleId) {
+        target.set("new", "1");
+        if (customerId) target.set("customerId", customerId);
+        if (vehicleId) target.set("vehicleId", vehicleId);
+        if (sourceAppointmentId)
+          target.set("sourceAppointmentId", sourceAppointmentId);
+      } else target.set("view", "jobs");
+      if (requestedTab) {
+        target.set(
+          "tab",
+          requestedTab === "files" ? "documents" : requestedTab,
+        );
+      } else if (edit) target.set("tab", "estimate");
+      else if (mode === "technician") target.set("tab", "diagnosis");
+      redirect(`/automotive?${target.toString()}`);
+    }
+  }
   const canFollowUp = s.actor.type === "user" && s.role !== "technician";
   // Owners can wear both hats without creating a second login. Technician
   // mode is explicitly selected and restricted to ROs assigned to that owner.
