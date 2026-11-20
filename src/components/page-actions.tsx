@@ -41,6 +41,7 @@ export function PageActions() {
       // These screens own their local stage actions instead.
       const isRoWorkflow =
         pathname === "/app/jobs" &&
+        !document.querySelector("[data-legacy-job-actions]") &&
         ["job", "edit"].some((key) =>
           new URLSearchParams(window.location.search).has(key),
         );

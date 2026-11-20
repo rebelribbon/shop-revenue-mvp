@@ -1068,6 +1068,7 @@ export default async function JobsPage({
               )}
               <article
                 className={`card job-profile record-job-profile ${auto ? "ro-mobile-focus" : ""}`}
+                data-legacy-job-actions={inspectionFirst ? undefined : "true"}
               >
                 {!inspectionFirst && (
                   <CustomerContactActions
