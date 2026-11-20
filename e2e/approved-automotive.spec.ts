@@ -432,3 +432,20 @@ test("owner manages team and business details inside the unified Automotive sett
   await expect(page.locator('.modal input[name="email"]')).toBeVisible();
   await expect(page).toHaveURL(/automotive[?]view=settings/);
 });
+
+test("bookmarked Automotive RO list and check-in links open the unified workflow", async ({
+  page,
+}) => {
+  await signInWithPassword(page, "owner.b@shop-b.test");
+  await page.goto("/automotive?view=jobs");
+  await expect(
+    page.getByRole("heading", { name: "Repair orders" }),
+  ).toBeVisible();
+  await page.goto("/automotive?new=1");
+  await expect(page.locator(".modal")).toContainText(
+    "New repair order — check-in",
+  );
+  await expect(page.locator(".modal")).toContainText(
+    "Detailed pricing happens only after inspection.",
+  );
+});
