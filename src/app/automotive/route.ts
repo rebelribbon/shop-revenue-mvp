@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { customer, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
-import { listJobs, jobInput } from "@/domain/jobs";
+import { getJob, listJobs, jobInput } from "@/domain/jobs";
 import { listTasks } from "@/domain/tasks";
 import { listVisitsRange } from "@/domain/appointments";
 import { listTechs, listAdvisors, jobAssignees } from "@/domain/assignments";
@@ -68,7 +68,8 @@ const serialize = (value: unknown) =>
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029");
 
-export async function GET() {
+export async function GET(request: Request) {
+  const selectedRoId = new URL(request.url).searchParams.get("ro");
   const session = await requireShopSession("/automotive");
   const actorId = session.actor.type === "user" ? session.actor.id : null;
   const result = await withTenant(
@@ -79,7 +80,7 @@ export async function GET() {
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
       const technician = session.role === "technician";
       const management = session.role === "owner" || (await canManageTeam(tx));
-      const [jobs, taskRows, technicians, advisors, teamRows] =
+      const [recentJobs, taskRows, technicians, advisors, teamRows] =
         await Promise.all([
           listJobs(tx),
           listTasks(tx),
@@ -87,6 +88,11 @@ export async function GET() {
           listAdvisors(tx),
           management ? listTeam(tx) : Promise.resolve([]),
         ]);
+      const selectedRo =
+        selectedRoId && !recentJobs.some((job) => job.id === selectedRoId)
+          ? await getJob(tx, selectedRoId)
+          : null;
+      const jobs = selectedRo ? [selectedRo, ...recentJobs] : recentJobs;
       const jobIds = jobs.map((j) => j.id);
       const [flows, techMap, mediaRows, repairRows, releasedRows] =
         await Promise.all([
@@ -108,6 +114,33 @@ export async function GET() {
             : Promise.resolve([]),
         ]);
       const releasedIds = new Set(releasedRows.map((entry) => entry.id));
+      const documentEvents =
+        !technician && jobIds.length
+          ? await tx
+              .select({
+                kind: activity.kind,
+                documentId: sql<string>`coalesce(${activity.data}->>'documentId', ${activity.data}->>'versionId')`,
+                at: activity.occurredAt,
+              })
+              .from(activity)
+              .where(
+                and(
+                  eq(activity.businessId, tx.businessId),
+                  inArray(activity.kind, [
+                    "document.email_submitted",
+                    "estimate.customer_opened",
+                  ]),
+                  inArray(sql<string>`${activity.data}->>'jobId'`, jobIds),
+                ),
+              )
+              .orderBy(activity.occurredAt)
+          : [];
+      const documentEventTime = new Map(
+        documentEvents.map(({ kind, documentId, at }) => [
+          `${kind}:${documentId}`,
+          at,
+        ]),
+      );
       const parsed = jobs
         .map((j) => ({ row: j, input: jobInput.safeParse(j.data) }))
         .filter((j) => j.input.success);
@@ -398,7 +431,13 @@ export async function GET() {
             },
             estimateId: latest?.id ?? null,
             estimateVersion: latest?.version ?? 0,
-            estimateSent: moneyDate(latest?.createdAt),
+            estimateSent: moneyDate(
+              flow?.estimateSharedAt ??
+                documentEventTime.get(`document.email_submitted:${latest?.id}`),
+            ),
+            estimateOpened: moneyDate(
+              documentEventTime.get(`estimate.customer_opened:${latest?.id}`),
+            ),
             authorized: moneyDate(auth?.createdAt),
             signedBy: technician ? null : (auth?.signerName ?? null),
             released: releasedIds.has(row.id),
@@ -406,7 +445,16 @@ export async function GET() {
             workStatus: flow?.work ?? "not_recorded",
             invoiceId: flow?.currentInvoice?.id ?? null,
             invoiceNumber: flow?.currentInvoice?.number ?? null,
-            invoiceShared: flow?.sharedInvoice ?? false,
+            invoiceEmailSubmitted: moneyDate(
+              documentEventTime.get(
+                `document.email_submitted:${flow?.currentInvoice?.id}`,
+              ),
+            ),
+            invoiceShared:
+              (flow?.sharedInvoice ?? false) ||
+              documentEventTime.has(
+                `document.email_submitted:${flow?.currentInvoice?.id}`,
+              ),
             invoiceBalanceCents: flow?.balanceCents ?? 0,
             invoiceTotalCents: flow?.currentInvoice?.totalCents ?? 0,
             paymentRows: technician

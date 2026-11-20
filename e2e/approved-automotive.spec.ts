@@ -12,7 +12,7 @@ test("approved Automotive interface loads real records without demo controls", a
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await signInWithPassword(page, "owner.b@shop-b.test");
-  await page.goto("/automotive");
+  await expect(page).toHaveURL(/\/automotive$/);
   await expect(page.locator("#app .app")).toBeVisible({ timeout: 30000 });
   await expect(
     page.getByRole("heading", { name: /Good afternoon|My workbench/ }),
@@ -311,15 +311,30 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   });
   expect(share.path).toMatch(new RegExp("^/(estimate|packet)/"));
 
+  await page.goto(`/automotive?ro=${ro.id}&tab=proposal`);
+  await expect(
+    page.getByText("Estimate finalized. Sharing has not been recorded."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Send finalized estimate" }),
+  ).toBeVisible();
   checkpoint("customer link ready; opening unsigned portal");
   const customerContext = await browser.newContext({ baseURL: baseURL! });
   try {
     const customerPage = await customerContext.newPage();
     customerPage.setDefaultTimeout(12_000);
+    const openRecorded = customerPage.waitForResponse(
+      (response) =>
+        response.url().endsWith("/api/proposal/open") &&
+        response.status() === 204,
+    );
     await customerPage.goto(share.path, {
       waitUntil: "domcontentloaded",
       timeout: 15_000,
     });
+    await openRecorded;
+    await page.reload();
+    await expect(page.getByText(/Customer opened the proposal/)).toBeVisible();
     checkpoint("portal opened; running line approval");
     // The current customer UI presents an explicit grouped repair decision.
     // Its individual part/labor radios are intentionally hidden in a closed
@@ -437,11 +452,13 @@ test("bookmarked Automotive RO list and check-in links open the unified workflow
   page,
 }) => {
   await signInWithPassword(page, "owner.b@shop-b.test");
-  await page.goto("/automotive?view=jobs");
+  await page.goto("/app/jobs");
+  await expect(page).toHaveURL(/\/automotive\?view=jobs$/);
   await expect(
     page.getByRole("heading", { name: "Repair orders" }),
   ).toBeVisible();
-  await page.goto("/automotive?new=1");
+  await page.goto("/app/jobs?new=1");
+  await expect(page).toHaveURL(/\/automotive\?new=1$/);
   await expect(page.locator(".modal")).toContainText(
     "New repair order — check-in",
   );

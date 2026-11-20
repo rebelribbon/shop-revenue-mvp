@@ -101,12 +101,13 @@ export async function revealField(page: Page, label: string) {
 // each step and stops on the signing step.
 export async function approveEstimateSteps(page: Page) {
   for (let i = 0; i < 6; i++) {
-    for (const radio of await page
-      .getByRole("radio", { name: /^Approve / })
+    for (const repair of await page
+      .getByRole("button", { name: "Approve this repair", exact: true })
       .all())
-      await radio.check();
+      await repair.click();
     const next = page.getByRole("button", { name: /^Next: / });
     if (!(await next.count())) return;
+    await expect(next).toBeEnabled();
     await next.click();
   }
 }

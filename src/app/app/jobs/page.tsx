@@ -163,12 +163,16 @@ export default async function JobsPage({
     !fromMedia &&
     !serviceAssetId
   ) {
-    const profile = await withTenant(s.businessId, s.actor, (tx) =>
-      getBusinessProfile(tx),
-    );
-    if (isAutomotive(profile?.businessType ?? "automotive")) {
+    const selectedId = job || edit;
+    const unified = await withTenant(s.businessId, s.actor, async (tx) => {
+      const profile = await getBusinessProfile(tx);
+      if (!isAutomotive(profile?.businessType ?? "automotive")) return false;
+      if (!selectedId) return true;
+      const savedJob = await getJob(tx, selectedId);
+      return jobInput.safeParse(savedJob?.data).data?.inspectionFirst === true;
+    });
+    if (unified) {
       const target = new URLSearchParams();
-      const selectedId = job || edit;
       if (selectedId) target.set("ro", selectedId);
       else if (creating === "1" || customerId || vehicleId) {
         target.set("new", "1");

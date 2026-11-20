@@ -95,6 +95,7 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(
     call.getByRole("link", { name: "Call", exact: true }),
   ).toHaveAttribute("href", `tel:${mobile}`);
+  await call.getByText("More options", { exact: true }).click();
   await expect(
     call.getByRole("button", { name: "No answer · try tomorrow", exact: true }),
   ).toBeVisible();
@@ -183,6 +184,11 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
     .getByLabel("Your full name", { exact: true })
     .fill("Test Customer");
   await page.getByRole("checkbox", { name: /I have reviewed/ }).check();
+  for (const repair of await page.locator(".estimate-repair-decision").all()) {
+    await repair
+      .getByText("Choose individual parts or labor instead", { exact: true })
+      .click();
+  }
   await expect(page.getByRole("radio", { checked: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Sign decline", exact: true }),

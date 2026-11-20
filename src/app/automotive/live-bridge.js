@@ -185,6 +185,7 @@ sendEstimate=async function(id){
     }catch(err){
       window.prompt("Estimate finalized but email was not accepted. Copy the secure link and send it manually: " +
         (err.message || ""),new URL(path,window.location.origin).href);
+      window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=proposal");
       return;
     }
     try{
@@ -192,10 +193,29 @@ sendEstimate=async function(id){
     }catch(err){
       alert("The email was submitted, but the sharing-history update failed. Do not resend solely because of this warning.");
     }
-    window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=documents");
+    window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=proposal");
   }catch(err){
     alert(err.message || "Could not finalize the estimate.");
   }finally{estimatesBeingSent.delete(id);}
+};
+const approvedProposal = roProposal;
+roProposal = function(r) {
+  let content = approvedProposal(r);
+  if (techView() || !r.estimateId) return content;
+  if (r.authorized && !r.lines.some(line => line.decision === "approved")) {
+    content = content.replace("Customer approved the estimate", "Customer declined all work")
+      .replace(">Authorized</span>", ">All work declined</span>");
+  }
+  if (r.estimateOpened && !r.authorized) {
+    content += '<p class="notice" role="status">Customer opened the proposal · ' +
+      esc(r.estimateOpened) + '. Awaiting a signed decision.</p>';
+  }
+  if (r.stage === "approval" && !r.estimateSent && !r.authorized) {
+    content += '<p class="notice">Estimate finalized. Sharing has not been recorded.</p>' +
+      '<button class="btn primary full" onclick="sendEstimate(\'' + r.id +
+      '\')">Send finalized estimate</button>';
+  }
+  return content;
 };
 submitApproval=function(id){
   const r=roBy(id);
@@ -235,6 +255,7 @@ sendInvoice=async function(id){
     }catch(e){
       window.prompt("Invoice issued but the email was not accepted. Copy the secure payment link: "+
         e.message,new URL(path,window.location.origin).href);
+      window.location.assign("/automotive?ro="+encodeURIComponent(id)+"&tab=invoice");
       return;
     }
     try{
@@ -450,7 +471,7 @@ roPayment=function(r){
     '<div class="metricrow"><span>Total invoiced</span><b>' +
     money(Number(r.invoiceTotalCents||0)/100) + '</b></div>' +
     '<div class="metricrow"><span>Email status</span><b>' +
-    (r.invoiceShared?"Submitted to provider":issued?"Not confirmed":"Not sent") + '</b></div>' +
+    (r.invoiceEmailSubmitted?"Submitted to provider":issued?"Not confirmed":"Not sent") + '</b></div>' +
     '</div><div class="callout"><h3>Collect & reconcile</h3>' +
     '<p class="sub">Online card payments are collected through the customer invoice link using the shop’s connected payment provider. Manual entries here record money already received; they never charge a card.</p>' +
     (issued&&due>0 ? '<button class="btn primary full" style="margin-top:16px" onclick="openModal(\'collect\',{id:\''+r.id+'\'})">Record received payment</button>' : '') +
@@ -466,14 +487,14 @@ roPayment=function(r){
 roInvoice=function(r){
   if(techView())return '<div class="notice">Invoicing belongs to the assigned advisor.</div>';
   return '<div class="section-head"><h2>Customer invoice</h2>' +
-    pill(!r.invoiceId?"Ready to issue":r.invoiceShared?"Email submitted":"Issued",
+    pill(!r.invoiceId?"Ready to issue":r.invoiceEmailSubmitted?"Email submitted":r.invoiceShared?"Link shared":"Issued",
       r.invoiceShared?"green":"blue") + '</div>' +
     (r.stage==="invoice" ? '<div class="card card-pad"><h3>Review completed authorized work</h3><p class="sub">Issue an actual invoice with a payment link; only signed and completed repair work can be billed.</p>' +
       documentPreview(r,"invoice") +
       '<button class="btn primary full" style="margin-top:16px" onclick="sendInvoice(\''+r.id+'\')">Issue invoice & send payment link</button></div>' :
       '<div class="card card-pad"><p class="sub">Invoice #' +
       esc(String(r.invoiceNumber||"—")) + ' · ' +
-      (r.invoiceShared?"Customer email submitted":"Not yet sent") +
+      (r.invoiceEmailSubmitted?"Customer email submitted":r.invoiceShared?"Payment link shared":"Not yet sent") +
       ' · Remaining '+money(Number(r.invoiceBalanceCents||0)/100)+'</p>' +
       (r.invoiceId&&!r.invoiceShared ? '<button class="btn primary" onclick="sendInvoice(\''+r.id+'\')">Send invoice email</button>' : '') + '</div>');
 };
