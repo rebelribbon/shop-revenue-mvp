@@ -348,30 +348,16 @@ test("tracks authorization, work completion, invoicing and payment in one job", 
   await expect(page.locator("ol.workflow-timeline")).toContainText(
     "Work completed",
   );
-  // Inspection: save partial findings using the current 40-point template.
+  // The office can review the inspection here. The technician workflow
+  // exercises editing and submission in the assigned RO browser suite.
   await page.getByRole("link", { name: /^Inspection/ }).click();
-  const windshield = page.getByRole("group", {
-    name: "Windshield",
-    exact: true,
-  });
-  await windshield.getByLabel("Service Now", { exact: true }).check();
-  await windshield
-    .getByLabel("Technician findings")
-    .fill("crack in driver's field of view");
-  await windshield.getByLabel(/Proposed work/).fill("Replace windshield");
-  await page
-    .getByRole("button", { name: "Save progress", exact: true })
-    .click();
-  await expect(page.getByText("1 service now", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Submit inspection → Notify advisor" }),
-  ).toBeDisabled();
-  await auditUX(page);
-  await page.screenshot({
-    path: `test-results/ux-inspection-${info.project.name}.png`,
-    fullPage: true,
-  });
-  await page.getByRole("link", { name: "Work", exact: true }).click();
+    page.getByRole("region", { name: "Inspection", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Submit inspection to advisor" }),
+  ).toHaveCount(0);
+  await page.getByRole("link", { name: "Overview", exact: true }).click();
   // Profit sits at the top of the job; the clock is one tap.
   await expect(page.locator(".profit-chip")).toBeVisible();
   await page

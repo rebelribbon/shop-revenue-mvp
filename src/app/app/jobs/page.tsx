@@ -1450,133 +1450,137 @@ export default async function JobsPage({
                   </div>
                 )}
 
-                {!auto && flow && (!awaitingInspection || flow.latest) && (
-                  <p className="stat-strip" aria-label="Job money">
-                    <span>
-                      <strong>
-                        {money(
-                          flow.latest?.estimate.snapshot.totalCents ??
-                            t.subtotalCents,
-                        )}
-                      </strong>{" "}
-                      {input.repeat ? "per visit" : "quoted"}
-                    </span>
-                    <span>
-                      <strong>
-                        {money(
-                          flow.plan ? flow.plan.billedCents : flow.paidCents,
-                        )}
-                      </strong>{" "}
-                      {flow.plan ? "billed so far" : "paid"}
-                    </span>
-                    {flow.balanceCents > 0 && (
+                {!inspectionFirst &&
+                  flow &&
+                  (!awaitingInspection || flow.latest) && (
+                    <p className="stat-strip" aria-label="Job money">
                       <span>
-                        <strong>{money(flow.balanceCents)}</strong> owed
+                        <strong>
+                          {money(
+                            flow.latest?.estimate.snapshot.totalCents ??
+                              t.subtotalCents,
+                          )}
+                        </strong>{" "}
+                        {input.repeat ? "per visit" : "quoted"}
                       </span>
-                    )}
-                    {data.profit && (
-                      <span
-                        className={
-                          data.profit.profitCents === null
-                            ? "profit-chip muted"
-                            : data.profit.belowTarget
-                              ? "profit-chip low"
-                              : "profit-chip good"
-                        }
-                      >
-                        {data.profit.profitCents === null ? (
-                          <>Profit: {data.profit.missing[0]}</>
-                        ) : (
-                          <>
-                            <strong>{money(data.profit.profitCents)}</strong>{" "}
-                            profit · {(data.profit.marginBps! / 100).toFixed(0)}
-                            %
-                            {data.profit.belowTarget &&
-                              ` (target ${(data.profit.targetBps / 100).toFixed(0)}%)`}
-                          </>
-                        )}
+                      <span>
+                        <strong>
+                          {money(
+                            flow.plan ? flow.plan.billedCents : flow.paidCents,
+                          )}
+                        </strong>{" "}
+                        {flow.plan ? "billed so far" : "paid"}
                       </span>
-                    )}
-                  </p>
-                )}
-                {!auto && !awaitingInspection && s.actor.type !== "support" && (
-                  <div className="action-bar" role="group" aria-label="Add">
-                    {data.clock?.jobId === selected.id ? (
-                      <ActionForm
-                        action={stopClockAction}
-                        submitLabel={`■ Stop clock · ${clockText(data.clock.startedAt)}`}
-                        variant="secondary"
-                      />
-                    ) : (
-                      <ActionForm
-                        action={startClockAction}
-                        hidden={{ jobId: selected.id }}
-                        submitLabel={
-                          data.clock
-                            ? "▶ Switch clock to this job"
-                            : "▶ Start clock"
-                        }
-                        variant="secondary"
-                      />
-                    )}
-                    {true &&
-                      flow &&
-                      flow.supplementDueCents > 0 &&
-                      flow.latest?.authorization && (
-                        <Link
-                          className="btn secondary"
-                          href={`/app/invoices?new=1&versionId=${flow.latest.estimate.id}`}
-                        >
-                          Bill extra work · {money(flow.supplementDueCents)}
-                        </Link>
+                      {flow.balanceCents > 0 && (
+                        <span>
+                          <strong>{money(flow.balanceCents)}</strong> owed
+                        </span>
                       )}
-                    {true &&
-                      flow?.currentInvoice &&
-                      flow.balanceCents > 0 &&
-                      (() => {
-                        // The first of the job's invoices with money due.
-                        const due = [
-                          flow.currentInvoice,
-                          ...flow.addOnInvoices,
-                        ].find(
-                          (i) =>
-                            i.totalCents >
-                            flow.entries
-                              .filter((p) => p.invoiceId === i.id)
-                              .reduce((t, p) => t + p.amountCents, 0),
-                        );
-                        return due ? (
+                      {data.profit && (
+                        <span
+                          className={
+                            data.profit.profitCents === null
+                              ? "profit-chip muted"
+                              : data.profit.belowTarget
+                                ? "profit-chip low"
+                                : "profit-chip good"
+                          }
+                        >
+                          {data.profit.profitCents === null ? (
+                            <>Profit: {data.profit.missing[0]}</>
+                          ) : (
+                            <>
+                              <strong>{money(data.profit.profitCents)}</strong>{" "}
+                              profit ·{" "}
+                              {(data.profit.marginBps! / 100).toFixed(0)}%
+                              {data.profit.belowTarget &&
+                                ` (target ${(data.profit.targetBps / 100).toFixed(0)}%)`}
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                {!inspectionFirst &&
+                  !awaitingInspection &&
+                  s.actor.type !== "support" && (
+                    <div className="action-bar" role="group" aria-label="Add">
+                      {data.clock?.jobId === selected.id ? (
+                        <ActionForm
+                          action={stopClockAction}
+                          submitLabel={`■ Stop clock · ${clockText(data.clock.startedAt)}`}
+                          variant="secondary"
+                        />
+                      ) : (
+                        <ActionForm
+                          action={startClockAction}
+                          hidden={{ jobId: selected.id }}
+                          submitLabel={
+                            data.clock
+                              ? "▶ Switch clock to this job"
+                              : "▶ Start clock"
+                          }
+                          variant="secondary"
+                        />
+                      )}
+                      {true &&
+                        flow &&
+                        flow.supplementDueCents > 0 &&
+                        flow.latest?.authorization && (
                           <Link
                             className="btn secondary"
-                            href={`/app/checkout?invoiceId=${due.id}`}
+                            href={`/app/invoices?new=1&versionId=${flow.latest.estimate.id}`}
                           >
-                            Check out · {money(flow.balanceCents)}
+                            Bill extra work · {money(flow.supplementDueCents)}
                           </Link>
-                        ) : null;
-                      })()}
-                    {(
-                      [
-                        ["note", "+ Note"],
-                        ["photo", "+ Photo / video"],
-                        ["file", "+ File"],
-                        ["sign", "✍ Add agreement"],
-                      ] as const
-                    )
-                      .filter(
-                        ([key]) => true || key === "note" || key === "photo",
+                        )}
+                      {true &&
+                        flow?.currentInvoice &&
+                        flow.balanceCents > 0 &&
+                        (() => {
+                          // The first of the job's invoices with money due.
+                          const due = [
+                            flow.currentInvoice,
+                            ...flow.addOnInvoices,
+                          ].find(
+                            (i) =>
+                              i.totalCents >
+                              flow.entries
+                                .filter((p) => p.invoiceId === i.id)
+                                .reduce((t, p) => t + p.amountCents, 0),
+                          );
+                          return due ? (
+                            <Link
+                              className="btn secondary"
+                              href={`/app/checkout?invoiceId=${due.id}`}
+                            >
+                              Check out · {money(flow.balanceCents)}
+                            </Link>
+                          ) : null;
+                        })()}
+                      {(
+                        [
+                          ["note", "+ Note"],
+                          ["photo", "+ Photo / video"],
+                          ["file", "+ File"],
+                          ["sign", "✍ Add agreement"],
+                        ] as const
                       )
-                      .map(([key, label]) => (
-                        <Link
-                          key={key}
-                          className="btn secondary"
-                          href={`/app/jobs?job=${selected.id}&add=${key}`}
-                          aria-current={add === key ? "true" : undefined}
-                        >
-                          {label}
-                        </Link>
-                      ))}
-                  </div>
-                )}
+                        .filter(
+                          ([key]) => true || key === "note" || key === "photo",
+                        )
+                        .map(([key, label]) => (
+                          <Link
+                            key={key}
+                            className="btn secondary"
+                            href={`/app/jobs?job=${selected.id}&add=${key}`}
+                            aria-current={add === key ? "true" : undefined}
+                          >
+                            {label}
+                          </Link>
+                        ))}
+                    </div>
+                  )}
                 {s.actor.type !== "support" && add === "note" && (
                   <section className="card add-panel" aria-label="Add a note">
                     <h3>Note about this job</h3>

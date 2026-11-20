@@ -1,7 +1,13 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { approvedAutomotivePoints } from "../src/lib/approved-automotive-inspection";
 import { drawEstimateSignature, signInWithPassword } from "./helpers";
+
+async function signInAutomotive(page: Page) {
+  await signInWithPassword(page, "owner.b@shop-b.test");
+  await expect(page).toHaveURL(/\/automotive$/);
+  await expect(page.locator("#app .app")).toBeVisible();
+}
 
 // The Automotive experience must use the approved shell with authenticated
 // shop data, not the browser-only demo / fake employee switcher.
@@ -11,8 +17,7 @@ test("approved Automotive interface loads real records without demo controls", a
   test.setTimeout(120_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await signInWithPassword(page, "owner.b@shop-b.test");
-  await expect(page).toHaveURL(/\/automotive$/);
+  await signInAutomotive(page);
   await expect(page.locator("#app .app")).toBeVisible({ timeout: 30000 });
   await expect(
     page.getByRole("heading", { name: /Good afternoon|My workbench/ }),
@@ -39,8 +44,7 @@ test("Automotive creates a real customer and keeps it after reload", async ({
 }, info) => {
   test.setTimeout(150_000);
   const key = `Unified ${info.project.name} ${Date.now()}`;
-  await signInWithPassword(page, "owner.b@shop-b.test");
-  await page.goto("/automotive");
+  await signInAutomotive(page);
   await expect(page.locator("#app .app")).toBeVisible();
   await page
     .locator(".nav-item:visible, .screen-mobile-nav button:visible")
@@ -77,8 +81,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   page,
 }) => {
   test.setTimeout(150_000);
-  await signInWithPassword(page, "owner.b@shop-b.test");
-  await page.goto("/automotive");
+  await signInAutomotive(page);
   const post = async (operation: string, payload: Record<string, unknown>) => {
     const response = await page.request.post("/automotive/actions", {
       data: { operation, payload, clientRequestId: randomUUID() },
@@ -226,8 +229,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
   test.setTimeout(120_000);
   page.setDefaultTimeout(12_000);
   const checkpoint = (name: string) => console.log(`[AUTOMOTIVE E2E] ${name}`);
-  await signInWithPassword(page, "owner.b@shop-b.test");
-  await page.goto("/automotive");
+  await signInAutomotive(page);
   const post = async (operation: string, payload: Record<string, unknown>) => {
     const response = await page.request.post("/automotive/actions", {
       data: { operation, payload, clientRequestId: randomUUID() },
@@ -435,7 +437,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
 test("owner manages team and business details inside the unified Automotive settings", async ({
   page,
 }) => {
-  await signInWithPassword(page, "owner.b@shop-b.test");
+  await signInAutomotive(page);
   await page.goto("/automotive?view=settings");
   await expect(
     page.getByRole("heading", { name: "Team & permissions" }),
@@ -451,7 +453,7 @@ test("owner manages team and business details inside the unified Automotive sett
 test("bookmarked Automotive RO list and check-in links open the unified workflow", async ({
   page,
 }) => {
-  await signInWithPassword(page, "owner.b@shop-b.test");
+  await signInAutomotive(page);
   await page.goto("/app/jobs");
   await expect(page).toHaveURL(/\/automotive\?view=jobs$/);
   await expect(
