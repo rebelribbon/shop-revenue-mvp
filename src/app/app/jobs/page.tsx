@@ -1033,6 +1033,7 @@ export default async function JobsPage({
                 )}
                 <header className="profile-head">
                   <div>
+                    {auto && <h1 className="record-eyebrow">Repair order</h1>}
                     <div className="identifier-with-copy">
                       <p className="customer-job-ref">
                         {jobReference(selected.id, isAutomotive(type))}
@@ -1081,7 +1082,11 @@ export default async function JobsPage({
                   )}
                 </header>
                 {(input.concerns || input.mileageIn != null) && (
-                  <details className="ro-check-in ro-check-in-collapsible">
+                  <details
+                    className="ro-check-in ro-check-in-collapsible"
+                    aria-label="Check-in"
+                    open={saved === "checkin"}
+                  >
                     <summary>
                       Check-in details
                       {input.mileageIn != null
@@ -1122,6 +1127,9 @@ export default async function JobsPage({
                     <span className="ro-team-manage">Manage</span>
                   </summary>
                   <div className="ro-team-controls">
+                    {auto && !data.assignee && (
+                      <h3>Assign a technician</h3>
+                    )}
                     {!data.canManageTeam && !canChooseInitialTech ? (
                       <p className="muted">
                         Tech:{" "}
