@@ -5918,7 +5918,7 @@ main.customer-index-page {
   font-size: .85rem;
   list-style: none;
   width: max-content;
-  min-height: 44px;
+  min-height: 48px;
   display: flex;
   align-items: center;
 }
