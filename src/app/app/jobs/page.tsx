@@ -1127,9 +1127,7 @@ export default async function JobsPage({
                     <span className="ro-team-manage">Manage</span>
                   </summary>
                   <div className="ro-team-controls">
-                    {auto && !data.assignee && (
-                      <h3>Assign a technician</h3>
-                    )}
+                    {auto && !data.assignee && <h3>Assign a technician</h3>}
                     {!data.canManageTeam && !canChooseInitialTech ? (
                       <p className="muted">
                         Tech:{" "}
