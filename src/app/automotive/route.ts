@@ -18,6 +18,8 @@ import { listMedia } from "@/domain/job-media";
 import { isAutomotive } from "@/lib/business-types";
 import { jobReference } from "@/lib/job-reference";
 import { requireShopSession } from "@/server/views/shop";
+import { getStripeConnection } from "@/domain/payments";
+import { shopPaymentSetup } from "@/lib/shop-payment-setup";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -78,6 +80,13 @@ export async function GET(request: Request) {
     async (tx) => {
       const profile = await getBusinessProfile(tx);
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
+      const paymentSetup =
+        session.role === "owner"
+          ? shopPaymentSetup(
+              await getStripeConnection(tx),
+              session.actor.type !== "user",
+            )
+          : null;
       const technician = session.role === "technician";
       const management = session.role === "owner" || (await canManageTeam(tx));
       const [recentJobs, taskRows, technicians, advisors, teamRows] =
@@ -584,6 +593,7 @@ export async function GET(request: Request) {
         business: profile?.dba || profile?.legalName || "Automotive repair",
         businessType: "automotive",
         isLive: true,
+        paymentSetup,
         settings: {
           tax: (profile?.taxRateBps ?? 0) / 100,
           legalName: profile?.legalName ?? "",

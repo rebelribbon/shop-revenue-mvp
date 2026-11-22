@@ -6,6 +6,8 @@ import { getStripeConnection } from "@/domain/payments";
 import { requireOwnerView } from "@/server/views/shop";
 import { StripeButton } from "@/components/stripe-controls";
 import { stripeConnectConfigured } from "@/lib/stripe-connect";
+import { getBusinessProfile } from "@/domain/business-profile";
+import { isAutomotive } from "@/lib/business-types";
 export default async function PaymentsSettings({
   searchParams,
 }: {
@@ -15,6 +17,12 @@ export default async function PaymentsSettings({
   const c = await withTenant(s.businessId, s.actor, (tx) =>
     getStripeConnection(tx),
   );
+  const profile = await withTenant(s.businessId, s.actor, getBusinessProfile);
+  const backToSettings =
+    process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
+    isAutomotive(profile?.businessType ?? "automotive")
+      ? "/automotive?view=settings"
+      : "/app/settings";
   const configured = Boolean(
     process.env.STRIPE_SECRET_KEY &&
     process.env.STRIPE_WEBHOOK_SECRET &&
@@ -134,7 +142,7 @@ export default async function PaymentsSettings({
       </section>
       <p>
         <Link
-          href="/app/settings"
+          href={backToSettings}
           className={`btn ${ownerCanAct ? "secondary" : "primary"}`}
         >
           Back to settings
