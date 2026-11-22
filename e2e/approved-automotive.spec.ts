@@ -454,7 +454,20 @@ test("owner can find Stripe setup in current settings while staff cannot manage 
   page,
 }) => {
   await signInAutomotive(page);
-  await page.goto("/automotive?view=settings");
+  const settingsLink = page.getByRole("link", {
+    name: "Settings",
+    exact: true,
+  });
+  await expect(settingsLink).toBeVisible();
+  const settingsBox = await settingsLink.boundingBox();
+  expect(settingsBox!.height).toBeGreaterThanOrEqual(48);
+  expect(settingsBox!.x + settingsBox!.width).toBeLessThanOrEqual(
+    page.viewportSize()!.width + 1,
+  );
+  await settingsLink.click();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
   const payments = page.getByRole("region", { name: "Online payments" });
   await expect(payments).toBeVisible();
   await expect(payments).toContainText(
@@ -485,7 +498,10 @@ test("owner can find Stripe setup in current settings while staff cannot manage 
   await signInWithPassword(page, "staff.b@shop-b.test");
   await expect(page).toHaveURL(/\/automotive$/);
   await expect(page.locator("#app .app")).toBeVisible();
-  await page.goto("/automotive?view=settings");
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Online payments", exact: true }),
   ).toHaveCount(0);

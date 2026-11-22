@@ -380,7 +380,9 @@ const originalHeader = header;
 header = function () {
   return originalHeader()
     .replace("● Automotive · Offline preview", "● Automotive · Live workspace")
-    .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/, '<span class="pill blue">Signed in · ' + esc(role()) + '</span>');
+    .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/,
+      '<a class="btn small" style="min-height:48px;gap:8px" aria-label="Settings" title="Signed in as ' + esc(role()) + '. Open Settings" href="/automotive?view=settings">' +
+      icon("settings").replace('<svg ', '<svg width="20" height="20" ') + '<span>Settings</span></a>');
 };
 // Upload directly from the approved technician workspace, never through
 // a legacy page or a prototype data URL. The backend checks shop membership
