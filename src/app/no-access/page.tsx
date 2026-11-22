@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { publicSignupEnabled } from "@/lib/billing";
+import { shopSignupEnabledFor } from "@/lib/shop-signup-access";
 import { HydratedMain } from "@/components/hydrated-main";
-export default function NoAccess() {
+import { getIdentity } from "@/server/auth/session";
+export default async function NoAccess() {
+  const identity = await getIdentity();
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>No shop access</h1>
@@ -10,7 +12,7 @@ export default function NoAccess() {
         you were invited, open the invite link again, or ask the shop owner to
         resend it.
       </p>
-      {publicSignupEnabled() && (
+      {shopSignupEnabledFor(identity?.email) && (
         <p>
           <Link href="/start">Create your own shop</Link>
         </p>

@@ -58,6 +58,8 @@ Phone and desktop screenshots are saved by the browser suite. This audit checks 
 | `/invite/[token]` | Shared layout, spacing, forms, targets and CTA review |
 | `/invoice/[token]` | Shared layout, spacing, forms, targets and CTA review |
 | `/no-access` | Shared layout, spacing, forms, targets and CTA review |
+| `/owner-invite` | Exact-recipient invitation, labelled readonly email and one send action; phone/desktop invitation-to-shop browser coverage |
+| `/sign-up`, `/start` | Password and email confirmation, then isolated shop creation; invited-owner and public-owner browser coverage |
 | `/` | Redirect only |
 | `/reset-password` | Shared layout, spacing, forms, targets and CTA review |
 | `/sign-in` | Shared layout, spacing, forms, targets and CTA review |

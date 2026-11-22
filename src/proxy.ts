@@ -95,6 +95,7 @@ export async function proxy(request: NextRequest) {
     [
       "/sign-in",
       "/sign-up",
+      "/owner-invite",
       "/start",
       "/forgot-password",
       "/reset-password",
@@ -106,6 +107,8 @@ export async function proxy(request: NextRequest) {
   }
   if (
     TOKEN_ROUTES.test(request.nextUrl.pathname) ||
+    request.nextUrl.pathname === "/owner-invite" ||
+    request.nextUrl.pathname === "/sign-up" ||
     request.nextUrl.pathname.startsWith("/auth/") ||
     request.nextUrl.pathname === "/stripe/connect/callback"
   ) {

@@ -42,6 +42,10 @@ const values: Record<string, string> = {
   APP_ENV: "local",
   APP_BASE_URL: "http://localhost:3000",
   PUBLIC_SIGNUP_ENABLED: keep("PUBLIC_SIGNUP_ENABLED", () => "false"),
+  PILOT_OWNER_SIGNUP_EMAILS: keep(
+    "PILOT_OWNER_SIGNUP_EMAILS",
+    () => "pilot-owner-phone@example.test,pilot-owner-desktop@example.test",
+  ),
   PUBLIC_SHORT_BASE_URL: "http://localhost:3000",
   DATABASE_URL_BOOTSTRAP: status.DB_URL,
   ...pw,

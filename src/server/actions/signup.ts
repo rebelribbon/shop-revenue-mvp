@@ -3,9 +3,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { checkAuthThrottle } from "@/domain/auth-throttle";
 import { enrollShop, shopSignupInput } from "@/domain/shop-signup";
-import { publicSignupEnabled } from "@/lib/billing";
+import {
+  pilotOwnerEmail,
+  shopSignupEnabledFor,
+} from "@/lib/shop-signup-access";
 import { AppError } from "@/lib/errors";
 import { normalizeEmail } from "@/lib/normalize";
+import { emailProvider } from "@/providers/email";
 import { supabaseServer } from "@/server/auth/supabase";
 import { getRequestMeta } from "@/server/request";
 import { toActionError } from "./define";
@@ -14,12 +18,47 @@ import type { AuthFormState } from "./auth";
 export type SignupFormState = AuthFormState & { ready?: boolean };
 
 const accountInput = z.object({
-  email: z.email(),
+  email: z.string().trim().max(254).pipe(z.email()),
   password: z.string().min(12).max(128),
 });
-function requireSignup() {
-  if (!publicSignupEnabled())
+function requireSignup(email: string) {
+  if (!shopSignupEnabledFor(email))
     throw new AppError("NOT_ELIGIBLE", "New shop signup is not open yet.");
+}
+
+export async function sendPilotOwnerInvite(
+  _: AuthFormState | null,
+  form: FormData,
+): Promise<AuthFormState> {
+  const meta = await getRequestMeta();
+  try {
+    const email = pilotOwnerEmail(form.get("email"));
+    if (!email)
+      throw new AppError("NOT_ELIGIBLE", "This invitation is not available.");
+    await checkAuthThrottle("invite", email, meta.ip);
+    const signup = new URL("/sign-up", process.env.APP_BASE_URL!);
+    signup.searchParams.set("email", email);
+    await emailProvider().send({
+      to: email,
+      subject: "You’re invited to set up your shop on Shop Revenue",
+      text: [
+        "You’re invited to create your own shop on Shop Revenue.",
+        "Choose your password and confirm your email, then enter your name and shop name:",
+        signup.href,
+        "Creating your login does not start a subscription or charge your card. You can review billing during setup.",
+        "If you already created a login with this email, sign in and continue at /start.",
+      ].join("\n\n"),
+    });
+    return {
+      ok: true,
+      message: `Invitation sent to ${email}. Check your inbox and spam folder.`,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: toActionError(error, meta, "sendPilotOwnerInvite").message,
+    };
+  }
 }
 export async function signUpOwner(
   _: SignupFormState | null,
@@ -27,7 +66,6 @@ export async function signUpOwner(
 ): Promise<SignupFormState> {
   const meta = await getRequestMeta();
   try {
-    requireSignup();
     const input = accountInput.safeParse({
       email: form.get("email"),
       password: form.get("password"),
@@ -38,6 +76,7 @@ export async function signUpOwner(
         message: "Enter a valid email and a password of 12–128 characters.",
       };
     const email = normalizeEmail(input.data.email);
+    requireSignup(email);
     await checkAuthThrottle("signup", email, meta.ip);
     const base = new URL(process.env.APP_BASE_URL!);
     const supabase = await supabaseServer();
@@ -77,7 +116,6 @@ export async function createMyShop(
 ): Promise<AuthFormState> {
   const meta = await getRequestMeta();
   try {
-    requireSignup();
     const supabase = await supabaseServer();
     const { data, error } = await supabase.auth.getUser();
     const u = data.user;
@@ -86,6 +124,7 @@ export async function createMyShop(
         "FORBIDDEN",
         "Sign in and confirm your email before creating your shop.",
       );
+    requireSignup(u.email);
     await checkAuthThrottle("signup", u.email, meta.ip);
     const parsed = shopSignupInput.safeParse(Object.fromEntries(form));
     if (!parsed.success)
