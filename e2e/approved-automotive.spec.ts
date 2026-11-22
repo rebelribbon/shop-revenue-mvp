@@ -450,6 +450,72 @@ test("owner manages team and business details inside the unified Automotive sett
   await expect(page).toHaveURL(/automotive[?]view=settings/);
 });
 
+test("owner can find Stripe setup in current settings while staff cannot manage the connection", async ({
+  page,
+}) => {
+  await signInAutomotive(page);
+  const settingsLink = page.getByRole("link", {
+    name: "Settings",
+    exact: true,
+  });
+  await expect(settingsLink).toBeVisible();
+  const settingsBox = await settingsLink.boundingBox();
+  expect(settingsBox!.height).toBeGreaterThanOrEqual(48);
+  expect(settingsBox!.x + settingsBox!.width).toBeLessThanOrEqual(
+    page.viewportSize()!.width + 1,
+  );
+  await settingsLink.click();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
+  const payments = page.getByRole("region", { name: "Online payments" });
+  await expect(payments).toBeVisible();
+  await expect(payments).toContainText(
+    "directly into your shop’s connected Stripe account",
+  );
+  await expect(
+    payments.getByRole("button", { name: "Connect Stripe", exact: true }),
+  ).toBeDisabled();
+  await expect(payments.getByRole("status")).toContainText(
+    "Shop Revenue is still activating",
+  );
+  const refresh = payments.getByRole("button", {
+    name: "Check setup status",
+    exact: true,
+  });
+  await Promise.all([page.waitForEvent("load"), refresh.click()]);
+  await expect(page).toHaveURL(/automotive\?view=settings$/);
+  await expect(
+    payments.getByRole("button", { name: "Connect Stripe", exact: true }),
+  ).toBeDisabled();
+  const box = await refresh.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.height).toBeGreaterThanOrEqual(48);
+  const viewport = page.viewportSize()!;
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width + 1);
+
+  await page.request.post("/auth/sign-out");
+  await signInWithPassword(page, "staff.b@shop-b.test");
+  await expect(page).toHaveURL(/\/automotive$/);
+  await expect(page.locator("#app .app")).toBeVisible();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Online payments", exact: true }),
+  ).toHaveCount(0);
+  for (const operation of ["payments.connect", "payments.refresh"]) {
+    const response = await page.request.post("/automotive/actions", {
+      data: { operation, payload: {} },
+    });
+    expect(response.status()).toBe(403);
+    expect((await response.json()).error.message).toContain(
+      "Only the shop owner",
+    );
+  }
+});
+
 test("bookmarked Automotive RO list and check-in links open the unified workflow", async ({
   page,
 }) => {

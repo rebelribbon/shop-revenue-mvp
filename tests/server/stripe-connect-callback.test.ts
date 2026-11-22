@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { newToken } from "@/lib/tokens";
 import { GET } from "@/app/stripe/connect/callback/route";
 const mocked = vi.hoisted(() => ({
@@ -8,6 +8,17 @@ const mocked = vi.hoisted(() => ({
   mfa: vi.fn(),
   finish: vi.fn(),
   error: vi.fn(),
+  profile: vi.fn(),
+}));
+vi.mock("@/db/tenant", () => ({
+  withTenant: async (
+    _id: unknown,
+    _actor: unknown,
+    fn: (tx: unknown) => unknown,
+  ) => fn({}),
+}));
+vi.mock("@/domain/business-profile", () => ({
+  getBusinessProfile: mocked.profile,
 }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: mocked.get }) }));
 vi.mock("@/server/auth/session", () => ({ getSessionState: mocked.session }));
@@ -36,11 +47,26 @@ beforeEach(() => {
   vi.resetAllMocks();
   process.env.APP_ENV = "test";
   process.env.PAYMENTS_BASE_URL = "https://payments.example.test";
+  vi.stubEnv("AUTOMOTIVE_UNIFIED_DEFAULT", "false");
   state = newToken().token;
   mocked.get.mockReturnValue({ value: state });
   mocked.session.mockResolvedValue(owner());
   mocked.mfa.mockResolvedValue(false);
   mocked.finish.mockResolvedValue({ canceled: false, active: true });
+  mocked.profile.mockResolvedValue({ businessType: "automotive" });
+});
+afterEach(() => vi.unstubAllEnvs());
+it("returns automotive owners to their current Settings screen and leaves other industries in payment settings", async () => {
+  vi.stubEnv("AUTOMOTIVE_UNIFIED_DEFAULT", "true");
+  const response = await GET(request("code=ac_current_workspace"));
+  expect(response.headers.get("location")).toBe(
+    "https://payments.example.test/automotive?view=settings&stripe=connected",
+  );
+  mocked.profile.mockResolvedValue({ businessType: "hvac" });
+  const serviceResponse = await GET(request("code=ac_service_workspace"));
+  expect(serviceResponse.headers.get("location")).toBe(
+    "https://payments.example.test/app/settings/payments?stripe=connected",
+  );
 });
 it("redirects only to the configured app, clears the matching cookie, and keeps the authorization query private", async () => {
   const response = await GET(

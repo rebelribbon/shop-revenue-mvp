@@ -380,7 +380,9 @@ const originalHeader = header;
 header = function () {
   return originalHeader()
     .replace("● Automotive · Offline preview", "● Automotive · Live workspace")
-    .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/, '<span class="pill blue">Signed in · ' + esc(role()) + '</span>');
+    .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/,
+      '<a class="btn small" style="min-height:48px;gap:8px" aria-label="Settings" title="Signed in as ' + esc(role()) + '. Open Settings" href="/automotive?view=settings">' +
+      icon("settings").replace('<svg ', '<svg width="20" height="20" ') + '<span>Settings</span></a>');
 };
 // Upload directly from the approved technician workspace, never through
 // a legacy page or a prototype data URL. The backend checks shop membership
@@ -543,6 +545,62 @@ reports = function(){
       stat("Outstanding",manager()?money((m.outstandingCents||0)/100):"Restricted","Payments not yet collected")+
     '</div><section class="card card-pad"><h2>Shop reporting</h2><p class="sub">View sales, costs, profit, and actual payments in the secure reports system.</p><p style="margin-top:16px">These totals are based on the current, permission-scoped shop data. Owner-only financial reporting will be available here.</p></section>';
 };
+let stripeSetupBusy = false;
+window.openShopStripe = async function(){
+  if (role() !== "owner" || !data.paymentSetup?.available || data.paymentSetup?.readOnly || stripeSetupBusy) return;
+  stripeSetupBusy = true;
+  try {
+    const result = await liveWrite("payments.connect", {});
+    const target = new URL(result.url);
+    if (target.protocol !== "https:" || !(target.hostname === "stripe.com" || target.hostname.endsWith(".stripe.com")))
+      throw new Error("The payment provider returned an invalid destination.");
+    window.location.assign(target.href);
+  } catch(e) {
+    alert(e.message || "Could not open Stripe. Please try again.");
+  } finally { stripeSetupBusy = false; }
+};
+window.refreshShopStripe = async function(){
+  if (role() !== "owner" || data.paymentSetup?.readOnly || stripeSetupBusy) return;
+  stripeSetupBusy = true;
+  try {
+    if (data.paymentSetup?.connected && data.paymentSetup?.available)
+      await liveWrite("payments.refresh", {});
+    window.location.assign("/automotive?view=settings");
+  } catch(e) {
+    alert(e.message || "Could not refresh payment status.");
+  } finally { stripeSetupBusy = false; }
+};
+const shopStripeSettings = function(){
+  const p = data.paymentSetup;
+  if (role() !== "owner" || !p) return "";
+  const label = p.connected ? (p.active ? "Manage Stripe" : "Finish Stripe setup") : "Connect Stripe";
+  const status = p.active ? "Stripe connected" : p.connected ? "Finish Stripe setup" : "Not connected";
+  const pending = p.platformPending ?
+    "Shop Revenue is still activating its online payment service. Your shop can connect after that is finished. There is nothing for you to change in your shop’s Stripe settings yet." :
+    "Online payment setup is temporarily unavailable. Check setup status to try again.";
+  const outcome = new URLSearchParams(window.location.search).get("stripe");
+  const notices = {
+    connected: p.active ? "Your Stripe account is connected. Customers can now pay invoices online." : "",
+    pending: p.connected && !p.active ? "Your Stripe account is connected. Open Stripe to finish its payment requirements." : "",
+    canceled: "Stripe connection canceled. You can connect again when you are ready.",
+    expired: "That Stripe connection request expired or was already used. Start again.",
+    error: "Stripe could not finish the connection. Start a new connection request."
+  };
+  const notice = Object.hasOwn(notices, outcome) ? notices[outcome] : "";
+  return '<section class="card card-pad" aria-labelledby="shop-payments-heading">' +
+    '<div class="section-head"><h2 id="shop-payments-heading">Online payments</h2>' + pill(status, p.active ? "green" : "blue") + '</div>' +
+    '<p class="sub">Customers pay your invoices directly into your shop’s connected Stripe account.</p>' +
+    (notice ? '<p class="notice" role="status">' + esc(notice) + '</p>' : '') +
+    (!p.livemode ? '<p class="notice">Test mode · no real payments</p>' : '') +
+    (!p.available ? '<p class="notice" id="shop-stripe-status" role="status">' + esc(pending) + '</p>' :
+      !p.connected ? '<ol><li>Select Connect Stripe.</li><li>Sign in to Stripe, or create an account for your shop.</li><li>Approve the connection and complete any business or bank details Stripe requests.</li></ol>' : '') +
+    (p.readOnly ? '<p class="sub">Only the signed-in shop owner can change the payment connection.</p>' :
+      '<div class="form-actions" style="margin-top:16px;gap:8px;flex-wrap:wrap"><button class="btn" style="min-height:48px" onclick="openShopStripe()"' +
+      (!p.available ? ' disabled aria-describedby="shop-stripe-status"' : '') + '>' + label + '</button>' +
+      '<button class="btn" style="min-height:48px" onclick="refreshShopStripe()">' + (p.connected ? 'Refresh payment status' : 'Check setup status') + '</button></div>') +
+    (p.connected ? '<p style="margin-top:16px"><a class="btn" href="/app/settings/payments">Account requirements and notifications</a></p>' : '') +
+    '<p class="sub" style="margin-top:16px">Stripe processes customer payments. Your Shop Revenue subscription is separate.</p></section>';
+};
 settings = function(){
   const a=data.settings || {}, members=data.teamMembers || [];
   const teamRows=members.map(m =>
@@ -571,7 +629,7 @@ settings = function(){
     '<div class="span form-actions"><button class="btn primary">Save business settings</button></div></form>' :
     '<p class="sub">' + esc(data.business) + ' · Automotive Repair</p><p class="secondarytext">Only the owner can change tax or company details.</p>';
   return pageHead("Settings","Your real team, permissions and business details.") +
-    '<div class="stack">' + team +
+    '<div class="stack">' + shopStripeSettings() + team +
     '<section class="card card-pad"><div class="section-head"><h2>Business profile</h2>' + pill("Automotive Repair","blue") + '</div>' + profile + '</section>' +
     '<section class="card card-pad"><h2>Account & security</h2><p class="sub">Signed in as ' + esc(staff(data.actor).name) + ' · ' + esc(data.currentRole) + '. Role permissions are enforced by your account.</p><p style="margin-top:16px"><a class="btn" href="/auth/sign-out">Sign out</a></p></section></div>';
 };

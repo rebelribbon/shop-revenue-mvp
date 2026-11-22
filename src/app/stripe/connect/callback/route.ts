@@ -11,8 +11,11 @@ import { getSessionState } from "@/server/auth/session";
 import { sessionNeedsMfa } from "@/server/auth/assurance";
 import { getRequestMeta } from "@/server/request";
 import { toActionError } from "@/server/actions/define";
+import { withTenant } from "@/db/tenant";
+import { getBusinessProfile } from "@/domain/business-profile";
+import { isAutomotive } from "@/lib/business-types";
 
-const settings = "/app/settings/payments";
+const defaultSettings = "/app/settings/payments";
 function redirect(path: string) {
   const response = NextResponse.redirect(new URL(path, paymentBaseUrl()), 303);
   response.headers.set("Cache-Control", "no-store");
@@ -25,6 +28,11 @@ export async function GET(request: Request) {
   const jar = await cookies();
   let clearCookie = false;
   let response: NextResponse;
+  let settings = defaultSettings;
+  const outcomeRedirect = (outcome: string) =>
+    redirect(
+      `${settings}${settings.includes("?") ? "&" : "?"}stripe=${outcome}`,
+    );
   try {
     const session = await getSessionState();
     if (session.kind === "anonymous")
@@ -37,6 +45,15 @@ export async function GET(request: Request) {
       return redirect("/app?denied=1");
     if (await sessionNeedsMfa())
       return redirect(`/verify?next=${encodeURIComponent(settings)}`);
+    if (process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false") {
+      const profile = await withTenant(
+        session.session.businessId,
+        session.session.actor,
+        getBusinessProfile,
+      );
+      if (isAutomotive(profile?.businessType ?? "automotive"))
+        settings = "/automotive?view=settings";
+    }
 
     const params = new URL(request.url).searchParams;
     const state = params.get("state") ?? "";
@@ -47,7 +64,7 @@ export async function GET(request: Request) {
         jar.get(stripeConnectCookieName())?.value ?? "",
       )
     )
-      return redirect(`${settings}?stripe=expired`);
+      return outcomeRedirect("expired");
     // Only a matching callback may clear the cookie; forged requests cannot
     // invalidate a different connection attempt in progress.
     clearCookie = true;
@@ -65,12 +82,12 @@ export async function GET(request: Request) {
       state,
       code,
     );
-    response = redirect(
-      `${settings}?stripe=${result.canceled ? "canceled" : result.active ? "connected" : "pending"}`,
+    response = outcomeRedirect(
+      result.canceled ? "canceled" : result.active ? "connected" : "pending",
     );
   } catch (error) {
     toActionError(safeStripeError(error), meta, "stripeConnectCallback");
-    response = redirect(`${settings}?stripe=error`);
+    response = outcomeRedirect("error");
   }
   if (clearCookie)
     response.cookies.set(stripeConnectCookieName(), "", {

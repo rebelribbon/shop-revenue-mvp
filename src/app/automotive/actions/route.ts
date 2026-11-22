@@ -31,6 +31,10 @@ import {
 } from "@/server/actions/team";
 import { updateBusinessProfileAction } from "@/server/actions/business";
 import {
+  connectStripeAction,
+  reconcileStripeAction,
+} from "@/server/actions/payments";
+import {
   prepareMediaUploadAction,
   finishMediaUploadAction,
   updateMediaAction,
@@ -119,6 +123,21 @@ export async function POST(request: Request) {
   try {
     let result;
     switch (raw.operation) {
+      case "payments.connect":
+      case "payments.refresh":
+        if (state.session.role !== "owner")
+          return NextResponse.json(
+            {
+              ok: false,
+              error: { message: "Only the shop owner can manage Stripe." },
+            },
+            { status: 403 },
+          );
+        result =
+          raw.operation === "payments.connect"
+            ? await connectStripeAction()
+            : await reconcileStripeAction();
+        break;
       case "inspection.save":
         result = await saveInspectionAction({
           clientRequestId,
