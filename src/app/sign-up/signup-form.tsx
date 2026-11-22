@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { signUpOwner } from "@/server/actions/signup";
-export function SignupForm() {
+export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
   const [state, action, pending] = useActionState(signUpOwner, null);
   return (
     <form action={action} className="card">
@@ -14,6 +14,8 @@ export function SignupForm() {
         autoComplete="email"
         required
         maxLength={254}
+        defaultValue={invitedEmail}
+        readOnly={!!invitedEmail}
       />
       <label htmlFor="signup-password">Create a password</label>
       <input

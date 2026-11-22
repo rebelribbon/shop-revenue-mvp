@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HydratedMain } from "@/components/hydrated-main";
-import { publicSignupEnabled } from "@/lib/billing";
+import { shopSignupEnabledFor } from "@/lib/shop-signup-access";
 import { getSessionState } from "@/server/auth/session";
 import { ShopForm } from "./shop-form";
 export default async function StartShop() {
@@ -11,7 +11,7 @@ export default async function StartShop() {
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Set up your shop</h1>
-      {publicSignupEnabled() ? (
+      {shopSignupEnabledFor(state.identity.email) ? (
         <ShopForm />
       ) : (
         <p>New shop signup is being configured.</p>
