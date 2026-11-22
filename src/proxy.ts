@@ -94,6 +94,7 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/auth") ||
     [
       "/sign-in",
+      "/sign-out",
       "/sign-up",
       "/owner-invite",
       "/start",
