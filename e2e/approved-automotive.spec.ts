@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { approvedAutomotivePoints } from "../src/lib/approved-automotive-inspection";
 import { drawEstimateSignature, signInWithPassword } from "./helpers";
+import { auditUX } from "./ux-audit";
 
 async function signInAutomotive(page: Page) {
   await signInWithPassword(page, "owner.b@shop-b.test");
@@ -11,6 +12,60 @@ async function signInAutomotive(page: Page) {
 
 // The Automotive experience must use the approved shell with authenticated
 // shop data, not the browser-only demo / fake employee switcher.
+test("Automotive Settings signs out with a POST and old links recover without downloads", async ({
+  page,
+}) => {
+  const downloads: string[] = [];
+  page.on("download", (file) => downloads.push(file.suggestedFilename()));
+  await signInAutomotive(page);
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  const signOut = page.getByRole("button", { name: "Sign out", exact: true });
+  await expect(signOut).toBeVisible();
+  const signOutBox = await signOut.boundingBox();
+  expect(signOutBox!.height).toBeGreaterThanOrEqual(48);
+  expect(signOutBox!.x + signOutBox!.width).toBeLessThanOrEqual(
+    page.viewportSize()!.width + 1,
+  );
+  const logoutRequest = page.waitForRequest(
+    (req) =>
+      new URL(req.url()).pathname === "/auth/sign-out" &&
+      req.method() === "POST",
+  );
+  await signOut.click();
+  await logoutRequest;
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(
+    page.getByRole("heading", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+  await page.goto("/automotive?view=settings");
+  await expect(page).toHaveURL(/\/sign-in(?:\?|$)/);
+  await expect(
+    page.getByRole("heading", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+
+  await signInAutomotive(page);
+  await page.goto("/auth/sign-out");
+  await expect(page).toHaveURL(/\/sign-out$/);
+  await expect(
+    page.getByRole("heading", {
+      name: "Sign out of Shop Revenue",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await auditUX(page);
+  // A GET is safe for prefetches: the session is still usable until POST.
+  await page.getByRole("link", { name: "Keep working", exact: true }).click();
+  await expect(page).toHaveURL(/\/automotive$/);
+  await page.goto("/auth/sign-out");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page).toHaveURL(/\/sign-in$/);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Sign in", exact: true }),
+  ).toBeVisible();
+  expect(downloads).toEqual([]);
+});
+
 test("approved Automotive interface loads real records without demo controls", async ({
   page,
 }, info) => {

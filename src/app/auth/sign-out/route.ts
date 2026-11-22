@@ -7,6 +7,17 @@ import {
 } from "@/server/auth/session";
 import { supabaseServer } from "@/server/auth/supabase";
 
+// Older workspace pages used a normal link. Keep GET safe for link previews
+// and browser prefetches, but send people to HTML instead of a method-error file.
+export function GET(req: NextRequest) {
+  const response = NextResponse.redirect(
+    new URL("/sign-out", req.nextUrl.origin),
+    303,
+  );
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
 export async function POST(req: NextRequest) {
   const origin = req.headers.get("origin");
   if (origin && origin !== req.nextUrl.origin)
@@ -17,7 +28,12 @@ export async function POST(req: NextRequest) {
   jar.delete(PASSWORD_RESET_COOKIE);
   jar.delete(VIEW_AS_COOKIE);
   jar.delete(ACTIVE_BUSINESS_COOKIE);
-  return NextResponse.redirect(new URL("/sign-in", req.nextUrl.origin), {
-    status: 303,
-  });
+  const response = NextResponse.redirect(
+    new URL("/sign-in", req.nextUrl.origin),
+    {
+      status: 303,
+    },
+  );
+  response.headers.set("Cache-Control", "no-store");
+  return response;
 }

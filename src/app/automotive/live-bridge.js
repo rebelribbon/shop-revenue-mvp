@@ -631,7 +631,7 @@ settings = function(){
   return pageHead("Settings","Your real team, permissions and business details.") +
     '<div class="stack">' + shopStripeSettings() + team +
     '<section class="card card-pad"><div class="section-head"><h2>Business profile</h2>' + pill("Automotive Repair","blue") + '</div>' + profile + '</section>' +
-    '<section class="card card-pad"><h2>Account & security</h2><p class="sub">Signed in as ' + esc(staff(data.actor).name) + ' · ' + esc(data.currentRole) + '. Role permissions are enforced by your account.</p><p style="margin-top:16px"><a class="btn" href="/auth/sign-out">Sign out</a></p></section></div>';
+    '<section class="card card-pad"><h2>Account & security</h2><p class="sub">Signed in as ' + esc(staff(data.actor).name) + ' · ' + esc(data.currentRole) + '. Role permissions are enforced by your account.</p><form action="/auth/sign-out" method="post" style="margin-top:16px"><button class="btn" type="submit" style="min-height:48px">Sign out</button></form></section></div>';
 };
 const originalRenderModal = renderModal;
 renderModal = function(){
