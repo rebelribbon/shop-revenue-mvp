@@ -470,7 +470,7 @@ test("owner can find Stripe setup in current settings while staff cannot manage 
     name: "Check setup status",
     exact: true,
   });
-  await refresh.click();
+  await Promise.all([page.waitForEvent("load"), refresh.click()]);
   await expect(page).toHaveURL(/automotive\?view=settings$/);
   await expect(
     payments.getByRole("button", { name: "Connect Stripe", exact: true }),
@@ -483,6 +483,8 @@ test("owner can find Stripe setup in current settings while staff cannot manage 
 
   await page.request.post("/auth/sign-out");
   await signInWithPassword(page, "staff.b@shop-b.test");
+  await expect(page).toHaveURL(/\/automotive$/);
+  await expect(page.locator("#app .app")).toBeVisible();
   await page.goto("/automotive?view=settings");
   await expect(
     page.getByRole("heading", { name: "Online payments", exact: true }),
