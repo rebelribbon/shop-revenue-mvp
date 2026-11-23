@@ -90,5 +90,9 @@ test("production operation preserves reviewer/main gates and never promotes the 
   assert.match(workflow, /github.ref_protected/);
   assert.match(workflow, /test "\$REVIEWED_COMMIT" = "\$GITHUB_SHA"/);
   assert.match(workflow, /--prod --skip-domain/);
+  assert.match(
+    workflow,
+    /cp package\.json pnpm-lock\.yaml pnpm-workspace\.yaml/,
+  );
   assert.doesNotMatch(workflow, /vercel.*\bpromote\b|SET ROLE|TRUNCATE/);
 });

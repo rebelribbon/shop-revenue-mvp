@@ -41,7 +41,7 @@ jobs:
         run: |
           task_dir="$RUNNER_TEMP/owner-signup-reset"
           mkdir -p "$task_dir/scripts/ci" "$task_dir/.vercel"
-          cp package.json pnpm-lock.yaml "$task_dir/"
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml "$task_dir/"
           cp scripts/ci/reset-owner-signup-limit.mjs "$task_dir/scripts/ci/"
           node --input-type=module - "$task_dir" <<'NODE'
           import { writeFileSync } from 'node:fs';
