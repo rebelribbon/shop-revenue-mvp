@@ -15,8 +15,7 @@ export async function getInspectionMediaRequirements(
     sql`SELECT inspection_media_requirements AS requirements FROM app.business WHERE id = ${tx.businessId}`,
   );
   const saved = result.rows[0]?.requirements as
-    | Partial<InspectionMediaRequirements>
-    | undefined;
+    Partial<InspectionMediaRequirements> | undefined;
   return { photos: saved?.photos === true, videos: saved?.videos === true };
 }
 
