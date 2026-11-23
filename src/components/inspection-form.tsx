@@ -407,7 +407,8 @@ export function InspectionForm({
                     />
                     <details className="inspection-evidence">
                       <summary>
-                        Found an issue — add a photo{mediaRequirements.photos ? " (required)" : " (optional)"}
+                        Found an issue — add a photo
+                        {mediaRequirements.photos ? " (required)" : " (optional)"}
                       </summary>
                       <MediaUploader
                         purpose="finding"
@@ -531,7 +532,10 @@ export function InspectionForm({
             );
           })}
           <section className="inspection-summary-video">
-            <h4>One-minute technician video ({mediaRequirements.videos ? "required" : "optional"})</h4>
+            <h4>
+              One-minute technician video (
+              {mediaRequirements.videos ? "required" : "optional"})
+            </h4>
             <p className="muted">
               Introduce yourself, briefly explain what passed and the items
               needing attention, and direct questions to the service advisor.
@@ -549,9 +553,15 @@ export function InspectionForm({
           </section>
           {canEdit && (mediaRequirements.photos || mediaRequirements.videos) && (
             <p className="muted">
-              Shop policy: {mediaRequirements.photos ? "attach a photo to each Caution/Fail finding" : "finding photos optional"};{" "}
-              {mediaRequirements.videos ? "attach one summary video" : "summary video optional"}.
-              Media must finish uploading before submission.
+              Shop policy:{" "}
+              {mediaRequirements.photos
+                ? "attach a photo to each Caution/Fail finding"
+                : "finding photos optional"}
+              ;{" "}
+              {mediaRequirements.videos
+                ? "attach one summary video"
+                : "summary video optional"}
+              . Media must finish uploading before submission.
             </p>
           )}
           {!canSubmit && canEdit && (
