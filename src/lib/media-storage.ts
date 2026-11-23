@@ -13,10 +13,7 @@ type Driver = "supabase" | "local";
 const DEFAULT_MEDIA_BUCKET = "shop-revenue-media";
 export function mediaDriver(env = process.env): Driver | null {
   if (env.MEDIA_STORAGE === "local") return "local";
-  if (
-    env.NEXT_PUBLIC_SUPABASE_URL &&
-    env.SUPABASE_SERVICE_ROLE_KEY
-  )
+  if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY)
     return "supabase";
   // Only a developer machine or the test suite may keep files on local disk;
   // hosted servers lose them, so they need the bucket configured.
