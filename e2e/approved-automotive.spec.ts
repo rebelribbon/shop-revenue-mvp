@@ -542,9 +542,12 @@ test("Automotive settings persists business details and provides a working Billi
   await expect(dba).toHaveValue(savedName);
   // Restore the shared fixture before testing navigation.
   await dba.fill(original);
-  await page
-    .getByRole("button", { name: "Save business settings", exact: true })
-    .click();
+  await Promise.all([
+    page.waitForEvent("load"),
+    page
+      .getByRole("button", { name: "Save business settings", exact: true })
+      .click(),
+  ]);
   await expect(
     page.getByRole("status").filter({ hasText: "Business settings saved." }),
   ).toBeVisible();
