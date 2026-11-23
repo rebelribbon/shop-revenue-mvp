@@ -221,7 +221,9 @@ export async function saveInspection(
       }[];
       if (requirements.photos) {
         const photographed = new Set(
-          evidence.filter((m) => m.purpose === "finding").map((m) => m.item_key),
+          evidence
+            .filter((m) => m.purpose === "finding")
+            .map((m) => m.item_key),
         );
         const missing = items.filter(
           (item) =>
