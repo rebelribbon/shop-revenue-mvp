@@ -1,0 +1,60 @@
+name: Reset owner signup limit
+on:
+  workflow_dispatch:
+    inputs:
+      reviewed_commit:
+        description: Exact reviewed protected-main commit SHA
+        required: true
+        type: string
+      email_sha256:
+        description: SHA-256 of the normalized approved owner email; do not enter the email
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: production-owner-signup-reset
+  cancel-in-progress: false
+jobs:
+  reset:
+    if: github.ref == 'refs/heads/main' && github.ref_protected
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require the reviewed main commit and exact recipient fingerprint
+        env:
+          REVIEWED_COMMIT: ${{ inputs.reviewed_commit }}
+          EMAIL_SHA256: ${{ inputs.email_sha256 }}
+        run: |
+          test "$REVIEWED_COMMIT" = "$GITHUB_SHA"
+          [[ "$EMAIL_SHA256" =~ ^[a-f0-9]{64}$ ]]
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: {persist-credentials: false}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: 24, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - name: Verify reset guards without production credentials
+        run: node --test tests/ci/reset-owner-signup-limit.test.mjs
+      - name: Prepare a private maintenance build with no web functions
+        run: |
+          task_dir="$RUNNER_TEMP/owner-signup-reset"
+          mkdir -p "$task_dir/scripts/ci" "$task_dir/.vercel"
+          cp package.json pnpm-lock.yaml "$task_dir/"
+          cp scripts/ci/reset-owner-signup-limit.mjs "$task_dir/scripts/ci/"
+          node --input-type=module - "$task_dir" <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          const dir=process.argv[2];
+          writeFileSync(`${dir}/vercel.json`, JSON.stringify({framework:null,buildCommand:'node scripts/ci/reset-owner-signup-limit.mjs',outputDirectory:'public'}));
+          writeFileSync(`${dir}/.vercel/project.json`, JSON.stringify({orgId:'team_ErajC90RgZfezuIaos4BoBjw',projectId:'prj_c3KFd0Yr6iufwUAuvLRdu30GE68o'}));
+          NODE
+      - name: Run scoped reset using existing worker access; never assign production domains
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          RESET_OWNER_EMAIL_SHA256: ${{ inputs.email_sha256 }}
+        run: |
+          test -n "$VERCEL_TOKEN"
+          npx --yes vercel@63.1.0 deploy "$RUNNER_TEMP/owner-signup-reset" --yes --prod --skip-domain \
+            --build-env RESET_OWNER_EMAIL_SHA256="$RESET_OWNER_EMAIL_SHA256" > reset-deployment-url.txt
+          echo "Scoped maintenance build finished. No production promotion is performed."
