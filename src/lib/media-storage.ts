@@ -9,13 +9,15 @@ import { createClient } from "@supabase/supabase-js";
 import { AppError } from "./errors";
 
 type Driver = "supabase" | "local";
+// Private bucket provisioned in the hosted Supabase projects.
+const DEFAULT_MEDIA_BUCKET = "shop-revenue-media";
 export function mediaDriver(env = process.env): Driver | null {
   if (env.MEDIA_STORAGE === "local") return "local";
-  if (
-    env.NEXT_PUBLIC_SUPABASE_URL &&
-    env.SUPABASE_SERVICE_ROLE_KEY &&
-    env.MEDIA_BUCKET
-  )
+  // In developer/test environments without an explicit bucket, use durable
+  // local files even when Supabase Auth credentials are also configured.
+  if (["local", "test"].includes(env.APP_ENV ?? "local") && !env.MEDIA_BUCKET)
+    return "local";
+  if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY)
     return "supabase";
   // Only a developer machine or the test suite may keep files on local disk;
   // hosted servers lose them, so they need the bucket configured.
@@ -37,7 +39,7 @@ const bucket = () =>
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } },
-  ).storage.from(process.env.MEDIA_BUCKET!);
+  ).storage.from(process.env.MEDIA_BUCKET || DEFAULT_MEDIA_BUCKET);
 
 const localRoot = () =>
   resolve(process.env.MEDIA_LOCAL_DIR || join(process.cwd(), ".local-media"));

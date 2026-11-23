@@ -37,6 +37,7 @@ export function InspectionForm({
   completed = false,
   initialAssessment,
   automotive = true,
+  mediaRequirements = { photos: false, videos: false },
 }: {
   jobId: string;
   customerId: string;
@@ -47,6 +48,7 @@ export function InspectionForm({
   completed?: boolean;
   initialAssessment: InspectionAssessment;
   automotive?: boolean;
+  mediaRequirements?: { photos: boolean; videos: boolean };
 }) {
   const router = useRouter();
   const headingRef = useRef<HTMLElement>(null);
@@ -405,7 +407,10 @@ export function InspectionForm({
                     />
                     <details className="inspection-evidence">
                       <summary>
-                        Found an issue — add a photo? (optional)
+                        Add finding photo
+                        {mediaRequirements.photos
+                          ? " (required)"
+                          : " (optional)"}
                       </summary>
                       <MediaUploader
                         purpose="finding"
@@ -529,7 +534,10 @@ export function InspectionForm({
             );
           })}
           <section className="inspection-summary-video">
-            <h4>One-minute technician video (optional)</h4>
+            <h4>
+              Technician summary video
+              {mediaRequirements.videos ? " (required)" : " (optional)"}
+            </h4>
             <p className="muted">
               Introduce yourself, briefly explain what passed and the items
               needing attention, and direct questions to the service advisor.
@@ -545,6 +553,13 @@ export function InspectionForm({
               />
             )}
           </section>
+          {canEdit &&
+            (mediaRequirements.photos || mediaRequirements.videos) && (
+              <p className="muted">
+                Shop policy requires media uploads before submission. Follow the
+                required labels above.
+              </p>
+            )}
           {!canSubmit && canEdit && (
             <p role="alert" className="notice">
               Finish unchecked items, required findings, and the technician

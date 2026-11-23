@@ -13,6 +13,7 @@ import {
 import { createJob, getJob, jobInput } from "./jobs";
 import { audit, recordActivity, type RequestMeta } from "./records";
 import { notifyAdvisorInspectionComplete } from "./job-handoffs";
+import { getInspectionMediaRequirements } from "./inspection-media-settings";
 
 const itemSchema = z.object({
   key: z.string().min(1).max(60),
@@ -192,6 +193,58 @@ export async function saveInspection(
       "VALIDATION",
       "Caution requires findings; Fail requires findings and recommended work.",
     );
+  }
+  if (input.submit === true) {
+    const requirements = await getInspectionMediaRequirements(tx);
+    if (requirements.photos || requirements.videos) {
+      // A previously deleted or unfinished upload never counts as evidence.
+      // Link by the immutable media.added activity record, not a filename.
+      const mediaRows = await tx.execute(sql`
+        SELECT a.data ->> 'purpose' AS purpose,
+               a.data ->> 'inspectionItemKey' AS item_key
+        FROM app.activity a
+        JOIN app.job_media m
+          ON m.business_id = a.business_id
+         AND m.id::text = a.data ->> 'mediaId'
+         AND m.deleted_at IS NULL
+        JOIN app.file f
+          ON f.business_id = m.business_id
+         AND f.id = m.file_id
+         AND f.status = 'ready'
+        WHERE a.business_id = ${tx.businessId}
+          AND a.kind = 'media.added'
+          AND a.data ->> 'jobId' = ${input.jobId}
+      `);
+      const evidence = mediaRows.rows as {
+        purpose: string | null;
+        item_key: string | null;
+      }[];
+      if (requirements.photos) {
+        const photographed = new Set(
+          evidence
+            .filter((m) => m.purpose === "finding")
+            .map((m) => m.item_key),
+        );
+        const missing = items.filter(
+          (item) =>
+            (item.status === "watch" || item.status === "fix") &&
+            !photographed.has(item.key),
+        );
+        if (missing.length)
+          throw new AppError(
+            "VALIDATION",
+            `Shop policy requires a photo for each Caution/Fail finding. Missing: ${missing.map((item) => item.label).join(", ")}.`,
+          );
+      }
+      if (
+        requirements.videos &&
+        !evidence.some((m) => m.purpose === "walkaround")
+      )
+        throw new AppError(
+          "VALIDATION",
+          "Shop policy requires a technician summary video before submission.",
+        );
+    }
   }
   await tx
     .insert(inspection)

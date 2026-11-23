@@ -22,6 +22,14 @@ export default async function SettingsPage() {
       </form>
       <div className="settings-grid">
         {s.role === "owner" && (
+          <Link className="card settings-link" href="/app/settings/inspection">
+            <strong>Inspection requirements</strong>
+            <span className="muted">
+              Optional photo and video requirements for technician findings
+            </span>
+          </Link>
+        )}
+        {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/booking">
             <strong>Online booking</strong>
             <span className="muted">
