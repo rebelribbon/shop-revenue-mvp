@@ -63,6 +63,10 @@ export const business = app.table(
     deposits: jsonb("deposits").notNull().default({}),
     // Email team members when an RO is handed to them (0053).
     handoffEmailPings: boolean("handoff_email_pings").notNull().default(true),
+    inspectionMediaRequirements: jsonb("inspection_media_requirements")
+      .$type<{ photos: boolean; videos: boolean }>()
+      .notNull()
+      .default({ photos: false, videos: false }),
     // Public "Book online" link (/book/<slug>); null = turned off.
     bookingSlug: text("booking_slug"),
     // Profit the shop aims for on a job, in basis points (4000 = 40%).
