@@ -46,15 +46,15 @@ test("a new owner creates their own isolated shop and reaches subscription billi
       exact: true,
     })
     .click();
-  await expect(page).toHaveURL(/\/app\/settings\/billing$/);
+  await expect(page).toHaveURL(/\/automotive\?view=billing$/);
   await expect(
     page.getByRole("heading", { name: "Billing", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.locator(".workspace-brand:visible, .workspace-mobile-brand:visible"),
-  ).toContainText(`Independent Shop ${stamp}`);
+  await expect(page.locator(".topbar .crumb")).toContainText(
+    `Independent Shop ${stamp}`,
+  );
   await page.goto("/app/customers");
   await expect(page.getByText("Ford", { exact: true })).toHaveCount(0);
   await page.goto("/start");
-  await expect(page).toHaveURL(/\/app\/settings\/billing$/);
+  await expect(page).toHaveURL(/\/automotive\?view=billing$/);
 });
