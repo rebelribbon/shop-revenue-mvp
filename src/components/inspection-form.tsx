@@ -408,7 +408,9 @@ export function InspectionForm({
                     <details className="inspection-evidence">
                       <summary>
                         Add finding photo
-                        {mediaRequirements.photos ? " (required)" : " (optional)"}
+                        {mediaRequirements.photos
+                          ? " (required)"
+                          : " (optional)"}
                       </summary>
                       <MediaUploader
                         purpose="finding"
@@ -551,12 +553,13 @@ export function InspectionForm({
               />
             )}
           </section>
-          {canEdit && (mediaRequirements.photos || mediaRequirements.videos) && (
-            <p className="muted">
-              Shop policy requires media uploads before submission. Follow
-              the required labels above.
-            </p>
-          )}
+          {canEdit &&
+            (mediaRequirements.photos || mediaRequirements.videos) && (
+              <p className="muted">
+                Shop policy requires media uploads before submission. Follow the
+                required labels above.
+              </p>
+            )}
           {!canSubmit && canEdit && (
             <p role="alert" className="notice">
               Finish unchecked items, required findings, and the technician
