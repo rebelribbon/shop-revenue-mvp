@@ -9,6 +9,9 @@ import { defineShopAction } from "./define";
 const saveBusinessProfile = defineShopAction({
   name: "updateBusinessProfile",
   ownerOnly: true,
+  // Owners must be able to finish business setup before starting billing.
+  // Customer and operational writes still require an active trial or plan.
+  allowWhenUnpaid: true,
   input: z.object({
     businessType: z.enum(businessTypes).optional(),
     legalName: z.string().min(1).max(200),

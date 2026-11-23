@@ -601,6 +601,36 @@ const shopStripeSettings = function(){
     (p.connected ? '<p style="margin-top:16px"><a class="btn" href="/app/settings/payments">Account requirements and notifications</a></p>' : '') +
     '<p class="sub" style="margin-top:16px">Stripe processes customer payments. Your Shop Revenue subscription is separate.</p></section>';
 };
+const shopBillingSettings = function(){
+  const b = data.billingSetup;
+  if (role() !== "owner" || !b) return "";
+  const starting = b.kind === "setup" && !b.trialUsed;
+  const status = starting ? "Trial not started" : b.kind === "setup" || b.kind === "locked" ? "Subscription inactive" :
+    b.kind === "full" ? (b.trialEndsAt ? "Free trial active" : "Subscription active") :
+    b.kind === "comped" ? "Complimentary plan" : b.kind === "grace" ? "Payment needs attention" : b.kind === "off" ? "Billing disabled" : "Billing unavailable";
+  const description = starting ?
+    "Start your 14-day free trial to add customers and repair orders. A card is required. You can save your business profile before starting your trial." :
+    b.blocked ? "Review your Shop Revenue subscription to make changes. You can still view records and save your business profile." :
+    "Review your Shop Revenue subscription, card, receipts and cancellation options.";
+  return '<section class="card card-pad" aria-labelledby="shop-billing-heading">' +
+    '<div class="section-head"><h2 id="shop-billing-heading">Billing</h2>' + pill(status, b.blocked ? "blue" : "green") + '</div>' +
+    '<p class="sub">' + description + '</p>' +
+    '<p class="sub">This subscription is separate from the Stripe account that receives your customers’ payments.</p>' +
+    '<div class="form-actions" style="margin-top:16px"><a class="btn" style="min-height:48px;white-space:normal" href="/app/settings/billing">' +
+    (starting ? "Start free trial" : "Manage billing") + '</a></div></section>';
+};
+const originalBillingContent = content;
+content = function(){
+  const b = data.billingSetup;
+  const notice = b?.blocked && ui.page !== "settings" ?
+    '<section class="notice" data-billing="' + esc(b.kind) + '" aria-label="Subscription setup" style="margin-bottom:16px">' +
+    '<p>' + (role() === "owner" ?
+      (b.kind === "setup" && !b.trialUsed ? "Start your free trial to add customers and repair orders. Your business profile can be saved now." :
+      "Your Shop Revenue subscription needs attention before you can make changes.") :
+      "Ask the shop owner to activate the Shop Revenue subscription so you can make changes.") + '</p>' +
+    (role() === "owner" ? '<a class="btn" href="/app/settings/billing" style="margin-top:8px;min-height:48px;white-space:normal">Open billing</a>' : '') + '</section>' : '';
+  return notice + originalBillingContent();
+};
 settings = function(){
   const a=data.settings || {}, members=data.teamMembers || [];
   const teamRows=members.map(m =>
@@ -614,6 +644,7 @@ settings = function(){
     '<section class="card card-pad"><h2>My access</h2><p class="sub">Your shop owner manages employee permissions.</p></section>';
   const profile = role() === "owner" ?
     '<form class="formgrid" onsubmit="event.preventDefault();saveBusiness(this)">' +
+    (new URLSearchParams(window.location.search).get("saved") === "business" ? '<p class="span notice good" role="status">Business settings saved.</p>' : '') +
     '<label class="span">Business legal name<input name="legalName" maxlength="200" required value="' + esc(a.legalName || data.business) + '"></label>' +
     '<label class="span">Doing business as<input name="dba" maxlength="200" value="' + esc(a.dba || "") + '"></label>' +
     '<label>Phone<input name="phone" value="' + esc(a.phone || "") + '"></label>' +
@@ -629,7 +660,7 @@ settings = function(){
     '<div class="span form-actions"><button class="btn primary">Save business settings</button></div></form>' :
     '<p class="sub">' + esc(data.business) + ' · Automotive Repair</p><p class="secondarytext">Only the owner can change tax or company details.</p>';
   return pageHead("Settings","Your real team, permissions and business details.") +
-    '<div class="stack">' + shopStripeSettings() + team +
+    '<div class="stack">' + shopBillingSettings() + shopStripeSettings() + team +
     '<section class="card card-pad"><div class="section-head"><h2>Business profile</h2>' + pill("Automotive Repair","blue") + '</div>' + profile + '</section>' +
     '<section class="card card-pad"><h2>Account & security</h2><p class="sub">Signed in as ' + esc(staff(data.actor).name) + ' · ' + esc(data.currentRole) + '. Role permissions are enforced by your account.</p><form action="/auth/sign-out" method="post" style="margin-top:16px"><button class="btn" type="submit" style="min-height:48px">Sign out</button></form></section></div>';
 };
@@ -705,7 +736,7 @@ saveBusiness=async function(form){
     addressLine1:String(f.addressLine1 || ""),city:String(f.city || ""),region:String(f.region || ""),postalCode:String(f.postalCode || ""),
     timezone:String(f.timezone || "America/Chicago"),taxPercent:Number(f.taxPercent),
     laborSellRate:Number(f.laborSellRate),laborCostRate:Number(f.laborCostRate),taxConfirmed:!!f.taxConfirmed});
-    window.location.assign("/automotive?view=settings");
+    window.location.assign("/automotive?view=settings&saved=business");
   }catch(e){alert(e.message || "Business settings were not saved.");}
 };
 

@@ -10,6 +10,8 @@ import {
 import { billingAccess, daysUntil, TRIAL_DAYS } from "@/lib/billing";
 import { logger } from "@/lib/logger";
 import { requireOwnerView } from "@/server/views/shop";
+import { getBusinessProfile } from "@/domain/business-profile";
+import { isAutomotive } from "@/lib/business-types";
 
 const fmt = (d: Date) =>
   d.toLocaleDateString("en-US", {
@@ -33,13 +35,19 @@ export default async function BillingSettings({
         businessId: s.businessId,
       }),
     );
-  const { row, access, now } = await withTenant(
+  const { row, access, now, automotive } = await withTenant(
     s.businessId,
     s.actor,
     async (tx) => {
       const now = new Date();
       const row = await getShopSubscription(tx);
-      return { row, access: billingAccess(row, now), now };
+      const profile = await getBusinessProfile(tx);
+      return {
+        row,
+        access: billingAccess(row, now),
+        now,
+        automotive: isAutomotive(profile?.businessType ?? "automotive"),
+      };
     },
   );
   const price = await subscriptionPriceLabel(
@@ -186,7 +194,9 @@ export default async function BillingSettings({
       </section>
       <p>
         <Link href="/app/settings/export">Export your shop data</Link> ·{" "}
-        <Link href="/app/settings">Back to settings</Link>
+        <Link href={automotive ? "/automotive?view=settings" : "/app/settings"}>
+          Back to settings
+        </Link>
       </p>
     </HydratedMain>
   );

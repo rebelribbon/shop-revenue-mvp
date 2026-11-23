@@ -505,6 +505,61 @@ test("owner manages team and business details inside the unified Automotive sett
   await expect(page).toHaveURL(/automotive[?]view=settings/);
 });
 
+test("Automotive settings persists business details and provides a working Billing return path", async ({
+  page,
+}) => {
+  await signInAutomotive(page);
+  await page.goto("/automotive?view=settings");
+  const billing = page.getByRole("region", { name: "Billing", exact: true });
+  await expect(billing).toBeVisible();
+  const billingLink = billing.getByRole("link", {
+    name: /free trial|billing/i,
+  });
+  await expect(billingLink).toHaveAttribute("href", "/app/settings/billing");
+  const box = await billingLink.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(48);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(
+    page.viewportSize()!.width + 1,
+  );
+
+  const dba = page.getByRole("textbox", {
+    name: "Doing business as",
+    exact: true,
+  });
+  const original = await dba.inputValue();
+  const savedName = `Saved setup ${randomUUID().slice(0, 8)}`;
+  await dba.fill(savedName);
+  await page
+    .getByRole("checkbox", { name: /confirm this is the tax rate/ })
+    .check();
+  await page
+    .getByRole("button", { name: "Save business settings", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Business settings saved." }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(dba).toHaveValue(savedName);
+  // Restore the shared fixture before testing navigation.
+  await dba.fill(original);
+  await page
+    .getByRole("button", { name: "Save business settings", exact: true })
+    .click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Business settings saved." }),
+  ).toBeVisible();
+  await billingLink.click();
+  await expect(page).toHaveURL(/\/app\/settings\/billing$/);
+  await expect(
+    page.getByRole("heading", { name: "Billing", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "Back to settings", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/automotive\?view=settings$/);
+  await expect(billing).toBeVisible();
+});
+
 test("owner can find Stripe setup in current settings while staff cannot manage the connection", async ({
   page,
 }) => {
@@ -559,6 +614,9 @@ test("owner can find Stripe setup in current settings while staff cannot manage 
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Online payments", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Billing", exact: true }),
   ).toHaveCount(0);
   for (const operation of ["payments.connect", "payments.refresh"]) {
     const response = await page.request.post("/automotive/actions", {
