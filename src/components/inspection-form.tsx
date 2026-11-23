@@ -407,7 +407,7 @@ export function InspectionForm({
                     />
                     <details className="inspection-evidence">
                       <summary>
-                        Found an issue — add a photo
+                        Add finding photo
                         {mediaRequirements.photos ? " (required)" : " (optional)"}
                       </summary>
                       <MediaUploader
@@ -533,8 +533,8 @@ export function InspectionForm({
           })}
           <section className="inspection-summary-video">
             <h4>
-              One-minute technician video (
-              {mediaRequirements.videos ? "required" : "optional"})
+              Technician summary video
+              {mediaRequirements.videos ? " (required)" : " (optional)"}
             </h4>
             <p className="muted">
               Introduce yourself, briefly explain what passed and the items
@@ -553,15 +553,8 @@ export function InspectionForm({
           </section>
           {canEdit && (mediaRequirements.photos || mediaRequirements.videos) && (
             <p className="muted">
-              Shop policy:{" "}
-              {mediaRequirements.photos
-                ? "attach a photo to each Caution/Fail finding"
-                : "finding photos optional"}
-              ;{" "}
-              {mediaRequirements.videos
-                ? "attach one summary video"
-                : "summary video optional"}
-              . Media must finish uploading before submission.
+              Shop policy requires media uploads before submission. Follow
+              the required labels above.
             </p>
           )}
           {!canSubmit && canEdit && (
