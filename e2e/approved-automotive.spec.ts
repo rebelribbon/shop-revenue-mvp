@@ -642,7 +642,7 @@ for (const lifetime of [false, true])
       );
     }
     await page.screenshot({
-      path: `test-results/billing-${lifetime ? "lifetime" : "signup"}-${info.project.name}.png`,
+      path: `artifacts/billing-${lifetime ? "lifetime" : "signup"}-${info.project.name}.png`,
       fullPage: true,
     });
     if (info.project.name === "phone")
