@@ -34,7 +34,8 @@ export default async function InspectionSettingsPage() {
                 name="photos"
                 defaultChecked={settings.photos}
               />
-              Require a photo for every Caution or Fail finding before submission
+              Require a photo for every Caution or Fail finding before
+              submission
             </label>
             <label>
               <input
