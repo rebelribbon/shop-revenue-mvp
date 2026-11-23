@@ -20,6 +20,8 @@ import { jobReference } from "@/lib/job-reference";
 import { requireShopSession } from "@/server/views/shop";
 import { getStripeConnection } from "@/domain/payments";
 import { shopPaymentSetup } from "@/lib/shop-payment-setup";
+import { getShopSubscription } from "@/domain/billing";
+import { billingAccess, canMakeChanges } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,6 +82,17 @@ export async function GET(request: Request) {
     async (tx) => {
       const profile = await getBusinessProfile(tx);
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
+      const subscription = await getShopSubscription(tx);
+      const access = billingAccess(subscription, new Date());
+      const billingSetup = {
+        kind: access.kind,
+        blocked: !canMakeChanges(access),
+        trialUsed: session.role === "owner" && !!subscription?.trialUsedAt,
+        trialEndsAt:
+          session.role === "owner" && access.kind === "full"
+            ? (access.trialEndsAt?.toISOString() ?? null)
+            : null,
+      };
       const paymentSetup =
         session.role === "owner"
           ? shopPaymentSetup(
@@ -594,6 +607,7 @@ export async function GET(request: Request) {
         businessType: "automotive",
         isLive: true,
         paymentSetup,
+        billingSetup,
         settings: {
           tax: (profile?.taxRateBps ?? 0) / 100,
           legalName: profile?.legalName ?? "",

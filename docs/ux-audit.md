@@ -122,6 +122,18 @@ Stripe or Finish Stripe setup action, with status reconciliation separate.
 Phone and desktop regression coverage checks the pending state, visible controls,
 refresh, return to Settings, geometry, contrast and browser errors.
 
+## Owner subscription setup
+
+Automotive Settings includes a Billing card linked to the existing owner-only
+subscription screen, separate from the shop's Stripe payment connection. A shop
+without an active trial sees a persistent billing notice and a direct next step
+throughout its workspace. Business profile setup can be saved before a trial;
+customer and operational writes retain their subscription gate. Successful profile
+saves show confirmation and survive reload. Billing returns automotive owners to
+their current Settings screen. Regression coverage checks persisted business data,
+tax confirmation, staff restrictions, the unpaid customer gate, and phone/desktop
+billing navigation and touch targets.
+
 
 ## November 8 customer and RO navigation
 
