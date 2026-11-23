@@ -636,7 +636,12 @@ export default async function JobsPage({
                   initial={data.inspection.items}
                   initialAssessment={data.inspection.assessment}
                   automotive={auto}
-                  mediaRequirements={data.profile?.inspectionMediaRequirements ?? { photos: false, videos: false }}
+                  mediaRequirements={
+                    data.profile?.inspectionMediaRequirements ?? {
+                      photos: false,
+                      videos: false,
+                    }
+                  }
                   readOnly={
                     s.actor.type === "support" || data.inspection.complete
                   }
