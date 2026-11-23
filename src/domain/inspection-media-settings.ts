@@ -17,10 +17,7 @@ export async function getInspectionMediaRequirements(
   const saved = result.rows[0]?.requirements as
     | Partial<InspectionMediaRequirements>
     | undefined;
-  return {
-    photos: saved?.photos === true,
-    videos: saved?.videos === true,
-  };
+  return { photos: saved?.photos === true, videos: saved?.videos === true };
 }
 
 export async function setInspectionMediaRequirements(
