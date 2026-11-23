@@ -134,6 +134,19 @@ their current Settings screen. Regression coverage checks persisted business dat
 tax confirmation, staff restrictions, the unpaid customer gate, and phone/desktop
 billing navigation and touch targets.
 
+The trial signup and active subscription states now share a Billing screen inside
+the approved Automotive shell at `/automotive?view=billing`. Old Billing links and
+Stripe return URLs redirect there, preserving checkout confirmation. The compact
+header and five phone destinations remain consistent with the workspace. The
+screen uses the existing owner/MFA-protected Checkout and Customer Portal actions,
+shows inline retry errors, and preserves the read-only support boundary. Price
+copy reads the applied Stripe discount: an assigned, product-matched 100% forever
+coupon shows $0 recurring billing even after its redemption limit is reached.
+Unresolved, partial or temporary discounts direct owners to Stripe for the exact
+renewal amount instead of claiming the full plan price. Phone/desktop regression
+coverage includes both states, old links, a 320px viewport, touch targets, action
+failures, return navigation and discount scope/duration boundaries.
+
 
 ## November 8 customer and RO navigation
 

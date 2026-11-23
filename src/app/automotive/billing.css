@@ -1,0 +1,178 @@
+/* Billing stays inside the approved Automotive shell at every viewport size. */
+body.billing-view {
+  font-size: 16px;
+}
+.billing-view .topbar {
+  min-height: 72px;
+  height: auto;
+  padding: 16px 32px;
+  gap: 16px;
+}
+.billing-view .crumb {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.billing-view .top-actions {
+  flex: none;
+}
+.billing-view .top-actions .btn {
+  min-height: 48px;
+  padding: 8px 16px;
+  font-size: 16px;
+}
+.billing-view .sidebar .nav-item {
+  min-height: 48px;
+  margin: 8px 0;
+}
+.billing-view .content {
+  padding: 32px 32px 112px;
+}
+.billing-page {
+  display: grid;
+  gap: 24px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.billing-page .page-head {
+  margin: 0;
+}
+.billing-page h1 {
+  font-size: 28px;
+}
+.billing-page h2 {
+  font-size: 20px;
+}
+.billing-page p {
+  max-width: 65ch;
+}
+.billing-page .sub {
+  color: #52647a;
+  font-size: 16px;
+  margin-top: 8px;
+}
+.billing-page .card-pad {
+  padding: 24px;
+}
+.billing-page .section-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.billing-page .pill {
+  font-size: 14px;
+  white-space: normal;
+}
+.billing-page .pill.green {
+  color: #06634f;
+}
+.billing-page .pill.amber {
+  color: #815006;
+}
+.billing-page .pill.blue {
+  color: #194eaf;
+}
+.billing-page .notice {
+  font-size: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.billing-price {
+  font-size: 36px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+}
+.billing-base {
+  color: #52647a;
+  margin-top: 8px;
+}
+.billing-discount {
+  color: #06634f;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.billing-dates {
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.billing-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.billing-page .btn {
+  min-width: 48px;
+  min-height: 48px;
+  white-space: normal;
+  padding: 8px 16px;
+  font-size: 16px;
+  transition:
+    background 80ms,
+    border-color 80ms;
+}
+.billing-page .btn:focus-visible {
+  outline: 3px solid #194eaf;
+  outline-offset: 4px;
+}
+.billing-page .btn.primary {
+  background: #2458cf;
+  border-color: #2458cf;
+}
+.billing-page .btn.primary:hover {
+  background: #194eaf;
+}
+.billing-page .billing-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.billing-page .billing-links .btn {
+  color: #194eaf;
+}
+.billing-view .screen-mobile-nav {
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  gap: 8px;
+}
+.billing-view .screen-mobile-nav button {
+  min-width: 0;
+  flex: 1 1 0;
+  min-height: 56px;
+  padding: 8px 0;
+  font-size: 10px;
+  color: #52647a;
+}
+@media (max-width: 760px) {
+  .billing-view .topbar {
+    padding: 16px;
+    gap: 8px;
+  }
+  .billing-view .topbar .crumb {
+    font-size: 16px;
+  }
+  .billing-view .content {
+    padding: 24px 16px 112px;
+  }
+  .billing-page {
+    gap: 16px;
+  }
+  .billing-page .card-pad {
+    padding: 24px 16px;
+  }
+  .billing-page .billing-actions > .primary {
+    width: 100%;
+  }
+  .billing-page .billing-links {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .billing-page .btn {
+    transition: none;
+  }
+}

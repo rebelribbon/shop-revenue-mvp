@@ -23,6 +23,12 @@ import { assertOwner } from "./membership";
 import { withPaymentTenant } from "./payments";
 import { getBusinessProfile } from "./business-profile";
 import { audit, type RequestMeta } from "./records";
+import {
+  recurringPriceLabel,
+  summarizeSubscriptionPricing,
+  unknownSubscriptionPricing,
+  type SubscriptionPricing,
+} from "@/lib/subscription-pricing";
 
 type Shop = { businessId: string; actor: Actor };
 export type ShopSubscriptionRow = typeof shopSubscription.$inferSelect;
@@ -400,25 +406,39 @@ export async function setShopComped(
   });
 }
 
-// "$149/month" from the configured Stripe price, or null if unavailable.
-export async function subscriptionPriceLabel(subscriptionId?: string) {
-  if (!billingEnabled()) return null;
+// Read the owner's actual subscription, including its assigned discounts.
+// Never turn a provider failure or an unexpanded discount into a full-price claim.
+export async function getSubscriptionPricing(
+  subscriptionId?: string,
+): Promise<SubscriptionPricing> {
+  if (!billingEnabled()) return { ...unknownSubscriptionPricing };
   try {
     const stripe = stripeClient();
-    const p = subscriptionId
-      ? (await stripe.subscriptions.retrieve(subscriptionId)).items.data[0]
-          ?.price
-      : await currentSubscriptionPrice(stripe);
-    if (!p) return null;
-    if (p.unit_amount == null) return null;
-    const amount = (p.unit_amount / 100).toLocaleString("en-US", {
-      style: "currency",
-      currency: p.currency.toUpperCase(),
-      minimumFractionDigits: p.unit_amount % 100 ? 2 : 0,
-    });
-    const every = p.recurring?.interval ?? "month";
-    return `${amount}/${every}`;
+    if (subscriptionId) {
+      const sub = await stripe.subscriptions.retrieve(subscriptionId, {
+        // Coupon.applies_to is omitted unless explicitly expanded. Without it
+        // a product-specific coupon could be mistaken for an account-wide one.
+        expand: ["discounts.source.coupon.applies_to", "items.data.discounts"],
+      });
+      return summarizeSubscriptionPricing(sub);
+    }
+    const price = await currentSubscriptionPrice(stripe);
+    const label = recurringPriceLabel(
+      price.unit_amount!,
+      price.currency,
+      price.recurring!,
+    );
+    return {
+      baseLabel: label,
+      recurringLabel: label,
+      discountLabel: null,
+      freeForever: false,
+    };
   } catch {
-    return null;
+    return { ...unknownSubscriptionPricing };
   }
+}
+
+export async function subscriptionPriceLabel(subscriptionId?: string) {
+  return (await getSubscriptionPricing(subscriptionId)).recurringLabel;
 }
