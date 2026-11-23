@@ -515,7 +515,7 @@ test("Automotive settings persists business details and provides a working Billi
   const billingLink = billing.getByRole("link", {
     name: /free trial|billing/i,
   });
-  await expect(billingLink).toHaveAttribute("href", "/app/settings/billing");
+  await expect(billingLink).toHaveAttribute("href", "/automotive?view=billing");
   const box = await billingLink.boundingBox();
   expect(box!.height).toBeGreaterThanOrEqual(48);
   expect(box!.x + box!.width).toBeLessThanOrEqual(
@@ -552,7 +552,7 @@ test("Automotive settings persists business details and provides a working Billi
     page.getByRole("status").filter({ hasText: "Business settings saved." }),
   ).toBeVisible();
   await billingLink.click();
-  await expect(page).toHaveURL(/\/app\/settings\/billing$/);
+  await expect(page).toHaveURL(/\/automotive\?view=billing$/);
   await expect(
     page.getByRole("heading", { name: "Billing", exact: true }),
   ).toBeVisible();
@@ -562,6 +562,131 @@ test("Automotive settings persists business details and provides a working Billi
   await expect(page).toHaveURL(/\/automotive\?view=settings$/);
   await expect(billing).toBeVisible();
 });
+
+for (const lifetime of [false, true])
+  test(`Billing keeps the unified layout for ${lifetime ? "lifetime-free trials" : "trial signup"} and legacy return links`, async ({
+    page,
+  }, info) => {
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+    await signInAutomotive(page);
+    const setup = {
+      kind: lifetime ? "full" : "setup",
+      blocked: !lifetime,
+      trialUsed: lifetime,
+      trialEndsAt: lifetime ? "2026-12-07T11:08:12Z" : null,
+    };
+    // Keep real routing, authentication, the server shell and its bridge. Only
+    // replace this disposable test's provider snapshot to cover both screenshots
+    // without creating a live Stripe subscription or spending the coupon.
+    await page.route("**/automotive?view=billing*", async (route) => {
+      const response = await route.fetch();
+      const html = await response.text();
+      const start = html.indexOf("let data=") + "let data=".length;
+      const end = html.indexOf(";let ui=", start);
+      expect(start).toBeGreaterThan("let data=".length);
+      expect(end).toBeGreaterThan(start);
+      const data = JSON.parse(html.slice(start, end));
+      data.billingSetup = setup;
+      data.billingDetail = {
+        ...setup,
+        canAct: true,
+        cancelAt: null,
+        currentPeriodEnd: lifetime ? "2026-12-07T11:08:12Z" : null,
+        lockAt: null,
+        paymentFailed: false,
+        pricing: {
+          baseLabel: "$49.99/month",
+          recurringLabel: lifetime ? "$0/month" : "$49.99/month",
+          discountLabel: lifetime ? "100% off forever" : null,
+          freeForever: lifetime,
+        },
+      };
+      await route.fulfill({
+        response,
+        body:
+          html.slice(0, start) +
+          JSON.stringify(data).replaceAll("<", "\\u003c") +
+          html.slice(end),
+      });
+    });
+    await page.goto(`/app/settings/billing${lifetime ? "?started=1" : ""}`);
+    await expect(page).toHaveURL(
+      lifetime
+        ? /\/automotive\?view=billing&started=1$/
+        : /\/automotive\?view=billing$/,
+    );
+    await expect(
+      page.getByRole("heading", { name: "Billing", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("#app .app .topbar")).toBeVisible();
+    await expect(page.locator(".workspace-header")).toHaveCount(0);
+    const primary = page.locator(".billing-page .btn.primary");
+    await expect(primary).toHaveCount(1);
+    if (lifetime) {
+      await expect(
+        page.getByText("Lifetime free", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("100% off forever", { exact: true }),
+      ).toBeVisible();
+      await expect(page.locator(".billing-price")).toHaveText("$0/month");
+      await expect(page.locator(".billing-dates")).toContainText(
+        "Your lifetime discount keeps the subscription at $0 after the trial.",
+      );
+      await expect(page.getByText(/Your card will be charged/)).toHaveCount(0);
+    } else {
+      await expect(primary).toHaveText("Start free trial");
+      await expect(page.locator(".billing-dates")).toContainText(
+        "promotion code at checkout",
+      );
+    }
+    await page.screenshot({
+      path: `artifacts/billing-${lifetime ? "lifetime" : "signup"}-${info.project.name}.png`,
+      fullPage: true,
+    });
+    if (info.project.name === "phone")
+      await page.setViewportSize({ width: 320, height: 844 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+    for (const target of await page
+      .locator(".billing-page .btn, .topbar .btn")
+      .all()) {
+      const box = await target.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(48);
+      expect(box!.width).toBeGreaterThanOrEqual(48);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(
+        page.viewportSize()!.width + 1,
+      );
+    }
+    const actions: string[] = [];
+    await page.route("**/automotive/actions", async (route) => {
+      actions.push(route.request().postDataJSON().operation);
+      await route.fulfill({
+        status: 400,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: false,
+          error: { message: "Stripe is temporarily unavailable. Try again." },
+        }),
+      });
+    });
+    await primary.click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "Stripe is temporarily unavailable. Try again.",
+    );
+    await expect(primary).toBeEnabled();
+    expect(actions).toEqual([lifetime ? "billing.portal" : "billing.start"]);
+    await page
+      .getByRole("link", { name: "Back to settings", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/automotive\?view=settings$/);
+    expect(pageErrors).toEqual([]);
+  });
 
 test("owner can find Stripe setup in current settings while staff cannot manage the connection", async ({
   page,
@@ -621,7 +746,15 @@ test("owner can find Stripe setup in current settings while staff cannot manage 
   await expect(
     page.getByRole("region", { name: "Billing", exact: true }),
   ).toHaveCount(0);
-  for (const operation of ["payments.connect", "payments.refresh"]) {
+  await page.goto("/automotive?view=billing");
+  await expect(page).toHaveURL(/\/automotive\?view=settings$/);
+  await expect(page.locator(".billing-price")).toHaveCount(0);
+  for (const operation of [
+    "payments.connect",
+    "payments.refresh",
+    "billing.start",
+    "billing.portal",
+  ]) {
     const response = await page.request.post("/automotive/actions", {
       data: { operation, payload: {} },
     });

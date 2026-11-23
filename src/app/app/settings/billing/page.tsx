@@ -12,6 +12,7 @@ import { logger } from "@/lib/logger";
 import { requireOwnerView } from "@/server/views/shop";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
+import { redirect } from "next/navigation";
 
 const fmt = (d: Date) =>
   d.toLocaleDateString("en-US", {
@@ -28,6 +29,9 @@ export default async function BillingSettings({
 }) {
   const s = await requireOwnerView("/app/settings/billing");
   const started = Boolean((await searchParams).started);
+  const profile = await withTenant(s.businessId, s.actor, getBusinessProfile);
+  if (isAutomotive(profile?.businessType ?? "automotive"))
+    redirect(`/automotive?view=billing${started ? "&started=1" : ""}`);
   if (s.actor.type === "user" && s.role === "owner")
     await refreshShopSubscription(s.businessId).catch(() =>
       logger.warn({

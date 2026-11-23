@@ -73,12 +73,15 @@ jobs:
           for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:3003/sign-in && break; sleep 2; done
           E2E_BASE_URL=http://localhost:3003 pnpm exec playwright test e2e/approved-automotive.spec.ts --max-failures=1 --reporter=list,github
       - name: Assigned RO handoffs and technician permissions (phone and desktop)
-        run: pnpm exec playwright test e2e/ro-handoffs.spec.ts e2e/technician-role.spec.ts e2e/tech-board.spec.ts --max-failures=1 --reporter=list,github
+        run: |
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
+          pnpm exec playwright test e2e/ro-handoffs.spec.ts e2e/technician-role.spec.ts e2e/tech-board.spec.ts --max-failures=1 --reporter=list,github
       - name: Playwright (phone 390x844 and desktop)
         run: |
-          # Camera/VIN tests sign in using a shared seeded shop account. Run
-          # them first so this disposable stack's authentication throttle is
-          # not exhausted by the earlier broad suite.
+          # Each batch signs in repeatedly with the same disposable accounts.
+          # Reset local counters at the boundary after Automotive/RO coverage,
+          # then keep camera coverage first within each device project.
+          pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
           pnpm exec playwright test e2e/vin-scan.spec.ts --project=phone --reporter=list,github
           pnpm exec tsx scripts/dev/reset-local-auth-throttle.ts
           pnpm e2e --project=phone --max-failures=0 --grep-invert 'Scan a VIN barcode|No scan button|@mfa|approved-automotive\.spec\.ts' --reporter=list,github
@@ -114,6 +117,7 @@ jobs:
             test-results/hardening-*.png
             test-results/ux-*.png
             test-results/owner-*.png
+            artifacts/billing-*.png
           if-no-files-found: ignore
           retention-days: 7
       - if: failure()

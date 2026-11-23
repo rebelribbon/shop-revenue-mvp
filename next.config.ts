@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       "./src/assets/authorization-font.ttf",
       "./docs/approved-designs/automotive-unified.html",
       "./src/app/automotive/live-bridge.js",
+      "./src/app/automotive/billing.css",
     ],
   },
   serverExternalPackages: ["pg", "graphile-worker", "pino"],

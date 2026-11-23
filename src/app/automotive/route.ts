@@ -20,8 +20,13 @@ import { jobReference } from "@/lib/job-reference";
 import { requireShopSession } from "@/server/views/shop";
 import { getStripeConnection } from "@/domain/payments";
 import { shopPaymentSetup } from "@/lib/shop-payment-setup";
-import { getShopSubscription } from "@/domain/billing";
+import {
+  getShopSubscription,
+  getSubscriptionPricing,
+  refreshShopSubscription,
+} from "@/domain/billing";
 import { billingAccess, canMakeChanges } from "@/lib/billing";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -73,8 +78,18 @@ const serialize = (value: unknown) =>
     .replaceAll("\u2029", "\\u2029");
 
 export async function GET(request: Request) {
-  const selectedRoId = new URL(request.url).searchParams.get("ro");
-  const session = await requireShopSession("/automotive");
+  const params = new URL(request.url).searchParams;
+  const selectedRoId = params.get("ro");
+  const billingView = params.get("view") === "billing";
+  const session = await requireShopSession(
+    billingView ? "/automotive?view=billing" : "/automotive",
+  );
+  if (billingView && session.role !== "owner")
+    redirect("/automotive?view=settings");
+  if (billingView && session.actor.type === "user")
+    await refreshShopSubscription(session.businessId).catch(() =>
+      logger.warn({ event: "billing.refresh_failed" }),
+    );
   const actorId = session.actor.type === "user" ? session.actor.id : null;
   const result = await withTenant(
     session.businessId,
@@ -93,6 +108,26 @@ export async function GET(request: Request) {
             ? (access.trialEndsAt?.toISOString() ?? null)
             : null,
       };
+      const billingDetail =
+        billingView && session.role === "owner"
+          ? {
+              ...billingSetup,
+              canAct: session.actor.type === "user",
+              pricing: await getSubscriptionPricing(
+                subscription?.stripeSubscriptionId ?? undefined,
+              ),
+              cancelAt:
+                access.kind === "full"
+                  ? (access.cancelAt?.toISOString() ?? null)
+                  : null,
+              currentPeriodEnd:
+                subscription?.currentPeriodEnd?.toISOString() ?? null,
+              lockAt:
+                access.kind === "grace" ? access.lockAt.toISOString() : null,
+              paymentFailed:
+                access.kind === "locked" && access.reason === "payment_failed",
+            }
+          : null;
       const paymentSetup =
         session.role === "owner"
           ? shopPaymentSetup(
@@ -608,6 +643,7 @@ export async function GET(request: Request) {
         isLive: true,
         paymentSetup,
         billingSetup,
+        billingDetail,
         settings: {
           tax: (profile?.taxRateBps ?? 0) / 100,
           legalName: profile?.legalName ?? "",
@@ -677,6 +713,10 @@ export async function GET(request: Request) {
     join(process.cwd(), "src/app/automotive/live-bridge.js"),
     "utf8",
   );
+  const billingStyles = await readFile(
+    join(process.cwd(), "src/app/automotive/billing.css"),
+    "utf8",
+  );
   const start = source.indexOf("const makeSeed=()=>");
   const uiStart = source.indexOf("let ui=", start);
   if (start < 0 || uiStart < 0)
@@ -725,6 +765,7 @@ export async function GET(request: Request) {
     "↗ Try customer approval link",
     "Customer authorization records",
   );
+  live = live.replace("</head>", `<style>${billingStyles}</style></head>`);
   // Keep the approved appearance while removing the prototype-only UI and role simulation.
   return new Response(live, {
     headers: {

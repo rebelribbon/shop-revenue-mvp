@@ -41,9 +41,18 @@ test("Dispatch technician work and keep the owner board and appointments aligned
   await team
     .getByLabel("Technician for this RO (all repairs)")
     .selectOption({ label: "Tech B" });
-  await page
-    .getByRole("button", { name: "Assign technician", exact: true })
-    .click();
+  // The assignment is a server action. Wait for its response before reload;
+  // an immediate reload can cancel the save while the request is in flight.
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname === "/app/jobs",
+    ),
+    page
+      .getByRole("button", { name: "Assign technician", exact: true })
+      .click(),
+  ]);
   await page.reload();
   const updatedTeam = page.locator("details.ro-team-assignment");
   if (!(await updatedTeam.evaluate((el) => (el as HTMLDetailsElement).open)))

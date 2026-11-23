@@ -378,6 +378,9 @@ techDemoLauncher = function(){return "";};
 // Remove prototype-only badges and the fake employee role switcher.
 const originalHeader = header;
 header = function () {
+  if (ui.page === "billing") return '<header class="topbar"><div class="crumb">' + esc(data.business) +
+    '<span class="quiet"> / </span>Billing</div><div class="top-actions"><a class="btn small" aria-label="Settings" href="/automotive?view=settings">' +
+    icon("settings").replace('<svg ', '<svg width="20" height="20" ') + '<span>Settings</span></a></div></header>';
   return originalHeader()
     .replace("● Automotive · Offline preview", "● Automotive · Live workspace")
     .replace(/<button class="btn small" onclick="openModal\('role'\)">.*?<\/button>/,
@@ -616,11 +619,86 @@ const shopBillingSettings = function(){
     '<div class="section-head"><h2 id="shop-billing-heading">Billing</h2>' + pill(status, b.blocked ? "blue" : "green") + '</div>' +
     '<p class="sub">' + description + '</p>' +
     '<p class="sub">This subscription is separate from the Stripe account that receives your customers’ payments.</p>' +
-    '<div class="form-actions" style="margin-top:16px"><a class="btn" style="min-height:48px;white-space:normal" href="/app/settings/billing">' +
+    '<div class="form-actions" style="margin-top:16px"><a class="btn" style="min-height:48px;white-space:normal" href="/automotive?view=billing">' +
     (starting ? "Start free trial" : "Manage billing") + '</a></div></section>';
+};
+const billingDate = (value) => value ? new Date(value).toLocaleDateString("en-US", {
+  timeZone:"America/Chicago", month:"long", day:"numeric", year:"numeric"
+}) : "";
+let billingBusy = false;
+window.manageShopBilling = async function(action, button){
+  if (role() !== "owner" || !data.billingDetail?.canAct || billingBusy || !["start","portal"].includes(action)) return;
+  billingBusy = true;
+  button.disabled = true;
+  const error = document.getElementById("billing-error");
+  if(error) { error.hidden = true; error.textContent = ""; }
+  try {
+    const result = await liveWrite("billing." + action, {});
+    const target = new URL(result.url);
+    if (target.protocol !== "https:" || !["checkout.stripe.com","billing.stripe.com"].includes(target.hostname))
+      throw new Error("Stripe returned an invalid billing destination.");
+    window.location.assign(target.href);
+  } catch(e) {
+    if(error) { error.textContent = e.message || "Could not open billing. Try again."; error.hidden = false; }
+    button.disabled = false;
+    billingBusy = false;
+  }
+};
+const shopBillingPage = function(){
+  const b = data.billingDetail;
+  if (role() !== "owner" || !b) return pageHead("Billing", "Only the shop owner can manage the subscription.");
+  const p = b.pricing || {};
+  const trial = b.kind === "full" && b.trialEndsAt;
+  const setup = b.kind === "setup";
+  const noCharge = ["comped","off"].includes(b.kind);
+  const status = b.cancelAt ? "Subscription ending" : p.freeForever && b.kind === "full" ? "Lifetime free" :
+    trial ? "Free trial" : b.kind === "full" ? "Subscription active" : setup ? (b.trialUsed ? "Restart subscription" : "Trial not started") :
+    b.kind === "comped" ? "Complimentary plan" : b.kind === "off" ? "Billing disabled" : b.kind === "grace" ? "Payment needs attention" :
+    b.kind === "locked" ? "Subscription inactive" : "Billing unavailable";
+  const price = noCharge ? "$0/month" : p.recurringLabel || "View amount in Stripe";
+  let detail = "";
+  if (b.cancelAt) detail = "Canceled. Your shop stays active until " + billingDate(b.cancelAt) + ".";
+  else if (trial) detail = "Your trial ends " + billingDate(trial) + ". " +
+    (p.freeForever ? "Your lifetime discount keeps the subscription at $0 after the trial." :
+      p.recurringLabel ? "Your subscription will renew at " + p.recurringLabel + " after the trial." : "Review your discounted renewal amount in Stripe.");
+  else if (setup) detail = b.trialUsed ? "Restart your subscription to add customers and repair orders again." :
+    "Try Shop Revenue free for 14 days. A card is required. You can add a promotion code at checkout.";
+  else if (b.kind === "grace") detail = "Update your payment method by " + billingDate(b.lockAt) + " to keep making changes.";
+  else if (b.kind === "locked") detail = "You can view and export your records. Update billing to make changes again.";
+  else if (noCharge) detail = "Your shop has full access. There is no subscription charge.";
+  else if (b.kind === "unavailable") detail = "Billing is temporarily unavailable. Refresh the status or contact support.";
+  else if (p.freeForever) detail = "100% off for the life of this subscription. Your recurring subscription charge is $0.";
+  else if (b.currentPeriodEnd) detail = "Next billing period: " + billingDate(b.currentPeriodEnd) + ".";
+  const action = setup || b.kind === "locked" && !b.paymentFailed ? "start" : "portal";
+  const canManage = b.canAct && !noCharge && b.kind !== "unavailable";
+  const buttonLabel = action === "start" ? (b.trialUsed ? "Restart subscription" : "Start free trial") : "Manage billing in Stripe";
+  const primary = canManage ? '<button class="btn primary" onclick="manageShopBilling(\'' + action + '\',this)">' + buttonLabel + '</button>' :
+    '<a class="btn primary" href="/automotive' + (b.kind === "unavailable" ? '?view=billing' : '') + '">' +
+    (b.kind === "unavailable" ? "Refresh billing status" : "Return to workspace") + '</a>';
+  const started = new URLSearchParams(window.location.search).has("started");
+  const confirmed = ["full","comped","off"].includes(b.kind);
+  return '<div class="billing-page">' + pageHead("Billing", "Manage your Shop Revenue subscription.") +
+    '<section class="card card-pad" aria-labelledby="billing-plan-heading">' +
+    (started ? '<p class="notice ' + (confirmed ? 'good' : '') + '" role="status">' +
+      (confirmed ? "Your subscription is confirmed. Your shop is ready to use." : "Your subscription is being confirmed. Refresh billing status to check again.") + '</p>' : '') +
+    '<div class="section-head"><h2 id="billing-plan-heading">Shop Revenue</h2>' + pill(status, b.blocked ? "amber" : "green") + '</div>' +
+    '<p class="billing-price" aria-label="Recurring subscription price">' + esc(price) + '</p>' +
+    (p.freeForever && p.baseLabel ? '<p class="billing-base">Standard price <s>' + esc(p.baseLabel) + '</s></p>' : '') +
+    (p.discountLabel ? '<p class="billing-discount">' + esc(p.discountLabel) + '</p>' : '') +
+    '<p class="sub billing-dates">' + esc(detail) + '</p>' +
+    (!b.canAct ? '<p class="notice" style="margin-top:16px">Support access is read-only. The shop owner manages billing.</p>' : '') +
+    '<p id="billing-error" class="notice warn" role="alert" hidden></p>' +
+    '<div class="billing-actions">' + primary + '</div></section>' +
+    '<section class="card card-pad" aria-labelledby="billing-payment-heading"><h2 id="billing-payment-heading">Your card and receipts</h2>' +
+    '<p class="sub">Stripe securely manages your payment method, subscription receipts and cancellation options.</p>' +
+    '<p class="sub">Customer invoice payments go to your shop’s connected Stripe account. They are separate from this subscription.</p></section>' +
+    '<div class="billing-links"><a class="btn" href="/automotive?view=settings">Back to settings</a>' +
+    '<a class="btn" href="/automotive?view=billing">Refresh billing status</a>' +
+    '<a class="btn" href="/app/settings/export">Export shop data</a></div></div>';
 };
 const originalBillingContent = content;
 content = function(){
+  if(ui.page === "billing") return shopBillingPage();
   const b = data.billingSetup;
   const notice = b?.blocked && ui.page !== "settings" ?
     '<section class="notice" data-billing="' + esc(b.kind) + '" aria-label="Subscription setup" style="margin-bottom:16px">' +
@@ -628,7 +706,7 @@ content = function(){
       (b.kind === "setup" && !b.trialUsed ? "Start your free trial to add customers and repair orders. Your business profile can be saved now." :
       "Your Shop Revenue subscription needs attention before you can make changes.") :
       "Ask the shop owner to activate the Shop Revenue subscription so you can make changes.") + '</p>' +
-    (role() === "owner" ? '<a class="btn" href="/app/settings/billing" style="margin-top:8px;min-height:48px;white-space:normal">Open billing</a>' : '') + '</section>' : '';
+    (role() === "owner" ? '<a class="btn" href="/automotive?view=billing" style="margin-top:8px;min-height:48px;white-space:normal">Open billing</a>' : '') + '</section>' : '';
   return notice + originalBillingContent();
 };
 settings = function(){
@@ -919,6 +997,12 @@ if(initialView.has("ro")){
 }
 if(["appointments","settings","jobs","tasks","customers","reports"].includes(initialView.get("view")))
   ui.page=initialView.get("view");
+if(initialView.get("view") === "billing" && role() === "owner") ui.page="billing";
+const originalBillingRender = render;
+render = function(){
+  document.body.classList.toggle("billing-view", ui.page === "billing");
+  originalBillingRender();
+};
 if(initialView.get("new")==="1" && role()!=="technician"){
   ui.page="jobs";
   ui.modal={

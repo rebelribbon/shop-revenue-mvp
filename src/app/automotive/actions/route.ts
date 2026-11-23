@@ -35,6 +35,10 @@ import {
   reconcileStripeAction,
 } from "@/server/actions/payments";
 import {
+  startSubscriptionAction,
+  openBillingPortalAction,
+} from "@/server/actions/billing";
+import {
   prepareMediaUploadAction,
   finishMediaUploadAction,
   updateMediaAction,
@@ -123,6 +127,21 @@ export async function POST(request: Request) {
   try {
     let result;
     switch (raw.operation) {
+      case "billing.start":
+      case "billing.portal":
+        if (state.session.role !== "owner")
+          return NextResponse.json(
+            {
+              ok: false,
+              error: { message: "Only the shop owner can manage billing." },
+            },
+            { status: 403 },
+          );
+        result =
+          raw.operation === "billing.start"
+            ? await startSubscriptionAction()
+            : await openBillingPortalAction();
+        break;
       case "payments.connect":
       case "payments.refresh":
         if (state.session.role !== "owner")
