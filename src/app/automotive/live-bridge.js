@@ -206,35 +206,47 @@ roEstimate=function(r){
   const editable=r.stage==="estimate";
   if(!editable)return '<div class="section-head"><h2>Estimate pricing</h2></div><p class="notice">'+
     (r.stage==="inspection"?"Finish technician inspection before pricing.":
-    "This estimate is no longer editable. Any additional repair work needs new authorization.")+'</p>'+
+    "This estimate is no longer editable. Additional repairs require a new customer authorization.")+'</p>'+
     (r.lines?.length?estimateSummary(r):"");
   const lines=r.lines||[];
+  const requested=lines.filter(l=>!l.recommended);
+  const additional=lines.filter(l=>l.recommended);
   const subtotal=lines.reduce((n,l)=>n+Number(l.parts)+Number(l.labor),0);
-  const list=lines.length?'<div class="stack">'+lines.map((line,index)=>
-    '<div class="item"><div class="item-main"><b>'+(index+1)+'. '+esc(line.name)+'</b>'+
-    '<p class="secondarytext">Customer price: Parts '+money(line.parts)+' + Labor '+money(line.labor)+'</p>'+
-    '<p class="secondarytext">Internal cost (not shared): '+money(line.cost)+'</p></div>'+
+  const priceList=(items)=>items.length?'<div class="stack">'+items.map((line)=>
+    '<div class="item"><div class="item-main"><b>'+esc(line.name)+'</b>'+
+    '<p class="secondarytext">Parts '+money(line.parts)+' · Labor '+money(line.labor)+'</p>'+
+    '<p class="secondarytext">Shop cost (internal): '+money(line.cost)+'</p></div>'+
     '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
     '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div>'
-  ).join("")+'</div>':
-  '<p class="notice">No repairs priced yet. Start with the service the technician recommended.</p>';
-  const next=lines.length?
-    '<div class="action-panel" style="margin-top:16px"><div class="row"><b>Estimate subtotal</b><strong>'+money(subtotal)+'</strong></div>'+
-    '<p class="secondarytext">Tax and the customer approval options are shown in the next step.</p>'+
-    '<button class="btn primary full" onclick="goTab(\'proposal\')">Review estimate and customer documents →</button></div>':"";
-  return '<div class="section-head"><div><h2>1 · Build estimate</h2>'+
-    '<p class="sub">Create a separately priced recommendation for each repair. The customer approves or declines each one.</p></div>'+
-    pill(lines.length+' item(s)')+'</div>'+
-    list+next+
-    '<div class="card card-pad" style="margin-top:18px"><h3>Add another repair</h3>'+
+  ).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
+  const inspection=(r.inspectionItems||[]).filter(i=>i.status==="watch"||i.status==="fix");
+  const findings=inspection.length?'<details style="margin-top:12px"><summary>Review '+inspection.length+' technician finding(s)</summary>'+
+    '<ul>'+inspection.map(i=>'<li><b>'+esc(i.label)+'</b>: '+esc(i.note||"")+
+    (i.recommendedWork?'<p class="sub">Suggested: '+esc(i.recommendedWork)+'</p>':"")+'</li>').join("")+'</ul></details>':
+    '<p class="sub">Inspection has no Caution or Fail findings.</p>';
+  return '<div class="section-head"><div><h2>Build the customer proposal</h2>'+
+    '<p class="sub">1. Original request → 2. Inspection findings → 3. Additional recommendations → 4. Customer authorization.</p></div>'+pill(lines.length+' priced repair(s)')+'</div>'+
+    '<section class="card card-pad"><h3>1 · Work the customer requested</h3>'+
+    '<p class="sub">'+esc(r.concern||"Customer concern not recorded")+'</p>'+priceList(requested)+'</section>'+
+    '<section class="card card-pad"><h3>2 · Technician inspection</h3>'+findings+'</section>'+
+    '<section class="card card-pad"><h3>3 · Additional recommended work</h3>'+
+    '<p class="sub">Explain work discovered during inspection separately. The customer will approve or decline each repair.</p>'+
+    priceList(additional)+'</section>'+
+    '<section class="card card-pad"><h3>Add work to this proposal</h3>'+
     '<form class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
-    '<label class="span">Recommended repair<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
+    '<label class="span">Why is this work included?<select name="workType" required>'+
+    '<option value="recommended">Additional recommendation from inspection</option>'+
+    '<option value="requested">Customer requested this service</option></select></label>'+
+    '<label class="span">Repair or service name<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
     '<label>Parts selling price ($)<input name="parts" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
     '<label>Labor selling price ($)<input name="labor" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
-    '<div class="span"><p class="secondarytext" style="margin-bottom:8px"><b>Internal only · not shown to customer</b></p>'+
-    '<label>Total shop cost of this repair ($)<input name="cost" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="Parts + labor cost"></label></div>'+
-    '<div class="span"><button class="btn '+(lines.length?'':'primary')+'" type="submit">+ Save repair to estimate</button></div>'+
-    '</form></div>';
+    '<div class="span"><p class="secondarytext"><b>Internal only — never shown to the customer</b></p>'+
+    '<label>Shop parts + labor cost ($)<input name="cost" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label></div>'+
+    '<div class="span"><button class="btn" type="submit">+ Save repair to estimate</button></div>'+
+    '</form></section>'+
+    (lines.length?'<div class="action-panel"><div class="row"><b>Estimated maximum (before tax)</b><strong>'+money(subtotal)+'</strong></div>'+
+    '<p class="sub">Final authorized amount is calculated from the work the customer approves.</p>'+
+    '<button class="btn primary full" onclick="goTab(\'proposal\')">Review customer packet →</button></div>':"");
 };
 // Keep the advisor in one RO screen from pricing through customer review and send.
 // The inline preview reflects the current draft; the immutable customer document
@@ -397,7 +409,7 @@ addLine = async function(form,id) {
       throw new Error("Enter the recommendation and a positive selling price.");
     await liveWrite("ro.pricing.add", {
       jobId: id, expectedVersion: r.version, description: String(f.name).trim(),
-      partsCents, laborCents, costCents
+      partsCents, laborCents, costCents, workType: String(f.workType || "recommended")
     });
     showPricedRo(id);
   } catch(e) { alert(e.message || "Recommendation was not saved."); }
