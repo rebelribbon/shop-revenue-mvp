@@ -221,18 +221,64 @@ roEstimate=function(r){
     '<button class="btn small" onclick="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',\''+(line.recommended?"requested":"recommended")+'\')">'+(line.recommended?"Move to requested":"Move to recommendations")+'</button>')+
     '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>'
   ).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
-  const inspection=(r.inspectionItems||[]).filter(i=>i.status==="watch"||i.status==="fix");
-  const findings=inspection.length?'<details style="margin-top:12px"><summary>Review '+inspection.length+' technician finding(s)</summary>'+
-    '<ul>'+inspection.map(i=>'<li><b>'+esc(i.label)+'</b>: '+esc(i.note||"")+
-    (i.recommendedWork?'<p class="sub">Suggested: '+esc(i.recommendedWork)+'</p>':"")+'</li>').join("")+'</ul></details>':
-    '<p class="sub">Inspection has no Caution or Fail findings.</p>';
-  return '<div class="section-head"><div><h2>Build the customer proposal</h2>'+
-    '<p class="sub">1. Original request → 2. Inspection findings → 3. Additional recommendations → 4. Customer authorization.</p></div>'+pill(lines.length+' priced repair(s)')+'</div>'+
+  const checks=r.inspectionItems||[];
+  const inspection=checks.filter(i=>i.status==="watch"||i.status==="fix");
+  const passed=checks.filter(i=>i.status==="good").length;
+  const notApplicable=checks.filter(i=>i.status==="na").length;
+  const failed=checks.filter(i=>i.status==="fix").length;
+  const caution=checks.filter(i=>i.status==="watch").length;
+  let diagnosis=r.inspectionAssessment?.diagnosis||"";
+  try{
+    const parsed=JSON.parse(diagnosis);
+    if(parsed && typeof parsed==="object")
+      diagnosis=["confirmed","symptoms","codes","tests","cause","recommendation"]
+        .filter(k=>parsed[k])
+        .map(k=>k[0].toUpperCase()+k.slice(1)+": "+parsed[k]).join("\n");
+  }catch{}
+  const diagnosisHtml=diagnosis?
+    '<p class="estimate-reference-diagnosis">'+esc(diagnosis)+'</p>':
+    '<p class="sub">No technician diagnosis recorded.</p>';
+  const findings=inspection.length?'<div class="estimate-reference-findings">'+inspection.map(i=>
+    '<article class="estimate-reference-finding"><div class="estimate-reference-finding-title"><b>'+esc(i.label)+'</b>'+
+    '<span class="estimate-reference-status '+(i.status==="fix"?"is-fail":"is-caution")+'">'+
+    (i.status==="fix"?"Needs repair":"Monitor")+'</span></div>'+
+    (i.note?'<p>'+esc(i.note)+'</p>':"")+
+    (i.recommendedWork?'<p><strong>Technician recommends:</strong> '+esc(i.recommendedWork)+'</p>':"")+
+    '</article>').join("")+'</div>':
+    '<p class="sub">No Caution or Fail findings were recorded.</p>';
+  const media=(r.media||[]).filter(m=>m.kind==="photo"||m.kind==="video");
+  const evidence=media.length?'<div class="estimate-reference-media">'+media.map(m=>{
+    const source=esc(m.fileUrl||m.dataUrl||"");
+    const caption=esc(m.caption||m.name||"Inspection evidence");
+    if(m.kind==="video")
+      return '<figure><video controls preload="none" src="'+source+'" aria-label="'+caption+'"></video><figcaption>'+caption+'</figcaption></figure>';
+    return '<figure><a target="_blank" rel="noopener noreferrer" href="'+source+'" title="View full inspection photo">'+
+      '<img loading="lazy" src="'+source+'" alt="'+caption+'"></a><figcaption>'+caption+'</figcaption></figure>';
+  }).join("")+'</div>':
+  '<p class="sub">No photos or videos attached to this repair order.</p>';
+  const otherChecks=checks.length?
+    '<details class="estimate-reference-checks"><summary>All '+checks.length+' recorded inspection points</summary><ul>'+
+    checks.map(i=>'<li><span>'+esc(i.label)+'</span><b>'+
+      (i.status==="good"?"Passed":i.status==="fix"?"Needs repair":i.status==="watch"?"Monitor":
+      i.status==="na"?"N/A":"Not checked")+'</b></li>').join("")+
+    '</ul></details>':"";
+  const reference='<div class="estimate-reference-content">'+
+    '<section><h3>Original customer concern</h3><p>'+esc(r.concern||"Not recorded")+'</p></section>'+
+    '<section><h3>Technician diagnosis</h3>'+diagnosisHtml+'</section>'+
+    '<section><h3>40-point inspection</h3>'+
+    '<div class="estimate-reference-totals"><span>'+passed+' passed</span><span>'+caution+' caution</span>'+
+    '<span>'+failed+' need repair</span><span>'+notApplicable+' N/A</span></div>'+findings+otherChecks+'</section>'+
+    '<section><h3>Inspection photos &amp; video</h3>'+evidence+'</section></div>';
+  const referenceDesktop='<aside class="card card-pad estimate-reference-desktop" aria-label="Inspection reference">'+
+    '<div class="estimate-reference-heading"><h2>Inspection reference</h2><p class="sub">Read the technician findings while pricing work.</p></div>'+
+    reference+'</aside>';
+  const referenceMobile='<details class="card estimate-reference-mobile"><summary>View diagnosis, inspection &amp; photos</summary>'+
+    reference+'</details>';
+  const pricing='<div class="estimate-builder-column">'+
     '<section class="card card-pad"><h3>1 · Work the customer requested</h3>'+
     '<p class="sub">'+esc(r.concern||"Customer concern not recorded")+'</p>'+priceList(requested)+'</section>'+
-    '<section class="card card-pad"><h3>2 · Technician inspection</h3>'+findings+'</section>'+
-    '<section class="card card-pad"><h3>3 · Additional recommended work</h3>'+
-    '<p class="sub">Explain work discovered during inspection separately. The customer will approve or decline each repair.</p>'+
+    '<section class="card card-pad"><h3>2 · Additional recommended work</h3>'+
+    '<p class="sub">Use the inspection findings on the left to describe and price each additional repair. The customer will approve or decline each item.</p>'+
     priceList(additional)+'</section>'+
     '<section class="card card-pad"><h3>Add work to this proposal</h3>'+
     '<form class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
@@ -248,7 +294,13 @@ roEstimate=function(r){
     '</form></section>'+
     (lines.length?'<div class="action-panel"><div class="row"><b>Estimated maximum (before tax)</b><strong>'+money(subtotal)+'</strong></div>'+
     '<p class="sub">Final authorized amount is calculated from the work the customer approves.</p>'+
-    '<button class="btn primary full" onclick="goTab(\'proposal\')">Review customer packet →</button></div>':"");
+    '<button class="btn primary full" onclick="goTab(\'proposal\')">Review customer packet →</button></div>':"")+
+    '</div>';
+  return '<div class="section-head"><div><h2>Build the customer proposal</h2>'+
+    '<p class="sub">Use the inspection as a reference while you add requested work and recommendations.</p></div>'+
+    pill(lines.length+' priced repair(s)')+'</div>'+
+    referenceMobile+
+    '<div class="estimate-builder-layout">'+referenceDesktop+pricing+'</div>';
 };
 // Read-only representation of the customer proposal. The secure customer
 // portal handles choices and signatures; the shop preview never authorizes work.
