@@ -4,6 +4,8 @@ import { QuickFind } from "@/components/quick-find";
 import { WorkspaceIcon } from "@/components/workspace-icon";
 import { WorkspaceNavigation } from "@/components/workspace-navigation";
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { business } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
@@ -41,6 +43,30 @@ export default async function ShopLayout({
     },
   );
   const owner = s.role === "owner";
+  const requestHeaders = await headers();
+  const path = requestHeaders.get("x-workspace-path");
+  const query = new URLSearchParams(
+    requestHeaders.get("x-workspace-query") ?? "",
+  );
+  const auto = isAutomotive(b?.businessType ?? "automotive");
+  const unified = process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false";
+
+  // Redirect before returning any legacy sidebar, header or navigation.
+  // Preserve bookmarked follow-up filters and Home Services routes.
+  if (auto && unified && path === "/app") {
+    if (!["category", "view", "q", "page"].some((key) => query.get(key)))
+      redirect("/automotive");
+  }
+  if (auto && owner && path === "/app/settings/billing")
+    redirect(
+      `/automotive?view=billing${query.get("started") ? "&started=1" : ""}`,
+    );
+  if (auto && unified && owner && path === "/app/settings/payments") {
+    const target = new URLSearchParams({ view: "payments" });
+    const outcome = query.get("stripe");
+    if (outcome) target.set("stripe", outcome);
+    redirect(`/automotive?${target.toString()}`);
+  }
   const billingLink = (text: string) =>
     owner ? <Link href="/app/settings/billing">{text} →</Link> : null;
   return (
