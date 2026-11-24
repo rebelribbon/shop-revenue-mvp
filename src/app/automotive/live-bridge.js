@@ -229,6 +229,7 @@ roProposal=function(r){
   const review='<div class="card card-pad"><div class="section-head"><h3>1 · Review the estimate</h3><button class="btn small" onclick="goTab(\'estimate\')">Edit pricing</button></div>'+
     '<p class="sub">'+r.lines.length+' priced recommendation(s) · '+money(total)+' subtotal before tax</p>'+
     documentPreview(r,"estimate")+
+    (legalReady?'<details class="card card-pad" style="margin-top:12px"><summary><b>View approved customer authorization terms</b></summary><p class="secondarytext" style="white-space:pre-wrap;margin-top:12px">'+esc(data.authorizationPolicyBody||"")+'</p></details>':"")+
     '<p class="secondarytext" style="margin-top:12px">This is a draft preview. The finalized version and approved authorization terms are fixed when you send. The customer must approve or decline every item and sign.</p>'+
     '<button class="btn full" style="margin-top:12px" onclick="openCustomerPreview(\''+r.id+'\')">Preview customer-facing estimate</button></div>';
   const recipientPanel='<div class="card card-pad"><div class="section-head"><h3>2 · Confirm recipient</h3><button class="btn small" onclick="editProposalRecipient(\''+r.id+'\')">Edit recipient</button></div>'+
