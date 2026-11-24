@@ -6783,11 +6783,11 @@ main.customer-index-page {
 }
 .estimate-diagnosis dl {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   margin: 0;
 }
 .estimate-diagnosis dd {
-  margin: 4px 0 0;
+  margin: 8px 0 0;
   overflow-wrap: anywhere;
 }
 .estimate-step-count {
