@@ -54,6 +54,10 @@ export const jobInput = z.object({
         // Added from the technician's inspection: shown to the customer as a
         // recommendation, apart from the work they asked for.
         fromInspection: z.boolean().optional(),
+        recommendationSource: z
+          .enum(["inspection", "maintenance", "diagnosis", "advisor"])
+          .optional(),
+        inspectionItemKey: z.string().min(1).max(60).optional(),
         // From the parts catalog: stock comes off when it's invoiced.
         partItemId: z.uuid().optional(),
         description: z.string().trim().min(1).max(200),
@@ -77,6 +81,10 @@ export const jobInput = z.object({
       z.object({
         recommendationId: z.uuid().optional(),
         fromInspection: z.boolean().optional(),
+        recommendationSource: z
+          .enum(["inspection", "maintenance", "diagnosis", "advisor"])
+          .optional(),
+        inspectionItemKey: z.string().min(1).max(60).optional(),
         description: z.string().trim().min(1).max(200),
         estimatedHoursHundredths: amount.max(100000),
         actualHoursHundredths: amount.max(100000).nullable(),
