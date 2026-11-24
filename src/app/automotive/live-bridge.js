@@ -215,19 +215,19 @@ roEstimate=function(r){
     '<p class="secondarytext">Customer price: Parts '+money(line.parts)+' + Labor '+money(line.labor)+'</p>'+
     '<p class="secondarytext">Internal cost (not shared): '+money(line.cost)+'</p></div>'+
     '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
-    '<button class="btn small danger" onclick="removeLine(\\''+r.id+'\\',\\''+line.id+'\\')">Remove</button></div>'
+    '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div>'
   ).join("")+'</div>':
   '<p class="notice">No repairs priced yet. Start with the service the technician recommended.</p>';
   const next=lines.length?
     '<div class="action-panel" style="margin-top:16px"><div class="row"><b>Estimate subtotal</b><strong>'+money(subtotal)+'</strong></div>'+
     '<p class="secondarytext">Tax and the customer approval options are shown in the next step.</p>'+
-    '<button class="btn primary full" onclick="goTab(\\'proposal\\')">Review estimate and customer documents →</button></div>':"";
+    '<button class="btn primary full" onclick="goTab(\'proposal\')">Review estimate and customer documents →</button></div>':"";
   return '<div class="section-head"><div><h2>1 · Build estimate</h2>'+
     '<p class="sub">Create a separately priced recommendation for each repair. The customer approves or declines each one.</p></div>'+
     pill(lines.length+' item(s)')+'</div>'+
     list+next+
     '<div class="card card-pad" style="margin-top:18px"><h3>Add another repair</h3>'+
-    '<form class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\\''+r.id+'\\')">'+
+    '<form class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
     '<label class="span">Recommended repair<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
     '<label>Parts selling price ($)<input name="parts" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
     '<label>Labor selling price ($)<input name="labor" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
