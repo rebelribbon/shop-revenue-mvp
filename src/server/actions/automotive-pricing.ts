@@ -118,7 +118,10 @@ export const classifyAutomotiveWorkAction = defineShopAction({
           : line,
       ),
     });
-    return { jobId: input.jobId, message: "Repair moved to the correct section." };
+    return {
+      jobId: input.jobId,
+      message: "Repair moved to the correct section.",
+    };
   },
 });
 
