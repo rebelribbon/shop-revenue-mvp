@@ -6775,3 +6775,21 @@ main.customer-index-page {
     max-width: 100%;
   }
 }
+
+.estimate-diagnosis {
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 16px;
+}
+.estimate-diagnosis dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.estimate-diagnosis dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.estimate-step-count {
+  scroll-margin-top: 16px;
+}
