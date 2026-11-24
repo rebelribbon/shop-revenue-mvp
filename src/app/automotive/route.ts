@@ -103,7 +103,10 @@ export async function GET(request: Request) {
         .where(
           and(
             eq(legalPolicy.kind, "estimate_authorization"),
-            eq(legalPolicy.jurisdictionCode, profile?.jurisdictionCode ?? "US-TX"),
+            eq(
+              legalPolicy.jurisdictionCode,
+              profile?.jurisdictionCode ?? "US-TX",
+            ),
             eq(legalPolicy.status, "approved"),
           ),
         )
