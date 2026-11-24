@@ -159,6 +159,7 @@ sendEstimate=async function(id){
   if(!c?.email)return alert("Add a valid email to this customer's profile before sending the estimate.");
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
     return alert("Correct the customer's email address before sending.");
+  if(data.authorizationPolicyReady===false)return alert("Customer estimate sending is unavailable until Shop Revenue approves the authorization policy for this jurisdiction. No email was sent.");
   estimatesBeingSent.add(id);
   try{
     let estimateId=r.estimateId;
@@ -198,24 +199,54 @@ sendEstimate=async function(id){
     alert(err.message || "Could not finalize the estimate.");
   }finally{estimatesBeingSent.delete(id);}
 };
-const approvedProposal = roProposal;
-roProposal = function(r) {
-  let content = approvedProposal(r);
-  if (techView() || !r.estimateId) return content;
-  if (r.authorized && !r.lines.some(line => line.decision === "approved")) {
-    content = content.replace("Customer approved the estimate", "Customer declined all work")
-      .replace(">Authorized</span>", ">All work declined</span>");
-  }
-  if (r.estimateOpened && !r.authorized) {
-    content += '<p class="notice" role="status">Customer opened the proposal · ' +
-      esc(r.estimateOpened) + '. Awaiting a signed decision.</p>';
-  }
-  if (r.stage === "approval" && !r.estimateSent && !r.authorized) {
-    content += '<p class="notice">Estimate finalized. Sharing has not been recorded.</p>' +
-      '<button class="btn primary full" onclick="sendEstimate(\'' + r.id +
-      '\')">Send finalized estimate</button>';
-  }
-  return content;
+// Keep the advisor in one RO screen from pricing through customer review and send.
+// The inline preview reflects the current draft; the immutable customer document
+// is created when the advisor finalizes it. Legal approval is never simulated.
+window.editProposalRecipient=function(id){
+  const r=roBy(id);
+  if(!r || techView())return;
+  ui.modal={type:"editCustomer",id:r.customer};
+  render();
+};
+roProposal=function(r){
+  if(techView())return '<div class="notice">Customer pricing and documents are restricted to the front office.</div>';
+  if(!r.lines?.length)return '<div class="empty"><h3>Start with the recommendations</h3><p>Add parts and labor prices before reviewing the customer estimate.</p><button class="btn primary" onclick="goTab(\'estimate\')">Build estimate</button></div>';
+  const recipient=data.customers.find(x=>x.id===r.customer);
+  const email=String(recipient?.email||"").trim();
+  const emailReady=/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+  const legalReady=data.authorizationPolicyReady===true;
+  const sent=!!r.estimateSent;
+  const awaiting=r.stage==="approval"&&!r.authorized;
+  const locked=!["estimate","approval"].includes(r.stage);
+  const total=r.lines.reduce((n,l)=>n+Number(l.parts)+Number(l.labor),0);
+  const prepStatus=sent?"Sent to customer":r.stage==="approval"?"Finalized · ready to email":"Draft · not yet sent";
+  const header='<div class="section-head"><div><h2>Customer estimate</h2><p class="sub">Price → Review → Send. All actions stay inside this repair order.</p></div>'+pill(r.authorized?"Signed":prepStatus,r.authorized?"green":sent?"amber":"blue")+'</div>';
+  const steps='<div class="steps-mini"><span class="done">✓ 1. Price</span><span class="'+(sent?"done":"active")+'">2. Review</span><span class="'+(sent?"done":"")+'">3. Send</span><span class="'+(r.authorized?"done":"")+'">'+(r.authorized?"✓":"4.")+' Customer decision</span></div>';
+  const policyNotice=!legalReady?
+    '<div class="notice warn" role="alert"><b>Sending unavailable: Shop Revenue authorization setup is incomplete.</b><p>The platform has not approved the customer authorization agreement for this shop\'s jurisdiction. You may price and review this estimate, but sending is blocked until platform administration completes its legal approval process. No customer email was sent.</p></div>':"";
+  const emailNotice=!emailReady?
+    '<div class="notice warn" role="alert">A valid customer email is required before sending. Use Edit recipient to add or correct it.</div>':"";
+  const review='<div class="card card-pad"><div class="section-head"><h3>1 · Review the estimate</h3><button class="btn small" onclick="goTab(\'estimate\')">Edit pricing</button></div>'+
+    '<p class="sub">'+r.lines.length+' priced recommendation(s) · '+money(total)+' subtotal before tax</p>'+
+    documentPreview(r,"estimate")+
+    '<p class="secondarytext" style="margin-top:12px">This is a draft preview. The finalized version and approved authorization terms are fixed when you send. The customer must approve or decline every item and sign.</p>'+
+    '<button class="btn full" style="margin-top:12px" onclick="openCustomerPreview(\''+r.id+'\')">Preview customer-facing estimate</button></div>';
+  const recipientPanel='<div class="card card-pad"><div class="section-head"><h3>2 · Confirm recipient</h3><button class="btn small" onclick="editProposalRecipient(\''+r.id+'\')">Edit recipient</button></div>'+
+    '<div class="metricrow"><span>Name</span><strong>'+esc(recipient?.name||"Missing")+'</strong></div>'+
+    '<div class="metricrow"><span>Email</span><strong style="overflow-wrap:anywhere">'+esc(email||"Missing")+'</strong></div>'+
+    '<p class="sub">The secure approval link is sent by email. The customer signs on their own device; staff cannot authorize work on their behalf.</p>'+
+    emailNotice+'</div>';
+  const sentPanel=sent?
+    '<div class="notice good"><strong>Estimate email submitted</strong><p>Customer decision: '+(r.authorized?"Signed and recorded":"Awaiting approval/decline and signature")+'</p>'+(r.estimateOpened?'<p>Customer opened: '+esc(r.estimateOpened)+'</p>':"")+'</div>':"";
+  const canSend=!sent&&!r.authorized&&!locked&&legalReady&&emailReady;
+  const sendPanel='<div class="card card-pad"><h3>3 · Send and track</h3>'+
+    '<p class="sub">Sending finalizes the estimate version, prepares a secure customer link, and emails the recipient. It does not authorize any repairs.</p>'+
+    policyNotice+sentPanel+
+    (canSend?'<button class="btn primary full" onclick="sendEstimate(\''+r.id+'\')">Finalize and email estimate →</button>':
+      !sent&&!r.authorized&&!locked?'<button class="btn primary full" disabled title="Complete the missing setup and recipient details">Finalize and email estimate</button>':"")+
+    (awaiting&&!sent&&legalReady&&emailReady?'<button class="btn full" onclick="sendEstimate(\''+r.id+'\')">Email finalized estimate</button>':"")+
+    '<p class="secondarytext">After sending: this RO records the email submission, customer view, signed decisions and work approval.</p></div>';
+  return header+steps+'<div class="stack">'+review+recipientPanel+sendPanel+'</div>';
 };
 submitApproval=function(id){
   const r=roBy(id);
