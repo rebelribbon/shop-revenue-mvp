@@ -250,7 +250,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   // and verify the saved work is still present after a full reload.
   await page.goto(`/automotive?ro=${ro.id}&tab=estimate`);
   await expect(
-    page.getByRole("heading", { name: "Build estimate" }),
+    page.getByRole("heading", { name: "Build the customer proposal" }),
   ).toBeVisible();
   const price = page.locator('form[onsubmit*="addLine"]');
   await price.locator('input[name="name"]').fill("Front rotor replacement");
@@ -274,6 +274,13 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await page.reload();
   await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
   await expect(page.getByText("$225.45").first()).toBeVisible();
+  await page.goto(`/automotive?ro=${ro.id}&tab=proposal`);
+  const packet = page.locator(".preview").first();
+  await expect(packet.getByText("1. What you brought the vehicle in for")).toBeVisible();
+  await expect(packet.getByText("2. What our technician found")).toBeVisible();
+  await expect(packet.getByText("3. Additional recommended work")).toBeVisible();
+  await expect(packet.getByText("4. Your authorization")).toBeVisible();
+  await expect(packet.getByText("Front rotor replacement")).toBeVisible();
 });
 
 test("owner completes inspected RO through actual customer signature, repairs, invoice, payment and vehicle release", async ({
