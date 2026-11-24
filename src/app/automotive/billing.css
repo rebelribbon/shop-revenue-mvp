@@ -338,3 +338,50 @@ body.billing-view {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.estimate-line-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.estimate-source-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #eef4fc;
+  color: #244361;
+  font-size: 11px;
+  font-weight: 700;
+}
+.estimate-source-badge.source-inspection {
+  background: #fee9e7;
+  color: #92291f;
+}
+.estimate-source-badge.source-maintenance {
+  background: #eaf7ef;
+  color: #21633c;
+}
+.estimate-source-badge.source-diagnosis {
+  background: #fff0cb;
+  color: #7b5000;
+}
+.estimate-source-badge.source-requested {
+  background: #e9f2ff;
+  color: #1d4c9f;
+}
+.estimate-source-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.estimate-source-select select {
+  min-height: 34px;
+  max-width: 220px;
+}
+.estimate-reference-finding .btn {
+  margin-top: 9px;
+}
