@@ -221,5 +221,8 @@ export async function ingestWebhookEvent(input: {
 // A connection-only ping would report healthy when a migration is missing.
 export async function pingDatabase(): Promise<void> {
   await connectionFor("app").db.select().from(schema.business).limit(0);
-  await connectionFor("app").db.select().from(schema.shopAuthorizationTerms).limit(0);
+  await connectionFor("app")
+    .db.select()
+    .from(schema.shopAuthorizationTerms)
+    .limit(0);
 }
