@@ -384,13 +384,16 @@ export function EstimateSignature({
                       .slice(0, 6)
                       .map((item) => item.label)
                       .join(" · ") || "None recorded"}
-                    {(s.inspection.checks?.filter((item) => item.status === "good")
-                      .length ?? 0) > 6 && " · more below"}
+                    {(s.inspection.checks?.filter(
+                      (item) => item.status === "good",
+                    ).length ?? 0) > 6 && " · more below"}
                   </p>
                   <p>
                     <strong>Needs attention / monitor:</strong>{" "}
                     {s.inspection.findings.length
-                      ? s.inspection.findings.map((item) => item.label).join(" · ")
+                      ? s.inspection.findings
+                          .map((item) => item.label)
+                          .join(" · ")
                       : "No issues found"}
                   </p>
                 </div>
@@ -475,15 +478,17 @@ export function EstimateSignature({
               )}
             </section>
             <p className="muted">
-              {s.lines.filter((line) => choices[line.id] !== undefined).length} of{" "}
-              {s.lines.length} priced line items decided.
+              {s.lines.filter((line) => choices[line.id] !== undefined).length}{" "}
+              of {s.lines.length} priced line items decided.
             </p>
             {nav}
           </section>
         )}
         {(!step || step === "sign") && (
           <>
-            <h2>{step ? "4. Review your decisions and sign" : "Authorize work"}</h2>
+            <h2>
+              {step ? "4. Review your decisions and sign" : "Authorize work"}
+            </h2>
             {step ? (
               <>
                 <section aria-label="Approved work">
@@ -505,7 +510,9 @@ export function EstimateSignature({
                   {s.lines.some((line) => choices[line.id] === "decline") ? (
                     <ul className="estimate-review">
                       {repairGroups(
-                        s.lines.filter((line) => choices[line.id] === "decline"),
+                        s.lines.filter(
+                          (line) => choices[line.id] === "decline",
+                        ),
                       ).map((group) => (
                         <li key={group.id}>
                           {group.label} — Declined, not authorized
