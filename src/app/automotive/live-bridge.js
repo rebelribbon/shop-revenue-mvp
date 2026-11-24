@@ -244,7 +244,6 @@ roProposal=function(r){
     policyNotice+sentPanel+
     (canSend?'<button class="btn primary full" onclick="sendEstimate(\''+r.id+'\')">Finalize and email estimate →</button>':
       !sent&&!r.authorized&&!locked?'<button class="btn primary full" disabled title="Complete the missing setup and recipient details">Finalize and email estimate</button>':"")+
-    (awaiting&&!sent&&legalReady&&emailReady?'<button class="btn full" onclick="sendEstimate(\''+r.id+'\')">Email finalized estimate</button>':"")+
     '<p class="secondarytext">After sending: this RO records the email submission, customer view, signed decisions and work approval.</p></div>';
   return header+steps+'<div class="stack">'+review+recipientPanel+sendPanel+'</div>';
 };
