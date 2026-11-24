@@ -252,6 +252,28 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await expect(
     page.getByRole("heading", { name: "Build the customer proposal" }),
   ).toBeVisible();
+  // The advisor never needs to leave pricing to read inspection findings.
+  const desktopReference = page.locator(".estimate-reference-desktop");
+  const mobileReference = page.locator(".estimate-reference-mobile");
+  const pricingColumn = page.locator(".estimate-builder-column");
+  await expect(pricingColumn).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) > 980) {
+    await expect(desktopReference).toBeVisible();
+    await expect(
+      desktopReference.getByRole("heading", { name: "Technician diagnosis" }),
+    ).toBeVisible();
+    const left = await desktopReference.boundingBox();
+    const right = await pricingColumn.boundingBox();
+    expect(left).not.toBeNull();
+    expect(right).not.toBeNull();
+    expect(left!.x + left!.width).toBeLessThan(right!.x + 18);
+  } else {
+    await expect(mobileReference).toBeVisible();
+    await mobileReference.locator("summary").click();
+    await expect(
+      mobileReference.getByRole("heading", { name: "40-point inspection" }),
+    ).toBeVisible();
+  }
   const price = page.locator('form[onsubmit*="addLine"]');
   await price.locator('input[name="name"]').fill("Front rotor replacement");
   await price.locator('input[name="parts"]').fill("225.45");
