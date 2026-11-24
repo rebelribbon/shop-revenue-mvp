@@ -112,16 +112,21 @@ export const classifyAutomotiveWorkAction = defineShopAction({
       (line) => line.description === input.description,
     );
     if (!found) throw notFound("That repair");
+    const existing = [...data.parts, ...data.labor].filter(
+      (line) => line.description === input.description,
+    );
+    if (existing.some((line) => !!line.recommendationId))
+      throw new AppError(
+        "VALIDATION",
+        "This repair came from an existing recommendation and its source cannot be rewritten.",
+      );
     if (
-      input.workSource === "requested" &&
-      [...data.parts, ...data.labor].some(
-        (line) =>
-          line.description === input.description && !!line.recommendationId,
-      )
+      input.workSource !== "inspection" &&
+      existing.some((line) => !!line.inspectionItemKey)
     )
       throw new AppError(
         "VALIDATION",
-        "This repair is linked to a technician recommendation and must remain in the recommendations section.",
+        "This repair is linked to an inspection finding and must stay identified as inspection-based.",
       );
     const recommended = input.workSource !== "requested";
     await createJob(tx, {
