@@ -248,6 +248,64 @@ roEstimate=function(r){
     '<p class="sub">Final authorized amount is calculated from the work the customer approves.</p>'+
     '<button class="btn primary full" onclick="goTab(\'proposal\')">Review customer packet →</button></div>':"");
 };
+// Read-only representation of the customer proposal. The secure customer
+// portal handles choices and signatures; the shop preview never authorizes work.
+function customerPacketPreview(r){
+  const groups=new Map();
+  for(const line of r.lines||[]){
+    const type=line.recommended?"recommended":"requested";
+    const id=type+":"+line.name;
+    const previous=groups.get(id)||{name:line.name,recommended:!!line.recommended,parts:0,labor:0};
+    previous.parts+=Number(line.parts||0);
+    previous.labor+=Number(line.labor||0);
+    groups.set(id,previous);
+  }
+  const all=[...groups.values()],requested=all.filter(l=>!l.recommended);
+  const recommended=all.filter(l=>l.recommended);
+  const total=all.reduce((sum,l)=>sum+l.parts+l.labor,0);
+  const inspection=r.inspectionItems||[];
+  const findings=inspection.filter(i=>i.status==="fix"||i.status==="watch");
+  const good=inspection.filter(i=>i.status==="good").length;
+  const visible=(r.media||[]).filter(m=>m.public===true);
+  const renderWork=(items,extra)=>items.length?items.map((l)=>
+    '<div class="docrow"><div><b>'+esc(l.name)+'</b><p class="secondarytext">Parts '+money(l.parts)+' · Labor '+money(l.labor)+'</p>'+
+    (extra?'<p class="secondarytext">The customer chooses Approve or Decline for this repair.</p>':'')+
+    '</div><b>'+money(l.parts+l.labor)+'</b></div>').join(""):
+    '<p class="sub">No priced services in this section.</p>';
+  const renderFindings=findings.length?'<ul class="estimate-findings">'+findings.map(i=>
+    '<li><b>'+esc(i.label)+'</b> · <span class="pill">'+
+    (i.status==="fix"?"Needs attention":"Monitor")+'</span>'+
+    (i.note?'<p>'+esc(i.note)+'</p>':"")+
+    (i.recommendedWork?'<p class="sub">Technician recommends: '+esc(i.recommendedWork)+'</p>':"")+
+    '</li>').join("")+'</ul>':
+    '<p class="sub">No Caution or Fail inspection findings recorded.</p>';
+  const renderMedia=visible.length?
+    '<div class="stack">'+visible.map(m=>
+    '<div class="item"><span aria-hidden="true">'+(m.kind==="video"?"🎥":"📷")+'</span> '+
+    '<a href="'+esc(m.fileUrl)+'" target="_blank" rel="noopener noreferrer">'+
+    esc(m.caption||m.name||"Customer-visible evidence")+'</a></div>').join("")+'</div>':
+    '<p class="sub">No inspection media selected for customer sharing.</p>';
+  const review='<div class="preview"><div class="dochead"><div>'+
+    '<div class="eyebrow">'+esc(data.business)+'</div><h2>VEHICLE INSPECTION & WORK AUTHORIZATION</h2></div>'+
+    '<div>'+esc(r.num)+'</div></div>'+
+    '<p class="sub">Vehicle: '+esc(car(vehicle(r.vehicle)))+'</p>'+
+    '<section style="margin-top:20px"><h3>1. What you brought the vehicle in for</h3>'+
+    '<p>'+esc(r.concern||"Customer concern not recorded")+'</p>'+renderWork(requested,false)+'</section>'+
+    '<section style="margin-top:22px"><h3>2. What our technician found</h3>'+
+    '<p class="sub">'+good+' passed · '+findings.length+' need attention or monitoring</p>'+
+    (r.inspectionAssessment?.diagnosis?'<p>'+esc(r.inspectionAssessment.diagnosis)+'</p>':"")+
+    renderFindings+renderMedia+'</section>'+
+    '<section style="margin-top:22px"><h3>3. Additional recommended work</h3>'+
+    '<p class="sub">These are separate from the work originally requested. The customer can approve or decline each one.</p>'+
+    renderWork(recommended,true)+'</section>'+
+    '<section style="margin-top:22px"><h3>4. Your authorization</h3>'+
+    '<p class="sub">Customer reviews and explicitly approves or declines all priced work. Nothing is preselected.</p>'+
+    '<div class="metricrow"><span>All proposed work before tax</span><strong>'+money(total)+'</strong></div>'+
+    '<p class="notice">The final total includes only approved items plus applicable tax. This amount updates as the customer chooses each repair.</p>'+
+    '<p class="secondarytext">The customer then reviews authorization terms and signs. This is not an invoice or a payment request.</p></section>'+
+    '</div>';
+  return review;
+}
 // Keep the advisor in one RO screen from pricing through customer review and send.
 // The inline preview reflects the current draft; the immutable customer document
 // is created when the advisor finalizes it. Legal approval is never simulated.
@@ -287,7 +345,7 @@ roProposal=function(r){
     '<div class="notice warn" role="alert">A valid customer email is required before sending. Use Edit recipient to add or correct it.</div>':"";
   const review='<div class="card card-pad"><div class="section-head"><h3>1 · Review the estimate</h3><button class="btn small" onclick="goTab(\'estimate\')">Edit pricing</button></div>'+
     '<p class="sub">'+r.lines.length+' priced recommendation(s) · '+money(total)+' subtotal before tax</p>'+
-    documentPreview(r,"estimate")+
+    customerPacketPreview(r)+
     (legalReady?'<details class="card card-pad" style="margin-top:12px"><summary><b>View approved customer authorization terms</b></summary><p class="secondarytext" style="white-space:pre-wrap;margin-top:12px">'+esc(data.authorizationPolicyBody||"")+'</p></details>':"")+
     '<p class="secondarytext" style="margin-top:12px">This is a draft preview. The finalized version and approved authorization terms are fixed when you send. The customer must approve or decline every item and sign.</p>'+
     '<button class="btn full" style="margin-top:12px" onclick="openCustomerPreview(\''+r.id+'\')">Preview customer-facing estimate</button></div>';
@@ -875,12 +933,12 @@ renderModal = function(){
   if(m?.type==="customerPacket"){
     const r=roBy(m.id);
     if(!r || techView())return "";
-    return modalWrap("Customer document packet — shop preview",
-      '<div class="notice">Preview only: this screen cannot sign for the customer. Actual approve/decline decisions and signature are collected through the secure customer link.</div>' +
-      '<div style="margin-top:16px">' + documentPreview(r,"estimate") + '</div>' +
+    return modalWrap("Customer packet · read-only preview",
+      '<div class="notice">Read-only shop preview. The customer reviews these sections, then makes each approval/decline decision and signs using their secure link. This preview cannot authorize work.</div>'+
+      '<div style="margin-top:16px">'+customerPacketPreview(r)+'</div>'+
       '<div class="form-actions"><button class="btn" onclick="closeModal()">Close preview</button></div>',true);
   }
-  if(!m || (m.type !== "staff" && m.type !== "editStaff")) return originalRenderModal();
+    if(!m || (m.type !== "staff" && m.type !== "editStaff")) return originalRenderModal();
   if(!manager())return "";
   const member=m.id ? (data.teamMembers || []).find(x=>x.id===m.id) : null;
   if(m.id && !member)return "";
