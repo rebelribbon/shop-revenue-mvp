@@ -422,8 +422,30 @@ export async function GET(request: Request) {
             recommended: [...j.parts, ...j.labor].some(
               (line) =>
                 line.description === name &&
-                (line.fromInspection === true || !!line.recommendationId),
+                (line.fromInspection === true ||
+                  !!line.recommendationId ||
+                  !!line.recommendationSource),
             ),
+            recommendationSource:
+              [...j.parts, ...j.labor].find(
+                (line) =>
+                  line.description === name && !!line.recommendationSource,
+              )?.recommendationSource ??
+              ([...j.parts, ...j.labor].some(
+                (line) => line.description === name && line.fromInspection,
+              )
+                ? "inspection"
+                : [...j.parts, ...j.labor].some(
+                      (line) =>
+                        line.description === name && !!line.recommendationId,
+                    )
+                  ? "prior"
+                  : null),
+            inspectionItemKey:
+              [...j.parts, ...j.labor].find(
+                (line) =>
+                  line.description === name && !!line.inspectionItemKey,
+              )?.inspectionItemKey ?? null,
             originLocked: [...j.parts, ...j.labor].some(
               (line) => line.description === name && !!line.recommendationId,
             ),
@@ -444,7 +466,13 @@ export async function GET(request: Request) {
                       ? (l.quantity * l.unitPriceCents) / 100
                       : 0,
                   recommended: l.recommended === true,
-                  originLocked: !!l.recommended,
+                  recommendationSource:
+                    l.recommendationSource ??
+                    (l.recommended ? "prior" : null),
+                  inspectionItemKey: l.inspectionItemKey ?? null,
+                  originLocked:
+                    l.recommendationSource === "inspection" ||
+                    l.recommendationSource === "prior",
                   cost: 0,
                   decision: auth
                     ? approved.has(l.id)
