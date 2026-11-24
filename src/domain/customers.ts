@@ -216,6 +216,47 @@ export async function updateCustomer(
   return row;
 }
 
+// Email-only changes must never erase address, notes, phone, or assignments.
+export async function updateCustomerEmail(
+  tx: TenantTx,
+  meta: RequestMeta,
+  customerId: string,
+  email: string,
+) {
+  const [before] = await tx
+    .select()
+    .from(customer)
+    .where(
+      and(
+        eq(customer.businessId, tx.businessId),
+        eq(customer.id, customerId),
+        eq(customer.status, "active"),
+      ),
+    );
+  if (!before) throw notFound("That customer");
+  const [row] = await tx
+    .update(customer)
+    .set({ email })
+    .where(
+      and(eq(customer.businessId, tx.businessId), eq(customer.id, customerId)),
+    )
+    .returning();
+  await audit(tx, meta, {
+    action: "customer.email_updated",
+    targetType: "customer",
+    targetId: customerId,
+    before: { email: before.email },
+    after: { email: row.email },
+  });
+  await recordActivity(tx, {
+    kind: "customer.email_updated",
+    subjectType: "customer",
+    subjectId: customerId,
+    summary: "Customer email updated",
+  });
+  return row;
+}
+
 export async function archiveCustomer(
   tx: TenantTx,
   meta: RequestMeta,
