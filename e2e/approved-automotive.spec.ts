@@ -403,7 +403,27 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     await openRecorded;
     await page.reload();
     await expect(page.getByText(/Customer opened the proposal/)).toBeVisible();
-    checkpoint("portal opened; running line approval");
+    checkpoint("portal opened; checking the four customer screens");
+    await expect(
+      customerPage.getByRole("heading", { name: "1. Why you came in" }),
+    ).toBeVisible();
+    await customerPage.getByRole("button", { name: /Next: / }).click();
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "2. Your inspection at a glance",
+      }),
+    ).toBeVisible();
+    await expect(
+      customerPage.getByText("Passed:", { exact: false }).first(),
+    ).toBeVisible();
+    await customerPage.getByRole("button", { name: /Next: / }).click();
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "3. Choose the work you want done",
+      }),
+    ).toBeVisible();
+    checkpoint("portal reached repair decisions");
+
     // The current customer UI presents an explicit grouped repair decision.
     // Its individual part/labor radios are intentionally hidden in a closed
     // details panel, so choose the visible "Approve this repair" control.
@@ -417,6 +437,18 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       await expect(next).toBeEnabled();
       await next.click();
     }
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "4. Review your decisions and sign",
+      }),
+    ).toBeVisible();
+    await expect(
+      customerPage.getByRole("heading", { name: "Approved work" }),
+    ).toBeVisible();
+    await expect(
+      customerPage.getByRole("heading", { name: "Declined work" }),
+    ).toBeVisible();
+    await expect(customerPage.getByText(/Total you authorize/)).toBeVisible();
     checkpoint("line approval reached signature");
     await customerPage
       .getByLabel("Your full name", { exact: true })
