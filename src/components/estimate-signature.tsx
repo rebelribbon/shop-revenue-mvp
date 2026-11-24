@@ -344,8 +344,13 @@ export function EstimateSignature({
           </section>
         )}
         {step === "inspection" && (
-          <section aria-label="Inspection results">
-            <h2>Inspection results</h2>
+          <section aria-label="One-page inspection overview">
+            <h2>2. Your inspection at a glance</h2>
+            <p>
+              These are the technician's inspection results, not a list of
+              repairs you have agreed to. Review the findings and any photos
+              before deciding what work you want done.
+            </p>
             {s.inspection && (
               <>
                 <p className="estimate-inspection-counts">
@@ -373,6 +378,24 @@ export function EstimateSignature({
                     </span>
                   )}
                 </p>
+                <div className="estimate-inspection-overview">
+                  <p>
+                    <strong>Passed:</strong>{" "}
+                    {s.inspection.checks
+                      ?.filter((item) => item.status === "good")
+                      .slice(0, 6)
+                      .map((item) => item.label)
+                      .join(" · ") || "None recorded"}
+                    {(s.inspection.checks?.filter((item) => item.status === "good")
+                      .length ?? 0) > 6 && " · more below"}
+                  </p>
+                  <p>
+                    <strong>Needs attention / monitor:</strong>{" "}
+                    {s.inspection.findings.length
+                      ? s.inspection.findings.map((item) => item.label).join(" · ")
+                      : "No issues found"}
+                  </p>
+                </div>
                 {!!s.inspection.checks?.length && (
                   <details className="estimate-full-inspection">
                     <summary>
@@ -423,7 +446,12 @@ export function EstimateSignature({
                 )}
               </>
             )}
-            {media}
+            <h3>Inspection photos and video</h3>
+            {media || (
+              <p className="muted">
+                No photos or videos were shared with this inspection.
+              </p>
+            )}
             {nav}
           </section>
         )}
