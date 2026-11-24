@@ -91,6 +91,17 @@ export const classifyAutomotiveWorkAction = defineShopAction({
       (line) => line.description === input.description,
     );
     if (!found) throw notFound("That repair");
+    if (
+      input.workType === "requested" &&
+      [...data.parts, ...data.labor].some(
+        (line) =>
+          line.description === input.description && !!line.recommendationId,
+      )
+    )
+      throw new AppError(
+        "VALIDATION",
+        "This repair is linked to a technician recommendation and must remain in the recommendations section.",
+      );
     const recommended = input.workType === "recommended";
     await createJob(tx, {
       ...data,
