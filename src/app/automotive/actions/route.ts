@@ -413,7 +413,8 @@ export async function POST(request: Request) {
           partsCents: Number(payload.partsCents),
           laborCents: Number(payload.laborCents),
           costCents: Number(payload.costCents),
-          workType: value(payload.workType) || "recommended",
+          workSource: value(payload.workSource) || "advisor",
+          inspectionItemKey: value(payload.inspectionItemKey) || undefined,
         });
         break;
       case "ro.pricing.classify":
@@ -422,7 +423,7 @@ export async function POST(request: Request) {
           jobId: id(payload.jobId),
           expectedVersion: id(payload.expectedVersion),
           description: value(payload.description),
-          workType: value(payload.workType),
+          workSource: value(payload.workSource),
         });
         break;
       case "ro.pricing.remove":
