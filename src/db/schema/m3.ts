@@ -28,6 +28,11 @@ export type EstimateLine = {
 export type EstimateInspection = {
   diagnosis: string;
   checkedCount: number;
+  // Immutable results shown to the customer, including passed and N/A checks.
+  checks?: {
+    label: string;
+    status: "good" | "watch" | "fix" | "na";
+  }[];
   goodCount: number;
   findings: {
     label: string;
