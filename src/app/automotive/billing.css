@@ -176,3 +176,165 @@ body.billing-view {
     transition: none;
   }
 }
+
+/* Advisor estimate: keep the inspection visible beside pricing on desktop. */
+.estimate-builder-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 16px;
+}
+.estimate-builder-layout > * {
+  min-width: 0;
+}
+.estimate-reference-desktop {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.estimate-reference-heading {
+  margin-bottom: 14px;
+}
+.estimate-reference-heading h2 {
+  margin-bottom: 5px;
+}
+.estimate-reference-content {
+  display: grid;
+  gap: 16px;
+}
+.estimate-reference-content > section {
+  min-width: 0;
+  border-top: 1px solid #dce5ef;
+  padding-top: 12px;
+}
+.estimate-reference-content h3 {
+  margin: 0 0 10px;
+}
+.estimate-reference-diagnosis {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.estimate-reference-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.estimate-reference-totals span,
+.estimate-reference-status {
+  display: inline-flex;
+  border-radius: 20px;
+  padding: 4px 9px;
+  background: #eef4fc;
+  color: #203955;
+  font-size: 12px;
+  font-weight: 650;
+}
+.estimate-reference-status.is-fail {
+  background: #fee9e7;
+  color: #9a251c;
+}
+.estimate-reference-status.is-caution {
+  background: #fff0cb;
+  color: #805100;
+}
+.estimate-reference-findings {
+  display: grid;
+  gap: 9px;
+}
+.estimate-reference-finding {
+  padding: 10px;
+  border: 1px solid #dce5ef;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.estimate-reference-finding-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.estimate-reference-finding p {
+  margin: 8px 0 0;
+}
+.estimate-reference-checks {
+  margin-top: 12px;
+}
+.estimate-reference-checks summary,
+.estimate-reference-mobile summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.estimate-reference-checks ul {
+  list-style: none;
+  padding: 0;
+}
+.estimate-reference-checks li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 7px 0;
+}
+.estimate-reference-checks li b {
+  white-space: nowrap;
+}
+.estimate-reference-media {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.estimate-reference-media figure {
+  min-width: 0;
+  margin: 0;
+}
+.estimate-reference-media img,
+.estimate-reference-media video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 9px;
+}
+.estimate-reference-media figcaption {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.estimate-builder-column {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.estimate-builder-column .card {
+  min-width: 0;
+}
+.estimate-reference-mobile {
+  display: none;
+}
+@media (max-width: 980px) {
+  .estimate-builder-layout {
+    display: block;
+  }
+  .estimate-builder-layout .estimate-reference-desktop {
+    display: none;
+  }
+  .estimate-reference-mobile {
+    display: block;
+    margin-bottom: 14px;
+    padding: 14px;
+  }
+  .estimate-reference-mobile > summary {
+    color: #174ea6;
+    min-height: 28px;
+  }
+  .estimate-reference-mobile[open] > summary {
+    margin-bottom: 12px;
+  }
+  .estimate-reference-mobile .estimate-reference-media {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
