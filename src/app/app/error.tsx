@@ -24,7 +24,7 @@ export default function ShopError({
         Try again
       </button>
       <p>
-        <Link href="/app">Return to Money</Link>
+        <Link href="/app">Return to workspace</Link>
       </p>
       {reference && <p className="muted">Support reference: {reference}</p>}
     </main>

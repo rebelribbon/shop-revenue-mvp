@@ -4,8 +4,8 @@ name: Deploy
 # Vercel Deployment Protection with `vercel curl` (scripts/ci/hosted-smoke.sh);
 # protection is never disabled for CI.
 # Section 24 order: CI -> migrate staging -> deploy staging -> hosted smoke ->
-# approve -> build production candidate with its real Secret variables and
-# release checks -> migrate production as migration_owner -> smoke -> promote.
+# approve -> migrate production as migration_owner -> build production candidate
+# with real Secret variables and schema/release checks -> smoke -> promote.
 # The candidate never receives the production domains before smoke passes.
 # Full M1 E2E
 # stays in the local-stack workflow because those tests intentionally depend on
@@ -125,15 +125,6 @@ jobs:
         # Read-only, production-pinned check. Rejects stale/future restore points
         # and provider failures. Applies to BOTH pilot and commercial releases.
         run: node scripts/ci/verify-provider-backup.mjs
-      - name: Build production candidate and require reviewed release evidence inside Vercel
-        env:
-          RELEASE_PROFILE: ${{ inputs.release_profile }}
-          RELEASE_EVIDENCE_JSON: ${{ inputs.release_evidence_json }}
-        run: |
-          npx --yes vercel@63.1.0 deploy --yes --prod --skip-domain \
-            --build-env RELEASE_COMMIT="$GITHUB_SHA" \
-            --build-env RELEASE_PROFILE="$RELEASE_PROFILE" \
-            --build-env RELEASE_EVIDENCE_JSON="$RELEASE_EVIDENCE_JSON" > deploy-url.txt
       - name: Migrate production (migration_owner; lock_timeout 5s, statement_timeout 60s)
         run: |
           set -o pipefail
@@ -144,6 +135,15 @@ jobs:
           pnpm db:migrate > migrate.log 2>&1 || { report migrate.log; exit 1; }
           pnpm db:check-rls > check-rls.log 2>&1 || { report check-rls.log; exit 1; }
           cat migrate.log check-rls.log
+      - name: Build production candidate and require reviewed release evidence inside Vercel
+        env:
+          RELEASE_PROFILE: ${{ inputs.release_profile }}
+          RELEASE_EVIDENCE_JSON: ${{ inputs.release_evidence_json }}
+        run: |
+          npx --yes vercel@63.1.0 deploy --yes --prod --skip-domain \
+            --build-env RELEASE_COMMIT="$GITHUB_SHA" \
+            --build-env RELEASE_PROFILE="$RELEASE_PROFILE" \
+            --build-env RELEASE_EVIDENCE_JSON="$RELEASE_EVIDENCE_JSON" > deploy-url.txt
       - name: Production smoke (exact deployment)
         run: scripts/ci/hosted-smoke.sh "$(tail -n 1 deploy-url.txt)" "$GITHUB_SHA"
       - name: Promote the tested production build

@@ -73,8 +73,16 @@ export function RoHandoffNotifications() {
       >
         <WorkspaceIcon name="tasks" />
         <span className="handoff-label">Assigned work</span>
-        {tasks.length > 0 && <span aria-hidden="true">{tasks.length}</span>}
-        {unavailable && <span aria-hidden="true">!</span>}
+        {tasks.length > 0 && (
+          <span className="handoff-count" aria-hidden="true">
+            {tasks.length > 99 ? "99+" : tasks.length}
+          </span>
+        )}
+        {unavailable && (
+          <span className="handoff-unavailable" aria-hidden="true">
+            !
+          </span>
+        )}
       </Link>
       <span className="sr-only" aria-live="polite" aria-atomic="true">
         {announcement}

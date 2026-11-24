@@ -47,6 +47,8 @@ export type EstimateInspection = {
   }[];
 };
 export type AuthorizationPolicy = {
+  source?: "shop";
+  businessId?: string;
   id: string;
   version: number;
   jurisdictionCode: string;
@@ -129,6 +131,7 @@ export const estimateAuthorization = app.table(
     userAgent: text("user_agent"),
     estimateSha256: text("estimate_sha256"),
     policyId: uuid("policy_id"),
+    shopPolicyId: uuid("shop_policy_id"),
     policyVersion: integer("policy_version"),
     policySha256: text("policy_sha256"),
     lineDecisions:

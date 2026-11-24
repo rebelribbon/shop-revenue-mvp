@@ -49,6 +49,7 @@ export function releaseDecision(profile: string, checks: ReleaseCheck[]) {
     "stripe-account-activation",
     "subscription-catalog",
     "release-commit",
+    "workspace-schema",
     "release-profile",
     ...evidence,
     ...(profile === "pilot" ? ["pilot-signup-closed"] : []),

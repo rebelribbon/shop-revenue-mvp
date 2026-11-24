@@ -216,7 +216,13 @@ export async function ingestWebhookEvent(input: {
   return rows[0];
 }
 
-// Liveness for the health route: one trivial query on the app role.
+// Check the business-profile and document-setup fields used by the workspace. LIMIT 0
+// validates the deployed schema and app-role grants without reading tenant data.
+// A connection-only ping would report healthy when a migration is missing.
 export async function pingDatabase(): Promise<void> {
-  await connectionFor("app").pool.query("SELECT 1");
+  await connectionFor("app").db.select().from(schema.business).limit(0);
+  await connectionFor("app")
+    .db.select()
+    .from(schema.shopAuthorizationTerms)
+    .limit(0);
 }

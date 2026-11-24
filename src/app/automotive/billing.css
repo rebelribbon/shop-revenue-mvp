@@ -385,3 +385,143 @@ body.billing-view {
 .estimate-reference-finding .btn {
   margin-top: 9px;
 }
+
+/* Price cards reserve separate rows for the description, amounts and actions. */
+.estimate-work-card {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #dce5ef;
+  border-radius: 8px;
+}
+.estimate-work-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+}
+.estimate-work-heading .estimate-line-title {
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+.estimate-work-card .estimate-source-badge {
+  max-width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.estimate-work-total {
+  font-size: 20px;
+  white-space: nowrap;
+}
+.estimate-work-prices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.estimate-work-prices dt {
+  font-size: 14px;
+  color: #52647a;
+}
+.estimate-work-prices dd {
+  font-size: 16px;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.estimate-work-cost {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #dce5ef;
+  color: #52647a;
+  font-size: 14px;
+}
+.estimate-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.estimate-work-actions .estimate-source-select {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1 1 240px;
+  max-width: 100%;
+  min-width: 0;
+  gap: 8px;
+  font-size: 14px;
+  margin: 0;
+}
+.estimate-work-actions select,
+.estimate-work-actions .btn {
+  min-height: 48px;
+  max-width: 100%;
+  font-size: 16px;
+}
+.estimate-work-actions select {
+  width: 100%;
+}
+.authorization-settings-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+.authorization-settings-form > label {
+  margin: 0;
+  font-size: 16px;
+}
+.authorization-settings-form textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 240px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.authorization-settings-form .authorization-confirm {
+  display: flex;
+  align-items: flex-start;
+  min-height: 48px;
+  gap: 8px;
+  line-height: 1.5;
+}
+.authorization-confirm input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  flex: 0 0 24px;
+  margin: 0;
+}
+.payment-requirements-list {
+  margin: 16px 0;
+  padding-inline-start: 24px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+@media (max-width: 760px) {
+  .estimate-work-heading,
+  .estimate-work-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .estimate-work-actions .estimate-source-select,
+  .estimate-work-actions .btn {
+    width: 100%;
+  }
+  .estimate-reference-mobile > summary {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+  }
+  .estimate-builder-column .sub {
+    font-size: 16px;
+  }
+}

@@ -1052,6 +1052,11 @@ details {
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
+.workspace-header > .btn,
+.workspace-header > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .workspace-mobile-brand,
 .workspace-header a.workspace-mobile-brand:not(.btn),
 .workspace-mobile-settings {
@@ -1068,6 +1073,9 @@ details {
   padding-top: 24px;
 }
 .workspace-header .quick-find-trigger {
+  flex: 1 1 0;
+  min-width: 48px;
+  max-width: 640px;
   width: min(100%, 640px);
   justify-content: start;
   color: var(--muted);
@@ -1079,6 +1087,8 @@ details {
 .ro-handoff-notifications .btn {
   margin: 0;
   gap: 8px;
+  position: relative;
+  white-space: nowrap;
 }
 .workspace-sign-out,
 .workspace-sign-out .btn {
@@ -1181,6 +1191,9 @@ body:has(.workspace-shell) [data-ux-primary] {
   .workspace-header {
     padding: 8px 16px;
   }
+  .workspace-header .workspace-automotive-link {
+    display: none;
+  }
   .workspace-mobile-brand,
   .workspace-header a.workspace-mobile-brand:not(.btn) {
     display: block;
@@ -1192,6 +1205,7 @@ body:has(.workspace-shell) [data-ux-primary] {
     margin: 0;
   }
   .workspace-header .quick-find-trigger {
+    flex: 0 0 auto;
     width: auto;
     color: var(--text);
   }
@@ -2321,6 +2335,33 @@ a.card.create-tile:hover {
 }
 @media (max-width: 599px) {
   .workspace-header .new-label {
+    display: none;
+  }
+  .workspace-header .quick-find-mobile-label {
+    display: none;
+  }
+  .workspace-header .quick-find-trigger,
+  .workspace-header .ro-handoff-notifications .btn {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    padding: 0;
+    justify-content: center;
+  }
+  .workspace-header .handoff-count,
+  .workspace-header .handoff-unavailable {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    min-width: 16px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 0.75rem;
+    line-height: 16px;
+    text-align: center;
+  }
+  .workspace-header .handoff-count:has(+ .handoff-unavailable) {
     display: none;
   }
   .workspace-header > a.btn.new-button {

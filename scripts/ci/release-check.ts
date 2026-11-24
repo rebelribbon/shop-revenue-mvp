@@ -5,6 +5,7 @@ import {
 import { MONTHLY_PRICE_CENTS } from "../../src/lib/billing";
 import { stripeClient } from "../../src/lib/stripe";
 import { readFileSync } from "node:fs";
+import { verifyWorkspaceSchema } from "./verify-workspace-schema";
 import {
   releaseConfiguration,
   stripeAccountReady,
@@ -17,6 +18,12 @@ const checks = [
   ...releaseConfiguration(process.env),
   ...releaseProfileChecks(process.env),
 ];
+checks.push({
+  key: "workspace-schema",
+  ready: await verifyWorkspaceSchema(),
+  message:
+    "Database workspace and authorization fields match this release; apply pending migrations before deploying",
+});
 let subscriptionReady = false;
 let accountReady = false;
 try {

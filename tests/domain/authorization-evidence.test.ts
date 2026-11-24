@@ -24,6 +24,7 @@ import { checkPublicThrottle } from "@/domain/public-throttle";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { hashToken } from "@/lib/tokens";
 import { meta, seedTenant, createInternalUser } from "../helpers/fixtures";
+import { enableShopAuthorization } from "@/domain/shop-authorization";
 const signature = [
   [
     { x: 0.1, y: 0.2 },
@@ -74,6 +75,42 @@ async function fixture(label: string) {
   };
   return { t, run, input };
 }
+it("freezes owner-enabled terms and preserves customer decisions and signed evidence", async () => {
+  const f = await fixture("Owner terms evidence");
+  const policy = await f.run((tx) =>
+    enableShopAuthorization(tx, meta(), {
+      body: "TEST ONLY: Exact shop-owner terms selected for this customer estimate.",
+      confirmed: true,
+    }),
+  );
+  const e = await f.run((tx) => freezeEstimate(tx, meta(), f.input));
+  const token = e.path.split("/").pop()!;
+  const visible = await readPublicEstimate(token);
+  expect(visible?.snapshot.authorizationPolicy).toMatchObject({
+    source: "shop",
+    id: policy.id,
+    body: policy.body,
+  });
+  const choices = visible!.snapshot.lines.map((l) => ({
+    id: l.id,
+    decision: "approve" as const,
+  }));
+  await expect(
+    signEstimate(token, "Customer", [], meta(), signature),
+  ).rejects.toThrow();
+  await signEstimate(token, "Customer", choices, meta(), signature);
+  const [proof] = await f.run((tx) =>
+    tx
+      .select()
+      .from(estimateAuthorization)
+      .where(eq(estimateAuthorization.versionId, e.id)),
+  );
+  expect(proof.shopPolicyId).toBe(policy.id);
+  expect(proof.policyId).toBeNull();
+  expect(proof.consentText).toBe(policy.body);
+  expect(proof.evidencePdfSha256).toBeTruthy();
+});
+
 it("rejects incomplete/duplicate/unknown decisions and archives exact immutable evidence and PDF", async () => {
   const f = await fixture("Explicit evidence");
   const e = await f.run((tx) => freezeEstimate(tx, meta(), f.input));
@@ -161,7 +198,7 @@ it("gates publication and unsigned customer rendering on the actual approved pol
   );
   await expect(
     f.run((tx) => freezeEstimate(tx, meta(), f.input)),
-  ).rejects.toThrow(/approved authorization policy/);
+  ).rejects.toThrow(/authorization terms/);
   const drafter = await createInternalUser("admin"),
     approver = await createInternalUser("admin");
   const p = await createPolicyDraft({ internalUserId: drafter.id }, meta(), {
