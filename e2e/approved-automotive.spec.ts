@@ -263,7 +263,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
       response.request().method() === "POST" &&
       response.request().postData()?.includes('"ro.pricing.add"') === true,
   );
-  await price.getByRole("button", { name: /Add recommendation/ }).click();
+  await price.getByRole("button", { name: /Save repair to estimate/ }).click();
   const priceResponse = await responsePromise;
   // Saving navigates immediately to the persisted RO; the response body
   // may be discarded by Chromium before this callback reads it.
