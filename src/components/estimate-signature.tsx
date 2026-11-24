@@ -112,9 +112,10 @@ export function EstimateSignature({
           ? lines.find(
               (other) =>
                 other.kind === "labor" &&
-                line.description.startsWith(
-                  other.description.slice(0, 130) + " · ",
-                ),
+                (line.description === other.description ||
+                  line.description.startsWith(
+                    other.description.slice(0, 130) + " · ",
+                  )),
             )
           : undefined;
       const id = parent?.id ?? line.id;
