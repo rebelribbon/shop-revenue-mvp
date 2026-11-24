@@ -38,8 +38,8 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
     labor: [
       {
         description: "Install",
-        // Additional work recommended after inspection.
-        fromInspection: true,
+        // Maintenance recommendation that does not depend on a failed checkpoint.
+        recommendationSource: "maintenance" as const,
         estimatedHoursHundredths: 200,
         actualHoursHundredths: null,
         sellRateCents: 12500,
@@ -71,6 +71,10 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
   expect(
     visible?.snapshot.lines.find((line) => line.id === "labor-0")?.recommended,
   ).toBe(true);
+  expect(
+    visible?.snapshot.lines.find((line) => line.id === "labor-0")
+      ?.recommendationSource,
+  ).toBe("maintenance");
 
   const openEstimate = (shareToken: string) =>
     runInContext(null, { type: "customer", id: null }, async (tx) => {
