@@ -217,6 +217,12 @@ export async function freezeEstimate(
           (i) => i.status !== "unchecked" && i.status !== "na",
         ).length,
         goodCount: inspected.counts.good,
+        checks: inspected.items
+          .filter((item) => item.status !== "unchecked")
+          .map((item) => ({
+            label: item.label,
+            status: item.status as "good" | "watch" | "fix" | "na",
+          })),
         findings: inspected.items
           .filter((i) => i.status === "watch" || i.status === "fix")
           .map((i) => ({
