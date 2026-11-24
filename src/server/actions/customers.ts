@@ -8,6 +8,7 @@ import {
   setLeadSource,
   createVehicle,
   updateCustomer,
+  updateCustomerEmail,
   updateVehicle,
   setContactPermission,
 } from "@/domain/customers";
@@ -108,6 +109,22 @@ export const updateCustomerAction = defineShopAction({
   run: ({ tx, meta }, input) =>
     updateCustomer(tx, meta, input.customerId, customerInput(input)),
   persist: (row) => ({ id: row.id, message: "Customer updated." }),
+});
+
+export const updateCustomerEmailAction = defineShopAction({
+  name: "updateCustomerEmail",
+  input: z.object({
+    customerId: z.uuid(),
+    email: z.email().max(254),
+  }),
+  run: ({ tx, meta }, input) =>
+    updateCustomerEmail(
+      tx,
+      meta,
+      input.customerId,
+      normalizeEmail(input.email),
+    ),
+  persist: (row) => ({ id: row.id, message: "Customer email saved." }),
 });
 
 export const archiveCustomerAction = defineShopAction({
