@@ -46,6 +46,7 @@ import {
 } from "@/server/actions/job-media";
 import {
   addAutomotiveRecommendationAction,
+  classifyAutomotiveWorkAction,
   removeAutomotiveRecommendationAction,
 } from "@/server/actions/automotive-pricing";
 import {
@@ -413,6 +414,15 @@ export async function POST(request: Request) {
           laborCents: Number(payload.laborCents),
           costCents: Number(payload.costCents),
           workType: value(payload.workType) || "recommended",
+        });
+        break;
+      case "ro.pricing.classify":
+        result = await classifyAutomotiveWorkAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          expectedVersion: id(payload.expectedVersion),
+          description: value(payload.description),
+          workType: value(payload.workType),
         });
         break;
       case "ro.pricing.remove":
