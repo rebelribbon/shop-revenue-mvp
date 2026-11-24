@@ -31,6 +31,7 @@ const technical = (profile = "pilot", signup = "false") => [
     "stripe-account-activation",
     "subscription-catalog",
     "release-commit",
+    "workspace-schema",
   ].map((key) => ({ key, ready: true, message: key })),
   ...releaseProfileChecks({
     RELEASE_PROFILE: profile,
@@ -103,6 +104,34 @@ test("pilot still blocks missing technical configuration, open signup and unknow
       .launchReady,
     true,
   );
+});
+
+test("both release profiles block missing or rejected workspace schema checks", () => {
+  const evidence = requiredReleaseEvidence().map((key) => ({
+    key,
+    ready: true,
+    message: key,
+  }));
+  for (const profile of ["pilot", "commercial"]) {
+    const checks = [...technical(profile), ...evidence];
+    assert.equal(releaseDecision(profile, checks).deploymentReady, true);
+    assert.equal(
+      releaseDecision(
+        profile,
+        checks.filter((check) => check.key !== "workspace-schema"),
+      ).deploymentReady,
+      false,
+    );
+    assert.equal(
+      releaseDecision(
+        profile,
+        checks.map((check) =>
+          check.key === "workspace-schema" ? { ...check, ready: false } : check,
+        ),
+      ).deploymentReady,
+      false,
+    );
+  }
 });
 
 test("unknown profiles retain every commercial requirement and fail validation", () => {
@@ -251,8 +280,8 @@ test("both profiles keep automated restore, provider backup and exact-candidate 
   );
   const steps = [
     "run: node scripts/ci/verify-provider-backup.mjs",
-    "- name: Build production candidate",
     "- name: Migrate production",
+    "- name: Build production candidate",
     "- name: Production smoke",
     "- name: Promote the tested production build",
   ];

@@ -83,14 +83,21 @@ export default async function ShopLayout({
             <RoHandoffNotifications key={`${s.businessId}:${s.actor.id}`} />
           )}
           <Link
-            href="/app"
+            href={
+              isAutomotive(b?.businessType ?? "automotive")
+                ? "/automotive"
+                : "/app"
+            }
             aria-label="Go home"
             className="workspace-mobile-brand"
           >
             {b?.dba || b?.legalName}
           </Link>
           {isAutomotive(b?.businessType ?? "automotive") && (
-            <Link className="btn secondary" href="/automotive">
+            <Link
+              className="btn secondary workspace-automotive-link"
+              href="/automotive"
+            >
               Automotive
             </Link>
           )}

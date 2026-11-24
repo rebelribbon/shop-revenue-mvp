@@ -159,7 +159,7 @@ sendEstimate=async function(id){
   if(!c?.email)return alert("Add a valid email to this customer's profile before sending the estimate.");
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
     return alert("Correct the customer's email address before sending.");
-  if(data.authorizationPolicyReady===false)return alert("Customer estimate sending is unavailable until Shop Revenue approves the authorization policy for this jurisdiction. No email was sent.");
+  if(data.authorizationPolicyReady!==true){window.location.assign("/automotive?view=authorization&returnRo="+encodeURIComponent(id));return;}
   estimatesBeingSent.add(id);
   try{
     let estimateId=r.estimateId;
@@ -238,11 +238,11 @@ roEstimate=function(r){
       '<option value="diagnosis" '+(source==="diagnosis"?"selected":"")+'>Diagnosis</option>'+
       '<option value="advisor" '+(source==="advisor"?"selected":"")+'>Advisor/shop recommendation</option>'+
       '</select></label>';
-    return '<div class="item"><div class="item-main"><div class="estimate-line-title"><b>'+esc(line.name)+'</b>'+badge+'</div>'+
-    '<p class="secondarytext">Parts '+money(line.parts)+' · Labor '+money(line.labor)+'</p>'+
-    '<p class="secondarytext">Shop cost (internal): '+money(line.cost)+'</p></div>'+
-    '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
-    '<div class="btnrow">'+move+'<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>';
+    return '<article class="estimate-work-card"><div class="estimate-work-heading"><div class="estimate-line-title"><b>'+esc(line.name)+'</b>'+badge+'</div>'+
+    '<strong class="estimate-work-total">'+money(Number(line.parts)+Number(line.labor))+'</strong></div>'+
+    '<dl class="estimate-work-prices"><div><dt>Parts</dt><dd>'+money(line.parts)+'</dd></div><div><dt>Labor</dt><dd>'+money(line.labor)+'</dd></div></dl>'+
+    '<p class="estimate-work-cost">Internal shop cost <strong>'+money(line.cost)+'</strong></p>'+
+    '<div class="estimate-work-actions">'+move+'<button class="btn danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></article>';
   }).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
   const checks=r.inspectionItems||[];
   const inspection=checks.filter(i=>i.status==="watch"||i.status==="fix");
@@ -302,7 +302,7 @@ roEstimate=function(r){
     '<section class="card card-pad"><h3>1 · Work the customer requested</h3>'+
     '<p class="sub">'+esc(r.concern||"Customer concern not recorded")+'</p>'+priceList(requested)+'</section>'+
     '<section class="card card-pad"><h3>2 · Additional recommended work</h3>'+
-    '<p class="sub">Use the inspection findings on the left to describe and price each additional repair. The customer will approve or decline each item.</p>'+
+    '<p class="sub">Use the inspection reference to price additional repairs or maintenance. The customer will approve or decline each item.</p>'+
     priceList(additional)+'</section>'+
     '<section class="card card-pad"><h3>Add work to this proposal</h3>'+
     '<form id="estimate-add-work" class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
@@ -429,14 +429,14 @@ roProposal=function(r){
   const header='<div class="section-head"><div><h2>Customer estimate</h2><p class="sub">Price → Review → Send. All actions stay inside this repair order.</p></div>'+pill(r.authorized?"Signed":prepStatus,r.authorized?"green":sent?"amber":"blue")+'</div>';
   const steps='<div class="steps-mini"><span class="done">✓ 1. Price</span><span class="'+(sent?"done":"active")+'">2. Review</span><span class="'+(sent?"done":"")+'">3. Send</span><span class="'+(r.authorized?"done":"")+'">'+(r.authorized?"✓":"4.")+' Customer decision</span></div>';
   const policyNotice=!legalReady?
-    '<div class="notice warn" role="alert"><b>Sending unavailable: Shop Revenue authorization setup is incomplete.</b><p>The platform has not approved the customer authorization agreement for this shop\'s jurisdiction. You may price and review this estimate, but sending is blocked until platform administration completes its legal approval process. No customer email was sent.</p></div>':"";
+    '<div class="notice warn" role="alert"><b>Set up customer authorization terms</b><p>The shop owner needs to review and enable the terms customers will sign. This is a one-time shop setting.</p>'+(data.authorizationSetup?.canAct?'<a class="btn" href="/automotive?view=authorization&amp;returnRo='+encodeURIComponent(r.id)+'">Set up authorization terms</a>':'<p>Ask the shop owner to open Settings → Customer authorization.</p>')+'</div>':"";
   const emailNotice=!emailReady?
     '<div class="notice warn" role="alert">A valid customer email is required before sending. Use Edit recipient to add or correct it.</div>':"";
   const review='<div class="card card-pad"><div class="section-head"><h3>1 · Review the estimate</h3><button class="btn small" onclick="goTab(\'estimate\')">Edit pricing</button></div>'+
     '<p class="sub">'+r.lines.length+' priced recommendation(s) · '+money(total)+' subtotal before tax</p>'+
     customerPacketPreview(r)+
-    (legalReady?'<details class="card card-pad" style="margin-top:12px"><summary><b>View approved customer authorization terms</b></summary><p class="secondarytext" style="white-space:pre-wrap;margin-top:12px">'+esc(data.authorizationPolicyBody||"")+'</p></details>':"")+
-    '<p class="secondarytext" style="margin-top:12px">This is a draft preview. The finalized version and approved authorization terms are fixed when you send. The customer must approve or decline every item and sign.</p>'+
+    (legalReady?'<details class="card card-pad" style="margin-top:12px"><summary><b>View customer authorization terms</b></summary><p class="secondarytext" style="white-space:pre-wrap;margin-top:12px">'+esc(data.authorizationPolicyBody||"")+'</p></details>':"")+
+    '<p class="secondarytext" style="margin-top:12px">The estimate and authorization terms are saved together when you send. The customer then chooses each repair and signs.</p>'+
     '<button class="btn full" style="margin-top:12px" onclick="openCustomerPreview(\''+r.id+'\')">Preview customer-facing estimate</button></div>';
   const recipientPanel='<div class="card card-pad"><div class="section-head"><h3>2 · Confirm recipient</h3><button class="btn small" onclick="editProposalRecipient(\''+r.id+'\')">Edit recipient</button></div>'+
     '<div class="metricrow"><span>Name</span><strong>'+esc(recipient?.name||"Missing")+'</strong></div>'+
@@ -630,8 +630,8 @@ techDemoLauncher = function(){return "";};
 // Remove prototype-only badges and the fake employee role switcher.
 const originalHeader = header;
 header = function () {
-  if (ui.page === "billing") return '<header class="topbar"><div class="crumb">' + esc(data.business) +
-    '<span class="quiet"> / </span>Billing</div><div class="top-actions"><a class="btn small" aria-label="Settings" href="/automotive?view=settings">' +
+  if (["billing","payments","authorization"].includes(ui.page)) return '<header class="topbar"><div class="crumb">' + esc(data.business) +
+    '<span class="quiet"> / </span>'+({billing:"Billing",payments:"Account requirements",authorization:"Customer authorization"})[ui.page]+'</div><div class="top-actions"><a class="btn small" aria-label="Settings" href="/automotive?view=settings">' +
     icon("settings").replace('<svg ', '<svg width="20" height="20" ') + '<span>Settings</span></a></div></header>';
   return originalHeader()
     .replace("● Automotive · Offline preview", "● Automotive · Live workspace")
@@ -853,7 +853,7 @@ const shopStripeSettings = function(){
       '<div class="form-actions" style="margin-top:16px;gap:8px;flex-wrap:wrap"><button class="btn" style="min-height:48px" onclick="openShopStripe()"' +
       (!p.available ? ' disabled aria-describedby="shop-stripe-status"' : '') + '>' + label + '</button>' +
       '<button class="btn" style="min-height:48px" onclick="refreshShopStripe()">' + (p.connected ? 'Refresh payment status' : 'Check setup status') + '</button></div>') +
-    (p.connected ? '<p style="margin-top:16px"><a class="btn" href="/app/settings/payments">Account requirements and notifications</a></p>' : '') +
+    (p.connected ? '<p style="margin-top:16px"><a class="btn" href="/automotive?view=payments">Account requirements and notifications</a></p>' : '') +
     '<p class="sub" style="margin-top:16px">Stripe processes customer payments. Your Shop Revenue subscription is separate.</p></section>';
 };
 const shopBillingSettings = function(){
@@ -874,6 +874,42 @@ const shopBillingSettings = function(){
     '<div class="form-actions" style="margin-top:16px"><a class="btn" style="min-height:48px;white-space:normal" href="/automotive?view=billing">' +
     (starting ? "Start free trial" : "Manage billing") + '</a></div></section>';
 };
+function shopPaymentsPage(){
+  const p=data.paymentSetup||{}, requirements=data.paymentRequirements;
+  const due=requirements?.due||[];
+  const state=!p.connected?"Stripe is not connected":!requirements?.available?"Requirements could not load":due.length?"Action required":requirements.pending?"Verification in progress":requirements.restricted?"Stripe account needs attention":"No outstanding account requirements";
+  return '<div class="billing-page">'+pageHead("Account requirements & notifications","Manage customer-payment setup inside your workspace.",'<a class="btn" href="/automotive?view=settings">Back to settings</a>')+
+    '<section class="card card-pad"><h2>'+esc(state)+'</h2>'+
+    (due.length?'<ul class="payment-requirements-list">'+due.map(label=>'<li>'+esc(label)+'</li>').join("")+'</ul>':'<p class="sub">'+(!requirements?.available?"Open Stripe to check the latest requirements for your account.":requirements.pending?"Stripe is reviewing submitted details. Check Stripe for verification updates.":"Stripe manages your account’s verification and notifications.")+'</p>')+
+    '<div class="billing-actions"><button class="btn primary" onclick="openShopStripe()" '+(!p.available||p.readOnly?'disabled':'')+'>'+(p.connected?"Open Stripe account":"Connect Stripe")+'</button><a class="btn" href="/automotive?view=payments">Reload requirements</a></div></section>'+
+    '<section class="card card-pad"><h2>Customer payments</h2><p class="sub">Invoice payments go to your connected Stripe account. Subscription billing stays separate.</p></section></div>';
+}
+function shopAuthorizationSettings(){
+  if(role()!=="owner")return "";
+  return '<section class="card card-pad"><div class="section-head"><h2>Customer authorization</h2>'+pill(data.authorizationPolicyReady?"Ready to send":"Setup needed",data.authorizationPolicyReady?"green":"amber")+'</div><p class="sub">Review the terms customers sign when they approve work.</p><a class="btn" href="/automotive?view=authorization">'+(data.authorizationPolicyReady?"Review authorization terms":"Set up authorization terms")+'</a></section>';
+}
+window.saveShopAuthorization=async function(form){
+  const values=new FormData(form), submit=form.querySelector('button[type="submit"]'),error=document.getElementById("authorization-error");
+  if(submit)submit.disabled=true;
+  if(error){error.hidden=true;error.textContent="";}
+  try{
+    await liveWrite("authorization.enable",{body:String(values.get("body")||""),confirmed:String(values.get("confirmed")||"")});
+    const ro=new URLSearchParams(window.location.search).get("returnRo");
+    window.location.assign(ro&&data.ros.some(r=>r.id===ro)?"/automotive?ro="+encodeURIComponent(ro)+"&tab=proposal":"/automotive?view=authorization&saved=1");
+  }catch(e){if(error){error.textContent=e.message||"Could not enable authorization terms.";error.hidden=false;}if(submit)submit.disabled=false;}
+};
+function shopAuthorizationPage(){
+  const a=data.authorizationSetup||{}, ready=data.authorizationPolicyReady===true;
+  return '<div class="billing-page authorization-page">'+pageHead("Customer authorization","The shop owner enables the terms used on customer estimates.",'<a class="btn" href="/automotive?view=settings">Back to settings</a>')+
+    '<section class="card card-pad"><h2>'+ (ready?"Document sending is enabled":"Enable document sending")+'</h2>'+
+    '<p class="sub">Customers will still choose Approve or Decline for every repair and sign. Enabling these terms does not approve any customer work.</p>'+
+    (new URLSearchParams(window.location.search).get("saved")==="1"?'<p class="notice good" role="status">Authorization terms saved. You can now send customer estimates.</p>':"")+
+    '<form class="authorization-settings-form" onsubmit="event.preventDefault();saveShopAuthorization(this)"><label for="authorization-body">Customer authorization terms</label><textarea id="authorization-body" name="body" minlength="20" maxlength="8000" rows="10" required placeholder="Enter the terms your shop wants customers to review and sign.">'+esc(data.authorizationPolicyBody||"")+'</textarea>'+
+    '<p class="sub">Use your shop’s own terms. Each sent estimate keeps the exact terms and version used at the time. Changing terms creates a new version.</p>'+
+    (ready&&a.source==="shop"?'<p class="notice">Updated terms require resending unsigned estimates that used the previous version. Signed records are preserved.</p>':"")+
+    '<label class="authorization-confirm"><input type="checkbox" name="confirmed" value="on" required><span>I have reviewed these terms and approve their use for this shop’s customer estimates.</span></label>'+
+    '<p id="authorization-error" class="notice warn" role="alert" hidden></p><button class="btn primary full" type="submit" '+(!a.canAct?'disabled':'')+'>'+(ready?"Save and enable updated terms":"Enable document sending")+'</button></form></section></div>';
+}
 const billingDate = (value) => value ? new Date(value).toLocaleDateString("en-US", {
   timeZone:"America/Chicago", month:"long", day:"numeric", year:"numeric"
 }) : "";
@@ -951,6 +987,8 @@ const shopBillingPage = function(){
 const originalBillingContent = content;
 content = function(){
   if(ui.page === "billing") return shopBillingPage();
+  if(ui.page === "payments") return shopPaymentsPage();
+  if(ui.page === "authorization") return shopAuthorizationPage();
   const b = data.billingSetup;
   const notice = b?.blocked && ui.page !== "settings" ?
     '<section class="notice" data-billing="' + esc(b.kind) + '" aria-label="Subscription setup" style="margin-bottom:16px">' +
@@ -990,7 +1028,7 @@ settings = function(){
     '<div class="span form-actions"><button class="btn primary">Save business settings</button></div></form>' :
     '<p class="sub">' + esc(data.business) + ' · Automotive Repair</p><p class="secondarytext">Only the owner can change tax or company details.</p>';
   return pageHead("Settings","Your real team, permissions and business details.") +
-    '<div class="stack">' + shopBillingSettings() + shopStripeSettings() + team +
+    '<div class="stack">' + shopBillingSettings() + shopStripeSettings() + shopAuthorizationSettings() + team +
     '<section class="card card-pad"><div class="section-head"><h2>Business profile</h2>' + pill("Automotive Repair","blue") + '</div>' + profile + '</section>' +
     '<section class="card card-pad"><h2>Account & security</h2><p class="sub">Signed in as ' + esc(staff(data.actor).name) + ' · ' + esc(data.currentRole) + '. Role permissions are enforced by your account.</p><form action="/auth/sign-out" method="post" style="margin-top:16px"><button class="btn" type="submit" style="min-height:48px">Sign out</button></form></section></div>';
 };
@@ -1259,9 +1297,10 @@ if(initialView.has("ro")){
 if(["appointments","settings","jobs","tasks","customers","reports"].includes(initialView.get("view")))
   ui.page=initialView.get("view");
 if(initialView.get("view") === "billing" && role() === "owner") ui.page="billing";
+if(["payments","authorization"].includes(initialView.get("view")) && role() === "owner") ui.page=initialView.get("view");
 const originalBillingRender = render;
 render = function(){
-  document.body.classList.toggle("billing-view", ui.page === "billing");
+  document.body.classList.toggle("billing-view", ["billing","payments","authorization"].includes(ui.page));
   originalBillingRender();
 };
 if(initialView.get("new")==="1" && role()!=="technician"){

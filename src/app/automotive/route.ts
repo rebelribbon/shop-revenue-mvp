@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { customer, legalPolicy, vehicle } from "@/db/schema";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { customer, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { getJob, listJobs, jobInput } from "@/domain/jobs";
 import { listTasks } from "@/domain/tasks";
@@ -27,6 +27,13 @@ import {
 } from "@/domain/billing";
 import { billingAccess, canMakeChanges } from "@/lib/billing";
 import { logger } from "@/lib/logger";
+import { resolveAuthorizationPolicy } from "@/domain/shop-authorization";
+import {
+  summarizePaymentRequirements,
+  type PaymentRequirements,
+} from "@/lib/payment-requirements";
+import { stripeClient } from "@/lib/stripe";
+import { workspaceUnavailableResponse } from "@/lib/workspace-unavailable";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -78,39 +85,43 @@ const serialize = (value: unknown) =>
     .replaceAll("\u2029", "\\u2029");
 
 export async function GET(request: Request) {
+  try {
+    return await renderWorkspace(request);
+  } catch (error) {
+    unstable_rethrow(error);
+    logger.error({ event: "automotive.workspace_unavailable" });
+    return workspaceUnavailableResponse();
+  }
+}
+
+async function renderWorkspace(request: Request) {
   const params = new URL(request.url).searchParams;
   const selectedRoId = params.get("ro");
   const billingView = params.get("view") === "billing";
+  const paymentsView = params.get("view") === "payments";
+  const ownerSettingsView =
+    billingView || paymentsView || params.get("view") === "authorization";
   const session = await requireShopSession(
     billingView ? "/automotive?view=billing" : "/automotive",
   );
-  if (billingView && session.role !== "owner")
+  if (ownerSettingsView && session.role !== "owner")
     redirect("/automotive?view=settings");
   if (billingView && session.actor.type === "user")
     await refreshShopSubscription(session.businessId).catch(() =>
       logger.warn({ event: "billing.refresh_failed" }),
     );
   const actorId = session.actor.type === "user" ? session.actor.id : null;
+  let paymentAccountId: string | null = null;
   const result = await withTenant(
     session.businessId,
     session.actor,
     async (tx) => {
       const profile = await getBusinessProfile(tx);
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
-      const [approvedAuthorization] = await tx
-        .select({ id: legalPolicy.id, body: legalPolicy.body })
-        .from(legalPolicy)
-        .where(
-          and(
-            eq(legalPolicy.kind, "estimate_authorization"),
-            eq(
-              legalPolicy.jurisdictionCode,
-              profile?.jurisdictionCode ?? "US-TX",
-            ),
-            eq(legalPolicy.status, "approved"),
-          ),
-        )
-        .limit(1);
+      const approvedAuthorization = await resolveAuthorizationPolicy(
+        tx,
+        profile?.jurisdictionCode ?? "US-TX",
+      );
       const subscription = await getShopSubscription(tx);
       const access = billingAccess(subscription, new Date());
       const billingSetup = {
@@ -695,7 +706,14 @@ export async function GET(request: Request) {
         isLive: true,
         authorizationPolicyReady: !!approvedAuthorization,
         authorizationPolicyBody: approvedAuthorization?.body ?? null,
+        authorizationSetup: {
+          canAct: session.role === "owner" && session.actor.type === "user",
+          version: approvedAuthorization?.version ?? null,
+          source: approvedAuthorization?.source ?? "platform",
+          jurisdictionCode: profile?.jurisdictionCode ?? "US-TX",
+        },
         paymentSetup,
+        paymentRequirements: null as PaymentRequirements | null,
         billingSetup,
         billingDetail,
         settings: {
@@ -759,6 +777,22 @@ export async function GET(request: Request) {
     },
   );
   if (!result) redirect("/app");
+  if (paymentsView) {
+    paymentAccountId = await withTenant(
+      session.businessId,
+      session.actor,
+      async (tx) => (await getStripeConnection(tx))?.accountId ?? null,
+    );
+    if (paymentAccountId) {
+      try {
+        result.paymentRequirements = summarizePaymentRequirements(
+          await stripeClient().accounts.retrieve(paymentAccountId),
+        );
+      } catch {
+        logger.warn({ event: "payments.requirements_unavailable" });
+      }
+    }
+  }
   const source = await readFile(
     join(process.cwd(), "docs/approved-designs/automotive-unified.html"),
     "utf8",

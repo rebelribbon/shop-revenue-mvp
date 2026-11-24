@@ -54,6 +54,7 @@ import {
   rescheduleAppointmentAction,
   setAppointmentStatusAction,
 } from "@/server/actions/appointments";
+import { enableShopAuthorizationAction } from "@/server/actions/shop-authorization";
 import { recordCorrespondenceAction } from "@/server/actions/correspondence";
 import {
   assignCustomerAction,
@@ -129,6 +130,13 @@ export async function POST(request: Request) {
   try {
     let result;
     switch (raw.operation) {
+      case "authorization.enable":
+        result = await enableShopAuthorizationAction({
+          clientRequestId,
+          body: value(payload.body),
+          confirmed: value(payload.confirmed),
+        });
+        break;
       case "billing.start":
       case "billing.portal":
         if (state.session.role !== "owner")

@@ -6,7 +6,6 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   activity,
   business,
-  legalPolicy,
   invoice,
   estimateRecommendationLine,
   estimateAuthorization,
@@ -38,6 +37,7 @@ import {
 } from "@/lib/estimate-decisions";
 import { authorizationPdf } from "./authorization-pdf";
 import { z } from "zod";
+import { resolveAuthorizationPolicy } from "./shop-authorization";
 export async function freezeEstimate(
   tx: TenantTx,
   meta: RequestMeta,
@@ -108,20 +108,11 @@ export async function freezeEstimate(
         "The technician must submit the inspection before the advisor publishes an estimate.",
       );
   }
-  const [policy] = await tx
-    .select()
-    .from(legalPolicy)
-    .where(
-      and(
-        eq(legalPolicy.jurisdictionCode, shop.jurisdictionCode),
-        eq(legalPolicy.kind, "estimate_authorization"),
-        eq(legalPolicy.status, "approved"),
-      ),
-    );
+  const policy = await resolveAuthorizationPolicy(tx, shop.jurisdictionCode);
   if (!policy)
     throw new AppError(
       "VALIDATION",
-      "An approved authorization policy is required before publishing customer estimates. Contact the platform administrator.",
+      "The shop owner must review and enable customer authorization terms in Settings → Customer authorization before sending estimates.",
     );
   const [prior] = await tx
     .select()
@@ -288,13 +279,7 @@ export async function freezeEstimate(
       ? { repeat: data.repeat, repeatSummary: repeatSummary(data.repeat) }
       : {}),
     ...(photos.length ? { photos } : {}),
-    authorizationPolicy: {
-      id: policy.id,
-      version: policy.version,
-      jurisdictionCode: policy.jurisdictionCode,
-      body: policy.body,
-      bodySha256: policy.bodySha256,
-    },
+    authorizationPolicy: policy,
   };
   // Preserve a human-readable, automatic comparison between immutable
   // versions instead of requiring the advisor to explain the revision.

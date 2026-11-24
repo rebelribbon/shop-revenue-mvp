@@ -8,6 +8,7 @@ import { StripeButton } from "@/components/stripe-controls";
 import { stripeConnectConfigured } from "@/lib/stripe-connect";
 import { getBusinessProfile } from "@/domain/business-profile";
 import { isAutomotive } from "@/lib/business-types";
+import { redirect } from "next/navigation";
 export default async function PaymentsSettings({
   searchParams,
 }: {
@@ -18,6 +19,16 @@ export default async function PaymentsSettings({
     getStripeConnection(tx),
   );
   const profile = await withTenant(s.businessId, s.actor, getBusinessProfile);
+  if (
+    process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
+    isAutomotive(profile?.businessType ?? "automotive")
+  ) {
+    const outcome = (await searchParams).stripe;
+    redirect(
+      "/automotive?view=payments" +
+        (outcome ? "&stripe=" + encodeURIComponent(outcome) : ""),
+    );
+  }
   const backToSettings =
     process.env.AUTOMOTIVE_UNIFIED_DEFAULT !== "false" &&
     isAutomotive(profile?.businessType ?? "automotive")

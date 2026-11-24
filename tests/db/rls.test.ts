@@ -1,4 +1,5 @@
 import { createCustomer } from "@/domain/customers";
+import { enableShopAuthorization } from "@/domain/shop-authorization";
 import { addExpense } from "@/domain/owner-money";
 import { saveCommonJob } from "@/domain/common-jobs";
 import { testPolicySnapshot } from "../helpers/policy";
@@ -136,6 +137,18 @@ async function invoiceFixture(t: SeededTenant) {
   );
 }
 const builders: Record<string, Builder> = {
+  "app.shop_authorization_terms": async (t) =>
+    withTenant(
+      t.businessId,
+      t.owner.actor,
+      async (tx) =>
+        (
+          await enableShopAuthorization(tx, meta(), {
+            body: "TEST ONLY: Owner-selected customer authorization terms.",
+            confirmed: true,
+          })
+        ).id,
+    ),
   "app.expense": async (t) =>
     withTenant(
       t.businessId,
