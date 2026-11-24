@@ -3,7 +3,6 @@ import { z } from "zod";
 import { AppError, notFound } from "@/lib/errors";
 import { createJob, getJob, jobInput } from "@/domain/jobs";
 import { getInspection } from "@/domain/inspections";
-import { getInspection } from "@/domain/inspections";
 import { loadJobWorkflows } from "@/domain/job-workflow";
 import { defineShopAction } from "./define";
 
@@ -152,6 +151,8 @@ export const classifyAutomotiveWorkAction = defineShopAction({
         "This repair is linked to an inspection finding and must stay identified as inspection-based.",
       );
     const recommended = input.workSource !== "requested";
+    const recommendationSource =
+      input.workSource === "requested" ? undefined : input.workSource;
     await createJob(tx, {
       ...data,
       jobId: input.jobId,
@@ -161,8 +162,8 @@ export const classifyAutomotiveWorkAction = defineShopAction({
           ? {
               ...line,
               fromInspection: input.workSource === "inspection",
-              ...(recommended
-                ? { recommendationSource: input.workSource }
+              ...(recommendationSource
+                ? { recommendationSource }
                 : { recommendationSource: undefined }),
               ...(input.workSource === "inspection"
                 ? { inspectionItemKey: line.inspectionItemKey }
@@ -175,8 +176,8 @@ export const classifyAutomotiveWorkAction = defineShopAction({
           ? {
               ...line,
               fromInspection: input.workSource === "inspection",
-              ...(recommended
-                ? { recommendationSource: input.workSource }
+              ...(recommendationSource
+                ? { recommendationSource }
                 : { recommendationSource: undefined }),
               ...(input.workSource === "inspection"
                 ? { inspectionItemKey: line.inspectionItemKey }
