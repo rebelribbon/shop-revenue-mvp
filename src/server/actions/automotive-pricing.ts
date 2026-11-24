@@ -28,7 +28,13 @@ export const addAutomotiveRecommendationAction = defineShopAction({
       laborCents: moneyCents,
       costCents: moneyCents,
       workSource: z
-        .enum(["requested", "inspection", "maintenance", "diagnosis", "advisor"])
+        .enum([
+          "requested",
+          "inspection",
+          "maintenance",
+          "diagnosis",
+          "advisor",
+        ])
         .default("advisor"),
       inspectionItemKey: z.string().trim().min(1).max(60).optional(),
     })
