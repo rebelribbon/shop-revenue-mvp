@@ -292,10 +292,14 @@ roProposal=function(r){
   const sentPanel=sent?
     '<div class="notice good"><strong>Estimate email submitted</strong><p>Customer decision: '+(r.authorized?"Signed and recorded":"Awaiting approval/decline and signature")+'</p>'+(r.estimateOpened?'<p>Customer opened: '+esc(r.estimateOpened)+'</p>':"")+'</div>':"";
   const canSend=!sent&&!r.authorized&&!locked&&legalReady&&emailReady;
+  const preSent=r.stage==="approval"&&!sent&&!r.authorized?
+    '<p class="notice">Estimate finalized. Sharing has not been recorded.</p>':"";
+  const opened=r.estimateOpened?
+    '<p class="notice" role="status">Customer opened the proposal · '+esc(r.estimateOpened)+'</p>':"";
   const sendPanel='<div class="card card-pad"><h3>3 · Send and track</h3>'+
     '<p class="sub">Sending finalizes the estimate version, prepares a secure customer link, and emails the recipient. It does not authorize any repairs.</p>'+
-    policyNotice+sentPanel+
-    (canSend?'<button class="btn primary full" onclick="sendEstimate(\''+r.id+'\')">Finalize and email estimate →</button>':
+    policyNotice+preSent+sentPanel+opened+
+    (canSend?'<button class="btn primary full" onclick="sendEstimate(\''+r.id+'\')">'+(r.stage==="approval"?"Send finalized estimate":"Finalize and email estimate →")+'</button>':
       !sent&&!r.authorized&&!locked?'<button class="btn primary full" disabled title="Complete the missing setup and recipient details">Finalize and email estimate</button>':"")+
     '<p class="secondarytext">After sending: this RO records the email submission, customer view, signed decisions and work approval.</p></div>';
   return header+steps+'<div class="stack">'+review+recipientPanel+sendPanel+'</div>';
