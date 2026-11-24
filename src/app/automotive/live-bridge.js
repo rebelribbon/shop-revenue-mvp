@@ -553,7 +553,8 @@ addLine = async function(form,id) {
       throw new Error("Enter the recommendation and a positive selling price.");
     await liveWrite("ro.pricing.add", {
       jobId: id, expectedVersion: r.version, description: String(f.name).trim(),
-      partsCents, laborCents, costCents, workSource: String(f.workSource || "advisor"),\n      inspectionItemKey: String(f.inspectionItemKey || "") || undefined
+      partsCents, laborCents, costCents, workSource: String(f.workSource || "advisor"),
+      inspectionItemKey: String(f.inspectionItemKey || "") || undefined
     });
     showPricedRo(id);
   } catch(e) { alert(e.message || "Recommendation was not saved."); }
