@@ -199,6 +199,43 @@ sendEstimate=async function(id){
     alert(err.message || "Could not finalize the estimate.");
   }finally{estimatesBeingSent.delete(id);}
 };
+// Price one customer-decision line at a time, with internal cost visually
+// separated from the amounts presented to the customer.
+roEstimate=function(r){
+  if(!advisor())return '<div class="notice">Technicians do not have access to customer pricing.</div>';
+  const editable=r.stage==="estimate";
+  if(!editable)return '<div class="section-head"><h2>Estimate pricing</h2></div><p class="notice">'+
+    (r.stage==="inspection"?"Finish technician inspection before pricing.":
+    "This estimate is no longer editable. Any additional repair work needs new authorization.")+'</p>'+
+    (r.lines?.length?estimateSummary(r):"");
+  const lines=r.lines||[];
+  const subtotal=lines.reduce((n,l)=>n+Number(l.parts)+Number(l.labor),0);
+  const list=lines.length?'<div class="stack">'+lines.map((line,index)=>
+    '<div class="item"><div class="item-main"><b>'+(index+1)+'. '+esc(line.name)+'</b>'+
+    '<p class="secondarytext">Customer price: Parts '+money(line.parts)+' + Labor '+money(line.labor)+'</p>'+
+    '<p class="secondarytext">Internal cost (not shared): '+money(line.cost)+'</p></div>'+
+    '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
+    '<button class="btn small danger" onclick="removeLine(\\''+r.id+'\\',\\''+line.id+'\\')">Remove</button></div>'
+  ).join("")+'</div>':
+  '<p class="notice">No repairs priced yet. Start with the service the technician recommended.</p>';
+  const next=lines.length?
+    '<div class="action-panel" style="margin-top:16px"><div class="row"><b>Estimate subtotal</b><strong>'+money(subtotal)+'</strong></div>'+
+    '<p class="secondarytext">Tax and the customer approval options are shown in the next step.</p>'+
+    '<button class="btn primary full" onclick="goTab(\\'proposal\\')">Review estimate and customer documents →</button></div>':"";
+  return '<div class="section-head"><div><h2>1 · Build estimate</h2>'+
+    '<p class="sub">Create a separately priced recommendation for each repair. The customer approves or declines each one.</p></div>'+
+    pill(lines.length+' item(s)')+'</div>'+
+    list+next+
+    '<div class="card card-pad" style="margin-top:18px"><h3>Add another repair</h3>'+
+    '<form class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\\''+r.id+'\\')">'+
+    '<label class="span">Recommended repair<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
+    '<label>Parts selling price ($)<input name="parts" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
+    '<label>Labor selling price ($)<input name="labor" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
+    '<div class="span"><p class="secondarytext" style="margin-bottom:8px"><b>Internal only · not shown to customer</b></p>'+
+    '<label>Total shop cost of this repair ($)<input name="cost" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="Parts + labor cost"></label></div>'+
+    '<div class="span"><button class="btn '+(lines.length?'':'primary')+'" type="submit">+ Save repair to estimate</button></div>'+
+    '</form></div>';
+};
 // Keep the advisor in one RO screen from pricing through customer review and send.
 // The inline preview reflects the current draft; the immutable customer document
 // is created when the advisor finalizes it. Legal approval is never simulated.
