@@ -61,7 +61,6 @@ export default async function CustomerPacketPage({
     !!estimate.snapshot.concerns ||
     estimate.snapshot.lines.some((line) => line.recommended);
 
-
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <ProposalOpenTracker token={estimateToken} />
