@@ -13,6 +13,9 @@ export async function proxy(request: NextRequest) {
   const requestId = crypto.randomUUID();
   const headers = new Headers(request.headers);
   headers.set("x-request-id", requestId);
+  // Overwrite incoming values; only the actual request path is authoritative.
+  headers.set("x-workspace-path", request.nextUrl.pathname);
+  headers.set("x-workspace-query", request.nextUrl.search);
   let response = NextResponse.next({ request: { headers } });
   const document = request.nextUrl.pathname.match(
     /^\/(estimate|invoice)\/([^/]+)/,

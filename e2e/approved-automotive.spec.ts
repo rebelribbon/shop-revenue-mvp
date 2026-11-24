@@ -66,6 +66,29 @@ test("Automotive Settings signs out with a POST and old links recover without do
   expect(downloads).toEqual([]);
 });
 
+test("Automotive entry redirects before streaming the legacy workspace", async ({
+  page,
+}) => {
+  await signInAutomotive(page);
+  for (const [path, target] of [
+    ["/app", "/automotive"],
+    ["/app/settings/billing?started=1", "/automotive?view=billing&started=1"],
+    [
+      "/app/settings/payments?stripe=canceled",
+      "/automotive?view=payments&stripe=canceled",
+    ],
+  ]) {
+    const response = await page.request.get(path, { maxRedirects: 0 });
+    expect(response.status()).toBe(307);
+    expect(response.headers().location).toBe(target);
+    expect(await response.text()).not.toContain("workspace-sidebar");
+  }
+  await page.goto("/app");
+  await expect(page).toHaveURL(/\/automotive$/);
+  await expect(page.locator("#app .app")).toBeVisible();
+  await expect(page.locator(".workspace-sidebar")).toHaveCount(0);
+});
+
 test("approved Automotive interface loads real records without demo controls", async ({
   page,
 }, info) => {
@@ -712,7 +735,17 @@ for (const lifetime of [false, true])
           html.slice(end),
       });
     });
-    await page.goto(`/app/settings/billing${lifetime ? "?started=1" : ""}`);
+    const legacyPath = `/app/settings/billing${lifetime ? "?started=1" : ""}`;
+    const billingPath = `/automotive?view=billing${lifetime ? "&started=1" : ""}`;
+    // Playwright route handlers only intercept the first URL of a redirect
+    // chain. Verify the real redirect separately, then load its destination
+    // directly so the disposable subscription fixture is actually applied.
+    const redirectResponse = await page.request.get(legacyPath, {
+      maxRedirects: 0,
+    });
+    expect(redirectResponse.status()).toBe(307);
+    expect(redirectResponse.headers().location).toBe(billingPath);
+    await page.goto(billingPath);
     await expect(page).toHaveURL(
       lifetime
         ? /\/automotive\?view=billing&started=1$/
