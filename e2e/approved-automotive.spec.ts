@@ -269,7 +269,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
     expect(left!.x + left!.width).toBeLessThan(right!.x + 18);
   } else {
     await expect(mobileReference).toBeVisible();
-    await mobileReference.locator("summary").click();
+    await mobileReference.locator(":scope > summary").click();
     await expect(
       mobileReference.getByRole("heading", { name: "40-point inspection" }),
     ).toBeVisible();
