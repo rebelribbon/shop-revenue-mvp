@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppError, notFound } from "@/lib/errors";
 import { createJob, getJob, jobInput } from "@/domain/jobs";
 import { getInspection } from "@/domain/inspections";
+import { getInspection } from "@/domain/inspections";
 import { loadJobWorkflows } from "@/domain/job-workflow";
 import { defineShopAction } from "./define";
 
@@ -37,6 +38,22 @@ export const addAutomotiveRecommendationAction = defineShopAction({
   run: async ({ tx }, i) => {
     const job = await editableJob(tx, i.jobId, i.expectedVersion);
     const data = jobInput.parse(job.data);
+    if (i.workSource === "inspection") {
+      if (!i.inspectionItemKey)
+        throw new AppError(
+          "VALIDATION",
+          "Add inspection-based work from the matching inspection finding.",
+        );
+      const inspection = await getInspection(tx, i.jobId);
+      const finding = inspection.items.find(
+        (item) => item.key === i.inspectionItemKey,
+      );
+      if (!finding || !["watch", "fix"].includes(finding.status))
+        throw new AppError(
+          "VALIDATION",
+          "That inspection finding is not available for a repair recommendation.",
+        );
+    }
     const total = i.partsCents + i.laborCents;
     // Distribute combined internal cost proportionately; total remains exact.
     const partCost = i.partsCents
