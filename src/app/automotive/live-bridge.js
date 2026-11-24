@@ -307,11 +307,11 @@ roEstimate=function(r){
     '<form id="estimate-add-work" class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
     '<input type="hidden" name="inspectionItemKey" value="">'+
     '<label class="span">Why is this work included?<select name="workSource" required onchange="if(this.value!==\'inspection\')this.form.elements.inspectionItemKey.value=\'\'">'+
-    '<option value="inspection">Inspection finding</option>'+
+    '<option value="advisor">Advisor/shop recommendation</option>'+
     '<option value="maintenance">Maintenance due / service interval</option>'+
     '<option value="diagnosis">Diagnosis of customer concern</option>'+
-    '<option value="advisor">Advisor/shop recommendation</option>'+
-    '<option value="requested">Customer requested this service</option></select></label>'+
+    '<option value="requested">Customer requested this service</option>'+
+    '<option value="inspection" hidden>Inspection finding</option></select></label>'+
     '<label class="span">Repair or service name<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
     '<label>Parts selling price ($)<input name="parts" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
     '<label>Labor selling price ($)<input name="labor" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
