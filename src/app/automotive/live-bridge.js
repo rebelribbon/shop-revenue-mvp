@@ -203,15 +203,16 @@ sendEstimate=async function(id){
 // separated from the amounts presented to the customer.
 const recommendationSourceLabels={inspection:"Inspection finding",maintenance:"Recommended maintenance",diagnosis:"Diagnosis-based repair",advisor:"Shop recommendation",prior:"Previous recommendation"};
 function recommendationSourceLabel(source){return recommendationSourceLabels[source]||"Additional recommendation";}
-window.prefillEstimateFromInspection=function(roId,itemKey,work){
-  const form=document.getElementById("estimate-add-work");
-  if(!form)return;
+window.prefillEstimateFromInspection=function(roId,itemKey){
+  const form=document.getElementById("estimate-add-work"),r=roBy(roId);
+  const finding=r?.inspectionItems?.find(item=>item.key===itemKey);
+  if(!form||!finding)return;
   const source=form.querySelector('[name="workSource"]');
   const key=form.querySelector('[name="inspectionItemKey"]');
   const name=form.querySelector('[name="name"]');
   if(source)source.value="inspection";
   if(key)key.value=itemKey||"";
-  if(name&&work)name.value=work;
+  if(name)name.value=finding.recommendedWork||finding.label||"";
   form.scrollIntoView({behavior:"smooth",block:"center"});
   if(name)name.focus();
 };
@@ -266,7 +267,7 @@ roEstimate=function(r){
     (i.status==="fix"?"Needs repair":"Monitor")+'</span></div>'+
     (i.note?'<p>'+esc(i.note)+'</p>':"")+
     (i.recommendedWork?'<p><strong>Technician recommends:</strong> '+esc(i.recommendedWork)+'</p>'+
-      '<button class="btn small" type="button" onclick="prefillEstimateFromInspection(\''+r.id+'\',\''+esc(i.key)+'\',\''+esc(i.recommendedWork).replaceAll("'","&#39;")+'\')">+ Add to estimate</button>':"")+
+      '<button class="btn small" type="button" onclick="prefillEstimateFromInspection(\''+r.id+'\',\''+esc(i.key)+'\')">+ Add to estimate</button>':"")+
     '</article>').join("")+'</div>':
     '<p class="sub">No Caution or Fail findings were recorded.</p>';
   const media=(r.media||[]).filter(m=>m.kind==="photo"||m.kind==="video");
