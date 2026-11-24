@@ -338,7 +338,7 @@ export function EstimateSignature({
                 {decide(requested)}
               </>
             ) : (
-              <p>The next screens show what the technician found.</p>
+              <p>Next, review what the technician found. No additional repairs have been approved yet.</p>
             )}
             {nav}
           </section>
@@ -446,14 +446,43 @@ export function EstimateSignature({
               </p>
             )}
             {!step && decide(s.lines)}
-            <p>
-              Approving{" "}
-              <strong>
-                {approved.length} of {s.lines.length} items ·{" "}
-                {money(totals.totalCents)} of {money(fullTotals.totalCents)}
-              </strong>{" "}
-              (including tax)
-            </p>
+            <section
+              className="card estimate-authorization-summary"
+              aria-label="Customer-approved work total"
+            >
+              <h3>Your authorization total</h3>
+              <p>
+                Only repairs you approved are included below. Declined work is
+                documented but is not authorized.
+              </p>
+              <ul>
+                {s.lines
+                  .filter((line) => choices[line.id] === "approve")
+                  .map((line) => (
+                    <li key={line.id}>
+                      {line.description}: {money(line.totalCents)}
+                    </li>
+                  ))}
+              </ul>
+              {!approved.length && <p>No work has been approved.</p>}
+              <p>
+                Approved work: {money(totals.subtotalCents)}
+              </p>
+              <p>
+                Applicable tax: {money(totals.taxCents)}
+              </p>
+              <p>
+                <strong>
+                  Total you authorize: {money(totals.totalCents)}
+                </strong>
+              </p>
+              <p className="muted">
+                {approved.length} of {s.lines.length} priced items approved.
+                The full proposed estimate was {money(fullTotals.totalCents)}.
+                Signing does not collect payment. An invoice is sent separately
+                after approved work is completed.
+              </p>
+            </section>
             <label>
               Your full name
               <input name="name" required maxLength={200} autoComplete="name" />
