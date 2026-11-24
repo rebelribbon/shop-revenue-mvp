@@ -207,7 +207,7 @@ window.saveProposalRecipient=async function(form,roId){
   if(!recipient||techView())return;
   const names=lastName(recipient.name);
   const email=String(form.elements.email.value||"").trim();
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return alert("Enter a valid customer email.");
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert("Enter a valid customer email.");
   try{
     await liveWrite("customer.update",{
       customerId:recipient.id,firstName:names[0],lastName:names[1],
