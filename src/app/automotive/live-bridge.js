@@ -296,7 +296,12 @@ function customerPacketPreview(r){
     '<section style="margin-top:22px"><h3>2. What our technician found</h3>'+
     '<p class="sub">'+good+' passed · '+findings.length+' need attention or monitoring</p>'+
     (r.inspectionAssessment?.diagnosis?'<p>'+esc(r.inspectionAssessment.diagnosis)+'</p>':"")+
-    renderFindings+renderMedia+'</section>'+
+    renderFindings+
+    (inspection.length?'<details><summary>View all '+inspection.length+' recorded inspection results</summary><ul>'+
+      inspection.map(i=>'<li>'+esc(i.label)+' — '+
+        (i.status==="good"?"Passed":i.status==="na"?"Not applicable":i.status==="watch"?"Monitor":"Needs attention")+
+        '</li>').join("")+'</ul></details>':"")+
+    renderMedia+'</section>'+
     '<section style="margin-top:22px"><h3>3. Additional recommended work</h3>'+
     '<p class="sub">These are separate from the work originally requested. The customer can approve or decline each one.</p>'+
     renderWork(recommended,true)+'</section>'+
