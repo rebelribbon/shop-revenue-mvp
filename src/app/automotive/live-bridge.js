@@ -217,7 +217,7 @@ roEstimate=function(r){
     '<p class="secondarytext">Parts '+money(line.parts)+' · Labor '+money(line.labor)+'</p>'+
     '<p class="secondarytext">Shop cost (internal): '+money(line.cost)+'</p></div>'+
     '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
-    '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div>'
+    '<div class="btnrow"><button class="btn small" onclick="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',\''+(line.recommended?"requested":"recommended")+'\')">'+(line.recommended?"Move to requested":"Move to recommendations")+'</button>'+    '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>'
   ).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
   const inspection=(r.inspectionItems||[]).filter(i=>i.status==="watch"||i.status==="fix");
   const findings=inspection.length?'<details style="margin-top:12px"><summary>Review '+inspection.length+' technician finding(s)</summary>'+
@@ -471,6 +471,16 @@ addLine = async function(form,id) {
     });
     showPricedRo(id);
   } catch(e) { alert(e.message || "Recommendation was not saved."); }
+};
+window.reclassifyRepair=async function(roId,lineId,workType){
+  const r=roBy(roId),line=r?.lines?.find(item=>item.id===lineId);
+  if(!r||r.stage!=="estimate"||!line)return;
+  try{
+    await liveWrite("ro.pricing.classify",{
+      jobId:roId,expectedVersion:r.version,description:line.name,workType
+    });
+    showPricedRo(roId);
+  }catch(error){alert(error.message||"Could not change the repair category.");}
 };
 removeLine = async function(roId,lineId) {
   const r = roBy(roId);
