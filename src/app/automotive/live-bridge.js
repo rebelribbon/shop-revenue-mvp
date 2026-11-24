@@ -242,15 +242,10 @@ roEstimate=function(r){
 window.saveProposalRecipient=async function(form,roId){
   const r=roBy(roId),recipient=r&&data.customers.find(x=>x.id===r.customer);
   if(!recipient||techView())return;
-  const names=lastName(recipient.name);
   const email=String(form.elements.email.value||"").trim();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert("Enter a valid customer email.");
   try{
-    await liveWrite("customer.update",{
-      customerId:recipient.id,firstName:names[0],lastName:names[1],
-      email,phone:recipient.phone||"",addressLine1:recipient.address||"",
-      notes:recipient.notes||""
-    });
+    await liveWrite("customer.email",{customerId:recipient.id,email});
     window.location.assign("/automotive?ro="+encodeURIComponent(roId)+"&tab=proposal");
   }catch(error){alert(error.message||"Could not save the customer email.");}
 };
