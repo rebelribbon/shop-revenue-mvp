@@ -382,6 +382,27 @@ export function EstimateSignature({
                     </p>
                   </>
                 )}
+                {!!s.inspection.checks?.length && (
+                  <details className="estimate-full-inspection">
+                    <summary>
+                      View complete {s.inspection.checks.length}-point inspection
+                    </summary>
+                    <ul>
+                      {s.inspection.checks.map((item, index) => (
+                        <li key={index}>
+                          <strong>{item.label}</strong> —{" "}
+                          {item.status === "good"
+                            ? "Passed"
+                            : item.status === "na"
+                              ? "Not applicable"
+                              : item.status === "watch"
+                                ? "Monitor"
+                                : "Needs attention"}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 {s.inspection.findings.length > 0 && (
                   <ul className="estimate-findings">
                     {s.inspection.findings.map((f, i) => (
