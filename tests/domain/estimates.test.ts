@@ -29,6 +29,7 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
     parts: [
       {
         description: "Pads",
+        // Original customer-requested work.
         quantity: 1,
         unitCostCents: 12345,
         unitPriceCents: 20000,
@@ -37,6 +38,8 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
     labor: [
       {
         description: "Install",
+        // Maintenance recommendation that does not depend on a failed checkpoint.
+        recommendationSource: "maintenance" as const,
         estimatedHoursHundredths: 200,
         actualHoursHundredths: null,
         sellRateCents: 12500,
@@ -62,6 +65,17 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
   const token = first.path.split("/").pop()!;
   const visible = await readPublicEstimate(token);
   expect(visible?.snapshot.totalCents).toBe(46650);
+  expect(
+    visible?.snapshot.lines.find((line) => line.id === "part-0")?.recommended,
+  ).not.toBe(true);
+  expect(
+    visible?.snapshot.lines.find((line) => line.id === "labor-0")?.recommended,
+  ).toBe(true);
+  expect(
+    visible?.snapshot.lines.find((line) => line.id === "labor-0")
+      ?.recommendationSource,
+  ).toBe("maintenance");
+
   const openEstimate = (shareToken: string) =>
     runInContext(null, { type: "customer", id: null }, async (tx) => {
       const { rows } = await tx.execute<{ recorded: boolean }>(

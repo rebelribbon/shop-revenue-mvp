@@ -159,6 +159,7 @@ sendEstimate=async function(id){
   if(!c?.email)return alert("Add a valid email to this customer's profile before sending the estimate.");
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email))
     return alert("Correct the customer's email address before sending.");
+  if(data.authorizationPolicyReady===false)return alert("Customer estimate sending is unavailable until Shop Revenue approves the authorization policy for this jurisdiction. No email was sent.");
   estimatesBeingSent.add(id);
   try{
     let estimateId=r.estimateId;
@@ -198,24 +199,264 @@ sendEstimate=async function(id){
     alert(err.message || "Could not finalize the estimate.");
   }finally{estimatesBeingSent.delete(id);}
 };
-const approvedProposal = roProposal;
-roProposal = function(r) {
-  let content = approvedProposal(r);
-  if (techView() || !r.estimateId) return content;
-  if (r.authorized && !r.lines.some(line => line.decision === "approved")) {
-    content = content.replace("Customer approved the estimate", "Customer declined all work")
-      .replace(">Authorized</span>", ">All work declined</span>");
+// Price one customer-decision line at a time, with internal cost visually
+// separated from the amounts presented to the customer.
+const recommendationSourceLabels={inspection:"Inspection finding",maintenance:"Recommended maintenance",diagnosis:"Diagnosis-based repair",advisor:"Shop recommendation",prior:"Previous recommendation"};
+function recommendationSourceLabel(source){return recommendationSourceLabels[source]||"Additional recommendation";}
+window.prefillEstimateFromInspection=function(roId,itemKey){
+  const form=document.getElementById("estimate-add-work"),r=roBy(roId);
+  const finding=r?.inspectionItems?.find(item=>item.key===itemKey);
+  if(!form||!finding)return;
+  const source=form.querySelector('[name="workSource"]');
+  const key=form.querySelector('[name="inspectionItemKey"]');
+  const name=form.querySelector('[name="name"]');
+  if(source)source.value="inspection";
+  if(key)key.value=itemKey||"";
+  if(name)name.value=finding.recommendedWork||finding.label||"";
+  form.scrollIntoView({behavior:"smooth",block:"center"});
+  if(name)name.focus();
+};
+roEstimate=function(r){
+  if(!advisor())return '<div class="notice">Technicians do not have access to customer pricing.</div>';
+  const editable=r.stage==="estimate";
+  if(!editable)return '<div class="section-head"><h2>Estimate pricing</h2></div><p class="notice">'+
+    (r.stage==="inspection"?"Finish technician inspection before pricing.":
+    "This estimate is no longer editable. Additional repairs require a new customer authorization.")+'</p>'+
+    (r.lines?.length?estimateSummary(r):"");
+  const lines=r.lines||[];
+  const requested=lines.filter(l=>!l.recommended);
+  const additional=lines.filter(l=>l.recommended);
+  const subtotal=lines.reduce((n,l)=>n+Number(l.parts)+Number(l.labor),0);
+  const priceList=(items)=>items.length?'<div class="stack">'+items.map((line)=>{
+    const source=line.recommended?(line.recommendationSource||"advisor"):"requested";
+    const badge=line.recommended?'<span class="estimate-source-badge source-'+esc(source)+'">'+esc(recommendationSourceLabel(source))+'</span>':'<span class="estimate-source-badge source-requested">Customer requested</span>';
+    const move=line.originLocked?'<span class="secondarytext">Source locked to documented recommendation</span>':
+      '<label class="estimate-source-select">Reason<select onchange="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',this.value)">'+
+      '<option value="requested" '+(!line.recommended?"selected":"")+'>Customer requested</option>'+
+      '<option value="inspection" '+(source==="inspection"?"selected":"")+'>Inspection finding</option>'+
+      '<option value="maintenance" '+(source==="maintenance"?"selected":"")+'>Maintenance due</option>'+
+      '<option value="diagnosis" '+(source==="diagnosis"?"selected":"")+'>Diagnosis</option>'+
+      '<option value="advisor" '+(source==="advisor"?"selected":"")+'>Advisor/shop recommendation</option>'+
+      '</select></label>';
+    return '<div class="item"><div class="item-main"><div class="estimate-line-title"><b>'+esc(line.name)+'</b>'+badge+'</div>'+
+    '<p class="secondarytext">Parts '+money(line.parts)+' · Labor '+money(line.labor)+'</p>'+
+    '<p class="secondarytext">Shop cost (internal): '+money(line.cost)+'</p></div>'+
+    '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
+    '<div class="btnrow">'+move+'<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>';
+  }).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
+  const checks=r.inspectionItems||[];
+  const inspection=checks.filter(i=>i.status==="watch"||i.status==="fix");
+  const passed=checks.filter(i=>i.status==="good").length;
+  const notApplicable=checks.filter(i=>i.status==="na").length;
+  const failed=checks.filter(i=>i.status==="fix").length;
+  const caution=checks.filter(i=>i.status==="watch").length;
+  let diagnosis=r.inspectionAssessment?.diagnosis||"";
+  try{
+    const parsed=JSON.parse(diagnosis);
+    if(parsed && typeof parsed==="object")
+      diagnosis=["confirmed","symptoms","codes","tests","cause","recommendation"]
+        .filter(k=>parsed[k])
+        .map(k=>k[0].toUpperCase()+k.slice(1)+": "+parsed[k]).join("\n");
+  }catch{}
+  const diagnosisHtml=diagnosis?
+    '<p class="estimate-reference-diagnosis">'+esc(diagnosis)+'</p>':
+    '<p class="sub">No technician diagnosis recorded.</p>';
+  const findings=inspection.length?'<div class="estimate-reference-findings">'+inspection.map(i=>
+    '<article class="estimate-reference-finding"><div class="estimate-reference-finding-title"><b>'+esc(i.label)+'</b>'+
+    '<span class="estimate-reference-status '+(i.status==="fix"?"is-fail":"is-caution")+'">'+
+    (i.status==="fix"?"Needs repair":"Monitor")+'</span></div>'+
+    (i.note?'<p>'+esc(i.note)+'</p>':"")+
+    (i.recommendedWork?'<p><strong>Technician recommends:</strong> '+esc(i.recommendedWork)+'</p>'+
+      '<button class="btn small" type="button" onclick="prefillEstimateFromInspection(\''+r.id+'\',\''+esc(i.key)+'\')">+ Add to estimate</button>':"")+
+    '</article>').join("")+'</div>':
+    '<p class="sub">No Caution or Fail findings were recorded.</p>';
+  const media=(r.media||[]).filter(m=>m.kind==="photo"||m.kind==="video");
+  const evidence=media.length?'<div class="estimate-reference-media">'+media.map(m=>{
+    const source=esc(m.fileUrl||m.dataUrl||"");
+    const caption=esc(m.caption||m.name||"Inspection evidence");
+    if(m.kind==="video")
+      return '<figure><video controls preload="none" src="'+source+'" aria-label="'+caption+'"></video><figcaption>'+caption+'</figcaption></figure>';
+    return '<figure><a target="_blank" rel="noopener noreferrer" href="'+source+'" title="View full inspection photo">'+
+      '<img loading="lazy" src="'+source+'" alt="'+caption+'"></a><figcaption>'+caption+'</figcaption></figure>';
+  }).join("")+'</div>':
+  '<p class="sub">No photos or videos attached to this repair order.</p>';
+  const otherChecks=checks.length?
+    '<details class="estimate-reference-checks"><summary>All '+checks.length+' recorded inspection points</summary><ul>'+
+    checks.map(i=>'<li><span>'+esc(i.label)+'</span><b>'+
+      (i.status==="good"?"Passed":i.status==="fix"?"Needs repair":i.status==="watch"?"Monitor":
+      i.status==="na"?"N/A":"Not checked")+'</b></li>').join("")+
+    '</ul></details>':"";
+  const reference='<div class="estimate-reference-content">'+
+    '<section><h3>Original customer concern</h3><p>'+esc(r.concern||"Not recorded")+'</p></section>'+
+    '<section><h3>Technician diagnosis</h3>'+diagnosisHtml+'</section>'+
+    '<section><h3>40-point inspection</h3>'+
+    '<div class="estimate-reference-totals"><span>'+passed+' passed</span><span>'+caution+' caution</span>'+
+    '<span>'+failed+' need repair</span><span>'+notApplicable+' N/A</span></div>'+findings+otherChecks+'</section>'+
+    '<section><h3>Inspection photos &amp; video</h3>'+evidence+'</section></div>';
+  const referenceDesktop='<aside class="card card-pad estimate-reference-desktop" aria-label="Inspection reference">'+
+    '<div class="estimate-reference-heading"><h2>Inspection reference</h2><p class="sub">Read the technician findings while pricing work.</p></div>'+
+    reference+'</aside>';
+  const referenceMobile='<details class="card estimate-reference-mobile"><summary>View diagnosis, inspection &amp; photos</summary>'+
+    reference+'</details>';
+  const pricing='<div class="estimate-builder-column">'+
+    '<section class="card card-pad"><h3>1 · Work the customer requested</h3>'+
+    '<p class="sub">'+esc(r.concern||"Customer concern not recorded")+'</p>'+priceList(requested)+'</section>'+
+    '<section class="card card-pad"><h3>2 · Additional recommended work</h3>'+
+    '<p class="sub">Use the inspection findings on the left to describe and price each additional repair. The customer will approve or decline each item.</p>'+
+    priceList(additional)+'</section>'+
+    '<section class="card card-pad"><h3>Add work to this proposal</h3>'+
+    '<form id="estimate-add-work" class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
+    '<input type="hidden" name="inspectionItemKey" value="">'+
+    '<label class="span">Why is this work included?<select name="workSource" required onchange="if(this.value!==\'inspection\')this.form.elements.inspectionItemKey.value=\'\'">'+
+    '<option value="advisor">Advisor/shop recommendation</option>'+
+    '<option value="maintenance">Maintenance due / service interval</option>'+
+    '<option value="diagnosis">Diagnosis of customer concern</option>'+
+    '<option value="requested">Customer requested this service</option>'+
+    '<option value="inspection" hidden>Inspection finding</option></select></label>'+
+    '<label class="span">Repair or service name<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
+    '<label>Parts selling price ($)<input name="parts" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
+    '<label>Labor selling price ($)<input name="labor" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
+    '<div class="span"><p class="secondarytext"><b>Internal only — never shown to the customer</b></p>'+
+    '<label>Shop parts + labor cost ($)<input name="cost" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label></div>'+
+    '<div class="span"><button class="btn" type="submit">+ Save repair to estimate</button></div>'+
+    '</form></section>'+
+    (lines.length?'<div class="action-panel"><div class="row"><b>Estimated maximum (before tax)</b><strong>'+money(subtotal)+'</strong></div>'+
+    '<p class="sub">Final authorized amount is calculated from the work the customer approves.</p>'+
+    '<button class="btn primary full" onclick="goTab(\'proposal\')">Review customer packet →</button></div>':"")+
+    '</div>';
+  return '<div class="section-head"><div><h2>Build the customer proposal</h2>'+
+    '<p class="sub">Use the inspection as a reference while you add requested work and recommendations.</p></div>'+
+    pill(lines.length+' priced repair(s)')+'</div>'+
+    referenceMobile+
+    '<div class="estimate-builder-layout">'+referenceDesktop+pricing+'</div>';
+};
+// Read-only representation of the customer proposal. The secure customer
+// portal handles choices and signatures; the shop preview never authorizes work.
+function customerPacketPreview(r){
+  const groups=new Map();
+  for(const line of r.lines||[]){
+    const type=line.recommended?"recommended":"requested";
+    const id=type+":"+line.name;
+    const previous=groups.get(id)||{name:line.name,recommended:!!line.recommended,recommendationSource:line.recommendationSource||null,parts:0,labor:0};
+    previous.parts+=Number(line.parts||0);
+    previous.labor+=Number(line.labor||0);
+    groups.set(id,previous);
   }
-  if (r.estimateOpened && !r.authorized) {
-    content += '<p class="notice" role="status">Customer opened the proposal · ' +
-      esc(r.estimateOpened) + '. Awaiting a signed decision.</p>';
-  }
-  if (r.stage === "approval" && !r.estimateSent && !r.authorized) {
-    content += '<p class="notice">Estimate finalized. Sharing has not been recorded.</p>' +
-      '<button class="btn primary full" onclick="sendEstimate(\'' + r.id +
-      '\')">Send finalized estimate</button>';
-  }
-  return content;
+  const all=[...groups.values()],requested=all.filter(l=>!l.recommended);
+  const recommended=all.filter(l=>l.recommended);
+  const total=all.reduce((sum,l)=>sum+l.parts+l.labor,0);
+  const inspection=r.inspectionItems||[];
+  const findings=inspection.filter(i=>i.status==="fix"||i.status==="watch");
+  const good=inspection.filter(i=>i.status==="good").length;
+  const visible=(r.media||[]).filter(m=>m.public===true);
+  const renderWork=(items,extra)=>items.length?items.map((l)=>
+    '<div class="docrow"><div><b>'+esc(l.name)+'</b>'+
+    (extra?'<p class="secondarytext"><strong>'+esc(recommendationSourceLabel(l.recommendationSource))+'</strong></p>':'')+
+    '<p class="secondarytext">Parts '+money(l.parts)+' · Labor '+money(l.labor)+'</p>'+
+    (extra?'<p class="secondarytext">The customer chooses Approve or Decline for this repair.</p>':'')+
+    '</div><b>'+money(l.parts+l.labor)+'</b></div>').join(""):
+    '<p class="sub">No priced services in this section.</p>';
+  const renderFindings=findings.length?'<ul class="estimate-findings">'+findings.map(i=>
+    '<li><b>'+esc(i.label)+'</b> · <span class="pill">'+
+    (i.status==="fix"?"Needs attention":"Monitor")+'</span>'+
+    (i.note?'<p>'+esc(i.note)+'</p>':"")+
+    (i.recommendedWork?'<p class="sub">Technician recommends: '+esc(i.recommendedWork)+'</p>':"")+
+    '</li>').join("")+'</ul>':
+    '<p class="sub">No Caution or Fail inspection findings recorded.</p>';
+  const renderMedia=visible.length?
+    '<div class="stack">'+visible.map(m=>
+    '<div class="item"><span aria-hidden="true">'+(m.kind==="video"?"🎥":"📷")+'</span> '+
+    '<a href="'+esc(m.fileUrl)+'" target="_blank" rel="noopener noreferrer">'+
+    esc(m.caption||m.name||"Customer-visible evidence")+'</a></div>').join("")+'</div>':
+    '<p class="sub">No inspection media selected for customer sharing.</p>';
+  const review='<div class="preview"><div class="dochead"><div>'+
+    '<div class="eyebrow">'+esc(data.business)+'</div><h2>VEHICLE INSPECTION & WORK AUTHORIZATION</h2></div>'+
+    '<div>'+esc(r.num)+'</div></div>'+
+    '<p class="sub">Vehicle: '+esc(car(vehicle(r.vehicle)))+'</p>'+
+    '<section style="margin-top:20px"><h3>1. What you brought the vehicle in for</h3>'+
+    '<p>'+esc(r.concern||"Customer concern not recorded")+'</p>'+renderWork(requested,false)+'</section>'+
+    '<section style="margin-top:22px"><h3>2. What our technician found</h3>'+
+    '<p class="sub">'+good+' passed · '+findings.length+' need attention or monitoring</p>'+
+    (r.inspectionAssessment?.diagnosis?'<p>'+esc(r.inspectionAssessment.diagnosis)+'</p>':"")+
+    renderFindings+
+    (inspection.length?'<details><summary>View all '+inspection.length+' recorded inspection results</summary><ul>'+
+      inspection.map(i=>'<li>'+esc(i.label)+' — '+
+        (i.status==="good"?"Passed":i.status==="na"?"Not applicable":i.status==="watch"?"Monitor":"Needs attention")+
+        '</li>').join("")+'</ul></details>':"")+
+    renderMedia+'</section>'+
+    '<section style="margin-top:22px"><h3>3. Additional recommended work</h3>'+
+    '<p class="sub">These are separate from the work originally requested. The customer can approve or decline each one.</p>'+
+    renderWork(recommended,true)+'</section>'+
+    '<section style="margin-top:22px"><h3>4. Your authorization</h3>'+
+    '<p class="sub">Customer reviews and explicitly approves or declines all priced work. Nothing is preselected.</p>'+
+    '<div class="metricrow"><span>All proposed work before tax</span><strong>'+money(total)+'</strong></div>'+
+    '<p class="notice">The final total includes only approved items plus applicable tax. This amount updates as the customer chooses each repair.</p>'+
+    '<p class="secondarytext">The customer then reviews authorization terms and signs. This is not an invoice or a payment request.</p></section>'+
+    '</div>';
+  return review;
+}
+// Keep the advisor in one RO screen from pricing through customer review and send.
+// The inline preview reflects the current draft; the immutable customer document
+// is created when the advisor finalizes it. Legal approval is never simulated.
+window.saveProposalRecipient=async function(form,roId){
+  const r=roBy(roId),recipient=r&&data.customers.find(x=>x.id===r.customer);
+  if(!recipient||techView())return;
+  const email=String(form.elements.email.value||"").trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert("Enter a valid customer email.");
+  try{
+    await liveWrite("customer.email",{customerId:recipient.id,email});
+    window.location.assign("/automotive?ro="+encodeURIComponent(roId)+"&tab=proposal");
+  }catch(error){alert(error.message||"Could not save the customer email.");}
+};
+window.editProposalRecipient=function(id){
+  const r=roBy(id);
+  if(!r || techView())return;
+  ui.modal={type:"proposalRecipient",id:r.customer,roId:r.id};
+  render();
+};
+roProposal=function(r){
+  if(techView())return '<div class="notice">Customer pricing and documents are restricted to the front office.</div>';
+  if(!r.lines?.length)return '<div class="empty"><h3>Start with the recommendations</h3><p>Add parts and labor prices before reviewing the customer estimate.</p><button class="btn primary" onclick="goTab(\'estimate\')">Build estimate</button></div>';
+  const recipient=data.customers.find(x=>x.id===r.customer);
+  const email=String(recipient?.email||"").trim();
+  const emailReady=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const legalReady=data.authorizationPolicyReady===true;
+  const sent=!!r.estimateSent;
+  const awaiting=r.stage==="approval"&&!r.authorized;
+  const locked=!["estimate","approval"].includes(r.stage);
+  const total=r.lines.reduce((n,l)=>n+Number(l.parts)+Number(l.labor),0);
+  const prepStatus=sent?"Sent to customer":r.stage==="approval"?"Finalized · ready to email":"Draft · not yet sent";
+  const header='<div class="section-head"><div><h2>Customer estimate</h2><p class="sub">Price → Review → Send. All actions stay inside this repair order.</p></div>'+pill(r.authorized?"Signed":prepStatus,r.authorized?"green":sent?"amber":"blue")+'</div>';
+  const steps='<div class="steps-mini"><span class="done">✓ 1. Price</span><span class="'+(sent?"done":"active")+'">2. Review</span><span class="'+(sent?"done":"")+'">3. Send</span><span class="'+(r.authorized?"done":"")+'">'+(r.authorized?"✓":"4.")+' Customer decision</span></div>';
+  const policyNotice=!legalReady?
+    '<div class="notice warn" role="alert"><b>Sending unavailable: Shop Revenue authorization setup is incomplete.</b><p>The platform has not approved the customer authorization agreement for this shop\'s jurisdiction. You may price and review this estimate, but sending is blocked until platform administration completes its legal approval process. No customer email was sent.</p></div>':"";
+  const emailNotice=!emailReady?
+    '<div class="notice warn" role="alert">A valid customer email is required before sending. Use Edit recipient to add or correct it.</div>':"";
+  const review='<div class="card card-pad"><div class="section-head"><h3>1 · Review the estimate</h3><button class="btn small" onclick="goTab(\'estimate\')">Edit pricing</button></div>'+
+    '<p class="sub">'+r.lines.length+' priced recommendation(s) · '+money(total)+' subtotal before tax</p>'+
+    customerPacketPreview(r)+
+    (legalReady?'<details class="card card-pad" style="margin-top:12px"><summary><b>View approved customer authorization terms</b></summary><p class="secondarytext" style="white-space:pre-wrap;margin-top:12px">'+esc(data.authorizationPolicyBody||"")+'</p></details>':"")+
+    '<p class="secondarytext" style="margin-top:12px">This is a draft preview. The finalized version and approved authorization terms are fixed when you send. The customer must approve or decline every item and sign.</p>'+
+    '<button class="btn full" style="margin-top:12px" onclick="openCustomerPreview(\''+r.id+'\')">Preview customer-facing estimate</button></div>';
+  const recipientPanel='<div class="card card-pad"><div class="section-head"><h3>2 · Confirm recipient</h3><button class="btn small" onclick="editProposalRecipient(\''+r.id+'\')">Edit recipient</button></div>'+
+    '<div class="metricrow"><span>Name</span><strong>'+esc(recipient?.name||"Missing")+'</strong></div>'+
+    '<div class="metricrow"><span>Email</span><strong style="overflow-wrap:anywhere">'+esc(email||"Missing")+'</strong></div>'+
+    '<p class="sub">The secure approval link is sent by email. The customer signs on their own device; staff cannot authorize work on their behalf.</p>'+
+    emailNotice+'</div>';
+  const sentPanel=sent?
+    '<div class="notice good"><strong>Estimate email submitted</strong><p>Customer decision: '+(r.authorized?"Signed and recorded":"Awaiting approval/decline and signature")+'</p>'+(r.estimateOpened?'<p>Customer opened: '+esc(r.estimateOpened)+'</p>':"")+'</div>':"";
+  const canSend=!sent&&!r.authorized&&!locked&&legalReady&&emailReady;
+  const preSent=r.stage==="approval"&&!sent&&!r.authorized?
+    '<p class="notice">Estimate finalized. Sharing has not been recorded.</p>':"";
+  const opened=r.estimateOpened?
+    '<p class="notice" role="status">Customer opened the proposal · '+esc(r.estimateOpened)+'</p>':"";
+  const sendPanel='<div class="card card-pad"><h3>3 · Send and track</h3>'+
+    '<p class="sub">Sending finalizes the estimate version, prepares a secure customer link, and emails the recipient. It does not authorize any repairs.</p>'+
+    policyNotice+preSent+sentPanel+opened+
+    (canSend?'<button class="btn primary full" onclick="sendEstimate(\''+r.id+'\')">'+(r.stage==="approval"?"Send finalized estimate":"Finalize and email estimate →")+'</button>':
+      !sent&&!r.authorized&&!locked?'<button class="btn primary full" disabled title="Complete the missing setup and recipient details">Finalize and email estimate</button>':"")+
+    '<p class="secondarytext">After sending: this RO records the email submission, customer view, signed decisions and work approval.</p></div>';
+  return header+steps+'<div class="stack">'+review+recipientPanel+sendPanel+'</div>';
 };
 submitApproval=function(id){
   const r=roBy(id);
@@ -315,10 +556,21 @@ addLine = async function(form,id) {
       throw new Error("Enter the recommendation and a positive selling price.");
     await liveWrite("ro.pricing.add", {
       jobId: id, expectedVersion: r.version, description: String(f.name).trim(),
-      partsCents, laborCents, costCents
+      partsCents, laborCents, costCents, workSource: String(f.workSource || "advisor"),
+      inspectionItemKey: String(f.inspectionItemKey || "") || undefined
     });
     showPricedRo(id);
   } catch(e) { alert(e.message || "Recommendation was not saved."); }
+};
+window.reclassifyRepair=async function(roId,lineId,workSource){
+  const r=roBy(roId),line=r?.lines?.find(item=>item.id===lineId);
+  if(!r||r.stage!=="estimate"||!line)return;
+  try{
+    await liveWrite("ro.pricing.classify",{
+      jobId:roId,expectedVersion:r.version,description:line.name,workSource
+    });
+    showPricedRo(roId);
+  }catch(error){alert(error.message||"Could not change the repair category.");}
 };
 removeLine = async function(roId,lineId) {
   const r = roBy(roId);
@@ -745,6 +997,15 @@ settings = function(){
 const originalRenderModal = renderModal;
 renderModal = function(){
   const m=ui.modal;
+  if(m?.type==="proposalRecipient"){
+    const recipient=data.customers.find(x=>x.id===m.id);
+    if(!recipient || techView())return "";
+    return modalWrap("Confirm estimate recipient",
+      '<p class="sub">Update the email address used for this repair order\'s secure customer estimate.</p>'+
+      '<form style="margin-top:16px" onsubmit="event.preventDefault();saveProposalRecipient(this,\''+m.roId+'\')">'+
+      '<label>Customer email<input name="email" type="email" value="'+esc(recipient.email||"")+'" placeholder="customer@example.com" required></label>'+
+      '<div class="form-actions"><button class="btn" type="button" onclick="closeModal()">Cancel</button><button class="btn primary">Save email and return to estimate</button></div></form>');
+  }
   if(m?.type==="collect"){
     const r=roBy(m.id), due=Math.max(0,Number(r?.invoiceBalanceCents||0));
     if(!r?.invoiceId||!due||techView())return "";
@@ -772,12 +1033,12 @@ renderModal = function(){
   if(m?.type==="customerPacket"){
     const r=roBy(m.id);
     if(!r || techView())return "";
-    return modalWrap("Customer document packet — shop preview",
-      '<div class="notice">Preview only: this screen cannot sign for the customer. Actual approve/decline decisions and signature are collected through the secure customer link.</div>' +
-      '<div style="margin-top:16px">' + documentPreview(r,"estimate") + '</div>' +
+    return modalWrap("Customer packet · read-only preview",
+      '<div class="notice">Read-only shop preview. The customer reviews these sections, then makes each approval/decline decision and signs using their secure link. This preview cannot authorize work.</div>'+
+      '<div style="margin-top:16px">'+customerPacketPreview(r)+'</div>'+
       '<div class="form-actions"><button class="btn" onclick="closeModal()">Close preview</button></div>',true);
   }
-  if(!m || (m.type !== "staff" && m.type !== "editStaff")) return originalRenderModal();
+    if(!m || (m.type !== "staff" && m.type !== "editStaff")) return originalRenderModal();
   if(!manager())return "";
   const member=m.id ? (data.teamMembers || []).find(x=>x.id===m.id) : null;
   if(m.id && !member)return "";

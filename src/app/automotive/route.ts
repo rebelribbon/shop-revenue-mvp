@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { customer, vehicle } from "@/db/schema";
+import { customer, legalPolicy, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { getJob, listJobs, jobInput } from "@/domain/jobs";
 import { listTasks } from "@/domain/tasks";
@@ -97,6 +97,20 @@ export async function GET(request: Request) {
     async (tx) => {
       const profile = await getBusinessProfile(tx);
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
+      const [approvedAuthorization] = await tx
+        .select({ id: legalPolicy.id, body: legalPolicy.body })
+        .from(legalPolicy)
+        .where(
+          and(
+            eq(legalPolicy.kind, "estimate_authorization"),
+            eq(
+              legalPolicy.jurisdictionCode,
+              profile?.jurisdictionCode ?? "US-TX",
+            ),
+            eq(legalPolicy.status, "approved"),
+          ),
+        )
+        .limit(1);
       const subscription = await getShopSubscription(tx);
       const access = billingAccess(subscription, new Date());
       const billingSetup = {
@@ -405,6 +419,37 @@ export async function GET(request: Request) {
                       10000,
                   0,
                 ),
+            recommended: [...j.parts, ...j.labor].some(
+              (line) =>
+                line.description === name &&
+                (line.fromInspection === true ||
+                  !!line.recommendationId ||
+                  !!line.recommendationSource),
+            ),
+            recommendationSource:
+              [...j.parts, ...j.labor].find(
+                (line) =>
+                  line.description === name && !!line.recommendationSource,
+              )?.recommendationSource ??
+              ([...j.parts, ...j.labor].some(
+                (line) => line.description === name && line.fromInspection,
+              )
+                ? "inspection"
+                : [...j.parts, ...j.labor].some(
+                      (line) =>
+                        line.description === name && !!line.recommendationId,
+                    )
+                  ? "prior"
+                  : null),
+            inspectionItemKey:
+              [...j.parts, ...j.labor].find(
+                (line) => line.description === name && !!line.inspectionItemKey,
+              )?.inspectionItemKey ?? null,
+            originLocked: [...j.parts, ...j.labor].some(
+              (line) =>
+                line.description === name &&
+                (!!line.recommendationId || !!line.inspectionItemKey),
+            ),
             decision: null,
           }));
           const lines = technician
@@ -421,6 +466,13 @@ export async function GET(request: Request) {
                     l.kind === "labor"
                       ? (l.quantity * l.unitPriceCents) / 100
                       : 0,
+                  recommended: l.recommended === true,
+                  recommendationSource:
+                    l.recommendationSource ?? (l.recommended ? "prior" : null),
+                  inspectionItemKey: l.inspectionItemKey ?? null,
+                  originLocked:
+                    l.recommendationSource === "inspection" ||
+                    l.recommendationSource === "prior",
                   cost: 0,
                   decision: auth
                     ? approved.has(l.id)
@@ -641,6 +693,8 @@ export async function GET(request: Request) {
         business: profile?.dba || profile?.legalName || "Automotive repair",
         businessType: "automotive",
         isLive: true,
+        authorizationPolicyReady: !!approvedAuthorization,
+        authorizationPolicyBody: approvedAuthorization?.body ?? null,
         paymentSetup,
         billingSetup,
         billingDetail,

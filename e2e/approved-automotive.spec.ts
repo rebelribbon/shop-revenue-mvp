@@ -250,9 +250,32 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   // and verify the saved work is still present after a full reload.
   await page.goto(`/automotive?ro=${ro.id}&tab=estimate`);
   await expect(
-    page.getByRole("heading", { name: "Build estimate" }),
+    page.getByRole("heading", { name: "Build the customer proposal" }),
   ).toBeVisible();
+  // The advisor never needs to leave pricing to read inspection findings.
+  const desktopReference = page.locator(".estimate-reference-desktop");
+  const mobileReference = page.locator(".estimate-reference-mobile");
+  const pricingColumn = page.locator(".estimate-builder-column");
+  await expect(pricingColumn).toBeVisible();
+  if ((page.viewportSize()?.width ?? 0) > 980) {
+    await expect(desktopReference).toBeVisible();
+    await expect(
+      desktopReference.getByRole("heading", { name: "Technician diagnosis" }),
+    ).toBeVisible();
+    const left = await desktopReference.boundingBox();
+    const right = await pricingColumn.boundingBox();
+    expect(left).not.toBeNull();
+    expect(right).not.toBeNull();
+    expect(left!.x + left!.width).toBeLessThan(right!.x + 18);
+  } else {
+    await expect(mobileReference).toBeVisible();
+    await mobileReference.locator(":scope > summary").click();
+    await expect(
+      mobileReference.getByRole("heading", { name: "40-point inspection" }),
+    ).toBeVisible();
+  }
   const price = page.locator('form[onsubmit*="addLine"]');
+  await price.locator('select[name="workSource"]').selectOption("diagnosis");
   await price.locator('input[name="name"]').fill("Front rotor replacement");
   await price.locator('input[name="parts"]').fill("225.45");
   await price.locator('input[name="labor"]').fill("150.50");
@@ -263,7 +286,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
       response.request().method() === "POST" &&
       response.request().postData()?.includes('"ro.pricing.add"') === true,
   );
-  await price.getByRole("button", { name: /Add recommendation/ }).click();
+  await price.getByRole("button", { name: /Save repair to estimate/ }).click();
   const priceResponse = await responsePromise;
   // Saving navigates immediately to the persisted RO; the response body
   // may be discarded by Chromium before this callback reads it.
@@ -273,7 +296,43 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   });
   await page.reload();
   await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
-  await expect(page.getByText("$225.45").first()).toBeVisible();
+  await expect(page.getByText("Diagnosis-based repair").first()).toBeVisible();
+  const maintenanceForm = page.locator('form[onsubmit*="addLine"]');
+  await maintenanceForm
+    .locator('select[name="workSource"]')
+    .selectOption("maintenance");
+  await maintenanceForm.locator('input[name="name"]').fill("Coolant flush");
+  await maintenanceForm.locator('input[name="parts"]').fill("45.00");
+  await maintenanceForm.locator('input[name="labor"]').fill("120.00");
+  await maintenanceForm.locator('input[name="cost"]').fill("55.00");
+  const maintenanceResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/automotive/actions") &&
+      response.request().method() === "POST" &&
+      response.request().postData()?.includes('"ro.pricing.add"') === true,
+  );
+  await maintenanceForm
+    .getByRole("button", { name: /Save repair to estimate/ })
+    .click();
+  expect((await maintenanceResponse).status()).toBe(200);
+  await expect(page.getByText("Coolant flush").first()).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.getByText("Recommended maintenance").first()).toBeVisible();
+
+  await page.goto(`/automotive?ro=${ro.id}&tab=proposal`);
+  const packet = page.locator(".preview").first();
+  await expect(
+    packet.getByText("1. What you brought the vehicle in for"),
+  ).toBeVisible();
+  await expect(packet.getByText("2. What our technician found")).toBeVisible();
+  await expect(
+    packet.getByText("3. Additional recommended work"),
+  ).toBeVisible();
+  await expect(packet.getByText("4. Your authorization")).toBeVisible();
+  await expect(packet.getByText("Front rotor replacement")).toBeVisible();
+  await expect(packet.getByText("Coolant flush")).toBeVisible();
+  await expect(packet.getByText("Recommended maintenance")).toBeVisible();
 });
 
 test("owner completes inspected RO through actual customer signature, repairs, invoice, payment and vehicle release", async ({
@@ -392,7 +451,27 @@ test("owner completes inspected RO through actual customer signature, repairs, i
     await openRecorded;
     await page.reload();
     await expect(page.getByText(/Customer opened the proposal/)).toBeVisible();
-    checkpoint("portal opened; running line approval");
+    checkpoint("portal opened; checking the four customer screens");
+    await expect(
+      customerPage.getByRole("heading", { name: "1. Why you came in" }),
+    ).toBeVisible();
+    await customerPage.getByRole("button", { name: /Next: / }).click();
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "2. Your inspection at a glance",
+      }),
+    ).toBeVisible();
+    await expect(
+      customerPage.getByText("Passed:", { exact: false }).first(),
+    ).toBeVisible();
+    await customerPage.getByRole("button", { name: /Next: / }).click();
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "3. Choose the work you want done",
+      }),
+    ).toBeVisible();
+    checkpoint("portal reached repair decisions");
+
     // The current customer UI presents an explicit grouped repair decision.
     // Its individual part/labor radios are intentionally hidden in a closed
     // details panel, so choose the visible "Approve this repair" control.
@@ -406,6 +485,18 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       await expect(next).toBeEnabled();
       await next.click();
     }
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "4. Review your decisions and sign",
+      }),
+    ).toBeVisible();
+    await expect(
+      customerPage.getByRole("heading", { name: "Approved work" }),
+    ).toBeVisible();
+    await expect(
+      customerPage.getByRole("heading", { name: "Declined work" }),
+    ).toBeVisible();
+    await expect(customerPage.getByText(/Total you authorize/)).toBeVisible();
     checkpoint("line approval reached signature");
     await customerPage
       .getByLabel("Your full name", { exact: true })

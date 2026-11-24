@@ -1,6 +1,11 @@
 import { expect, it } from "vitest";
 import { withTenant } from "@/db/tenant";
-import { createCustomer, createVehicle } from "@/domain/customers";
+import {
+  createCustomer,
+  createVehicle,
+  getCustomerWithVehicles,
+  updateCustomerEmail,
+} from "@/domain/customers";
 import {
   customerHistory,
   customerMoney,
@@ -159,4 +164,33 @@ it("shows the customer's jobs with status and what they owe and have paid", asyn
   expect(history.find((h) => h.kind === "estimate.authorized")?.href).toBe(
     `/app/jobs?job=${job.id}`,
   );
+});
+
+it("changes only the estimate recipient email without clearing the customer profile", async () => {
+  const t = await seedTenant("Customer email only");
+  const run = <T>(fn: Parameters<typeof withTenant<T>>[2]) =>
+    withTenant(t.businessId, t.owner.actor, fn);
+  const record = await run((tx) =>
+    createCustomer(tx, meta(), {
+      firstName: "Contact",
+      lastName: "Preserved",
+      email: "original@example.com",
+      notes: "Call before ordering parts",
+      addressLine1: "123 Shop Street",
+      city: "Cibolo",
+      region: "TX",
+    }),
+  );
+  await run((tx) =>
+    updateCustomerEmail(tx, meta(), record.id, "corrected@example.com"),
+  );
+  const { customer: updated } = await run((tx) =>
+    getCustomerWithVehicles(tx, record.id),
+  );
+  expect(updated.email).toBe("corrected@example.com");
+  expect(updated.displayName).toBe("Contact Preserved");
+  expect(updated.addressLine1).toBe("123 Shop Street");
+  expect(updated.city).toBe("Cibolo");
+  expect(updated.region).toBe("TX");
+  expect(updated.notes).toBe("Call before ordering parts");
 });

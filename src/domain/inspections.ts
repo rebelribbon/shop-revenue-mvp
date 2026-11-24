@@ -333,6 +333,8 @@ export async function addInspectionToJob(
     sellRateCents: sell,
     costRateCents: cost,
     fromInspection: true,
+    recommendationSource: "inspection" as const,
+    inspectionItemKey: i.key,
   }));
   await createJob(tx, {
     ...input,

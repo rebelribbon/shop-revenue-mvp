@@ -20,14 +20,22 @@ export type EstimateLine = {
   taxable?: boolean;
   // Catalog part, so stock can come off when invoiced.
   partItemId?: string;
-  // Work the shop recommends (from the inspection or declined before), shown
-  // to the customer apart from what they came in for.
+  // Work the shop recommends, shown apart from what the customer originally
+  // came in for. Source explains why it is being recommended.
   recommended?: boolean;
+  recommendationSource?:
+    "inspection" | "maintenance" | "diagnosis" | "advisor" | "prior";
+  inspectionItemKey?: string;
 };
 // The technician's findings, frozen with the estimate for the customer.
 export type EstimateInspection = {
   diagnosis: string;
   checkedCount: number;
+  // Immutable results shown to the customer, including passed and N/A checks.
+  checks?: {
+    label: string;
+    status: "good" | "watch" | "fix" | "na";
+  }[];
   goodCount: number;
   findings: {
     label: string;

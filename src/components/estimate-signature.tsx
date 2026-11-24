@@ -21,10 +21,28 @@ const wheels = { lf: "LF", rf: "RF", lr: "LR", rr: "RR", spare: "Spare" };
 // recommendations stay on one screen.
 type Step = "request" | "inspection" | "recommended" | "sign";
 const stepTitle: Record<Step, string> = {
-  request: "What you came in for",
-  inspection: "Inspection results",
-  recommended: "Recommended work",
-  sign: "Review and sign",
+  request: "Your visit & diagnosis",
+  inspection: "40-point inspection",
+  recommended: "Choose repairs",
+  sign: "Authorization & signature",
+};
+const recommendationReason = (
+  source: EstimateSnapshot["lines"][number]["recommendationSource"],
+) => {
+  switch (source) {
+    case "inspection":
+      return "Based on an inspection finding";
+    case "maintenance":
+      return "Recommended maintenance based on time, mileage, or service history";
+    case "diagnosis":
+      return "Recommended from the diagnosis of your original concern";
+    case "advisor":
+      return "Additional shop recommendation";
+    case "prior":
+      return "Previously recommended work";
+    default:
+      return null;
+  }
 };
 
 export function EstimateSignature({
@@ -40,13 +58,8 @@ export function EstimateSignature({
   const requested = s.lines.filter((l) => !l.recommended);
   const recommended = s.lines.filter((l) => l.recommended);
   const steps: Step[] =
-    s.inspection || recommended.length
-      ? [
-          ...(requested.length || s.concerns ? (["request"] as const) : []),
-          ...(s.inspection || media ? (["inspection"] as const) : []),
-          ...(recommended.length ? (["recommended"] as const) : []),
-          "sign",
-        ]
+    s.inspection || recommended.length || s.concerns
+      ? ["request", "inspection", "recommended", "sign"]
       : [];
   const [stepIndex, setStepIndex] = useState(0);
   const step: Step | null = steps.length ? steps[stepIndex] : null;
@@ -112,9 +125,10 @@ export function EstimateSignature({
           ? lines.find(
               (other) =>
                 other.kind === "labor" &&
-                line.description.startsWith(
-                  other.description.slice(0, 130) + " · ",
-                ),
+                (line.description === other.description ||
+                  line.description.startsWith(
+                    other.description.slice(0, 130) + " · ",
+                  )),
             )
           : undefined;
       const id = parent?.id ?? line.id;
@@ -127,6 +141,8 @@ export function EstimateSignature({
         grouped.find((line) => line.kind === "labor")?.description ??
         grouped[0].description,
       total: grouped.reduce((total, line) => total + line.totalCents, 0),
+      recommendationSource: grouped.find((line) => line.recommendationSource)
+        ?.recommendationSource,
     }));
   };
   const decide = (lines: EstimateSnapshot["lines"]) =>
@@ -141,6 +157,11 @@ export function EstimateSignature({
       return (
         <section key={group.id} className="estimate-repair-decision">
           <h3>{group.label}</h3>
+          {recommendationReason(group.recommendationSource) && (
+            <p className="estimate-recommendation-reason">
+              {recommendationReason(group.recommendationSource)}
+            </p>
+          )}
           <p>
             <strong>{money(group.total)}</strong> total for this repair
           </p>
@@ -221,14 +242,7 @@ export function EstimateSignature({
         </section>
       );
     });
-  const decided = (lines: EstimateSnapshot["lines"]) =>
-    lines.every((l) => choices[l.id] !== undefined);
-  const stepDone =
-    step === "request"
-      ? decided(requested)
-      : step === "recommended"
-        ? decided(recommended)
-        : true;
+  const stepDone = step === "recommended" ? complete : true;
   const nav = step && step !== "sign" && (
     <div className="estimate-step-nav">
       {stepIndex > 0 && (
@@ -321,31 +335,45 @@ export function EstimateSignature({
           </ol>
         )}
         {step === "request" && (
-          <section aria-label="What you came in for">
-            <h2>What you came in for</h2>
+          <section aria-label="Your visit and diagnosis">
+            <h2>1. Why you came in</h2>
             {vehicle && <p className="muted">{vehicle}</p>}
-            {s.concerns && (
-              <blockquote className="estimate-concerns">
-                {s.concerns}
-              </blockquote>
-            )}
-            {requested.length ? (
+            <h3>Your original concern</h3>
+            <blockquote className="estimate-concerns">
+              {s.concerns || "No customer concern was recorded."}
+            </blockquote>
+            <h3>Technician diagnosis</h3>
+            <p style={{ whiteSpace: "pre-wrap" }}>
+              {s.inspection?.diagnosis ||
+                "No separate diagnosis was recorded for this visit."}
+            </p>
+            {requested.length > 0 && (
               <>
-                <p>
-                  Here is the work for what you asked about. Approve or decline
-                  each item. Nothing is selected for you.
+                <h3>Services you asked us about</h3>
+                <ul>
+                  {repairGroups(requested).map((group) => (
+                    <li key={group.id}>
+                      {group.label} — {money(group.total)}
+                    </li>
+                  ))}
+                </ul>
+                <p className="muted">
+                  You will confirm these services and choose any additional
+                  repairs after reviewing the inspection.
                 </p>
-                {decide(requested)}
               </>
-            ) : (
-              <p>The next screens show what the technician found.</p>
             )}
             {nav}
           </section>
         )}
         {step === "inspection" && (
-          <section aria-label="Inspection results">
-            <h2>Inspection results</h2>
+          <section aria-label="One-page inspection overview">
+            <h2>2. Your inspection at a glance</h2>
+            <p>
+              These are the technician&apos;s inspection results, not a list of
+              repairs you have agreed to. Review the findings and any photos
+              before deciding what work you want done.
+            </p>
             {s.inspection && (
               <>
                 <p className="estimate-inspection-counts">
@@ -373,13 +401,48 @@ export function EstimateSignature({
                     </span>
                   )}
                 </p>
-                {s.inspection.diagnosis && (
-                  <>
-                    <h3>Technician&apos;s diagnosis</h3>
-                    <p style={{ whiteSpace: "pre-wrap" }}>
-                      {s.inspection.diagnosis}
-                    </p>
-                  </>
+                <div className="estimate-inspection-overview">
+                  <p>
+                    <strong>Passed:</strong>{" "}
+                    {s.inspection.checks
+                      ?.filter((item) => item.status === "good")
+                      .slice(0, 6)
+                      .map((item) => item.label)
+                      .join(" · ") || "None recorded"}
+                    {(s.inspection.checks?.filter(
+                      (item) => item.status === "good",
+                    ).length ?? 0) > 6 && " · more below"}
+                  </p>
+                  <p>
+                    <strong>Needs attention / monitor:</strong>{" "}
+                    {s.inspection.findings.length
+                      ? s.inspection.findings
+                          .map((item) => item.label)
+                          .join(" · ")
+                      : "No issues found"}
+                  </p>
+                </div>
+                {!!s.inspection.checks?.length && (
+                  <details className="estimate-full-inspection">
+                    <summary>
+                      View complete {s.inspection.checks.length}-point
+                      inspection
+                    </summary>
+                    <ul>
+                      {s.inspection.checks.map((item, index) => (
+                        <li key={index}>
+                          <strong>{item.label}</strong> —{" "}
+                          {item.status === "good"
+                            ? "Passed"
+                            : item.status === "na"
+                              ? "Not applicable"
+                              : item.status === "watch"
+                                ? "Monitor"
+                                : "Needs attention"}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
                 {s.inspection.findings.length > 0 && (
                   <ul className="estimate-findings">
@@ -409,36 +472,83 @@ export function EstimateSignature({
                 )}
               </>
             )}
-            {media}
+            <h3>Inspection photos and video</h3>
+            {media || (
+              <p className="muted">
+                No photos or videos were shared with this inspection.
+              </p>
+            )}
             {nav}
           </section>
         )}
         {step === "recommended" && (
-          <section aria-label="Recommended work">
-            <h2>Recommended work</h2>
+          <section aria-label="Choose the work to authorize">
+            <h2>3. Choose the work you want done</h2>
             <p>
-              The technician recommends this work based on the inspection.
-              Approve what you want done today; anything you decline is noted
-              for next time.
+              Decide on each repair. Nothing is selected for you. Work you
+              decline will not be performed or included in your total.
             </p>
-            {decide(recommended)}
+            {requested.length > 0 && (
+              <section aria-label="Originally requested services">
+                <h3>Work you originally requested</h3>
+                {decide(requested)}
+              </section>
+            )}
+            <section aria-label="Additional recommendations">
+              <h3>Additional repairs recommended by the shop</h3>
+              {recommended.length > 0 ? (
+                decide(recommended)
+              ) : (
+                <p>No additional repairs were recommended.</p>
+              )}
+            </section>
+            <p className="muted">
+              {s.lines.filter((line) => choices[line.id] !== undefined).length}{" "}
+              of {s.lines.length} priced line items decided.
+            </p>
             {nav}
           </section>
         )}
         {(!step || step === "sign") && (
           <>
-            <h2>{step ? "Review and sign" : "Authorize work"}</h2>
+            <h2>
+              {step ? "4. Review your decisions and sign" : "Authorize work"}
+            </h2>
             {step ? (
-              <ul className="estimate-review">
-                {s.lines.map((l) => (
-                  <li key={l.id}>
-                    {l.description}: {money(l.totalCents)} ·{" "}
-                    <strong>
-                      {choices[l.id] === "approve" ? "Approved" : "Declined"}
-                    </strong>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <section aria-label="Approved work">
+                  <h3>Approved work</h3>
+                  {approved.length ? (
+                    <ul className="estimate-review">
+                      {repairGroups(approved).map((group) => (
+                        <li key={group.id}>
+                          {group.label} — {money(group.total)} · Approved
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No work approved.</p>
+                  )}
+                </section>
+                <section aria-label="Declined work">
+                  <h3>Declined work</h3>
+                  {s.lines.some((line) => choices[line.id] === "decline") ? (
+                    <ul className="estimate-review">
+                      {repairGroups(
+                        s.lines.filter(
+                          (line) => choices[line.id] === "decline",
+                        ),
+                      ).map((group) => (
+                        <li key={group.id}>
+                          {group.label} — Declined, not authorized
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No declined work.</p>
+                  )}
+                </section>
+              </>
             ) : (
               <p>
                 Choose Approve or Decline for every item. Nothing is selected
@@ -446,14 +556,37 @@ export function EstimateSignature({
               </p>
             )}
             {!step && decide(s.lines)}
-            <p>
-              Approving{" "}
-              <strong>
-                {approved.length} of {s.lines.length} items ·{" "}
-                {money(totals.totalCents)} of {money(fullTotals.totalCents)}
-              </strong>{" "}
-              (including tax)
-            </p>
+            <section
+              className="card estimate-authorization-summary"
+              aria-label="Customer-approved work total"
+            >
+              <h3>Your authorization total</h3>
+              <p>
+                Only repairs you approved are included below. Declined work is
+                documented but is not authorized.
+              </p>
+              <ul>
+                {s.lines
+                  .filter((line) => choices[line.id] === "approve")
+                  .map((line) => (
+                    <li key={line.id}>
+                      {line.description}: {money(line.totalCents)}
+                    </li>
+                  ))}
+              </ul>
+              {!approved.length && <p>No work has been approved.</p>}
+              <p>Approved work: {money(totals.subtotalCents)}</p>
+              <p>Applicable tax: {money(totals.taxCents)}</p>
+              <p>
+                <strong>Total you authorize: {money(totals.totalCents)}</strong>
+              </p>
+              <p className="muted">
+                {approved.length} of {s.lines.length} priced items approved. The
+                full proposed estimate was {money(fullTotals.totalCents)}.
+                Signing does not collect payment. An invoice is sent separately
+                after approved work is completed.
+              </p>
+            </section>
             <label>
               Your full name
               <input name="name" required maxLength={200} autoComplete="name" />

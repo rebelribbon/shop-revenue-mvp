@@ -112,15 +112,21 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   // Previously declined work comes back as a recommendation: the customer
   // steps through their request, then the recommended work.
   await expect(
-    page.getByRole("heading", { name: "What you came in for", exact: true }),
+    page.getByRole("heading", { name: "1. Why you came in", exact: true }),
   ).toBeVisible();
   await auditUX(page);
   await expect(
-    page.getByRole("button", { name: "Next: Recommended work", exact: true }),
-  ).toBeDisabled();
+    page.getByRole("button", {
+      name: "Next: 40-point inspection",
+      exact: true,
+    }),
+  ).toBeEnabled();
   await approveEstimateSteps(page);
   await expect(
-    page.getByRole("heading", { name: "Review and sign", exact: true }),
+    page.getByRole("heading", {
+      name: "4. Review your decisions and sign",
+      exact: true,
+    }),
   ).toBeVisible();
   await page
     .getByLabel("Your full name", { exact: true })

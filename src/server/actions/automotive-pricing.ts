@@ -26,6 +26,16 @@ export const addAutomotiveRecommendationAction = defineShopAction({
       partsCents: moneyCents,
       laborCents: moneyCents,
       costCents: moneyCents,
+      workSource: z
+        .enum([
+          "requested",
+          "inspection",
+          "maintenance",
+          "diagnosis",
+          "advisor",
+        ])
+        .default("advisor"),
+      inspectionItemKey: z.string().trim().min(1).max(60).optional(),
     })
     .refine((i) => i.partsCents + i.laborCents > 0, {
       message: "Enter a parts or labor selling price.",
@@ -33,6 +43,22 @@ export const addAutomotiveRecommendationAction = defineShopAction({
   run: async ({ tx }, i) => {
     const job = await editableJob(tx, i.jobId, i.expectedVersion);
     const data = jobInput.parse(job.data);
+    if (i.workSource === "inspection") {
+      if (!i.inspectionItemKey)
+        throw new AppError(
+          "VALIDATION",
+          "Add inspection-based work from the matching inspection finding.",
+        );
+      const inspection = await getInspection(tx, i.jobId);
+      const finding = inspection.items.find(
+        (item) => item.key === i.inspectionItemKey,
+      );
+      if (!finding || !["watch", "fix"].includes(finding.status))
+        throw new AppError(
+          "VALIDATION",
+          "That inspection finding is not available for a repair recommendation.",
+        );
+    }
     const total = i.partsCents + i.laborCents;
     // Distribute combined internal cost proportionately; total remains exact.
     const partCost = i.partsCents
@@ -50,6 +76,13 @@ export const addAutomotiveRecommendationAction = defineShopAction({
               ...data.parts,
               {
                 description,
+                fromInspection: i.workSource === "inspection",
+                ...(i.workSource !== "requested"
+                  ? { recommendationSource: i.workSource }
+                  : {}),
+                ...(i.workSource === "inspection" && i.inspectionItemKey
+                  ? { inspectionItemKey: i.inspectionItemKey }
+                  : {}),
                 quantity: 1,
                 unitCostCents: partCost,
                 unitPriceCents: i.partsCents,
@@ -62,6 +95,13 @@ export const addAutomotiveRecommendationAction = defineShopAction({
               ...data.labor,
               {
                 description,
+                fromInspection: i.workSource === "inspection",
+                ...(i.workSource !== "requested"
+                  ? { recommendationSource: i.workSource }
+                  : {}),
+                ...(i.workSource === "inspection" && i.inspectionItemKey
+                  ? { inspectionItemKey: i.inspectionItemKey }
+                  : {}),
                 estimatedHoursHundredths: 100,
                 actualHoursHundredths: null,
                 sellRateCents: i.laborCents,
@@ -72,6 +112,84 @@ export const addAutomotiveRecommendationAction = defineShopAction({
     };
     await createJob(tx, next);
     return { jobId: i.jobId, message: "Recommendation added to this RO." };
+  },
+});
+
+export const classifyAutomotiveWorkAction = defineShopAction({
+  name: "classifyAutomotiveWork",
+  input: pricedInput.extend({
+    description: z.string().trim().min(1).max(200),
+    workSource: z.enum([
+      "requested",
+      "inspection",
+      "maintenance",
+      "diagnosis",
+      "advisor",
+    ]),
+  }),
+  run: async ({ tx }, input) => {
+    const job = await editableJob(tx, input.jobId, input.expectedVersion);
+    const data = jobInput.parse(job.data);
+    const found = [...data.parts, ...data.labor].some(
+      (line) => line.description === input.description,
+    );
+    if (!found) throw notFound("That repair");
+    const existing = [...data.parts, ...data.labor].filter(
+      (line) => line.description === input.description,
+    );
+    if (existing.some((line) => !!line.recommendationId))
+      throw new AppError(
+        "VALIDATION",
+        "This repair came from an existing recommendation and its source cannot be rewritten.",
+      );
+    if (
+      input.workSource !== "inspection" &&
+      existing.some((line) => !!line.inspectionItemKey)
+    )
+      throw new AppError(
+        "VALIDATION",
+        "This repair is linked to an inspection finding and must stay identified as inspection-based.",
+      );
+    const recommended = input.workSource !== "requested";
+    const recommendationSource =
+      input.workSource === "requested" ? undefined : input.workSource;
+    await createJob(tx, {
+      ...data,
+      jobId: input.jobId,
+      expectedVersion: job.version,
+      parts: data.parts.map((line) =>
+        line.description === input.description
+          ? {
+              ...line,
+              fromInspection: input.workSource === "inspection",
+              ...(recommendationSource
+                ? { recommendationSource }
+                : { recommendationSource: undefined }),
+              ...(input.workSource === "inspection"
+                ? { inspectionItemKey: line.inspectionItemKey }
+                : { inspectionItemKey: undefined }),
+            }
+          : line,
+      ),
+      labor: data.labor.map((line) =>
+        line.description === input.description
+          ? {
+              ...line,
+              fromInspection: input.workSource === "inspection",
+              ...(recommendationSource
+                ? { recommendationSource }
+                : { recommendationSource: undefined }),
+              ...(input.workSource === "inspection"
+                ? { inspectionItemKey: line.inspectionItemKey }
+                : { inspectionItemKey: undefined }),
+            }
+          : line,
+      ),
+    });
+    return {
+      jobId: input.jobId,
+      message: "Repair source updated.",
+    };
   },
 });
 

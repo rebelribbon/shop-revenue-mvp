@@ -3,6 +3,7 @@ import { getSessionState } from "@/server/auth/session";
 import {
   createCustomerAction,
   updateCustomerAction,
+  updateCustomerEmailAction,
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
@@ -45,6 +46,7 @@ import {
 } from "@/server/actions/job-media";
 import {
   addAutomotiveRecommendationAction,
+  classifyAutomotiveWorkAction,
   removeAutomotiveRecommendationAction,
 } from "@/server/actions/automotive-pricing";
 import {
@@ -369,6 +371,13 @@ export async function POST(request: Request) {
           notes: value(payload.notes),
         });
         break;
+      case "customer.email":
+        result = await updateCustomerEmailAction({
+          clientRequestId,
+          customerId: id(payload.customerId),
+          email: value(payload.email),
+        });
+        break;
       case "vehicle.create":
         result = await createVehicleAction({
           clientRequestId,
@@ -404,6 +413,17 @@ export async function POST(request: Request) {
           partsCents: Number(payload.partsCents),
           laborCents: Number(payload.laborCents),
           costCents: Number(payload.costCents),
+          workSource: value(payload.workSource) || "advisor",
+          inspectionItemKey: value(payload.inspectionItemKey) || undefined,
+        });
+        break;
+      case "ro.pricing.classify":
+        result = await classifyAutomotiveWorkAction({
+          clientRequestId,
+          jobId: id(payload.jobId),
+          expectedVersion: id(payload.expectedVersion),
+          description: value(payload.description),
+          workSource: value(payload.workSource),
         });
         break;
       case "ro.pricing.remove":
