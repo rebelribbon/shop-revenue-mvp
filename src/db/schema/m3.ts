@@ -24,11 +24,7 @@ export type EstimateLine = {
   // came in for. Source explains why it is being recommended.
   recommended?: boolean;
   recommendationSource?:
-    | "inspection"
-    | "maintenance"
-    | "diagnosis"
-    | "advisor"
-    | "prior";
+    "inspection" | "maintenance" | "diagnosis" | "advisor" | "prior";
   inspectionItemKey?: string;
 };
 // The technician's findings, frozen with the estimate for the customer.
