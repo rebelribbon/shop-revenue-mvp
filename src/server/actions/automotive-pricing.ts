@@ -78,6 +78,39 @@ export const addAutomotiveRecommendationAction = defineShopAction({
   },
 });
 
+export const classifyAutomotiveWorkAction = defineShopAction({
+  name: "classifyAutomotiveWork",
+  input: pricedInput.extend({
+    description: z.string().trim().min(1).max(200),
+    workType: z.enum(["requested", "recommended"]),
+  }),
+  run: async ({ tx }, input) => {
+    const job = await editableJob(tx, input.jobId, input.expectedVersion);
+    const data = jobInput.parse(job.data);
+    const found = [...data.parts, ...data.labor].some(
+      (line) => line.description === input.description,
+    );
+    if (!found) throw notFound("That repair");
+    const recommended = input.workType === "recommended";
+    await createJob(tx, {
+      ...data,
+      jobId: input.jobId,
+      expectedVersion: job.version,
+      parts: data.parts.map((line) =>
+        line.description === input.description
+          ? { ...line, fromInspection: recommended }
+          : line,
+      ),
+      labor: data.labor.map((line) =>
+        line.description === input.description
+          ? { ...line, fromInspection: recommended }
+          : line,
+      ),
+    });
+    return { jobId: input.jobId, message: "Repair moved to the correct section." };
+  },
+});
+
 export const removeAutomotiveRecommendationAction = defineShopAction({
   name: "removeAutomotiveRecommendation",
   input: pricedInput.extend({ description: z.string().trim().min(1).max(200) }),
