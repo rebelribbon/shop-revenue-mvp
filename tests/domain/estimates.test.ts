@@ -65,8 +65,12 @@ it("freezes cost-free customer estimates, records partial signatures, and requir
   const token = first.path.split("/").pop()!;
   const visible = await readPublicEstimate(token);
   expect(visible?.snapshot.totalCents).toBe(46650);
-  expect(visible?.snapshot.lines.find((line) => line.id === "part-0")?.recommended).not.toBe(true);
-  expect(visible?.snapshot.lines.find((line) => line.id === "labor-0")?.recommended).toBe(true);
+  expect(
+    visible?.snapshot.lines.find((line) => line.id === "part-0")?.recommended,
+  ).not.toBe(true);
+  expect(
+    visible?.snapshot.lines.find((line) => line.id === "labor-0")?.recommended,
+  ).toBe(true);
 
   const openEstimate = (shareToken: string) =>
     runInContext(null, { type: "customer", id: null }, async (tx) => {
