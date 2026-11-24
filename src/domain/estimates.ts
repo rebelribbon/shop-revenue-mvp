@@ -176,7 +176,9 @@ export async function freezeEstimate(
           : p.recommendationId
             ? { recommendationSource: "prior" as const }
             : {}),
-      ...(p.inspectionItemKey ? { inspectionItemKey: p.inspectionItemKey } : {}),
+      ...(p.inspectionItemKey
+        ? { inspectionItemKey: p.inspectionItemKey }
+        : {}),
     })),
     ...data.labor.map((l, i) => ({
       id: `labor-${i}`,
@@ -198,7 +200,9 @@ export async function freezeEstimate(
           : l.recommendationId
             ? { recommendationSource: "prior" as const }
             : {}),
-      ...(l.inspectionItemKey ? { inspectionItemKey: l.inspectionItemKey } : {}),
+      ...(l.inspectionItemKey
+        ? { inspectionItemKey: l.inspectionItemKey }
+        : {}),
     })),
   ];
   if (!lines.length)
