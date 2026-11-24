@@ -336,7 +336,7 @@ function customerPacketPreview(r){
   for(const line of r.lines||[]){
     const type=line.recommended?"recommended":"requested";
     const id=type+":"+line.name;
-    const previous=groups.get(id)||{name:line.name,recommended:!!line.recommended,parts:0,labor:0};
+    const previous=groups.get(id)||{name:line.name,recommended:!!line.recommended,recommendationSource:line.recommendationSource||null,parts:0,labor:0};
     previous.parts+=Number(line.parts||0);
     previous.labor+=Number(line.labor||0);
     groups.set(id,previous);
@@ -349,7 +349,9 @@ function customerPacketPreview(r){
   const good=inspection.filter(i=>i.status==="good").length;
   const visible=(r.media||[]).filter(m=>m.public===true);
   const renderWork=(items,extra)=>items.length?items.map((l)=>
-    '<div class="docrow"><div><b>'+esc(l.name)+'</b><p class="secondarytext">Parts '+money(l.parts)+' · Labor '+money(l.labor)+'</p>'+
+    '<div class="docrow"><div><b>'+esc(l.name)+'</b>'+
+    (extra?'<p class="secondarytext"><strong>'+esc(recommendationSourceLabel(l.recommendationSource))+'</strong></p>':'')+
+    '<p class="secondarytext">Parts '+money(l.parts)+' · Labor '+money(l.labor)+'</p>'+
     (extra?'<p class="secondarytext">The customer chooses Approve or Decline for this repair.</p>':'')+
     '</div><b>'+money(l.parts+l.labor)+'</b></div>').join(""):
     '<p class="sub">No priced services in this section.</p>';
