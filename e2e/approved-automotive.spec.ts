@@ -735,7 +735,17 @@ for (const lifetime of [false, true])
           html.slice(end),
       });
     });
-    await page.goto(`/app/settings/billing${lifetime ? "?started=1" : ""}`);
+    const legacyPath = `/app/settings/billing${lifetime ? "?started=1" : ""}`;
+    const billingPath = `/automotive?view=billing${lifetime ? "&started=1" : ""}`;
+    // Playwright route handlers only intercept the first URL of a redirect
+    // chain. Verify the real redirect separately, then load its destination
+    // directly so the disposable subscription fixture is actually applied.
+    const redirectResponse = await page.request.get(legacyPath, {
+      maxRedirects: 0,
+    });
+    expect(redirectResponse.status()).toBe(307);
+    expect(redirectResponse.headers().location).toBe(billingPath);
+    await page.goto(billingPath);
     await expect(page).toHaveURL(
       lifetime
         ? /\/automotive\?view=billing&started=1$/
