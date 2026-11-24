@@ -424,6 +424,9 @@ export async function GET(request: Request) {
                 line.description === name &&
                 (line.fromInspection === true || !!line.recommendationId),
             ),
+            originLocked: [...j.parts, ...j.labor].some(
+              (line) => line.description === name && !!line.recommendationId,
+            ),
             decision: null,
           }));
           const lines = technician
@@ -441,6 +444,7 @@ export async function GET(request: Request) {
                       ? (l.quantity * l.unitPriceCents) / 100
                       : 0,
                   recommended: l.recommended === true,
+                  originLocked: !!l.recommended,
                   cost: 0,
                   decision: auth
                     ? approved.has(l.id)
