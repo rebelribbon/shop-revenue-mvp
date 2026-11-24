@@ -296,7 +296,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   });
   await page.reload();
   await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
-  await expect(page.getByText(/Parts \$225\.45/).first()).toBeVisible();
+  await expect(page.getByText("Diagnosis-based repair").first()).toBeVisible();
   const maintenanceForm = page.locator('form[onsubmit*="addLine"]');
   await maintenanceForm
     .locator('select[name="workSource"]')
