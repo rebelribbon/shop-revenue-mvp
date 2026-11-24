@@ -471,7 +471,9 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       }),
     ).toBeVisible();
     await expect(customerPage.locator(".estimate-step-count")).toBeFocused();
-    await customerPage.getByRole("button", { name: "Back", exact: true }).click();
+    await customerPage
+      .getByRole("button", { name: "Back", exact: true })
+      .click();
     await expect(customerPage.locator(".estimate-step-count")).toBeFocused();
     await expect(
       customerPage.getByRole("heading", {
