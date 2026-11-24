@@ -26,6 +26,7 @@ export const addAutomotiveRecommendationAction = defineShopAction({
       partsCents: moneyCents,
       laborCents: moneyCents,
       costCents: moneyCents,
+      workType: z.enum(["requested", "recommended"]).default("recommended"),
     })
     .refine((i) => i.partsCents + i.laborCents > 0, {
       message: "Enter a parts or labor selling price.",
@@ -50,6 +51,7 @@ export const addAutomotiveRecommendationAction = defineShopAction({
               ...data.parts,
               {
                 description,
+                fromInspection: i.workType === "recommended",
                 quantity: 1,
                 unitCostCents: partCost,
                 unitPriceCents: i.partsCents,
@@ -62,6 +64,7 @@ export const addAutomotiveRecommendationAction = defineShopAction({
               ...data.labor,
               {
                 description,
+                fromInspection: i.workType === "recommended",
                 estimatedHoursHundredths: 100,
                 actualHoursHundredths: null,
                 sellRateCents: i.laborCents,
