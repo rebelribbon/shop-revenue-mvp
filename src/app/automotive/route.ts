@@ -447,7 +447,9 @@ export async function GET(request: Request) {
                   line.description === name && !!line.inspectionItemKey,
               )?.inspectionItemKey ?? null,
             originLocked: [...j.parts, ...j.labor].some(
-              (line) => line.description === name && !!line.recommendationId,
+              (line) =>
+                line.description === name &&
+                (!!line.recommendationId || !!line.inspectionItemKey),
             ),
             decision: null,
           }));
