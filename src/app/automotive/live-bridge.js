@@ -217,7 +217,9 @@ roEstimate=function(r){
     '<p class="secondarytext">Parts '+money(line.parts)+' · Labor '+money(line.labor)+'</p>'+
     '<p class="secondarytext">Shop cost (internal): '+money(line.cost)+'</p></div>'+
     '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
-    '<div class="btnrow"><button class="btn small" onclick="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',\''+(line.recommended?"requested":"recommended")+'\')">'+(line.recommended?"Move to requested":"Move to recommendations")+'</button>'+    '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>'
+    '<div class="btnrow">'+(line.originLocked?'<span class="secondarytext">Technician recommendation</span>':
+    '<button class="btn small" onclick="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',\''+(line.recommended?"requested":"recommended")+'\')">'+(line.recommended?"Move to requested":"Move to recommendations")+'</button>')+
+    '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>'
   ).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
   const inspection=(r.inspectionItems||[]).filter(i=>i.status==="watch"||i.status==="fix");
   const findings=inspection.length?'<details style="margin-top:12px"><summary>Review '+inspection.length+' technician finding(s)</summary>'+
