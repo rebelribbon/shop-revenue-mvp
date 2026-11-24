@@ -123,7 +123,10 @@ test("recovered revenue follows paid recommendation lines and keeps correction h
   ).toBeEnabled();
   await approveEstimateSteps(page);
   await expect(
-    page.getByRole("heading", { name: "Review and sign", exact: true }),
+    page.getByRole("heading", {
+      name: "4. Review your decisions and sign",
+      exact: true,
+    }),
   ).toBeVisible();
   await page
     .getByLabel("Your full name", { exact: true })
