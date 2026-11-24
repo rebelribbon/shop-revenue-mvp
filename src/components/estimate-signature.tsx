@@ -339,7 +339,10 @@ export function EstimateSignature({
                 {decide(requested)}
               </>
             ) : (
-              <p>Next, review what the technician found. No additional repairs have been approved yet.</p>
+              <p>
+                Next, review what the technician found. No additional repairs
+                have been approved yet.
+              </p>
             )}
             {nav}
           </section>
@@ -385,7 +388,8 @@ export function EstimateSignature({
                 {!!s.inspection.checks?.length && (
                   <details className="estimate-full-inspection">
                     <summary>
-                      View complete {s.inspection.checks.length}-point inspection
+                      View complete {s.inspection.checks.length}-point
+                      inspection
                     </summary>
                     <ul>
                       {s.inspection.checks.map((item, index) => (
@@ -487,20 +491,14 @@ export function EstimateSignature({
                   ))}
               </ul>
               {!approved.length && <p>No work has been approved.</p>}
+              <p>Approved work: {money(totals.subtotalCents)}</p>
+              <p>Applicable tax: {money(totals.taxCents)}</p>
               <p>
-                Approved work: {money(totals.subtotalCents)}
-              </p>
-              <p>
-                Applicable tax: {money(totals.taxCents)}
-              </p>
-              <p>
-                <strong>
-                  Total you authorize: {money(totals.totalCents)}
-                </strong>
+                <strong>Total you authorize: {money(totals.totalCents)}</strong>
               </p>
               <p className="muted">
-                {approved.length} of {s.lines.length} priced items approved.
-                The full proposed estimate was {money(fullTotals.totalCents)}.
+                {approved.length} of {s.lines.length} priced items approved. The
+                full proposed estimate was {money(fullTotals.totalCents)}.
                 Signing does not collect payment. An invoice is sent separately
                 after approved work is completed.
               </p>
