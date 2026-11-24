@@ -213,7 +213,7 @@ roProposal=function(r){
   if(!r.lines?.length)return '<div class="empty"><h3>Start with the recommendations</h3><p>Add parts and labor prices before reviewing the customer estimate.</p><button class="btn primary" onclick="goTab(\'estimate\')">Build estimate</button></div>';
   const recipient=data.customers.find(x=>x.id===r.customer);
   const email=String(recipient?.email||"").trim();
-  const emailReady=/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+  const emailReady=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const legalReady=data.authorizationPolicyReady===true;
   const sent=!!r.estimateSent;
   const awaiting=r.stage==="approval"&&!r.authorized;
