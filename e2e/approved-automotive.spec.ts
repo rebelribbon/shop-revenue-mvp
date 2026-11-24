@@ -275,6 +275,7 @@ test("solo shop owner can create and inspect an RO without assigning separate st
     ).toBeVisible();
   }
   const price = page.locator('form[onsubmit*="addLine"]');
+  await price.locator('select[name="workSource"]').selectOption("diagnosis");
   await price.locator('input[name="name"]').fill("Front rotor replacement");
   await price.locator('input[name="parts"]').fill("225.45");
   await price.locator('input[name="labor"]').fill("150.50");
@@ -296,6 +297,29 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await page.reload();
   await expect(page.getByText("Front rotor replacement").first()).toBeVisible();
   await expect(page.getByText("$225.45").first()).toBeVisible();
+  const maintenanceForm = page.locator('form[onsubmit*="addLine"]');
+  await maintenanceForm
+    .locator('select[name="workSource"]')
+    .selectOption("maintenance");
+  await maintenanceForm.locator('input[name="name"]').fill("Coolant flush");
+  await maintenanceForm.locator('input[name="parts"]').fill("45.00");
+  await maintenanceForm.locator('input[name="labor"]').fill("120.00");
+  await maintenanceForm.locator('input[name="cost"]').fill("55.00");
+  const maintenanceResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/automotive/actions") &&
+      response.request().method() === "POST" &&
+      response.request().postData()?.includes('"ro.pricing.add"') === true,
+  );
+  await maintenanceForm
+    .getByRole("button", { name: /Save repair to estimate/ })
+    .click();
+  expect((await maintenanceResponse).status()).toBe(200);
+  await expect(page.getByText("Coolant flush").first()).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.getByText("Recommended maintenance").first()).toBeVisible();
+
   await page.goto(`/automotive?ro=${ro.id}&tab=proposal`);
   const packet = page.locator(".preview").first();
   await expect(
@@ -307,6 +331,8 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   ).toBeVisible();
   await expect(packet.getByText("4. Your authorization")).toBeVisible();
   await expect(packet.getByText("Front rotor replacement")).toBeVisible();
+  await expect(packet.getByText("Coolant flush")).toBeVisible();
+  await expect(packet.getByText("Recommended maintenance")).toBeVisible();
 });
 
 test("owner completes inspected RO through actual customer signature, repairs, invoice, payment and vehicle release", async ({
