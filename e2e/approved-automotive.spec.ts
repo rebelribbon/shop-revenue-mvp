@@ -462,7 +462,7 @@ test("owner completes inspected RO through actual customer signature, repairs, i
       }),
     ).toBeVisible();
     await expect(
-      customerPage.getByText("Passed:", { exact: false }).first(),
+      customerPage.getByText(/checked items look good/),
     ).toBeVisible();
     await customerPage.getByRole("button", { name: /Next: / }).click();
     await expect(
@@ -470,6 +470,17 @@ test("owner completes inspected RO through actual customer signature, repairs, i
         name: "3. Choose the work you want done",
       }),
     ).toBeVisible();
+    await expect(customerPage.locator(".estimate-step-count")).toBeFocused();
+    await customerPage
+      .getByRole("button", { name: "Back", exact: true })
+      .click();
+    await expect(customerPage.locator(".estimate-step-count")).toBeFocused();
+    await expect(
+      customerPage.getByRole("heading", {
+        name: "2. Your inspection at a glance",
+      }),
+    ).toBeVisible();
+    await customerPage.getByRole("button", { name: /Next: / }).click();
     checkpoint("portal reached repair decisions");
 
     // The current customer UI presents an explicit grouped repair decision.

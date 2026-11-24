@@ -5437,7 +5437,7 @@ main.customer-index-page {
   flex-shrink: 0;
 }
 .estimate-step-count {
-  display: none;
+  display: block;
   margin: 0 0 8px;
   font-weight: 600;
 }
@@ -6774,4 +6774,22 @@ main.customer-index-page {
     min-width: 0;
     max-width: 100%;
   }
+}
+
+.estimate-diagnosis {
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  padding: 16px;
+}
+.estimate-diagnosis dl {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+.estimate-diagnosis dd {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.estimate-step-count {
+  scroll-margin-top: 16px;
 }

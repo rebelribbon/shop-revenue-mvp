@@ -1,6 +1,6 @@
 "use client";
 import { useActionHydration } from "./action-hydration";
-import { useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { signEstimateAction } from "@/server/actions/estimates";
 import type { EstimateSnapshot } from "@/db/schema/m3";
@@ -45,6 +45,47 @@ const recommendationReason = (
   }
 };
 
+function DiagnosisSummary({ diagnosis }: { diagnosis?: string | null }) {
+  if (!diagnosis?.trim()) return <p>No separate diagnosis was recorded.</p>;
+  let fields: Record<string, unknown> | null = null;
+  try {
+    const value: unknown = JSON.parse(diagnosis);
+    if (value && typeof value === "object" && !Array.isArray(value))
+      fields = value as Record<string, unknown>;
+  } catch {
+    // Older estimates may contain ordinary technician notes.
+  }
+  if (!fields) return <p style={{ whiteSpace: "pre-wrap" }}>{diagnosis}</p>;
+  const labels = [
+    ["symptoms", "What we found"],
+    ["tests", "How we checked"],
+    ["cause", "Likely cause"],
+    ["recommendation", "Our recommendation"],
+    ["codes", "Diagnostic codes"],
+  ];
+  return (
+    <div className="estimate-diagnosis">
+      {fields.confirmed === "yes" && <p>Diagnosis confirmed</p>}
+      <dl>
+        {labels.map(([key, label]) => {
+          const value = fields[key];
+          if (typeof value !== "string" || !value.trim()) return null;
+          if (key === "codes" && value.trim().toLowerCase() === "none")
+            return null;
+          return (
+            <div key={key}>
+              <dt>
+                <strong>{label}</strong>
+              </dt>
+              <dd>{value}</dd>
+            </div>
+          );
+        })}
+      </dl>
+    </div>
+  );
+}
+
 export function EstimateSignature({
   token,
   snapshot: s,
@@ -62,6 +103,17 @@ export function EstimateSignature({
       ? ["request", "inspection", "recommended", "sign"]
       : [];
   const [stepIndex, setStepIndex] = useState(0);
+  const stepHeading = useRef<HTMLParagraphElement>(null);
+  const previousStep = useRef(stepIndex);
+  useLayoutEffect(() => {
+    if (previousStep.current === stepIndex) return;
+    previousStep.current = stepIndex;
+    stepHeading.current?.focus({ preventScroll: true });
+    stepHeading.current?.scrollIntoView({
+      block: "start",
+      behavior: "instant",
+    });
+  }, [stepIndex]);
   const step: Step | null = steps.length ? steps[stepIndex] : null;
   const [choices, setChoices] = useState<
     Record<string, LineDecision["decision"]>
@@ -251,7 +303,6 @@ export function EstimateSignature({
           className="btn secondary"
           onClick={() => {
             setStepIndex(stepIndex - 1);
-            window.scrollTo({ top: 0 });
           }}
         >
           Back
@@ -263,7 +314,6 @@ export function EstimateSignature({
         disabled={!stepDone}
         onClick={() => {
           setStepIndex(stepIndex + 1);
-          window.scrollTo({ top: 0 });
         }}
       >
         Next: {stepTitle[steps[stepIndex + 1]]}
@@ -317,7 +367,7 @@ export function EstimateSignature({
     >
       <fieldset className="hydration-fields" disabled={!ready}>
         {step && (
-          <p className="estimate-step-count">
+          <p ref={stepHeading} tabIndex={-1} className="estimate-step-count">
             Step {stepIndex + 1} of {steps.length}: {stepTitle[step]}
           </p>
         )}
@@ -343,10 +393,7 @@ export function EstimateSignature({
               {s.concerns || "No customer concern was recorded."}
             </blockquote>
             <h3>Technician diagnosis</h3>
-            <p style={{ whiteSpace: "pre-wrap" }}>
-              {s.inspection?.diagnosis ||
-                "No separate diagnosis was recorded for this visit."}
-            </p>
+            <DiagnosisSummary diagnosis={s.inspection?.diagnosis} />
             {requested.length > 0 && (
               <>
                 <h3>Services you asked us about</h3>
@@ -369,11 +416,6 @@ export function EstimateSignature({
         {step === "inspection" && (
           <section aria-label="One-page inspection overview">
             <h2>2. Your inspection at a glance</h2>
-            <p>
-              These are the technician&apos;s inspection results, not a list of
-              repairs you have agreed to. Review the findings and any photos
-              before deciding what work you want done.
-            </p>
             {s.inspection && (
               <>
                 <p className="estimate-inspection-counts">
@@ -401,27 +443,6 @@ export function EstimateSignature({
                     </span>
                   )}
                 </p>
-                <div className="estimate-inspection-overview">
-                  <p>
-                    <strong>Passed:</strong>{" "}
-                    {s.inspection.checks
-                      ?.filter((item) => item.status === "good")
-                      .slice(0, 6)
-                      .map((item) => item.label)
-                      .join(" · ") || "None recorded"}
-                    {(s.inspection.checks?.filter(
-                      (item) => item.status === "good",
-                    ).length ?? 0) > 6 && " · more below"}
-                  </p>
-                  <p>
-                    <strong>Needs attention / monitor:</strong>{" "}
-                    {s.inspection.findings.length
-                      ? s.inspection.findings
-                          .map((item) => item.label)
-                          .join(" · ")
-                      : "No issues found"}
-                  </p>
-                </div>
                 {!!s.inspection.checks?.length && (
                   <details className="estimate-full-inspection">
                     <summary>
@@ -484,10 +505,7 @@ export function EstimateSignature({
         {step === "recommended" && (
           <section aria-label="Choose the work to authorize">
             <h2>3. Choose the work you want done</h2>
-            <p>
-              Decide on each repair. Nothing is selected for you. Work you
-              decline will not be performed or included in your total.
-            </p>
+            <p>Approve or decline each repair.</p>
             {requested.length > 0 && (
               <section aria-label="Originally requested services">
                 <h3>Work you originally requested</h3>
@@ -561,10 +579,6 @@ export function EstimateSignature({
               aria-label="Customer-approved work total"
             >
               <h3>Your authorization total</h3>
-              <p>
-                Only repairs you approved are included below. Declined work is
-                documented but is not authorized.
-              </p>
               <ul>
                 {s.lines
                   .filter((line) => choices[line.id] === "approve")
