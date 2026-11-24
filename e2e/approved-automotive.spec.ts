@@ -276,9 +276,13 @@ test("solo shop owner can create and inspect an RO without assigning separate st
   await expect(page.getByText("$225.45").first()).toBeVisible();
   await page.goto(`/automotive?ro=${ro.id}&tab=proposal`);
   const packet = page.locator(".preview").first();
-  await expect(packet.getByText("1. What you brought the vehicle in for")).toBeVisible();
+  await expect(
+    packet.getByText("1. What you brought the vehicle in for"),
+  ).toBeVisible();
   await expect(packet.getByText("2. What our technician found")).toBeVisible();
-  await expect(packet.getByText("3. Additional recommended work")).toBeVisible();
+  await expect(
+    packet.getByText("3. Additional recommended work"),
+  ).toBeVisible();
   await expect(packet.getByText("4. Your authorization")).toBeVisible();
   await expect(packet.getByText("Front rotor replacement")).toBeVisible();
 });
