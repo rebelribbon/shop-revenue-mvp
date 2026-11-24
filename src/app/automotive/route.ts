@@ -98,7 +98,7 @@ export async function GET(request: Request) {
       const profile = await getBusinessProfile(tx);
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
       const [approvedAuthorization] = await tx
-        .select({ id: legalPolicy.id })
+        .select({ id: legalPolicy.id, body: legalPolicy.body })
         .from(legalPolicy)
         .where(
           and(
@@ -653,6 +653,7 @@ export async function GET(request: Request) {
         businessType: "automotive",
         isLive: true,
         authorizationPolicyReady: !!approvedAuthorization,
+        authorizationPolicyBody: approvedAuthorization?.body ?? null,
         paymentSetup,
         billingSetup,
         billingDetail,
