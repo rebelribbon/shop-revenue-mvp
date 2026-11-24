@@ -217,8 +217,6 @@ export function EstimateSignature({
         </section>
       );
     });
-  const decided = (lines: EstimateSnapshot["lines"]) =>
-    lines.every((l) => choices[l.id] !== undefined);
   const stepDone = step === "recommended" ? complete : true;
   const nav = step && step !== "sign" && (
     <div className="estimate-step-nav">
@@ -347,7 +345,7 @@ export function EstimateSignature({
           <section aria-label="One-page inspection overview">
             <h2>2. Your inspection at a glance</h2>
             <p>
-              These are the technician's inspection results, not a list of
+              These are the technician&apos;s inspection results, not a list of
               repairs you have agreed to. Review the findings and any photos
               before deciding what work you want done.
             </p>
