@@ -5437,7 +5437,7 @@ main.customer-index-page {
   flex-shrink: 0;
 }
 .estimate-step-count {
-  display: none;
+  display: block;
   margin: 0 0 8px;
   font-weight: 600;
 }
