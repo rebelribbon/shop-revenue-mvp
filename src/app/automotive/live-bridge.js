@@ -202,10 +202,25 @@ sendEstimate=async function(id){
 // Keep the advisor in one RO screen from pricing through customer review and send.
 // The inline preview reflects the current draft; the immutable customer document
 // is created when the advisor finalizes it. Legal approval is never simulated.
+window.saveProposalRecipient=async function(form,roId){
+  const r=roBy(roId),recipient=r&&data.customers.find(x=>x.id===r.customer);
+  if(!recipient||techView())return;
+  const names=lastName(recipient.name);
+  const email=String(form.elements.email.value||"").trim();
+  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return alert("Enter a valid customer email.");
+  try{
+    await liveWrite("customer.update",{
+      customerId:recipient.id,firstName:names[0],lastName:names[1],
+      email,phone:recipient.phone||"",addressLine1:recipient.address||"",
+      notes:recipient.notes||""
+    });
+    window.location.assign("/automotive?ro="+encodeURIComponent(roId)+"&tab=proposal");
+  }catch(error){alert(error.message||"Could not save the customer email.");}
+};
 window.editProposalRecipient=function(id){
   const r=roBy(id);
   if(!r || techView())return;
-  ui.modal={type:"editCustomer",id:r.customer};
+  ui.modal={type:"proposalRecipient",id:r.customer,roId:r.id};
   render();
 };
 roProposal=function(r){
@@ -776,6 +791,15 @@ settings = function(){
 const originalRenderModal = renderModal;
 renderModal = function(){
   const m=ui.modal;
+  if(m?.type==="proposalRecipient"){
+    const recipient=data.customers.find(x=>x.id===m.id);
+    if(!recipient || techView())return "";
+    return modalWrap("Confirm estimate recipient",
+      '<p class="sub">Update the email address used for this repair order\'s secure customer estimate.</p>'+
+      '<form style="margin-top:16px" onsubmit="event.preventDefault();saveProposalRecipient(this,\''+m.roId+'\')">'+
+      '<label>Customer email<input name="email" type="email" value="'+esc(recipient.email||"")+'" placeholder="customer@example.com" required></label>'+
+      '<div class="form-actions"><button class="btn" type="button" onclick="closeModal()">Cancel</button><button class="btn primary">Save email and return to estimate</button></div></form>');
+  }
   if(m?.type==="collect"){
     const r=roBy(m.id), due=Math.max(0,Number(r?.invoiceBalanceCents||0));
     if(!r?.invoiceId||!due||techView())return "";
