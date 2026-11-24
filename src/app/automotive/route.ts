@@ -419,6 +419,11 @@ export async function GET(request: Request) {
                       10000,
                   0,
                 ),
+            recommended: [...j.parts, ...j.labor].some(
+              (line) =>
+                line.description === name &&
+                (line.fromInspection === true || !!line.recommendationId),
+            ),
             decision: null,
           }));
           const lines = technician
@@ -435,6 +440,7 @@ export async function GET(request: Request) {
                     l.kind === "labor"
                       ? (l.quantity * l.unitPriceCents) / 100
                       : 0,
+                  recommended: l.recommended === true,
                   cost: 0,
                   decision: auth
                     ? approved.has(l.id)
