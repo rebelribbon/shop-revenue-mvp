@@ -3,6 +3,7 @@ import { getSessionState } from "@/server/auth/session";
 import {
   createCustomerAction,
   updateCustomerAction,
+  updateCustomerEmailAction,
   createVehicleAction,
 } from "@/server/actions/customers";
 import { checkInAction } from "@/server/actions/check-in";
@@ -367,6 +368,13 @@ export async function POST(request: Request) {
           email: value(payload.email),
           addressLine1: value(payload.addressLine1),
           notes: value(payload.notes),
+        });
+        break;
+      case "customer.email":
+        result = await updateCustomerEmailAction({
+          clientRequestId,
+          customerId: id(payload.customerId),
+          email: value(payload.email),
         });
         break;
       case "vehicle.create":
