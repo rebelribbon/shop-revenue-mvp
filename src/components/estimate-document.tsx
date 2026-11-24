@@ -1,6 +1,20 @@
 import type { EstimateSnapshot } from "@/db/schema/m3";
 import { estimateTotals } from "@/lib/estimate-tax";
 import { CustomerPhotos } from "./media-gallery";
+const recommendationSourceText = (
+  source: EstimateSnapshot["lines"][number]["recommendationSource"],
+) =>
+  source === "inspection"
+    ? "Inspection finding"
+    : source === "maintenance"
+      ? "Recommended maintenance"
+      : source === "diagnosis"
+        ? "Diagnosis-based repair"
+        : source === "advisor"
+          ? "Shop recommendation"
+          : source === "prior"
+            ? "Previous recommendation"
+            : null;
 export const formatMoney = (c: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     c / 100,
@@ -35,6 +49,9 @@ export function EstimateDocument({
                 : "units"}{" "}
             × {formatMoney(l.unitPriceCents)} ={" "}
             <strong>{formatMoney(l.totalCents)}</strong>
+            {recommendationSourceText(l.recommendationSource) && (
+              <> · {recommendationSourceText(l.recommendationSource)}</>
+            )}
             {l.taxable === false
               ? " · Not taxable"
               : l.taxable === true
