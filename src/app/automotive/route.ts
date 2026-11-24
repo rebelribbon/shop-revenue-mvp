@@ -443,8 +443,7 @@ export async function GET(request: Request) {
                   : null),
             inspectionItemKey:
               [...j.parts, ...j.labor].find(
-                (line) =>
-                  line.description === name && !!line.inspectionItemKey,
+                (line) => line.description === name && !!line.inspectionItemKey,
               )?.inspectionItemKey ?? null,
             originLocked: [...j.parts, ...j.labor].some(
               (line) =>
@@ -469,8 +468,7 @@ export async function GET(request: Request) {
                       : 0,
                   recommended: l.recommended === true,
                   recommendationSource:
-                    l.recommendationSource ??
-                    (l.recommended ? "prior" : null),
+                    l.recommendationSource ?? (l.recommended ? "prior" : null),
                   inspectionItemKey: l.inspectionItemKey ?? null,
                   originLocked:
                     l.recommendationSource === "inspection" ||
