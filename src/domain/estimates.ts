@@ -166,7 +166,17 @@ export async function freezeEstimate(
       totalCents: partLineCents(p.quantity, p.unitPriceCents),
       taxable: p.taxable ?? shop.partsTaxableDefault,
       ...(p.partItemId ? { partItemId: p.partItemId } : {}),
-      ...(p.fromInspection || p.recommendationId ? { recommended: true } : {}),
+      ...(p.fromInspection || p.recommendationId || p.recommendationSource
+        ? { recommended: true }
+        : {}),
+      ...(p.recommendationSource
+        ? { recommendationSource: p.recommendationSource }
+        : p.fromInspection
+          ? { recommendationSource: "inspection" as const }
+          : p.recommendationId
+            ? { recommendationSource: "prior" as const }
+            : {}),
+      ...(p.inspectionItemKey ? { inspectionItemKey: p.inspectionItemKey } : {}),
     })),
     ...data.labor.map((l, i) => ({
       id: `labor-${i}`,
@@ -178,7 +188,17 @@ export async function freezeEstimate(
         (l.estimatedHoursHundredths * l.sellRateCents) / 100,
       ),
       taxable: l.taxable ?? shop.laborTaxableDefault,
-      ...(l.fromInspection || l.recommendationId ? { recommended: true } : {}),
+      ...(l.fromInspection || l.recommendationId || l.recommendationSource
+        ? { recommended: true }
+        : {}),
+      ...(l.recommendationSource
+        ? { recommendationSource: l.recommendationSource }
+        : l.fromInspection
+          ? { recommendationSource: "inspection" as const }
+          : l.recommendationId
+            ? { recommendationSource: "prior" as const }
+            : {}),
+      ...(l.inspectionItemKey ? { inspectionItemKey: l.inspectionItemKey } : {}),
     })),
   ];
   if (!lines.length)
