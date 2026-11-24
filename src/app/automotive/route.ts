@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
-import { customer, vehicle } from "@/db/schema";
+import { customer, legalPolicy, vehicle } from "@/db/schema";
 import { withTenant } from "@/db/tenant";
 import { getJob, listJobs, jobInput } from "@/domain/jobs";
 import { listTasks } from "@/domain/tasks";
@@ -97,6 +97,17 @@ export async function GET(request: Request) {
     async (tx) => {
       const profile = await getBusinessProfile(tx);
       if (!isAutomotive(profile?.businessType ?? "automotive")) return null;
+      const [approvedAuthorization] = await tx
+        .select({ id: legalPolicy.id })
+        .from(legalPolicy)
+        .where(
+          and(
+            eq(legalPolicy.kind, "estimate_authorization"),
+            eq(legalPolicy.jurisdictionCode, profile?.jurisdictionCode ?? "US-TX"),
+            eq(legalPolicy.status, "approved"),
+          ),
+        )
+        .limit(1);
       const subscription = await getShopSubscription(tx);
       const access = billingAccess(subscription, new Date());
       const billingSetup = {
@@ -641,6 +652,7 @@ export async function GET(request: Request) {
         business: profile?.dba || profile?.legalName || "Automotive repair",
         businessType: "automotive",
         isLive: true,
+        authorizationPolicyReady: !!approvedAuthorization,
         paymentSetup,
         billingSetup,
         billingDetail,
