@@ -201,6 +201,20 @@ sendEstimate=async function(id){
 };
 // Price one customer-decision line at a time, with internal cost visually
 // separated from the amounts presented to the customer.
+const recommendationSourceLabels={inspection:"Inspection finding",maintenance:"Recommended maintenance",diagnosis:"Diagnosis-based repair",advisor:"Shop recommendation",prior:"Previous recommendation"};
+function recommendationSourceLabel(source){return recommendationSourceLabels[source]||"Additional recommendation";}
+window.prefillEstimateFromInspection=function(roId,itemKey,work){
+  const form=document.getElementById("estimate-add-work");
+  if(!form)return;
+  const source=form.querySelector('[name="workSource"]');
+  const key=form.querySelector('[name="inspectionItemKey"]');
+  const name=form.querySelector('[name="name"]');
+  if(source)source.value="inspection";
+  if(key)key.value=itemKey||"";
+  if(name&&work)name.value=work;
+  form.scrollIntoView({behavior:"smooth",block:"center"});
+  if(name)name.focus();
+};
 roEstimate=function(r){
   if(!advisor())return '<div class="notice">Technicians do not have access to customer pricing.</div>';
   const editable=r.stage==="estimate";
@@ -212,15 +226,23 @@ roEstimate=function(r){
   const requested=lines.filter(l=>!l.recommended);
   const additional=lines.filter(l=>l.recommended);
   const subtotal=lines.reduce((n,l)=>n+Number(l.parts)+Number(l.labor),0);
-  const priceList=(items)=>items.length?'<div class="stack">'+items.map((line)=>
-    '<div class="item"><div class="item-main"><b>'+esc(line.name)+'</b>'+
+  const priceList=(items)=>items.length?'<div class="stack">'+items.map((line)=>{
+    const source=line.recommended?(line.recommendationSource||"advisor"):"requested";
+    const badge=line.recommended?'<span class="estimate-source-badge source-'+esc(source)+'">'+esc(recommendationSourceLabel(source))+'</span>':'<span class="estimate-source-badge source-requested">Customer requested</span>';
+    const move=line.originLocked?'<span class="secondarytext">Source locked to documented recommendation</span>':
+      '<label class="estimate-source-select">Reason<select onchange="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',this.value)">'+
+      '<option value="requested" '+(!line.recommended?"selected":"")+'>Customer requested</option>'+
+      '<option value="inspection" '+(source==="inspection"?"selected":"")+'>Inspection finding</option>'+
+      '<option value="maintenance" '+(source==="maintenance"?"selected":"")+'>Maintenance due</option>'+
+      '<option value="diagnosis" '+(source==="diagnosis"?"selected":"")+'>Diagnosis</option>'+
+      '<option value="advisor" '+(source==="advisor"?"selected":"")+'>Advisor/shop recommendation</option>'+
+      '</select></label>';
+    return '<div class="item"><div class="item-main"><div class="estimate-line-title"><b>'+esc(line.name)+'</b>'+badge+'</div>'+
     '<p class="secondarytext">Parts '+money(line.parts)+' · Labor '+money(line.labor)+'</p>'+
     '<p class="secondarytext">Shop cost (internal): '+money(line.cost)+'</p></div>'+
     '<strong>'+money(Number(line.parts)+Number(line.labor))+'</strong>'+
-    '<div class="btnrow">'+(line.originLocked?'<span class="secondarytext">Technician recommendation</span>':
-    '<button class="btn small" onclick="reclassifyRepair(\''+r.id+'\',\''+line.id+'\',\''+(line.recommended?"requested":"recommended")+'\')">'+(line.recommended?"Move to requested":"Move to recommendations")+'</button>')+
-    '<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>'
-  ).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
+    '<div class="btnrow">'+move+'<button class="btn small danger" onclick="removeLine(\''+r.id+'\',\''+line.id+'\')">Remove</button></div></div>';
+  }).join("")+'</div>':'<p class="sub">No work priced in this section.</p>';
   const checks=r.inspectionItems||[];
   const inspection=checks.filter(i=>i.status==="watch"||i.status==="fix");
   const passed=checks.filter(i=>i.status==="good").length;
