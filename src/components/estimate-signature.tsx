@@ -26,6 +26,24 @@ const stepTitle: Record<Step, string> = {
   recommended: "Choose repairs",
   sign: "Authorization & signature",
 };
+const recommendationReason = (
+  source: EstimateSnapshot["lines"][number]["recommendationSource"],
+) => {
+  switch (source) {
+    case "inspection":
+      return "Based on an inspection finding";
+    case "maintenance":
+      return "Recommended maintenance based on time, mileage, or service history";
+    case "diagnosis":
+      return "Recommended from the diagnosis of your original concern";
+    case "advisor":
+      return "Additional shop recommendation";
+    case "prior":
+      return "Previously recommended work";
+    default:
+      return null;
+  }
+};
 
 export function EstimateSignature({
   token,
@@ -123,6 +141,8 @@ export function EstimateSignature({
         grouped.find((line) => line.kind === "labor")?.description ??
         grouped[0].description,
       total: grouped.reduce((total, line) => total + line.totalCents, 0),
+      recommendationSource: grouped.find((line) => line.recommendationSource)
+        ?.recommendationSource,
     }));
   };
   const decide = (lines: EstimateSnapshot["lines"]) =>
@@ -137,6 +157,11 @@ export function EstimateSignature({
       return (
         <section key={group.id} className="estimate-repair-decision">
           <h3>{group.label}</h3>
+          {recommendationReason(group.recommendationSource) && (
+            <p className="estimate-recommendation-reason">
+              {recommendationReason(group.recommendationSource)}
+            </p>
+          )}
           <p>
             <strong>{money(group.total)}</strong> total for this repair
           </p>
