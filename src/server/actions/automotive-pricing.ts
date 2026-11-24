@@ -26,7 +26,10 @@ export const addAutomotiveRecommendationAction = defineShopAction({
       partsCents: moneyCents,
       laborCents: moneyCents,
       costCents: moneyCents,
-      workType: z.enum(["requested", "recommended"]).default("recommended"),
+      workSource: z
+        .enum(["requested", "inspection", "maintenance", "diagnosis", "advisor"])
+        .default("advisor"),
+      inspectionItemKey: z.string().trim().min(1).max(60).optional(),
     })
     .refine((i) => i.partsCents + i.laborCents > 0, {
       message: "Enter a parts or labor selling price.",
@@ -51,7 +54,13 @@ export const addAutomotiveRecommendationAction = defineShopAction({
               ...data.parts,
               {
                 description,
-                fromInspection: i.workType === "recommended",
+                fromInspection: i.workSource === "inspection",
+                ...(i.workSource !== "requested"
+                  ? { recommendationSource: i.workSource }
+                  : {}),
+                ...(i.workSource === "inspection" && i.inspectionItemKey
+                  ? { inspectionItemKey: i.inspectionItemKey }
+                  : {}),
                 quantity: 1,
                 unitCostCents: partCost,
                 unitPriceCents: i.partsCents,
@@ -64,7 +73,13 @@ export const addAutomotiveRecommendationAction = defineShopAction({
               ...data.labor,
               {
                 description,
-                fromInspection: i.workType === "recommended",
+                fromInspection: i.workSource === "inspection",
+                ...(i.workSource !== "requested"
+                  ? { recommendationSource: i.workSource }
+                  : {}),
+                ...(i.workSource === "inspection" && i.inspectionItemKey
+                  ? { inspectionItemKey: i.inspectionItemKey }
+                  : {}),
                 estimatedHoursHundredths: 100,
                 actualHoursHundredths: null,
                 sellRateCents: i.laborCents,
@@ -82,7 +97,13 @@ export const classifyAutomotiveWorkAction = defineShopAction({
   name: "classifyAutomotiveWork",
   input: pricedInput.extend({
     description: z.string().trim().min(1).max(200),
-    workType: z.enum(["requested", "recommended"]),
+    workSource: z.enum([
+      "requested",
+      "inspection",
+      "maintenance",
+      "diagnosis",
+      "advisor",
+    ]),
   }),
   run: async ({ tx }, input) => {
     const job = await editableJob(tx, input.jobId, input.expectedVersion);
@@ -92,7 +113,7 @@ export const classifyAutomotiveWorkAction = defineShopAction({
     );
     if (!found) throw notFound("That repair");
     if (
-      input.workType === "requested" &&
+      input.workSource === "requested" &&
       [...data.parts, ...data.labor].some(
         (line) =>
           line.description === input.description && !!line.recommendationId,
@@ -102,25 +123,43 @@ export const classifyAutomotiveWorkAction = defineShopAction({
         "VALIDATION",
         "This repair is linked to a technician recommendation and must remain in the recommendations section.",
       );
-    const recommended = input.workType === "recommended";
+    const recommended = input.workSource !== "requested";
     await createJob(tx, {
       ...data,
       jobId: input.jobId,
       expectedVersion: job.version,
       parts: data.parts.map((line) =>
         line.description === input.description
-          ? { ...line, fromInspection: recommended }
+          ? {
+              ...line,
+              fromInspection: input.workSource === "inspection",
+              ...(recommended
+                ? { recommendationSource: input.workSource }
+                : { recommendationSource: undefined }),
+              ...(input.workSource === "inspection"
+                ? { inspectionItemKey: line.inspectionItemKey }
+                : { inspectionItemKey: undefined }),
+            }
           : line,
       ),
       labor: data.labor.map((line) =>
         line.description === input.description
-          ? { ...line, fromInspection: recommended }
+          ? {
+              ...line,
+              fromInspection: input.workSource === "inspection",
+              ...(recommended
+                ? { recommendationSource: input.workSource }
+                : { recommendationSource: undefined }),
+              ...(input.workSource === "inspection"
+                ? { inspectionItemKey: line.inspectionItemKey }
+                : { inspectionItemKey: undefined }),
+            }
           : line,
       ),
     });
     return {
       jobId: input.jobId,
-      message: "Repair moved to the correct section.",
+      message: "Repair source updated.",
     };
   },
 });
