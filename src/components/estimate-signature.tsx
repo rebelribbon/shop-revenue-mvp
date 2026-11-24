@@ -109,7 +109,10 @@ export function EstimateSignature({
     if (previousStep.current === stepIndex) return;
     previousStep.current = stepIndex;
     stepHeading.current?.focus({ preventScroll: true });
-    stepHeading.current?.scrollIntoView({ block: "start", behavior: "instant" });
+    stepHeading.current?.scrollIntoView({
+      block: "start",
+      behavior: "instant",
+    });
   }, [stepIndex]);
   const step: Step | null = steps.length ? steps[stepIndex] : null;
   const [choices, setChoices] = useState<
