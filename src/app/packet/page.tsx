@@ -56,6 +56,11 @@ export default async function CustomerPacketPage({
     Number(Boolean(estimate.authorization)) +
     documents.filter((d) => d.value?.status === "signed").length;
   const total = 1 + documents.length;
+  const stepped =
+    !!estimate.snapshot.inspection ||
+    !!estimate.snapshot.concerns ||
+    estimate.snapshot.lines.some((line) => line.recommended);
+
 
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
@@ -92,10 +97,19 @@ export default async function CustomerPacketPage({
         {estimate.supplementReason && (
           <p className="notice">Updated work: {estimate.supplementReason}</p>
         )}
-        <EstimateDocument
-          snapshot={estimate.snapshot}
-          photoToken={estimateToken}
-        />
+        {(!stepped || estimate.authorization) && (
+          <EstimateDocument
+            snapshot={estimate.snapshot}
+            photoToken={estimateToken}
+          />
+        )}
+        {stepped && !estimate.authorization && (
+          <p className="muted">
+            Review what you requested, the inspection findings, and each
+            recommendation in order. Your final authorization amount includes
+            only work you approve, plus applicable tax.
+          </p>
+        )}
         {estimate.authorization ? (
           <section className="card">
             <h3>Estimate authorization recorded</h3>
