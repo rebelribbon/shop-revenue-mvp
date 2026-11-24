@@ -265,7 +265,8 @@ roEstimate=function(r){
     '<span class="estimate-reference-status '+(i.status==="fix"?"is-fail":"is-caution")+'">'+
     (i.status==="fix"?"Needs repair":"Monitor")+'</span></div>'+
     (i.note?'<p>'+esc(i.note)+'</p>':"")+
-    (i.recommendedWork?'<p><strong>Technician recommends:</strong> '+esc(i.recommendedWork)+'</p>':"")+
+    (i.recommendedWork?'<p><strong>Technician recommends:</strong> '+esc(i.recommendedWork)+'</p>'+
+      '<button class="btn small" type="button" onclick="prefillEstimateFromInspection(\''+r.id+'\',\''+esc(i.key)+'\',\''+esc(i.recommendedWork).replaceAll("'","&#39;")+'\')">+ Add to estimate</button>':"")+
     '</article>').join("")+'</div>':
     '<p class="sub">No Caution or Fail findings were recorded.</p>';
   const media=(r.media||[]).filter(m=>m.kind==="photo"||m.kind==="video");
@@ -303,9 +304,13 @@ roEstimate=function(r){
     '<p class="sub">Use the inspection findings on the left to describe and price each additional repair. The customer will approve or decline each item.</p>'+
     priceList(additional)+'</section>'+
     '<section class="card card-pad"><h3>Add work to this proposal</h3>'+
-    '<form class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
-    '<label class="span">Why is this work included?<select name="workType" required>'+
-    '<option value="recommended">Additional recommendation from inspection</option>'+
+    '<form id="estimate-add-work" class="formgrid" style="margin-top:13px" onsubmit="event.preventDefault();addLine(this,\''+r.id+'\')">'+
+    '<input type="hidden" name="inspectionItemKey" value="">'+
+    '<label class="span">Why is this work included?<select name="workSource" required onchange="if(this.value!==\'inspection\')this.form.elements.inspectionItemKey.value=\'\'">'+
+    '<option value="inspection">Inspection finding</option>'+
+    '<option value="maintenance">Maintenance due / service interval</option>'+
+    '<option value="diagnosis">Diagnosis of customer concern</option>'+
+    '<option value="advisor">Advisor/shop recommendation</option>'+
     '<option value="requested">Customer requested this service</option></select></label>'+
     '<label class="span">Repair or service name<input name="name" maxlength="200" placeholder="Example: Replace front brake pads and rotors" required></label>'+
     '<label>Parts selling price ($)<input name="parts" inputmode="decimal" type="number" min="0" step="0.01" required placeholder="0.00"></label>'+
@@ -548,17 +553,17 @@ addLine = async function(form,id) {
       throw new Error("Enter the recommendation and a positive selling price.");
     await liveWrite("ro.pricing.add", {
       jobId: id, expectedVersion: r.version, description: String(f.name).trim(),
-      partsCents, laborCents, costCents, workType: String(f.workType || "recommended")
+      partsCents, laborCents, costCents, workSource: String(f.workSource || "advisor"),\n      inspectionItemKey: String(f.inspectionItemKey || "") || undefined
     });
     showPricedRo(id);
   } catch(e) { alert(e.message || "Recommendation was not saved."); }
 };
-window.reclassifyRepair=async function(roId,lineId,workType){
+window.reclassifyRepair=async function(roId,lineId,workSource){
   const r=roBy(roId),line=r?.lines?.find(item=>item.id===lineId);
   if(!r||r.stage!=="estimate"||!line)return;
   try{
     await liveWrite("ro.pricing.classify",{
-      jobId:roId,expectedVersion:r.version,description:line.name,workType
+      jobId:roId,expectedVersion:r.version,description:line.name,workSource
     });
     showPricedRo(roId);
   }catch(error){alert(error.message||"Could not change the repair category.");}
