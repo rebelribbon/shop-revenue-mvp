@@ -34,7 +34,7 @@ export const recoveryLink = (to: string, since: number) =>
   waitForEmail(
     to,
     since,
-    /http:\/\/(?:127\.0\.0\.1:54321\/auth\/v1\/verify|localhost:3000\/auth\/confirm)\?[^\s"'<>]+/,
+    /http:\/\/(?:127\.0\.0\.1:54321\/auth\/v1\/verify|localhost:3000\/auth\/confirm)\?[^\s"'<>]*type=recovery[^\s"'<>]*/,
   );
 export const inviteLink = (to: string, since: number) =>
   waitForEmail(to, since, /http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43}/);

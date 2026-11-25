@@ -57,7 +57,7 @@ test("recovery link survives a preview and resets on a fresh browser context", a
   const reset = await waitForEmail(
     email,
     resetAt,
-    /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]+/,
+    /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]*type=recovery[^\s"'<>]*/,
   );
   const fresh = await browser.newContext();
   const phone = await fresh.newPage();
@@ -121,7 +121,11 @@ test("email second step protects records and exported data @mfa", async ({
   await page
     .getByRole("button", { name: "Send verification code", exact: true })
     .click();
-  const code = await waitForEmail(email, since, /\b\d{6}\b/);
+  const code = await waitForEmail(
+    email,
+    since,
+    /(?<=Your Shop Revenue verification code is )\d{6}/,
+  );
   await page.getByLabel("Email verification code").fill(code);
   await page
     .getByRole("button", { name: "Verify and continue", exact: true })
