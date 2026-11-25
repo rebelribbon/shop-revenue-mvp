@@ -1,13 +1,16 @@
 "use client";
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { signUpOwner } from "@/server/actions/signup";
+import { signUpOwner, verifyOwnerEmailCode } from "@/server/actions/signup";
 export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
   const [state, action, pending] = useActionState(signUpOwner, null);
+  const [email, setEmail] = useState(invitedEmail ?? "");
+  const [verification, verify, verifying] = useActionState(verifyOwnerEmailCode, null);
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   return (
-    <form action={action} className="card">
+    <div className="card">
+    <form action={action}>
       <label htmlFor="signup-email">Email</label>
       <input
         id="signup-email"
@@ -16,7 +19,8 @@ export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
         autoComplete="email"
         required
         maxLength={254}
-        defaultValue={invitedEmail}
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
         readOnly={!!invitedEmail}
       />
       <label htmlFor="signup-password">Create a password</label>
@@ -48,5 +52,16 @@ export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
         </p>
       )}
     </form>
+    <form action={verify}>
+      <h2>Confirm your email</h2>
+      <p>Have a six-digit confirmation code? Enter it here, even on a different device.</p>
+      <label htmlFor="confirmation-email">Email</label>
+      <input id="confirmation-email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} readOnly={!!invitedEmail} required />
+      <label htmlFor="confirmation-code">Confirmation code</label>
+      <input id="confirmation-code" name="code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required />
+      <button className="btn primary" disabled={verifying}>{verifying ? "Verifying…" : "Verify email"}</button>
+      {verification && <p role="status" className="notice error">{verification.message}</p>}
+    </form>
+    </div>
   );
 }
