@@ -14,6 +14,7 @@ import {
 } from "@/domain/onboarding";
 import { assertSessionAssurance } from "@/server/auth/assurance";
 import { getSessionState } from "@/server/auth/session";
+import { supabaseServer } from "@/server/auth/supabase";
 import { shopSignupEnabledFor } from "@/lib/shop-signup-access";
 import { AppError } from "@/lib/errors";
 import { normalizePhone } from "@/lib/normalize";
@@ -115,6 +116,16 @@ export async function advanceOnboarding(
           }),
         );
       } else {
+        const { data, error } = await (await supabaseServer()).auth.getUser();
+        if (
+          error ||
+          data.user?.id !== state.identity.authSubject ||
+          !data.user.email_confirmed_at
+        )
+          throw new AppError(
+            "FORBIDDEN",
+            "Confirm your email before creating your business.",
+          );
         await enrollShop(
           {
             authSubject: state.identity.authSubject,

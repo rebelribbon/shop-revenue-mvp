@@ -52,12 +52,29 @@ import {
   EMAIL_STEP_COOKIE,
 } from "@/server/auth/email-security";
 import { sessionNeedsMfa } from "@/server/auth/assurance";
+import { enrollAuthenticator, verifyAuthenticator } from "@/server/actions/mfa";
 beforeEach(() => {
   mocked.jar.clear();
   mocked.identity.authSubject = randomUUID();
   mocked.sessionId = randomUUID();
 });
 const context = () => ({ ...mocked.identity, sessionId: mocked.sessionId });
+it("does not let a password-only session replace required email verification with its own authenticator", async () => {
+  const c = context();
+  const code = await issueEmailCode(c, false);
+  await consumeEmailCode(c, code);
+  await grantPasswordStep();
+  expect(await enrollAuthenticator()).toMatchObject({
+    ok: false,
+    message: "Verify a fresh email code before changing to an authenticator.",
+  });
+  expect(
+    await verifyAuthenticator({ factorId: randomUUID(), code: "123456" }),
+  ).toMatchObject({
+    ok: false,
+    message: "Verify a fresh email code before changing to an authenticator.",
+  });
+});
 it("requires both password and emailed proof and rejects copied, tampered or revoked cookies", async () => {
   const c = context();
   const code = await issueEmailCode(c, false);
