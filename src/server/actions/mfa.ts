@@ -52,6 +52,7 @@ export async function enrollAuthenticator() {
     factorId: data.id,
     qrCode: data.totp.qr_code.replace(/^data:image\/svg\+xml;utf-8,/, ""),
     secret: data.totp.secret,
+    uri: data.totp.uri,
   };
 }
 export async function verifyAuthenticator(input: unknown) {
