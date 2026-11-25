@@ -39,3 +39,14 @@
 .priceCard p:first-child { margin-top:0; }
 .footer { display:flex; flex-wrap:wrap; align-items:center; gap:16px; justify-content:space-between; padding:24px 0; border-top:1px solid var(--marketing-line); color:var(--marketing-muted); font-size:14px; }
 @media(max-width:760px) { .page {padding:0 16px;} .header {flex-wrap:wrap;} .header nav {gap:0;} .hero,.pricing {grid-template-columns:1fr; gap:24px; padding:40px 0;} .grid,.industries {grid-template-columns:1fr;} .section {padding:32px 0;} .preview,.priceCard {padding:16px;} .previewStats div {padding:8px;} .previewRow {gap:8px;} }
+
+/* Keep metric labels intact; reflow cards instead of splitting words. */
+.preview { container-type: inline-size; }
+.previewStats { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.previewStats small { display:block; overflow-wrap:normal; word-break:normal; hyphens:none; line-height:1.4; }
+.previewRow { overflow-wrap:normal; word-break:normal; }
+@container (max-width: 340px) {
+  .previewStats { grid-template-columns:1fr; }
+  .previewStats div { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .previewStats strong { margin-top:0; }
+}
