@@ -214,7 +214,7 @@ it("refuses standalone shop payment and VIN actions before MFA", async () => {
     });
   expect(await lookupVinAction("1HGCM82633A004352")).toMatchObject({
     ok: false,
-    message: "Verify your authenticator code before continuing.",
+    message: "Complete two-step verification before continuing.",
   });
   expect(mocks.read).not.toHaveBeenCalled();
 });

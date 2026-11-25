@@ -14,6 +14,26 @@ export const shopSignupInput = z.object({
   shopName: z.string().trim().min(1).max(200),
   ownerName: z.string().trim().min(1).max(100),
   businessType: z.enum(businessTypes).optional(),
+  phoneE164: z
+    .string()
+    .regex(/^\+[1-9]\d{1,14}$/)
+    .optional(),
+  addressLine1: z.string().trim().max(200).optional(),
+  city: z.string().trim().max(120).optional(),
+  region: z.string().trim().max(60).optional(),
+  postalCode: z.string().trim().max(20).optional(),
+  timezone: z
+    .string()
+    .max(100)
+    .refine((v) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: v });
+        return true;
+      } catch {
+        return false;
+      }
+    })
+    .optional(),
 });
 export type VerifiedShopIdentity = {
   authSubject: string;
@@ -82,8 +102,15 @@ export async function enrollShop(
       .insert(business)
       .values({
         legalName: input.shopName,
-        ...(input.businessType ? { businessType: input.businessType, businessTypeSelected: true } : {}),
-        timezone: "America/Chicago",
+        ...(input.businessType
+          ? { businessType: input.businessType, businessTypeSelected: true }
+          : {}),
+        timezone: input.timezone ?? "America/Chicago",
+        phoneE164: input.phoneE164,
+        addressLine1: input.addressLine1,
+        city: input.city,
+        region: input.region,
+        postalCode: input.postalCode,
         jurisdictionCode: "US-TX",
       })
       .returning({ id: business.id });

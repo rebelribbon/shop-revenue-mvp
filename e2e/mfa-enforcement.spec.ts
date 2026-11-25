@@ -43,13 +43,17 @@ test.describe("mandatory authenticator @mfa", () => {
         ])
           expect((await page.request.get(path)).status()).toBe(403);
       }
+      if (!account.internal)
+        await page
+          .getByRole("button", { name: "Authenticator app", exact: true })
+          .click();
       await page
         .getByRole("button", { name: "Set up authenticator", exact: true })
         .click();
       await expect(
         page.getByAltText("Authenticator enrollment QR code"),
       ).toBeVisible();
-      await page.getByText("Enter setup key manually", { exact: true }).click();
+
       const secret = (await page.locator("code").textContent())!;
       await page.getByLabel("Authenticator code").fill(totp(secret));
       await page

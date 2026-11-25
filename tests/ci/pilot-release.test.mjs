@@ -71,6 +71,33 @@ test("pilot deployment does not claim missing reviews passed or public launch re
   assert.equal(releaseDecision("commercial", checks).deploymentReady, false);
 });
 
+test("owner-requested early access opens registration and retains technical gates and pending reviews", () => {
+  const pending = requiredReleaseEvidence().map((key) => ({
+    key,
+    ready: false,
+    message: key,
+  }));
+  const checks = [...technical("early_access", "true"), ...pending];
+  const result = releaseDecision("early_access", checks);
+  assert.equal(result.deploymentReady, true);
+  assert.equal(result.launchReady, false);
+  assert.deepEqual(result.pendingEvidence, requiredReleaseEvidence());
+  assert.equal(
+    releaseDecision("early_access", [
+      ...technical("early_access", "false"),
+      ...pending,
+    ]).deploymentReady,
+    false,
+  );
+  assert.equal(
+    releaseDecision(
+      "early_access",
+      checks.filter((x) => x.key !== "workspace-schema"),
+    ).deploymentReady,
+    false,
+  );
+});
+
 test("pilot still blocks missing technical configuration, open signup and unknown profiles", () => {
   for (const profile of ["pilot", "unknown"]) {
     const checks = releaseProfileChecks({

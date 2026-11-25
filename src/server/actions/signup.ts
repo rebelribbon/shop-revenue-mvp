@@ -14,6 +14,7 @@ import { supabaseServer } from "@/server/auth/supabase";
 import { getRequestMeta } from "@/server/request";
 import { toActionError } from "./define";
 import type { AuthFormState } from "./auth";
+import { assertSessionAssurance } from "@/server/auth/assurance";
 
 export type SignupFormState = AuthFormState & { ready?: boolean };
 
@@ -115,20 +116,39 @@ export async function verifyOwnerEmailCode(
   form: FormData,
 ): Promise<AuthFormState> {
   const meta = await getRequestMeta();
-  const parsed = z.object({ email: z.email(), code: z.string().regex(/^\d{6}$/) }).safeParse({
-    email: String(form.get("email") ?? "").trim().toLowerCase(),
-    code: String(form.get("code") ?? "").trim(),
-  });
-  if (!parsed.success) return { ok: false, message: "Enter your email and six-digit confirmation code." };
+  const parsed = z
+    .object({ email: z.email(), code: z.string().regex(/^\d{6}$/) })
+    .safeParse({
+      email: String(form.get("email") ?? "")
+        .trim()
+        .toLowerCase(),
+      code: String(form.get("code") ?? "").trim(),
+    });
+  if (!parsed.success)
+    return {
+      ok: false,
+      message: "Enter your email and six-digit confirmation code.",
+    };
   try {
     requireSignup(parsed.data.email);
-    await checkAuthThrottle("signup", parsed.data.email, meta.ip);
+    await checkAuthThrottle("email_verify", parsed.data.email, meta.ip);
     const supabase = await supabaseServer();
-    const { data, error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.code, type: "signup" });
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: parsed.data.email,
+      token: parsed.data.code,
+      type: "signup",
+    });
     if (error || !data.user?.email_confirmed_at || !data.session)
-      return { ok: false, message: "That code did not work. Use the newest confirmation email or sign in if your email is already confirmed." };
+      return {
+        ok: false,
+        message:
+          "That code did not work. Use the newest confirmation email or sign in if your email is already confirmed.",
+      };
   } catch (error) {
-    return { ok: false, message: toActionError(error, meta, "verifyOwnerEmailCode").message };
+    return {
+      ok: false,
+      message: toActionError(error, meta, "verifyOwnerEmailCode").message,
+    };
   }
   redirect("/start");
 }
@@ -139,6 +159,7 @@ export async function createMyShop(
 ): Promise<AuthFormState> {
   const meta = await getRequestMeta();
   try {
+    await assertSessionAssurance();
     const supabase = await supabaseServer();
     const { data, error } = await supabase.auth.getUser();
     const u = data.user;
@@ -164,4 +185,42 @@ export async function createMyShop(
     };
   }
   redirect("/app/settings/billing");
+}
+
+export async function resendOwnerConfirmation(
+  _: AuthFormState | null,
+  form: FormData,
+): Promise<AuthFormState> {
+  const meta = await getRequestMeta();
+  try {
+    const email = normalizeEmail(String(form.get("email") ?? ""));
+    requireSignup(email);
+    await checkAuthThrottle("signup", email, meta.ip);
+    const supabase = await supabaseServer();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: new URL(
+          "/auth/callback?next=/start",
+          process.env.APP_BASE_URL!,
+        ).href,
+      },
+    });
+    if (error)
+      throw new AppError(
+        "PROVIDER_UNAVAILABLE",
+        "We could not resend your confirmation. Wait a minute and try again.",
+      );
+    return {
+      ok: true,
+      message:
+        "If your account needs confirmation, we sent a fresh email. Use the newest link or code.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: toActionError(error, meta, "resendOwnerConfirmation").message,
+    };
+  }
 }

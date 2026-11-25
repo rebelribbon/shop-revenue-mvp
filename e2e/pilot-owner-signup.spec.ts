@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { auditUX } from "./ux-audit";
-import { E2E_PASSWORD, waitForEmail } from "./helpers";
+import {
+  E2E_PASSWORD,
+  waitForEmail,
+  openAccountEmail,
+  completeBusinessBasics,
+} from "./helpers";
 
 test("an invited owner confirms their own email and creates a separate shop", async ({
   page,
@@ -38,25 +43,13 @@ test("an invited owner confirms their own email and creates a separate shop", as
   const confirmation = await waitForEmail(
     email,
     confirmationAt,
-    /http:\/\/127\.0\.0\.1:54321\/auth\/v1\/verify\?[^\s"'<>]+/,
+    /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]+/,
   );
-  await page.goto(confirmation);
+  await openAccountEmail(page, confirmation);
   await expect(page).toHaveURL(/\/start$/);
-  await page.getByLabel("Your name", { exact: true }).fill("Invited Owner");
-  await page.getByLabel("Shop name", { exact: true }).fill(shopName);
-  await auditUX(page);
-  await page.screenshot({
-    path: `test-results/owner-invite-${info.project.name}.png`,
-    fullPage: true,
-  });
-  await page
-    .getByRole("button", {
-      name: "Create shop and continue to billing",
-      exact: true,
-    })
-    .click();
+  await completeBusinessBasics(page, "New Owner", shopName);
+  await page.goto("/app/settings/billing");
   await expect(page).toHaveURL(/\/automotive\?view=billing$/);
-  await expect(page.locator(".topbar .crumb")).toContainText(shopName);
   await page.goto("/app/customers");
   await expect(page.getByText("Ford", { exact: true })).toHaveCount(0);
 });

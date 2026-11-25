@@ -414,6 +414,13 @@
       "when": 1796224532000,
       "tag": "0058_shop_authorization_terms",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1796224532001,
+      "tag": "0059_account_security_onboarding",
+      "breakpoints": true
     }
   ]
 }

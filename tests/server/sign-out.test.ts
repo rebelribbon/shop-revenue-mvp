@@ -42,6 +42,8 @@ it("posts logout, clears app session choices and redirects to sign in without ca
   expect(mocks.deleteCookie.mock.calls.map(([name]) => name).sort()).toEqual([
     "active_business",
     "pw_reset",
+    "sr_email_step",
+    "sr_password_step",
     "view_as",
   ]);
   expect(response.status).toBe(303);

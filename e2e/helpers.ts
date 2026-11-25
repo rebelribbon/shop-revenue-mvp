@@ -34,7 +34,7 @@ export const recoveryLink = (to: string, since: number) =>
   waitForEmail(
     to,
     since,
-    /http:\/\/127\.0\.0\.1:54321\/auth\/v1\/verify\?[^\s"'<>]+/,
+    /http:\/\/(?:127\.0\.0\.1:54321\/auth\/v1\/verify|localhost:3000\/auth\/confirm)\?[^\s"'<>]+/,
   );
 export const inviteLink = (to: string, since: number) =>
   waitForEmail(to, since, /http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43}/);
@@ -64,7 +64,7 @@ export async function setInvitePassword(
   since: number,
   password = E2E_PASSWORD,
 ) {
-  await page.goto(await recoveryLink(email, since));
+  await openAccountEmail(page, await recoveryLink(email, since));
   await expect(page.getByRole("heading", { name: /password/i })).toBeVisible();
   await auditUX(page);
   await page.getByLabel("New password").fill(password);
@@ -123,4 +123,35 @@ export async function openFullJobSheet(page: Page) {
   url.searchParams.set("full", "1");
   await page.goto(url.toString());
   await expect(page.getByLabel("Job name", { exact: true })).toBeVisible();
+}
+
+export async function openAccountEmail(page: Page, link: string) {
+  await page.goto(link);
+  if (new URL(page.url()).pathname === "/auth/confirm") {
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+  }
+}
+export async function completeBusinessBasics(
+  page: Page,
+  ownerName: string,
+  shopName: string,
+) {
+  await page
+    .getByLabel("What kind of business do you run?")
+    .selectOption("automotive");
+  await page.getByLabel("Your name", { exact: true }).fill(ownerName);
+  await page.getByLabel("Business name", { exact: true }).fill(shopName);
+  await auditUX(page);
+  await page
+    .getByRole("button", { name: "Save and continue", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Business information", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Save and continue", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Subscription", exact: true }),
+  ).toBeVisible();
 }

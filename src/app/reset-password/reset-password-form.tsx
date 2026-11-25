@@ -37,9 +37,24 @@ export function ResetPasswordForm({ next }: { next: string }) {
         maxLength={128}
         required
       />
-      <button type="button" className="btn secondary" onClick={() => setVisible(!visible)}>{visible ? "Hide passwords" : "Show passwords"}</button>
-      <p className="muted" aria-live="polite">{password.length < 12 ? "Use at least 12 characters." : confirmation !== password ? "Confirm the same password." : "Passwords match."}</p>
-      <button className="btn primary" disabled={pending || password.length < 12 || confirmation !== password}>
+      <button
+        type="button"
+        className="btn secondary"
+        onClick={() => setVisible(!visible)}
+      >
+        {visible ? "Hide passwords" : "Show passwords"}
+      </button>
+      <p className="muted" aria-live="polite">
+        {password.length < 12
+          ? "Use at least 12 characters."
+          : confirmation !== password
+            ? "Confirm the same password."
+            : "Passwords match."}
+      </p>
+      <button
+        className="btn primary"
+        disabled={pending || password.length < 12 || confirmation !== password}
+      >
         {pending ? "Saving…" : "Save password"}
       </button>
       {state && (

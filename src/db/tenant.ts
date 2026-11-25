@@ -225,4 +225,13 @@ export async function pingDatabase(): Promise<void> {
     .db.select()
     .from(schema.shopAuthorizationTerms)
     .limit(0);
+  await connectionFor("admin").db.execute(
+    sql`select auth_subject, method, version from app.account_security limit 0`,
+  );
+  await connectionFor("admin").db.execute(
+    sql`select auth_subject, session_id, code_hash from app.email_second_step limit 0`,
+  );
+  await connectionFor("admin").db.execute(
+    sql`select auth_subject, step, draft, version from app.onboarding_progress limit 0`,
+  );
 }

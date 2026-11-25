@@ -37,6 +37,9 @@ test("authenticator enrollment verifies an actual local-stack TOTP code", async 
 }) => {
   await signInWithPassword(page, "owner.b@shop-b.test");
   await page.goto("/verify?next=/app/settings");
+  await page
+    .getByRole("button", { name: "Authenticator app", exact: true })
+    .click();
   const setup = page.getByRole("button", {
     name: "Set up authenticator",
     exact: true,
@@ -55,7 +58,7 @@ test("authenticator enrollment verifies an actual local-stack TOTP code", async 
           .evaluate((el) => (el as HTMLImageElement).naturalWidth),
       )
       .toBeGreaterThan(0);
-    await page.getByText("Enter setup key manually", { exact: true }).click();
+
     const secret = (await page.locator("code").textContent())!;
     await page.getByLabel("Authenticator code").fill(totp(secret));
     await page
