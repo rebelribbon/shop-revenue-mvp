@@ -177,8 +177,9 @@ test("email second step protects records and exported data @mfa", async ({
   await page
     .getByRole("button", { name: "Verify authenticator", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL((url) => url.pathname === "/app");
   await page.goto("/verify?settings=1&next=/app");
+  await expect(page.getByLabel("Authenticator code")).toBeVisible();
   await page.getByRole("button", { name: "Email code", exact: true }).click();
   const switchedAt = Date.now();
   await page
@@ -196,7 +197,7 @@ test("email second step protects records and exported data @mfa", async ({
   await page
     .getByRole("button", { name: "Verify and continue", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/app$/);
+  await expect(page).toHaveURL((url) => url.pathname === "/app");
   await page.request.post("/auth/sign-out");
   await page.goto("/app");
   await expect(page).toHaveURL(/\/sign-in/);

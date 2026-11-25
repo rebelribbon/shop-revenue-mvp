@@ -39,7 +39,7 @@ export default async function VerifyPage({
           name: f.friendly_name ?? "Authenticator",
         }))}
         next={next === "/verify" ? "/app" : next}
-        verified={assurance?.currentLevel === "aal2"}
+        verified={!settings && assurance?.currentLevel === "aal2"}
         method={
           preference.method ?? (factors.totp.length ? "authenticator" : null)
         }
