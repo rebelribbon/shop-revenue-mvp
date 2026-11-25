@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signUpOwner } from "@/server/actions/signup";
 export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
   const [state, action, pending] = useActionState(signUpOwner, null);
+  const [password, setPassword] = useState("");
+  const [visible, setVisible] = useState(false);
   return (
     <form action={action} className="card">
       <label htmlFor="signup-email">Email</label>
@@ -21,14 +23,18 @@ export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
       <input
         id="signup-password"
         name="password"
-        type="password"
+        type={visible ? "text" : "password"}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        aria-describedby="signup-password-hint"
         autoComplete="new-password"
         minLength={12}
         maxLength={128}
         required
       />
-      <p className="muted">Use at least 12 characters.</p>
-      <button className="btn primary" disabled={pending}>
+      <button type="button" className="btn secondary" onClick={() => setVisible(!visible)}>{visible ? "Hide password" : "Show password"}</button>
+      <p id="signup-password-hint" className="muted" aria-live="polite">{password.length >= 12 ? "Password length requirement met." : "Use at least 12 characters."}</p>
+      <button className="btn primary" disabled={pending || password.length < 12}>
         {pending ? "Creating login…" : "Create login"}
       </button>
       {state && (
