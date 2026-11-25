@@ -15,6 +15,7 @@ import {
 import { getRequestMeta } from "../request";
 import {
   clearPasswordResetGrant,
+  grantPasswordReset,
   getIdentity,
   hasPasswordResetGrant,
 } from "../auth/session";
@@ -117,6 +118,35 @@ export async function requestPasswordReset(
     };
   }
   return { ok: true, message: RESET_SENT };
+}
+
+// Email recovery codes can be verified on a different device. The provider
+// consumes the recovery OTP; only then grant the existing reset permission.
+export async function verifyPasswordRecoveryCode(
+  _: AuthFormState | null,
+  form: FormData,
+): Promise<AuthFormState> {
+  const meta = await getRequestMeta();
+  const parsed = z.object({ email: z.email(), code: z.string().regex(/^\d{6}$/) }).safeParse({
+    email: String(form.get("email") ?? "").trim().toLowerCase(),
+    code: String(form.get("code") ?? "").trim(),
+  });
+  if (!parsed.success) return { ok: false, message: "Enter your email and the six-digit recovery code." };
+  try {
+    await checkAuthThrottle("reset", parsed.data.email, meta.ip);
+  } catch {
+    return { ok: false, message: "Too many attempts. Try again later." };
+  }
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: parsed.data.email,
+    token: parsed.data.code,
+    type: "recovery",
+  });
+  if (error || !data.user || !data.session)
+    return { ok: false, message: "That code did not work. Use the newest email or request a new code." };
+  await grantPasswordReset(data.user.id);
+  redirect("/reset-password");
 }
 
 const newPasswordInput = z.object({
