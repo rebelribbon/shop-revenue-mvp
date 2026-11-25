@@ -110,6 +110,29 @@ export async function signUpOwner(
     };
   }
 }
+export async function verifyOwnerEmailCode(
+  _: AuthFormState | null,
+  form: FormData,
+): Promise<AuthFormState> {
+  const meta = await getRequestMeta();
+  const parsed = z.object({ email: z.email(), code: z.string().regex(/^\d{6}$/) }).safeParse({
+    email: String(form.get("email") ?? "").trim().toLowerCase(),
+    code: String(form.get("code") ?? "").trim(),
+  });
+  if (!parsed.success) return { ok: false, message: "Enter your email and six-digit confirmation code." };
+  try {
+    requireSignup(parsed.data.email);
+    await checkAuthThrottle("signup", parsed.data.email, meta.ip);
+    const supabase = await supabaseServer();
+    const { data, error } = await supabase.auth.verifyOtp({ email: parsed.data.email, token: parsed.data.code, type: "signup" });
+    if (error || !data.user?.email_confirmed_at || !data.session)
+      return { ok: false, message: "That code did not work. Use the newest confirmation email or sign in if your email is already confirmed." };
+  } catch (error) {
+    return { ok: false, message: toActionError(error, meta, "verifyOwnerEmailCode").message };
+  }
+  redirect("/start");
+}
+
 export async function createMyShop(
   _: AuthFormState | null,
   form: FormData,
