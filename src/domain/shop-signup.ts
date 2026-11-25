@@ -6,12 +6,14 @@ import { z } from "zod";
 import { withAdmin } from "@/db/admin";
 import { business, location, membership, user } from "@/db/schema";
 import { runInContext, type TenantTx } from "@/db/tenant";
+import { businessTypes } from "@/lib/business-types";
 import { AppError } from "@/lib/errors";
 import { audit, type RequestMeta } from "./records";
 
 export const shopSignupInput = z.object({
   shopName: z.string().trim().min(1).max(200),
   ownerName: z.string().trim().min(1).max(100),
+  businessType: z.enum(businessTypes).optional(),
 });
 export type VerifiedShopIdentity = {
   authSubject: string;
@@ -80,6 +82,7 @@ export async function enrollShop(
       .insert(business)
       .values({
         legalName: input.shopName,
+        ...(input.businessType ? { businessType: input.businessType, businessTypeSelected: true } : {}),
         timezone: "America/Chicago",
         jurisdictionCode: "US-TX",
       })
