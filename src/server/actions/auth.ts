@@ -149,6 +149,35 @@ export async function verifyPasswordRecoveryCode(
   redirect("/reset-password");
 }
 
+// A link preview only renders a page. This explicit form submission consumes
+// the provider token, so the browser that requested recovery is irrelevant.
+export async function confirmAccountLink(form: FormData): Promise<void> {
+  const parsed = z.object({
+    token: z.string().min(20).max(512).regex(/^[a-zA-Z0-9_-]+$/),
+    type: z.enum(["recovery", "email"]),
+  }).safeParse({ token: form.get("token"), type: form.get("type") });
+  if (!parsed.success) redirect("/forgot-password");
+  const meta = await getRequestMeta();
+  try {
+    await checkAuthThrottle("sign_in", "email-link:" + parsed.data.token, meta.ip);
+  } catch {
+    redirect("/forgot-password");
+  }
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: parsed.data.token,
+    type: parsed.data.type,
+  });
+  if (error || !data.user || !data.session)
+    redirect(parsed.data.type === "recovery" ? "/forgot-password?error=link" : "/sign-in?error=confirmation&next=/start");
+  if (parsed.data.type === "recovery") {
+    await grantPasswordReset(data.user.id);
+    const next = safeNext(String(form.get("next") ?? ""));
+    redirect(next.startsWith("/reset-password?") ? next : "/reset-password");
+  }
+  redirect("/start");
+}
+
 const newPasswordInput = z.object({
   password: z.string().min(12, "Use at least 12 characters.").max(128),
   confirmPassword: z.string(),
