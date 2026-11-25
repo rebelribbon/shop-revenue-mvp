@@ -248,6 +248,14 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+[auth.email.template.confirmation]
+subject = "Confirm your Shop Revenue email"
+content_path = "./supabase/templates/shop-confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Shop Revenue password"
+content_path = "./supabase/templates/shop-recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
