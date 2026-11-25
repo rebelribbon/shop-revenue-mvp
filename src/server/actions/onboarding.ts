@@ -108,12 +108,19 @@ export async function advanceOnboarding(
         phoneE164: draft.phone ? normalizePhone(draft.phone) : undefined,
       });
       if (state.kind === "shop") {
-        await withTenant(state.session.businessId, state.session.actor, (tx) =>
-          updateBusinessProfile(tx, meta, {
-            ...input,
-            legalName: input.shopName,
-            timezone: input.timezone ?? "America/Chicago",
-          }),
+        await withTenant(
+          state.session.businessId,
+          state.session.actor,
+          async (tx) => {
+            const existing = await getBusinessProfile(tx);
+            return updateBusinessProfile(tx, meta, {
+              ...input,
+              legalName: input.shopName,
+              timezone: input.timezone ?? "America/Chicago",
+              dba: existing.dba,
+              addressLine2: existing.addressLine2,
+            });
+          },
         );
       } else {
         const { data, error } = await (await supabaseServer()).auth.getUser();
