@@ -120,7 +120,7 @@ export async function requestPasswordReset(
 }
 
 const newPasswordInput = z.object({
-  password: z.string().min(8, "Use at least 8 characters."),
+  password: z.string().min(12, "Use at least 12 characters.").max(128),
   confirmPassword: z.string(),
   next: z.string().optional(),
 });
