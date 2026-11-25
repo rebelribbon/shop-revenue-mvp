@@ -117,7 +117,7 @@ export async function verifyOwnerEmailCode(
 ): Promise<AuthFormState> {
   const meta = await getRequestMeta();
   const parsed = z
-    .object({ email: z.email(), code: z.string().regex(/^\d{6}$/) })
+    .object({ email: z.email(), code: z.string().regex(/^\d{6,8}$/) })
     .safeParse({
       email: String(form.get("email") ?? "")
         .trim()
@@ -127,7 +127,7 @@ export async function verifyOwnerEmailCode(
   if (!parsed.success)
     return {
       ok: false,
-      message: "Enter your email and six-digit confirmation code.",
+      message: "Enter your email and the confirmation code from your email.",
     };
   try {
     requireSignup(parsed.data.email);

@@ -130,7 +130,7 @@ export async function verifyPasswordRecoveryCode(
 ): Promise<AuthFormState> {
   const meta = await getRequestMeta();
   const parsed = z
-    .object({ email: z.email(), code: z.string().regex(/^\d{6}$/) })
+    .object({ email: z.email(), code: z.string().regex(/^\d{6,8}$/) })
     .safeParse({
       email: String(form.get("email") ?? "")
         .trim()
@@ -140,7 +140,7 @@ export async function verifyPasswordRecoveryCode(
   if (!parsed.success)
     return {
       ok: false,
-      message: "Enter your email and the six-digit recovery code.",
+      message: "Enter your email and the recovery code from your email.",
     };
   try {
     await checkAuthThrottle("reset_verify", parsed.data.email, meta.ip);

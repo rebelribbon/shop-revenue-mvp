@@ -57,7 +57,7 @@ export function ForgotPasswordForm() {
           <form action={verify}>
             <h2>Already have a recovery code?</h2>
             <p>
-              Enter the email and six-digit code from your newest reset email.
+              Enter the email and recovery code from your newest reset email.
               You can do this on another device.
             </p>
             <label htmlFor="recovery-email">Account email</label>
@@ -76,8 +76,8 @@ export function ForgotPasswordForm() {
               name="code"
               inputMode="numeric"
               autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
+              pattern="[0-9]{6,8}"
+              maxLength={8}
               required
             />
             <button className="btn primary" disabled={verifying}>

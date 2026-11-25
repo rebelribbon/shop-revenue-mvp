@@ -10,7 +10,7 @@ Password sign-in remains required. Email verification is an application second s
 
 Email challenges expire in ten minutes, allow five attempts, have a one-minute resend cooldown, store keyed hashes and are consumed under a lock. Codes and grants never appear in logs or idempotency records. Server-side recipients come from the authenticated account. Sign-out and password reset clear local proofs, and changing methods invalidates old email proofs. Account security and onboarding tables are unavailable to browser, tenant and worker roles.
 
-Confirmation and recovery emails contain a provider token hash and six-digit alternative. GET only renders a confirmation page; an explicit POST consumes the token. This prevents mail previews from using a reset link. Old provider callbacks remain available for already-sent messages.
+Confirmation and recovery emails contain a provider token hash and a code alternative. The hosted provider uses eight-digit codes; the forms accept six to eight digits without reducing the provider's setting, and the local browser suite also uses eight. GET only renders a confirmation page; an explicit POST consumes the token. This prevents mail previews from using a reset link. Old provider callbacks remain available for already-sent messages.
 
 ## Saved setup
 
@@ -22,4 +22,4 @@ The previous invitation-only pilot profile still requires public signup closed. 
 
 ## Release steps
 
-Apply migration 0059 as migration_owner, retaining the Drizzle ledger. Verify the row-level protections and schema health. Publish the exact tested production build with PUBLIC_SIGNUP_ENABLED=true and RELEASE_PROFILE=early_access. Install the committed confirmation/recovery templates in hosted Auth and confirm custom SMTP delivery and six-digit OTP configuration. Test the canonical website, public account setup, cross-device recovery, native and email second steps, and the saved setup path before reporting completion.
+Apply migration 0059 as migration_owner, retaining the Drizzle ledger. Verify the row-level protections and schema health. Publish the exact tested production build with PUBLIC_SIGNUP_ENABLED=true and RELEASE_PROFILE=early_access. Install the committed confirmation/recovery templates in hosted Auth and confirm custom SMTP delivery and the existing eight-digit provider OTP configuration. Test the canonical website, public account setup, cross-device recovery, native and email second steps, and the saved setup path before reporting completion.

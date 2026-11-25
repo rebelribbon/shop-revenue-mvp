@@ -29,64 +29,92 @@ test("public homepage and signup stay readable at narrow phone widths", async ({
     .fill(E2E_PASSWORD);
   await auditUX(page);
 });
-test("recovery link survives a preview and resets on a fresh browser context", async ({
-  page,
-  browser,
-}) => {
-  const email = `recovery-${Date.now()}@example.test`;
-  await page.goto("/sign-up");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  await page
-    .getByLabel("Create a password", { exact: true })
-    .fill(E2E_PASSWORD);
-  const since = Date.now();
-  await page.getByRole("button", { name: "Create login", exact: true }).click();
-  const confirmation = await waitForEmail(
-    email,
-    since,
-    /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]+/,
-  );
-  await page.goto(confirmation);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
-  await page.request.post("/auth/sign-out");
-  await page.goto("/forgot-password");
-  await page.getByLabel("Email", { exact: true }).fill(email);
-  const resetAt = Date.now();
-  await page
-    .getByRole("button", { name: "Send reset instructions", exact: true })
-    .click();
-  const reset = await waitForEmail(
-    email,
-    resetAt,
-    /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]*type=recovery[^\s"'<>]*/,
-  );
-  const fresh = await browser.newContext();
-  const phone = await fresh.newPage();
-  // GET and reload model mail scanner and preview fetches; neither consumes OTP.
-  await phone.goto(reset);
-  await phone.reload();
-  await expect(
-    phone.getByRole("button", { name: "Continue", exact: true }),
-  ).toBeVisible();
-  await phone.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(phone).toHaveURL(/\/reset-password/);
-  const updated = E2E_PASSWORD + "Changed";
-  await phone.getByLabel("New password", { exact: true }).fill(updated);
-  await phone.getByLabel("Confirm password", { exact: true }).fill(updated);
-  await phone
-    .getByRole("button", { name: "Save password", exact: true })
-    .click();
-  await phone.request.post("/auth/sign-out");
-  await phone.goto(reset);
-  await phone.getByRole("button", { name: "Continue", exact: true }).click();
-  await expect(phone).toHaveURL(/\/forgot-password\?error=link/);
-  await phone.goto("/sign-in?next=/start");
-  await phone.getByLabel("Email", { exact: true }).fill(email);
-  await phone.getByLabel("Password", { exact: true }).fill(updated);
-  await phone.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(phone).toHaveURL(/\/start$/);
-  await fresh.close();
-});
+for (const method of ["link", "code"] as const) {
+  test(`recovery ${method} survives a preview and resets on a fresh browser context`, async ({
+    page,
+    browser,
+  }) => {
+    const email = `recovery-${Date.now()}@example.test`;
+    await page.goto("/sign-up");
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    await page
+      .getByLabel("Create a password", { exact: true })
+      .fill(E2E_PASSWORD);
+    const since = Date.now();
+    await page
+      .getByRole("button", { name: "Create login", exact: true })
+      .click();
+    const confirmation = await waitForEmail(
+      email,
+      since,
+      /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]+/,
+    );
+    await page.goto(confirmation);
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+    await page.request.post("/auth/sign-out");
+    await page.goto("/forgot-password");
+    await page.getByLabel("Email", { exact: true }).fill(email);
+    const resetAt = Date.now();
+    await page
+      .getByRole("button", { name: "Send reset instructions", exact: true })
+      .click();
+    const reset = await waitForEmail(
+      email,
+      resetAt,
+      /http:\/\/localhost:3000\/auth\/confirm\?[^\s"'<>]*type=recovery[^\s"'<>]*/,
+    );
+    const fresh = await browser.newContext();
+    const phone = await fresh.newPage();
+    // GET and reload model mail scanner and preview fetches; neither consumes OTP.
+    await phone.goto(reset);
+    await phone.reload();
+    await expect(
+      phone.getByRole("button", { name: "Continue", exact: true }),
+    ).toBeVisible();
+    if (method === "code") {
+      const codeText = await waitForEmail(
+        email,
+        resetAt,
+        /recovery code: (?:<strong>)?\d{6,8}/,
+      );
+      await phone.goto("/forgot-password");
+      await phone
+        .getByRole("button", {
+          name: "I already have a recovery code",
+          exact: true,
+        })
+        .click();
+      await phone.getByLabel("Account email", { exact: true }).fill(email);
+      await phone
+        .getByLabel("Recovery code", { exact: true })
+        .fill(codeText.match(/\d{6,8}$/)![0]);
+      await phone
+        .getByRole("button", { name: "Verify code", exact: true })
+        .click();
+    } else {
+      await phone
+        .getByRole("button", { name: "Continue", exact: true })
+        .click();
+    }
+    await expect(phone).toHaveURL(/\/reset-password/);
+    const updated = E2E_PASSWORD + "Changed";
+    await phone.getByLabel("New password", { exact: true }).fill(updated);
+    await phone.getByLabel("Confirm password", { exact: true }).fill(updated);
+    await phone
+      .getByRole("button", { name: "Save password", exact: true })
+      .click();
+    await phone.request.post("/auth/sign-out");
+    await phone.goto(reset);
+    await phone.getByRole("button", { name: "Continue", exact: true }).click();
+    await expect(phone).toHaveURL(/\/forgot-password\?error=link/);
+    await phone.goto("/sign-in?next=/start");
+    await phone.getByLabel("Email", { exact: true }).fill(email);
+    await phone.getByLabel("Password", { exact: true }).fill(updated);
+    await phone.getByRole("button", { name: "Sign in", exact: true }).click();
+    await expect(phone).toHaveURL(/\/start$/);
+    await fresh.close();
+  });
+}
 test("email second step protects records and exported data @mfa", async ({
   page,
 }) => {
@@ -102,7 +130,7 @@ test("email second step protects records and exported data @mfa", async ({
     .fill(E2E_PASSWORD);
   const confirmAt = Date.now();
   await page.getByRole("button", { name: "Create login", exact: true }).click();
-  const confirmationCode = await waitForEmail(email, confirmAt, /\b\d{6}\b/);
+  const confirmationCode = await waitForEmail(email, confirmAt, /\b\d{6,8}\b/);
   await page
     .getByLabel("Confirmation code", { exact: true })
     .fill(confirmationCode);

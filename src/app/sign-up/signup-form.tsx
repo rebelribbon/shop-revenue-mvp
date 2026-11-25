@@ -85,7 +85,7 @@ export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
           <h2>Confirm your email</h2>
           <p>
             Check your email. Open the confirmation link on any device, or enter
-            its six-digit code here.
+            the confirmation code here.
           </p>
           <form action={verify}>
             <fieldset
@@ -109,8 +109,8 @@ export function SignupForm({ invitedEmail }: { invitedEmail?: string }) {
                 name="code"
                 autoComplete="one-time-code"
                 inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
+                pattern="[0-9]{6,8}"
+                maxLength={8}
                 required
               />
               <button className="btn primary" disabled={verifying}>
