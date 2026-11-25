@@ -8,7 +8,20 @@ import {
 const mocked = vi.hoisted(() => ({
   identity: { authSubject: "", email: "security@example.test" },
   sessionId: "",
+  aal: "aal1",
+  challengeFails: false,
+  factorId: "",
   jar: new Map<string, { value: string; options: unknown }>(),
+}));
+vi.mock("@/server/request", () => ({
+  getRequestMeta: async () => ({
+    requestId: mocked.identity.authSubject,
+    ip: null,
+    userAgent: null,
+  }),
+}));
+vi.mock("@/providers/email", () => ({
+  emailProvider: () => ({ send: async () => ({ id: "security-test" }) }),
 }));
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -36,8 +49,25 @@ vi.mock("@/server/auth/supabase", async (original) => ({
         error: null,
       }),
       mfa: {
+        listFactors: async () => ({
+          data: {
+            totp: [{ id: mocked.factorId }],
+            all: [
+              { id: mocked.factorId, factor_type: "totp", status: "verified" },
+            ],
+          },
+          error: null,
+        }),
+        challengeAndVerify: async () => ({
+          data: null,
+          error: mocked.challengeFails ? new Error("Invalid code") : null,
+        }),
         getAuthenticatorAssuranceLevel: async () => ({
-          data: { currentLevel: "aal1", nextLevel: "aal1" },
+          data: {
+            currentLevel: mocked.aal,
+            nextLevel: mocked.aal,
+            currentAuthenticationMethods: ["password", "mfa/totp"],
+          },
           error: null,
         }),
       },
@@ -49,14 +79,84 @@ import {
   grantEmailStep,
   hasEmailStep,
   clearSecondStep,
+  grantFreshAuthenticatorStep,
+  hasFreshAuthenticatorStep,
+  AUTHENTICATOR_STEP_COOKIE,
   EMAIL_STEP_COOKIE,
 } from "@/server/auth/email-security";
 import { sessionNeedsMfa } from "@/server/auth/assurance";
 import { enrollAuthenticator, verifyAuthenticator } from "@/server/actions/mfa";
+import { sendSecondStepCode } from "@/server/actions/email-security";
 beforeEach(() => {
   mocked.jar.clear();
   mocked.identity.authSubject = randomUUID();
   mocked.sessionId = randomUUID();
+  mocked.factorId = randomUUID();
+  mocked.aal = "aal1";
+  mocked.challengeFails = false;
+});
+it("allows replacing an authenticator after an actual fresh challenge even when provider AMR has no timestamps", async () => {
+  await grantPasswordStep();
+  await selectAuthenticator(mocked.identity.authSubject);
+  mocked.aal = "aal2";
+  expect(await sendSecondStepCode(true)).toMatchObject({ ok: false });
+  expect(
+    await verifyAuthenticator({ factorId: mocked.factorId, code: "123456" }),
+  ).toMatchObject({ ok: true });
+  expect(await hasFreshAuthenticatorStep(context())).toBe(true);
+  // The signed freshness proof cannot substitute for the provider's AAL2.
+  mocked.aal = "aal1";
+  expect(await sendSecondStepCode(true)).toMatchObject({ ok: false });
+  mocked.aal = "aal2";
+  expect(await sendSecondStepCode(true)).toMatchObject({ ok: true });
+});
+it("does not grant authenticator freshness when the provider rejects the challenge", async () => {
+  await selectAuthenticator(mocked.identity.authSubject);
+  mocked.challengeFails = true;
+  expect(
+    await verifyAuthenticator({ factorId: mocked.factorId, code: "123456" }),
+  ).toMatchObject({ ok: false });
+  expect(await hasFreshAuthenticatorStep(context())).toBe(false);
+});
+it("binds authenticator freshness to the account, session and security version and clears it on sign-out", async () => {
+  await selectAuthenticator(mocked.identity.authSubject);
+  await grantFreshAuthenticatorStep();
+  const c = context();
+  expect(await hasFreshAuthenticatorStep(c)).toBe(true);
+  expect(
+    await hasFreshAuthenticatorStep({ ...c, sessionId: randomUUID() }),
+  ).toBe(false);
+  expect(
+    await hasFreshAuthenticatorStep({ ...c, authSubject: randomUUID() }),
+  ).toBe(false);
+  const cookie = mocked.jar.get(AUTHENTICATOR_STEP_COOKIE)!;
+  expect(cookie.options).toMatchObject({
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 300,
+  });
+  mocked.jar.set(AUTHENTICATOR_STEP_COOKIE, {
+    ...cookie,
+    value: cookie.value + "x",
+  });
+  expect(await hasFreshAuthenticatorStep(c)).toBe(false);
+  mocked.jar.set(AUTHENTICATOR_STEP_COOKIE, cookie);
+  await selectAuthenticator(c.authSubject);
+  expect(await hasFreshAuthenticatorStep(c)).toBe(false);
+  await grantFreshAuthenticatorStep();
+  await clearSecondStep();
+  expect(await hasFreshAuthenticatorStep(c)).toBe(false);
+});
+it("requires a new authenticator challenge after five minutes", async () => {
+  await selectAuthenticator(mocked.identity.authSubject);
+  await grantFreshAuthenticatorStep();
+  const now = Date.now();
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now + 301_000);
+  try {
+    expect(await hasFreshAuthenticatorStep(context())).toBe(false);
+  } finally {
+    clock.mockRestore();
+  }
 });
 const context = () => ({ ...mocked.identity, sessionId: mocked.sessionId });
 it("does not let a password-only session replace required email verification with its own authenticator", async () => {

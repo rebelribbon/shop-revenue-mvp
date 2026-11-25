@@ -16,6 +16,7 @@ import { emailProvider } from "@/providers/email";
 import {
   grantEmailStep,
   hasEmailStep,
+  hasFreshAuthenticatorStep,
   hasPasswordStep,
   securityContext,
 } from "@/server/auth/email-security";
@@ -48,12 +49,7 @@ export async function sendSecondStepCode(
       (preference.method === null && factors.totp.length)
     ) {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      const fresh = data?.currentAuthenticationMethods.some(
-        (m) =>
-          typeof m === "object" &&
-          (m.method === "mfa/totp" || m.method === "totp") &&
-          Date.now() / 1000 - m.timestamp < 300,
-      );
+      const fresh = await hasFreshAuthenticatorStep(context);
       if (!changeMethod || data?.currentLevel !== "aal2" || !fresh)
         throw new AppError(
           "FORBIDDEN",

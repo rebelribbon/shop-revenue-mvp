@@ -8,7 +8,11 @@ import {
   selectAuthenticator,
   securityPreference,
 } from "@/domain/email-security";
-import { hasEmailStep, securityContext } from "@/server/auth/email-security";
+import {
+  grantFreshAuthenticatorStep,
+  hasEmailStep,
+  securityContext,
+} from "@/server/auth/email-security";
 async function canChangeToAuthenticator(authSubject: string) {
   const preference = await securityPreference(authSubject);
   return (
@@ -103,5 +107,6 @@ export async function verifyAuthenticator(input: unknown) {
         "That code did not work. Use the current code from your authenticator.",
     };
   await selectAuthenticator(identity.authSubject);
+  await grantFreshAuthenticatorStep();
   return { ok: true as const, message: "Authenticator verified." };
 }
