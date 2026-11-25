@@ -59,7 +59,7 @@ export function SecurityChoice({
         )}
         {!internal && (
           <div
-            className="action-row"
+            className="row"
             role="group"
             aria-label="Verification method"
           >
