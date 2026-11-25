@@ -48,7 +48,7 @@ export default async function Home() {
           {!open && <p className={styles.note}>Early access signup is currently limited to invited owners.</p>}
         </div>
         <div className={styles.preview} aria-label="Illustrative repair order workflow">
-          <div className={styles.previewTop}><strong>Today's work</strong><small>Illustrative workflow</small></div>
+          <div className={styles.previewTop}><strong>Today&apos;s work</strong><small>Illustrative workflow</small></div>
           <div className={styles.previewStats}><div><small>Appointments</small><strong>6</strong></div><div><small>In progress</small><strong>3</strong></div><div><small>Ready to invoice</small><strong>2</strong></div></div>
           {["Customer checked in", "Inspection completed", "Estimate awaiting approval", "Work in progress", "Invoice & payment"].map((label,i)=><div className={styles.previewRow} key={label}><span className={i<2?styles.done:styles.dot}>{i<2?"✓":i+1}</span>{label}<small>{i<2?"Complete":i===2?"Next":"Upcoming"}</small></div>)}
         </div>
