@@ -58,11 +58,7 @@ export function SecurityChoice({
           </p>
         )}
         {!internal && (
-          <div
-            className="row"
-            role="group"
-            aria-label="Verification method"
-          >
+          <div className="row" role="group" aria-label="Verification method">
             <button
               type="button"
               className="btn secondary"
