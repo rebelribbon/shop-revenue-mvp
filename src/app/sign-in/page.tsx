@@ -9,11 +9,16 @@ import { SignInForms } from "./sign-in-forms";
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string; reason?: string }>;
+  searchParams: Promise<{
+    next?: string;
+    error?: string;
+    reason?: string;
+    reauth?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const state = await getSessionState();
-  if (state.kind === "shop") redirect(safeNext(sp.next));
+  if (state.kind === "shop" && sp.reauth !== "1") redirect(safeNext(sp.next));
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Sign in</h1>

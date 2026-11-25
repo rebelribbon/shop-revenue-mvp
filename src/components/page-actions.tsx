@@ -26,15 +26,20 @@ export function PageActions() {
   useEffect(() => {
     // Public interactive demos own their navigation and controls. Never attach
     // the global floating action or misleading sign-in fallback to a demo.
-    if (pathname.startsWith("/demo/")) {
+    if (pathname === "/" || pathname.startsWith("/demo/")) {
       document.body.style.removeProperty("--primary-space");
       return;
     }
     let selected: HTMLElement | null = null;
     let focusedForm: HTMLFormElement | null = null;
     let frame = 0;
+    let pointerActive = false;
     const choose = () => {
       frame = 0;
+      // Focusing a field can select a different floating Save button. Moving
+      // the old button back into the page during pointer-down shifts the
+      // field before pointer-up, cancelling a radio/checkbox click.
+      if (pointerActive) return;
       // RO and advisor pricing are multi-stage workspaces. A global floating
       // button can pick an unrelated action from a different section (for
       // example "Price parts & labor" while viewing signed documents).
@@ -124,6 +129,13 @@ export function PageActions() {
         schedule();
       }
     };
+    const onPointerDown = () => {
+      pointerActive = true;
+    };
+    const onPointerEnd = () => {
+      pointerActive = false;
+      schedule();
+    };
     const observer = new MutationObserver(schedule);
     observer.observe(document.body, {
       childList: true,
@@ -133,11 +145,19 @@ export function PageActions() {
       attributeFilter: ["class", "disabled", "hidden", "open", "data-ux-ready"],
     });
     document.addEventListener("focusin", onFocus);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("pointerup", onPointerEnd, true);
+    document.addEventListener("pointercancel", onPointerEnd, true);
+    window.addEventListener("blur", onPointerEnd);
     window.addEventListener("resize", schedule);
     choose();
     return () => {
       observer.disconnect();
       document.removeEventListener("focusin", onFocus);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("pointerup", onPointerEnd, true);
+      document.removeEventListener("pointercancel", onPointerEnd, true);
+      window.removeEventListener("blur", onPointerEnd);
       window.removeEventListener("resize", schedule);
       cancelAnimationFrame(frame);
       selected?.removeAttribute("data-ux-primary");
@@ -148,6 +168,7 @@ export function PageActions() {
   // own main button marked above.
   if (
     !fallback ||
+    pathname === "/" ||
     pathname.startsWith("/demo/") ||
     pathname.startsWith("/desktop-demo")
   )

@@ -4,9 +4,30 @@ import { getIdentity } from "@/server/auth/session";
 import { supabaseServer } from "@/server/auth/supabase";
 import { checkAuthThrottle } from "@/domain/auth-throttle";
 import { getRequestMeta } from "@/server/request";
+import {
+  selectAuthenticator,
+  securityPreference,
+} from "@/domain/email-security";
+import {
+  grantFreshAuthenticatorStep,
+  hasEmailStep,
+  securityContext,
+} from "@/server/auth/email-security";
+async function canChangeToAuthenticator(authSubject: string) {
+  const preference = await securityPreference(authSubject);
+  return (
+    preference.method !== "email" ||
+    (await hasEmailStep(await securityContext(), true))
+  );
+}
 export async function enrollAuthenticator() {
   const identity = await getIdentity();
   if (!identity) return { ok: false as const, message: "Sign in first." };
+  if (!(await canChangeToAuthenticator(identity.authSubject)))
+    return {
+      ok: false as const,
+      message: "Verify a fresh email code before changing to an authenticator.",
+    };
   const meta = await getRequestMeta();
   try {
     await checkAuthThrottle(
@@ -52,6 +73,7 @@ export async function enrollAuthenticator() {
     factorId: data.id,
     qrCode: data.totp.qr_code.replace(/^data:image\/svg\+xml;utf-8,/, ""),
     secret: data.totp.secret,
+    uri: data.totp.uri,
   };
 }
 export async function verifyAuthenticator(input: unknown) {
@@ -62,6 +84,11 @@ export async function verifyAuthenticator(input: unknown) {
     return { ok: false as const, message: "Enter the six-digit code." };
   const identity = await getIdentity();
   if (!identity) return { ok: false as const, message: "Sign in first." };
+  if (!(await canChangeToAuthenticator(identity.authSubject)))
+    return {
+      ok: false as const,
+      message: "Verify a fresh email code before changing to an authenticator.",
+    };
   const meta = await getRequestMeta();
   try {
     await checkAuthThrottle("sign_in", `mfa:${identity.authSubject}`, meta.ip);
@@ -79,5 +106,7 @@ export async function verifyAuthenticator(input: unknown) {
       message:
         "That code did not work. Use the current code from your authenticator.",
     };
+  await selectAuthenticator(identity.authSubject);
+  await grantFreshAuthenticatorStep();
   return { ok: true as const, message: "Authenticator verified." };
 }

@@ -15,10 +15,12 @@ import {
 import { getRequestMeta } from "../request";
 import {
   clearPasswordResetGrant,
+  grantPasswordReset,
   getIdentity,
   hasPasswordResetGrant,
 } from "../auth/session";
 import { supabaseAdmin, supabaseServer } from "../auth/supabase";
+import { clearSecondStep, grantPasswordStep } from "../auth/email-security";
 
 export type AuthFormState = { ok: boolean; message: string };
 
@@ -70,6 +72,7 @@ export async function signInWithPassword(
     providerCode: error?.code,
   });
   if (error) return { ok: false, message: signInFailureMessage(error) };
+  await grantPasswordStep();
   redirect(safeNext(parsed.data.next));
 }
 
@@ -119,8 +122,92 @@ export async function requestPasswordReset(
   return { ok: true, message: RESET_SENT };
 }
 
+// Email recovery codes can be verified on a different device. The provider
+// consumes the recovery OTP; only then grant the existing reset permission.
+export async function verifyPasswordRecoveryCode(
+  _: AuthFormState | null,
+  form: FormData,
+): Promise<AuthFormState> {
+  const meta = await getRequestMeta();
+  const parsed = z
+    .object({ email: z.email(), code: z.string().regex(/^\d{6,8}$/) })
+    .safeParse({
+      email: String(form.get("email") ?? "")
+        .trim()
+        .toLowerCase(),
+      code: String(form.get("code") ?? "").trim(),
+    });
+  if (!parsed.success)
+    return {
+      ok: false,
+      message: "Enter your email and the recovery code from your email.",
+    };
+  try {
+    await checkAuthThrottle("reset_verify", parsed.data.email, meta.ip);
+  } catch {
+    return { ok: false, message: "Too many attempts. Try again later." };
+  }
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: parsed.data.email,
+    token: parsed.data.code,
+    type: "recovery",
+  });
+  if (error || !data.user || !data.session)
+    return {
+      ok: false,
+      message:
+        "That code did not work. Use the newest email or request a new code.",
+    };
+  await grantPasswordReset(data.user.id);
+  redirect("/reset-password");
+}
+
+// A link preview only renders a page. This explicit form submission consumes
+// the provider token, so the browser that requested recovery is irrelevant.
+export async function confirmAccountLink(form: FormData): Promise<void> {
+  const parsed = z
+    .object({
+      token: z
+        .string()
+        .min(20)
+        .max(512)
+        .regex(/^[a-zA-Z0-9_-]+$/),
+      type: z.enum(["recovery", "email"]),
+    })
+    .safeParse({ token: form.get("token"), type: form.get("type") });
+  if (!parsed.success) redirect("/forgot-password");
+  const meta = await getRequestMeta();
+  try {
+    await checkAuthThrottle(
+      "sign_in",
+      "email-link:" + parsed.data.token,
+      meta.ip,
+    );
+  } catch {
+    redirect("/forgot-password");
+  }
+  const supabase = await supabaseServer();
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: parsed.data.token,
+    type: parsed.data.type,
+  });
+  if (error || !data.user || !data.session)
+    redirect(
+      parsed.data.type === "recovery"
+        ? "/forgot-password?error=link"
+        : "/sign-in?error=confirmation&next=/start",
+    );
+  if (parsed.data.type === "recovery") {
+    await grantPasswordReset(data.user.id);
+    const next = safeNext(String(form.get("next") ?? ""));
+    redirect(next.startsWith("/reset-password?") ? next : "/reset-password");
+  }
+  redirect("/start");
+}
+
 const newPasswordInput = z.object({
-  password: z.string().min(8, "Use at least 8 characters."),
+  password: z.string().min(12, "Use at least 12 characters.").max(128),
   confirmPassword: z.string(),
   next: z.string().optional(),
 });
@@ -164,6 +251,7 @@ export async function updatePassword(
     scope: "others",
   });
   await clearPasswordResetGrant();
+  await clearSecondStep();
   if (revokeError) {
     logger.warn({
       event: "auth.other_sessions_revocation_failed",

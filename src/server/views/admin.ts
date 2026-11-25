@@ -8,7 +8,7 @@ export async function requireInternal(role?: "admin"): Promise<InternalUser> {
   if (role === "admin" && u.role !== "admin") redirect("/admin?denied=1");
   // The preview site relaxes two-factor for shop test logins only; the
   // internal admin console always keeps it there.
-  if (await sessionNeedsMfa(process.env.VERCEL_ENV === "preview"))
+  if (await sessionNeedsMfa(process.env.VERCEL_ENV === "preview", false))
     redirect("/verify?next=/admin");
   return u;
 }

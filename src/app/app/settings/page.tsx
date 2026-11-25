@@ -52,10 +52,19 @@ export default async function SettingsPage() {
             <span className="muted">Saved items, prices and labor</span>
           </Link>
         )}
-        <Link className="card settings-link" href="/verify?next=/app/settings">
-          <strong>Authenticator security</strong>
-          <span className="muted">Set up or verify your authenticator</span>
+        <Link
+          className="card settings-link"
+          href="/verify?settings=1&next=/app/settings"
+        >
+          <strong>Sign-in security</strong>
+          <span className="muted">Email codes or an authenticator app</span>
         </Link>
+        {s.role === "owner" && (
+          <Link className="card settings-link" href="/start">
+            <strong>Business setup checklist</strong>
+            <span className="muted">Resume your saved setup</span>
+          </Link>
+        )}
         {s.role === "owner" && (
           <Link className="card settings-link" href="/app/settings/documents">
             <strong>Documents to sign</strong>

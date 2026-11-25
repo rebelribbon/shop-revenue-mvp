@@ -21,7 +21,29 @@ test("Owner turns automatic payment reminders on and off", async ({ page }) => {
   );
   await expect(box.getByRole("radio", { name: "On" })).toBeChecked();
   await expect(box.getByLabel("Send one every")).toHaveValue("2");
-  await box.getByRole("radio", { name: "Off" }).check();
+  const off = box.getByRole("radio", { name: "Off" });
+  if (test.info().project.name === "desktop") {
+    await off.scrollIntoViewIfNeeded();
+    const bounds = (await off.boundingBox())!;
+    await page.mouse.move(
+      bounds.x + bounds.width / 2,
+      bounds.y + bounds.height / 2,
+    );
+    await page.mouse.down();
+    // Hold through rendering so focus-driven Save button changes cannot move
+    // the control out from under a real pointer press.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+    expect((await off.boundingBox())!.y).toBeCloseTo(bounds.y, 1);
+    await page.mouse.up();
+    await expect(off).toBeChecked();
+  } else {
+    await off.check();
+  }
   await box.getByRole("button", { name: "Save reminders" }).click();
   await expect(box.getByText("Automatic reminders are off.")).toBeVisible();
 

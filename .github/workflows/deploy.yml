@@ -28,11 +28,11 @@ on:
   workflow_dispatch:
     inputs:
       release_profile:
-        description: "Commercial keeps full off-site requirements; pilot uses existing provider backups and requires public signup closed"
+        description: "Commercial requires full review evidence; pilot is invitation-only; early_access enables owner-requested public registration with review status visible"
         required: true
         default: commercial
         type: choice
-        options: [commercial, pilot]
+        options: [commercial, pilot, early_access]
       release_evidence_json:
         description: "Non-secret verification references for the exact release commit; production remains blocked without them"
         required: false

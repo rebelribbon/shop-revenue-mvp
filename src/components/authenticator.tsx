@@ -15,6 +15,7 @@ export function Authenticator({
   const [factorId, setFactor] = useState(factors[0]?.id ?? ""),
     [qr, setQr] = useState(""),
     [secret, setSecret] = useState(""),
+    [uri, setUri] = useState(""),
     [message, setMessage] = useState("");
   const [pending, start] = useTransition();
   const ready = useActionHydration();
@@ -51,6 +52,7 @@ export function Authenticator({
                       setFactor(r.factorId);
                       setQr(r.qrCode);
                       setSecret(r.secret);
+                      setUri(r.uri);
                     }
                   } catch {
                     setMessage(
@@ -66,8 +68,8 @@ export function Authenticator({
           {qr && (
             <>
               <p>
-                Scan this code with your authenticator app, then enter its
-                current six-digit code.
+                On this phone, open your authenticator or copy the setup key. On
+                another device, scan the QR code.
               </p>
               {/* The QR contains an enrollment secret. Never send it to an external image service. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -77,10 +79,47 @@ export function Authenticator({
                 alt="Authenticator enrollment QR code"
                 src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}`}
               />
-              <details>
-                <summary>Enter setup key manually</summary>
-                <code style={{ overflowWrap: "anywhere" }}>{secret}</code>
-              </details>
+              {uri && (
+                <a className="btn secondary" href={uri}>
+                  Open authenticator app
+                </a>
+              )}
+              <p>
+                Or enter this setup key manually in your authenticator
+                (time-based).
+              </p>
+              <code style={{ overflowWrap: "anywhere" }}>{secret}</code>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(secret);
+                    setMessage(
+                      "Setup key copied. Paste it into your authenticator.",
+                    );
+                  } catch {
+                    setMessage("Select and copy the setup key manually.");
+                  }
+                }}
+              >
+                Copy setup key
+              </button>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => {
+                  setFactor("");
+                  setQr("");
+                  setSecret("");
+                  setUri("");
+                  setMessage(
+                    "Start a new setup if you could not finish the previous one.",
+                  );
+                }}
+              >
+                Restart setup
+              </button>
             </>
           )}
           {factorId && (
@@ -98,6 +137,7 @@ export function Authenticator({
                     else {
                       setQr("");
                       setSecret("");
+                      setUri("");
                       router.push(next);
                       router.refresh();
                     }

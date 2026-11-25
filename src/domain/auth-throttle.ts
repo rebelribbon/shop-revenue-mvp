@@ -6,6 +6,8 @@ const RULES = {
   signup: { ip: 10, email: 3, minutes: 60 },
   sign_in: { ip: 100, email: 30, minutes: 15 },
   reset: { ip: 10, email: 3, minutes: 60 },
+  email_verify: { ip: 100, email: 20, minutes: 15 },
+  reset_verify: { ip: 50, email: 10, minutes: 15 },
   invite: { ip: 10, email: 3, minutes: 60 },
 } as const;
 export async function checkAuthThrottle(

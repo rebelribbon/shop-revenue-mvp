@@ -1,0 +1,324 @@
+.page {
+  --marketing-ink: #132622;
+  --marketing-muted: #4c625c;
+  --marketing-green: #12664e;
+  --marketing-line: #d6e1dd;
+  max-width: none;
+  margin: 0 !important;
+  padding: 0 32px;
+  background: #f8faf9;
+  color: var(--marketing-ink);
+  scroll-padding-top: 24px;
+  font-size: 16px;
+}
+.page * {
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+.page a {
+  margin: 0;
+  transition:
+    background 80ms,
+    color 80ms;
+}
+.header,
+.hero,
+.section,
+.pricing,
+.footer {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--marketing-line);
+}
+.header nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.page .header a,
+.page .footer a {
+  color: var(--marketing-ink);
+  text-decoration: none;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px;
+}
+.page .brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 0 !important;
+  white-space: nowrap;
+}
+.brand span {
+  background: var(--marketing-green);
+  color: white;
+  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+}
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: 48px;
+  padding: 80px 0;
+}
+.kicker {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--marketing-green);
+  line-height: 1.5;
+}
+.hero h1 {
+  font-size: clamp(36px, 5.2vw, 68px);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  margin: 16px 0 24px;
+}
+.lead {
+  font-size: 20px;
+  line-height: 1.6;
+  color: var(--marketing-muted);
+}
+.page .primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 16px 24px;
+  border-radius: 8px;
+  background: var(--marketing-green);
+  color: white;
+  text-decoration: none;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.page .primary:hover {
+  background: #084c39;
+  color: white;
+}
+.note {
+  font-size: 14px;
+  color: var(--marketing-muted);
+  line-height: 1.6;
+}
+.preview {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--marketing-line);
+  border-radius: 16px;
+  box-shadow: 0 16px 56px #17392d14;
+  container-type: inline-size;
+}
+.previewTop,
+.previewRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.previewTop {
+  justify-content: space-between;
+  padding-bottom: 16px;
+  flex-wrap: wrap;
+}
+.previewTop small,
+.previewRow small {
+  color: var(--marketing-muted);
+  font-size: 14px;
+}
+.previewStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.previewStats div {
+  padding: 16px;
+  background: #edf5f1;
+  border-radius: 8px;
+}
+.previewStats small {
+  display: block;
+  color: var(--marketing-muted);
+  font-size: 16px;
+  line-height: 1.5;
+}
+.previewStats strong {
+  display: block;
+  font-size: 26px;
+  margin-top: 8px;
+}
+.previewRow {
+  padding: 16px 0;
+  border-top: 1px solid var(--marketing-line);
+  font-size: 16px;
+}
+.previewRow small {
+  margin-left: auto;
+  text-align: right;
+}
+.done,
+.dot {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #e5f4ec;
+  color: #0b6043;
+  font-weight: 700;
+}
+.dot {
+  background: #eef1ef;
+  color: #52635c;
+}
+.section {
+  padding: 56px 0;
+  border-top: 1px solid var(--marketing-line);
+}
+.section h2,
+.pricing h2 {
+  font-size: clamp(26px, 3.5vw, 40px);
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  margin: 8px 0 32px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.feature,
+.industries article {
+  padding: 24px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid var(--marketing-line);
+}
+.feature span {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--marketing-green);
+}
+.feature h3,
+.industries h3 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.feature p,
+.industries p {
+  color: var(--marketing-muted);
+  margin: 0;
+}
+.industries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.pricing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px;
+  padding: 56px 0;
+  align-items: center;
+  border-top: 1px solid var(--marketing-line);
+}
+.priceCard {
+  background: #fff;
+  border: 1px solid var(--marketing-line);
+  border-radius: 16px;
+  padding: 32px;
+}
+.priceCard h3 {
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+.priceCard p:first-child {
+  margin-top: 0;
+}
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 24px 0;
+  border-top: 1px solid var(--marketing-line);
+  color: var(--marketing-muted);
+  font-size: 16px;
+}
+@media (max-width: 760px) {
+  .page {
+    padding: 0 16px;
+  }
+  .header {
+    flex-wrap: wrap;
+  }
+  .hero,
+  .pricing {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 40px 0;
+  }
+  .grid,
+  .industries {
+    grid-template-columns: 1fr;
+  }
+  .section {
+    padding: 32px 0;
+  }
+  .preview,
+  .priceCard {
+    padding: 16px;
+  }
+  .previewRow {
+    gap: 8px;
+  }
+}
+@container (max-width:420px) {
+  .previewStats {
+    grid-template-columns: 1fr;
+  }
+  .previewStats div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .previewStats strong {
+    margin-top: 0;
+  }
+}
+@container (max-width:300px) {
+  .previewRow {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+  .previewRow small {
+    grid-column: 2;
+    text-align: left;
+    margin-left: 0;
+  }
+}

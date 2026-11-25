@@ -6,8 +6,8 @@ export function releaseProfileChecks(
   return [
     {
       key: "release-profile",
-      ready: profile === "commercial" || profile === "pilot",
-      message: "Release profile must be commercial or pilot",
+      ready: ["commercial", "pilot", "early_access"].includes(profile),
+      message: "Release profile must be commercial, pilot or early_access",
     },
     ...(profile === "pilot"
       ? [
@@ -16,6 +16,16 @@ export function releaseProfileChecks(
             ready: env.PUBLIC_SIGNUP_ENABLED === "false",
             message:
               "Pilot release requires public signup closed; provider database backups only",
+          },
+        ]
+      : []),
+    ...(profile === "early_access"
+      ? [
+          {
+            key: "early-access-signup-open",
+            ready: env.PUBLIC_SIGNUP_ENABLED === "true",
+            message:
+              "Owner-requested early access requires public registration enabled",
           },
         ]
       : []),
@@ -35,7 +45,7 @@ export function requiredReleaseEvidence(profile = "commercial") {
   // The owner-authorized closed pilot deploys for real production verification.
   // Reviews stay visible as pending and remain mandatory for commercial release.
   // An unknown profile retains every commercial requirement and fails above.
-  return profile === "pilot" ? [] : keys;
+  return profile === "pilot" || profile === "early_access" ? [] : keys;
 }
 
 export function releaseDecision(profile: string, checks: ReleaseCheck[]) {
@@ -53,13 +63,14 @@ export function releaseDecision(profile: string, checks: ReleaseCheck[]) {
     "release-profile",
     ...evidence,
     ...(profile === "pilot" ? ["pilot-signup-closed"] : []),
+    ...(profile === "early_access" ? ["early-access-signup-open"] : []),
   ];
   const complete = expected.every((key) =>
     checks.some((check) => check.key === key),
   );
   return {
     deploymentReady:
-      (profile === "commercial" || profile === "pilot") &&
+      ["commercial", "pilot", "early_access"].includes(profile) &&
       complete &&
       blocking.every((check) => check.ready),
     launchReady:

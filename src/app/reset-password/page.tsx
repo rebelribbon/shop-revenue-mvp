@@ -38,7 +38,7 @@ export default async function ResetPasswordPage({
   return (
     <HydratedMain id="main-content" tabIndex={-1}>
       <h1>Choose a new password</h1>
-      <p className="muted">Use at least 8 characters.</p>
+      <p className="muted">Use at least 12 characters.</p>
       <ResetPasswordForm next={safeNext(sp.next)} />
     </HydratedMain>
   );
