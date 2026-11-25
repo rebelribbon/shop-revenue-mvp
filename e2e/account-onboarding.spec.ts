@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { E2E_PASSWORD, waitForEmail, completeBusinessBasics } from "./helpers";
 import { auditUX } from "./ux-audit";
+import { totp } from "./totp";
 test("public homepage and signup stay readable at narrow phone widths", async ({
   page,
 }) => {
@@ -135,7 +136,48 @@ test("email second step protects records and exported data @mfa", async ({
   expect(
     (await page.request.get("/app/settings/export/customers")).status(),
   ).toBe(200);
+  // Replacing either method requires fresh verification of the current one.
+  await page.goto("/verify?settings=1&next=/app");
+  await page
+    .getByRole("button", { name: "Authenticator app", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Set up authenticator", exact: true })
+    .click();
+  const secret = (await page.locator("code").textContent())!;
+  await page.getByLabel("Authenticator code").fill(totp(secret));
+  await page
+    .getByRole("button", { name: "Verify authenticator", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/app$/);
+  await page.goto("/verify?settings=1&next=/app");
+  await page.getByRole("button", { name: "Email code", exact: true }).click();
+  const switchedAt = Date.now();
+  await page
+    .getByRole("button", { name: "Send verification code", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "A verification code was sent",
+  );
+  const replacementCode = await waitForEmail(
+    email,
+    switchedAt,
+    /(?<=Your Shop Revenue verification code is )\d{6}/,
+  );
+  await page.getByLabel("Email verification code").fill(replacementCode);
+  await page
+    .getByRole("button", { name: "Verify and continue", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/app$/);
   await page.request.post("/auth/sign-out");
   await page.goto("/app");
   await expect(page).toHaveURL(/\/sign-in/);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(E2E_PASSWORD);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/verify\?next=/);
+  await expect(
+    page.getByRole("button", { name: "Send verification code", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Authenticator code")).toHaveCount(0);
 });

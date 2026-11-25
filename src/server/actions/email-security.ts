@@ -51,7 +51,7 @@ export async function sendSecondStepCode(
       const fresh = data?.currentAuthenticationMethods.some(
         (m) =>
           typeof m === "object" &&
-          m.method === "totp" &&
+          (m.method === "mfa/totp" || m.method === "totp") &&
           Date.now() / 1000 - m.timestamp < 300,
       );
       if (!changeMethod || data?.currentLevel !== "aal2" || !fresh)
