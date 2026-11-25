@@ -26,7 +26,7 @@ export function PageActions() {
   useEffect(() => {
     // Public interactive demos own their navigation and controls. Never attach
     // the global floating action or misleading sign-in fallback to a demo.
-    if (pathname.startsWith("/demo/")) {
+    if (pathname === "/" || pathname.startsWith("/demo/")) {
       document.body.style.removeProperty("--primary-space");
       return;
     }
@@ -148,6 +148,7 @@ export function PageActions() {
   // own main button marked above.
   if (
     !fallback ||
+    pathname === "/" ||
     pathname.startsWith("/demo/") ||
     pathname.startsWith("/desktop-demo")
   )
