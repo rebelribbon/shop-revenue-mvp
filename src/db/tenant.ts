@@ -301,7 +301,10 @@ export async function pingDatabase(): Promise<void> {
     connectionFor("app").db.select().from(schema.business).limit(0),
   );
   await healthProbe("app_authorization_terms", "app", () =>
-    connectionFor("app").db.select().from(schema.shopAuthorizationTerms).limit(0),
+    connectionFor("app")
+      .db.select()
+      .from(schema.shopAuthorizationTerms)
+      .limit(0),
   );
   await healthProbe("admin_account_security", "admin", () =>
     connectionFor("admin").db.execute(
