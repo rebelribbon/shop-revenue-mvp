@@ -219,19 +219,63 @@ export async function ingestWebhookEvent(input: {
 // Check the business-profile and document-setup fields used by the workspace. LIMIT 0
 // validates the deployed schema and app-role grants without reading tenant data.
 // A connection-only ping would report healthy when a migration is missing.
+// Only log fixed stage labels and recognized error codes, never driver messages,
+// SQL, connection URLs or arbitrary error properties.
+async function healthProbe(
+  stage: string,
+  role: "app" | "admin",
+  probe: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await probe();
+  } catch (error) {
+    const codes: string[] = [];
+    const knownCodes = /^(?:[0-9A-Z]{5}|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|ERR_TLS_CERT_ALTNAME_INVALID|SELF_SIGNED_CERT_IN_CHAIN|UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_HAS_EXPIRED)$/;
+    let cause: unknown = error;
+    for (let depth = 0; depth < 5; depth++) {
+      if (!cause || typeof cause !== "object") break;
+      const item = cause as { code?: unknown; cause?: unknown };
+      if (typeof item.code === "string" && knownCodes.test(item.code))
+        codes.push(item.code);
+      cause = item.cause;
+    }
+    console.error(
+      JSON.stringify({
+        event: "health.database_probe_failed",
+        stage,
+        role,
+        configured: Boolean(
+          role === "app"
+            ? process.env.DATABASE_URL_APP
+            : process.env.DATABASE_URL_ADMIN,
+        ),
+        codes,
+      }),
+    );
+    throw error;
+  }
+}
+
 export async function pingDatabase(): Promise<void> {
-  await connectionFor("app").db.select().from(schema.business).limit(0);
-  await connectionFor("app")
-    .db.select()
-    .from(schema.shopAuthorizationTerms)
-    .limit(0);
-  await connectionFor("admin").db.execute(
-    sql`select auth_subject, method, version from app.account_security limit 0`,
+  await healthProbe("app_business", "app", () =>
+    connectionFor("app").db.select().from(schema.business).limit(0),
   );
-  await connectionFor("admin").db.execute(
-    sql`select auth_subject, session_id, code_hash from app.email_second_step limit 0`,
+  await healthProbe("app_authorization_terms", "app", () =>
+    connectionFor("app").db.select().from(schema.shopAuthorizationTerms).limit(0),
   );
-  await connectionFor("admin").db.execute(
-    sql`select auth_subject, step, draft, version from app.onboarding_progress limit 0`,
+  await healthProbe("admin_account_security", "admin", () =>
+    connectionFor("admin").db.execute(
+      sql`select auth_subject, method, version from app.account_security limit 0`,
+    ),
+  );
+  await healthProbe("admin_email_second_step", "admin", () =>
+    connectionFor("admin").db.execute(
+      sql`select auth_subject, session_id, code_hash from app.email_second_step limit 0`,
+    ),
+  );
+  await healthProbe("admin_onboarding_progress", "admin", () =>
+    connectionFor("admin").db.execute(
+      sql`select auth_subject, step, draft, version from app.onboarding_progress limit 0`,
+    ),
   );
 }
