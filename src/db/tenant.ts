@@ -31,6 +31,32 @@ export type TenantTx = Tx & {
 
 export type RuntimeRole = "app" | "worker";
 
+// Public Supabase Root 2021 CA, obtained from the project SSL settings.
+// Scope the additional trust anchor to the hosted Supabase admin connection.
+const supabaseRootCa = `-----BEGIN CERTIFICATE-----
+MIIDxDCCAqygAwIBAgIUbLxMod62P2ktCiAkxnKJwtE9VPYwDQYJKoZIhvcNAQEL
+BQAwazELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0RlbHdhcmUxEzARBgNVBAcMCk5l
+dyBDYXN0bGUxFTATBgNVBAoMDFN1cGFiYXNlIEluYzEeMBwGA1UEAwwVU3VwYWJh
+c2UgUm9vdCAyMDIxIENBMB4XDTIxMDQyODEwNTY1M1oXDTMxMDQyNjEwNTY1M1ow
+azELMAkGA1UEBhMCVVMxEDAOBgNVBAgMB0RlbHdhcmUxEzARBgNVBAcMCk5ldyBD
+YXN0bGUxFTATBgNVBAoMDFN1cGFiYXNlIEluYzEeMBwGA1UEAwwVU3VwYWJhc2Ug
+Um9vdCAyMDIxIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqQXW
+QyHOB+qR2GJobCq/CBmQ40G0oDmCC3mzVnn8sv4XNeWtE5XcEL0uVih7Jo4Dkx1Q
+DmGHBH1zDfgs2qXiLb6xpw/CKQPypZW1JssOTMIfQppNQ87K75Ya0p25Y3ePS2t2
+GtvHxNjUV6kjOZjEn2yWEcBdpOVCUYBVFBNMB4YBHkNRDa/+S4uywAoaTWnCJLUi
+cvTlHmMw6xSQQn1UfRQHk50DMCEJ7Cy1RxrZJrkXXRP3LqQL2ijJ6F4yMfh+Gyb4
+O4XajoVj/+R4GwywKYrrS8PrSNtwxr5StlQO8zIQUSMiq26wM8mgELFlS/32Uclt
+NaQ1xBRizkzpZct9DwIDAQABo2AwXjALBgNVHQ8EBAMCAQYwHQYDVR0OBBYEFKjX
+uXY32CztkhImng4yJNUtaUYsMB8GA1UdIwQYMBaAFKjXuXY32CztkhImng4yJNUt
+aUYsMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAB8spzNn+4VU
+tVxbdMaX+39Z50sc7uATmus16jmmHjhIHz+l/9GlJ5KqAMOx26mPZgfzG7oneL2b
+VW+WgYUkTT3XEPFWnTp2RJwQao8/tYPXWEJDc0WVQHrpmnWOFKU/d3MqBgBm5y+6
+jB81TU/RG2rVerPDWP+1MMcNNy0491CTL5XQZ7JfDJJ9CCmXSdtTl4uUQnSuv/Qx
+Cea13BX2ZgJc7Au30vihLhub52De4P/4gonKsNHYdbWjg7OWKwNv/zitGDVDB9Y2
+CMTyZKG3XEu5Ghl1LEnI3QmEKsqaCLv12BnVjbkSeZsMnevJPs1Ye6TjjJwdik5P
+o/bKiIz+Fq8=
+-----END CERTIFICATE-----`;
+
 const pools = new Map<string, { pool: pg.Pool; db: Db }>();
 
 function connectionFor(role: RuntimeRole | "admin") {
@@ -43,8 +69,21 @@ function connectionFor(role: RuntimeRole | "admin") {
     throw new Error(`Database URL for the ${role} role is not configured`);
   let entry = pools.get(url);
   if (!entry) {
+    const parsed = new URL(url);
+    const hostedAdmin =
+      role === "admin" &&
+      (parsed.hostname.endsWith(".pooler.supabase.com") ||
+        /^db\.[a-z0-9]+\.supabase\.co$/.test(parsed.hostname));
+    if (hostedAdmin) {
+      // pg connection-string SSL options otherwise override the explicit CA.
+      for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert", "ssl"])
+        parsed.searchParams.delete(key);
+    }
     const pool = new pg.Pool({
-      connectionString: url,
+      connectionString: hostedAdmin ? parsed.toString() : url,
+      ...(hostedAdmin
+        ? { ssl: { ca: supabaseRootCa, rejectUnauthorized: true } }
+        : {}),
       max: Number(process.env.DATABASE_POOL_MAX ?? 10),
     });
     pool.on("error", () => {
@@ -219,19 +258,67 @@ export async function ingestWebhookEvent(input: {
 // Check the business-profile and document-setup fields used by the workspace. LIMIT 0
 // validates the deployed schema and app-role grants without reading tenant data.
 // A connection-only ping would report healthy when a migration is missing.
+// Only log fixed stage labels and recognized error codes, never driver messages,
+// SQL, connection URLs or arbitrary error properties.
+async function healthProbe(
+  stage: string,
+  role: "app" | "admin",
+  probe: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await probe();
+  } catch (error) {
+    const codes: string[] = [];
+    const knownCodes =
+      /^(?:[0-9A-Z]{5}|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|ERR_TLS_CERT_ALTNAME_INVALID|SELF_SIGNED_CERT_IN_CHAIN|UNABLE_TO_VERIFY_LEAF_SIGNATURE|CERT_HAS_EXPIRED)$/;
+    let cause: unknown = error;
+    for (let depth = 0; depth < 5; depth++) {
+      if (!cause || typeof cause !== "object") break;
+      const item = cause as { code?: unknown; cause?: unknown };
+      if (typeof item.code === "string" && knownCodes.test(item.code))
+        codes.push(item.code);
+      cause = item.cause;
+    }
+    console.error(
+      JSON.stringify({
+        event: "health.database_probe_failed",
+        stage,
+        role,
+        configured: Boolean(
+          role === "app"
+            ? process.env.DATABASE_URL_APP
+            : process.env.DATABASE_URL_ADMIN,
+        ),
+        codes,
+      }),
+    );
+    throw error;
+  }
+}
+
 export async function pingDatabase(): Promise<void> {
-  await connectionFor("app").db.select().from(schema.business).limit(0);
-  await connectionFor("app")
-    .db.select()
-    .from(schema.shopAuthorizationTerms)
-    .limit(0);
-  await connectionFor("admin").db.execute(
-    sql`select auth_subject, method, version from app.account_security limit 0`,
+  await healthProbe("app_business", "app", () =>
+    connectionFor("app").db.select().from(schema.business).limit(0),
   );
-  await connectionFor("admin").db.execute(
-    sql`select auth_subject, session_id, code_hash from app.email_second_step limit 0`,
+  await healthProbe("app_authorization_terms", "app", () =>
+    connectionFor("app")
+      .db.select()
+      .from(schema.shopAuthorizationTerms)
+      .limit(0),
   );
-  await connectionFor("admin").db.execute(
-    sql`select auth_subject, step, draft, version from app.onboarding_progress limit 0`,
+  await healthProbe("admin_account_security", "admin", () =>
+    connectionFor("admin").db.execute(
+      sql`select auth_subject, method, version from app.account_security limit 0`,
+    ),
+  );
+  await healthProbe("admin_email_second_step", "admin", () =>
+    connectionFor("admin").db.execute(
+      sql`select auth_subject, session_id, code_hash from app.email_second_step limit 0`,
+    ),
+  );
+  await healthProbe("admin_onboarding_progress", "admin", () =>
+    connectionFor("admin").db.execute(
+      sql`select auth_subject, step, draft, version from app.onboarding_progress limit 0`,
+    ),
   );
 }
